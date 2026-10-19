@@ -62,7 +62,7 @@ public sealed partial class CodeGenerator
 	private void BuildEntryPoint(LLVMFunctionInfo entryPoint, FunctionSignature signature, SourceLocation location)
 	{
 		var takesArguments = !signature.ParameterTypes.IsEmpty;
-		var isWide = takesArguments && TargetTriple.Contains("windows");
+		var isWide = takesArguments && IsWindows;
 		var main = current.Module.AddFunction(_config.StartFunction ?? (isWide ? "wmain" : "main"),
 			LLVMTypeRef.CreateFunction(_context.Int32Type, takesArguments ? [_context.Int32Type, OpaquePointer] : []));
 		
@@ -85,7 +85,9 @@ public sealed partial class CodeGenerator
 		
 		var result = builder.BuildCall2(entryPoint.FunctionType, entryPoint.FunctionValue, arguments);
 		cleanup?.Invoke();
-		builder.BuildCall2(DropsType, GetStaticDrops(_assemblySymbol.Name), Array.Empty<LLVMValueRef>());
+		entryDropsCall = builder.BuildCall2(DropsType, GetStaticDrops(_assemblySymbol.Name),
+			Array.Empty<LLVMValueRef>());
+		
 		foreach (var assembly in _inputs.LoadedAssemblies)
 			builder.BuildCall2(DropsType, GetStaticDrops(assembly), Array.Empty<LLVMValueRef>());
 		

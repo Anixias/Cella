@@ -32,6 +32,8 @@ Error at lambdas.ce:39:2
 38 │ pair(fun(x, x) => x)
 39 │ choose(fun(x) => x)
      ╘════╛ Call to 'choose' is ambiguous
+          | Candidate on line 5
+          | Candidate on line 6
 
 Error at lambdas.ce:41:16
 40 │ choose(fun(x: i64) -> i64 => x)

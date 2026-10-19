@@ -72,15 +72,17 @@ public static class Protocol
 	public static JsonObject ToLsp(Diagnostic diagnostic)
 	{
 		var (source, range) = diagnostic.SourceLocation;
-		var start = range.IsValid ? range.Start : FindTextEnd(source);
-		var end = range.IsValid ? range.End : start;
 		var message = diagnostic.Hints.IsEmpty
 			? diagnostic.Message
 			: $"{diagnostic.Message}\n{string.Join("\n", diagnostic.Hints)}";
 		
 		return new JsonObject
 		{
-			["range"] = new JsonObject { ["start"] = ToPosition(source, start), ["end"] = ToPosition(source, end) },
+			["range"] = new JsonObject
+			{
+				["start"] = ToPosition(source, range.Start),
+				["end"] = ToPosition(source, range.End)
+			},
 			["severity"] = ToSeverity(diagnostic.Severity),
 			["source"] = "cella",
 			["message"] = message
@@ -111,9 +113,6 @@ public static class Protocol
 		DiagnosticSeverity.Warning => WarningSeverity,
 		_ => HintSeverity
 	};
-	
-	private static int FindTextEnd(ISource source) =>
-		source.GetText(new TextRange(0, source.Length)).TrimEnd().Length;
 	
 	public static int ToOffset(string text, int line, int character)
 	{

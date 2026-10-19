@@ -199,9 +199,10 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 		if (TryParseFunctionType(ref index) is { } functionType)
 			return new TypeArgumentNode(functionType);
 		
-		if (TryParseExpression(ref index) is not { } expression)
-			return new TypeArgumentNode(ParseType(ref index));
+		if (!Peek(index, TokenType.KeywordDrop) && !new ExpressionParser(Tokens).CanStartExpression(index))
+			throw Expected(index, "a type or a value");
 		
+		var expression = ParseExpression(ref index);
 		if (expression is VarExpressionNode var)
 			return new IdentifierArgumentNode(var.Identifier);
 		
@@ -209,24 +210,4 @@ public sealed class TypeParser(ImmutableArray<Token> tokens) : BaseParser<ITypeN
 	}
 	
 	private IExpressionNode ParseExpression(ref int index) => new ExpressionParser(Tokens).Parse(ref index);
-	
-	private IExpressionNode? TryParseExpression(ref int index)
-	{
-		try
-		{
-			var parserIndex = index;
-			var result = ParseExpression(ref parserIndex);
-			index = parserIndex;
-			return result;
-		}
-		catch (ParseException e) when (e.Diagnostic.SourceLocation.Range.Start >
-		                               Tokens[index].SourceLocation.Range.Start)
-		{
-			throw;
-		}
-		catch (ParseException)
-		{
-			return null;
-		}
-	}
 }

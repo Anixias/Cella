@@ -147,7 +147,11 @@ public sealed partial class Builder
 		ct.ThrowIfCancellationRequested();
 		
 		using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8, true);
-		var source = new StringSource(await reader.ReadToEndAsync(ct), sourcePath);
+		var source = new StringSource(await reader.ReadToEndAsync(ct), sourcePath)
+		{
+			Name = SourcePaths.Relative(project.Directory, sourcePath)
+		};
+		
 		var diagnostics = new List<Diagnostic>();
 		if (FindInvalidUtf8(bytes) is { } offset)
 			diagnostics.Add(new(DiagnosticSeverity.Error, new SourceLocation(source, new TextRange(offset, offset + 1)),
@@ -157,7 +161,7 @@ public sealed partial class Builder
 		var tokens = new FilteredScanner(source).ToImmutableArray();
 		ct.ThrowIfCancellationRequested();
 		
-		var parser = new FileParser(tokens, SourcePaths.Relative(project.Directory, sourcePath), sourcePath, flags);
+		var parser = new FileParser(tokens, source.Name, sourcePath, flags);
 		var ast = parser.Parse();
 		diagnostics.AddRange(parser.Diagnostics);
 		return (ast, diagnostics);

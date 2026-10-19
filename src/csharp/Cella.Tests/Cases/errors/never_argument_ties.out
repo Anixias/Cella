@@ -2,5 +2,7 @@ Error at never_argument_ties.ce:35:6
 34 │ val c = C(3)
 35 │ ret f(c, abort())
          ^ Call to 'f' is ambiguous
+         | Candidate on line 26
+         | Candidate on line 27
 
 [compilation failed]

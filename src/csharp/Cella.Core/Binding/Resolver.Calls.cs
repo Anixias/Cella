@@ -214,20 +214,21 @@ public sealed partial class Resolver
 			ResolveCallable([callable], values, MaterializationMode.Overload, CurrentTargetType).HasResult;
 	}
 	
-	private static IEnumerable<string> DescribeCandidates(SourceLocation location, ResolutionSet? tied) =>
-		tied is not { } set
-			? []
-			: Enumerable.Range(0, set.Count)
-				.Select(i => GetInfo(set[i].Callable)?.Symbol.Definition)
-				.OfType<SourceLocation>()
-				.Select(definition => (Other: definition.Source != location.Source,
-					File: DescribeFile(location, definition), definition.GetLineColumn().Line))
-				.OrderBy(static candidate => candidate.Other)
-				.ThenBy(static candidate => candidate.File, StringComparer.Ordinal)
-				.ThenBy(static candidate => candidate.Line)
-				.Select(static candidate => candidate.Other
-					? $"Candidate in '{candidate.File}' on line {candidate.Line}"
-					: $"Candidate on line {candidate.Line}");
+	private static IEnumerable<ICallable> GetCallables(ResolutionSet? tied) =>
+		tied is not { } set ? [] : Enumerable.Range(0, set.Count).Select(i => set[i].Callable);
+	
+	private static IEnumerable<string> DescribeCandidates(SourceLocation location,
+		IEnumerable<ICallable> candidates) => candidates
+		.Select(static callable => GetInfo(callable)?.Symbol.Definition)
+		.OfType<SourceLocation>()
+		.Select(definition => (Other: definition.Source != location.Source,
+			File: DescribeFile(location, definition), definition.GetLineColumn().Line))
+		.OrderBy(static candidate => candidate.Other)
+		.ThenBy(static candidate => candidate.File, StringComparer.Ordinal)
+		.ThenBy(static candidate => candidate.Line)
+		.Select(static candidate => candidate.Other
+			? $"Candidate in '{candidate.File}' on line {candidate.Line}"
+			: $"Candidate on line {candidate.Line}");
 	
 	private static string DescribeFile(SourceLocation from, SourceLocation definition) =>
 		Path.GetDirectoryName(from.Source.FilePath) is { Length: > 0 } directory
@@ -239,12 +240,9 @@ public sealed partial class Resolver
 		ResolutionSet? tied = null)
 	{
 		if (!node.Arguments.Any(IsDeferred))
-			return Error(node, new Diagnostic(DiagnosticSeverity.Error, node.Target.SourceLocation,
-				$"Call to '{functionName}' is ambiguous")
-			{
-				Hints = [..DescribeCandidates(node.SourceLocation, tied)]
-			}, CurrentTargetType);
+			return ReportAmbiguity(node, functionName, GetCallables(tied));
 		
+		var succeeded = new List<ICallable>();
 		var failures = new List<List<Diagnostic>>();
 		foreach (var candidate in shaped)
 		{
@@ -257,23 +255,37 @@ public sealed partial class Resolver
 			
 			Rollback(trial);
 			if (errors.Count == 0 && !IsInvalid(result))
-				return Error(node, $"Call to '{functionName}' is ambiguous", CurrentTargetType, node.Target);
-			
-			failures.Add(errors);
+				succeeded.Add(candidate);
+			else
+				failures.Add(errors);
 		}
 		
-		var first = failures[0].Select(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message)).ToList();
-		if (first.Count > 0 && failures.All(errors =>
-			    errors.Select(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message))
-				    .SequenceEqual(first)))
+		if (succeeded.Count > 0)
+			return ReportAmbiguity(node, functionName, succeeded.Count > 1 ? succeeded : GetCallables(tied));
+		
+		var shared = failures[0]
+			.DistinctBy(static diagnostic => (diagnostic.SourceLocation, diagnostic.Message))
+			.Where(diagnostic => failures.All(errors => errors.Any(other =>
+				other.SourceLocation == diagnostic.SourceLocation && other.Message == diagnostic.Message)))
+			.OrderBy(static diagnostic => diagnostic.SourceLocation.Range.Start)
+			.ToList();
+		
+		if (shared.Count > 0)
 		{
-			Diagnostics.AddRange(failures[0]);
+			Diagnostics.AddRange(shared);
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		}
 		
 		return Error(node, $"No overload of '{functionName}' accepts these arguments", CurrentTargetType,
 			node.Target);
 	}
+	
+	private ResolvedInvalidExpressionNode ReportAmbiguity(CallExpressionNode node, string functionName,
+		IEnumerable<ICallable> candidates) => Error(node, new Diagnostic(DiagnosticSeverity.Error,
+		node.Target.SourceLocation, $"Call to '{functionName}' is ambiguous")
+	{
+		Hints = [..DescribeCandidates(node.SourceLocation, candidates)]
+	}, CurrentTargetType);
 	
 	private ResolvedInvalidExpressionNode? RejectSpread(CallExpressionNode node, IReadOnlyList<ICallable> candidates)
 	{

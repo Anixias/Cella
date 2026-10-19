@@ -118,6 +118,22 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		return InvalidConstant.Instance;
 	}
 	
+	public bool MentionsValueParameter(IExpressionNode expression, ResolutionContext context)
+	{
+		_resolutionContexts.Push(context);
+		var checkpoint = OpenCheckpoint();
+		var result = VisitNode(expression, null);
+		Rollback(checkpoint);
+		_resolutionContexts.Pop();
+		return MentionsValueParameter(result);
+	}
+	
+	private static bool MentionsValueParameter(IResolvedExpressionNode node) =>
+		node is ResolvedValueParameterExpressionNode or ResolvedTraitConstantExpressionNode
+		{
+			Owner: TypeParameterSymbol
+		} || ConstantEvaluator.GetOperands(node).Any(MentionsValueParameter);
+	
 	private IResolvedDeclarationNode VisitNode(IDeclarationNode node) =>
 		((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);
 	

@@ -98,14 +98,15 @@ public sealed partial class Builder
 		
 		var objDir = Path.Combine(isEntry ? GetEntryDirectory(project) : GetOutputDirectory(project), "obj");
 		var outputConfig = new OutputConfig(objDir, options.EmitsIr, options.EmitsAssembly);
-		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), Features: targetTriple.ToLlvmFeatures());
+		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), targetTriple.ToSystem(),
+			targetTriple.ToArchitecture(),
+			Features: targetTriple.ToLlvmFeatures());
+		
 		var codeGenConfig = new CodeGenConfig(outputConfig, targetConfig, optimizeMode)
 		{
 			Checks = new(BuildFlags.ChecksBounds(project.Project),
 				BuildFlags.ChecksOverflow(project.Project, optimizeMode)),
 			DebugInfo = project.Project.DebugInfo ?? true,
-			SourceRoot = project.Directory,
-			ProjectRoots = [..allDependencies.Select(static d => d.Directory).OfType<string>(), project.Directory],
 			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary,
 			StartFunction = isReferenceable ? Mangling.MangleStart(GetIdentity(project)) : null
 		};

@@ -7,6 +7,8 @@ Error at nested_inference.ce:44:10
 43 │ val small: i32 = 1
 44 │ val a = take(Pair(1, 2))
              ╘══╛ Call to 'take' is ambiguous
+                | Candidate on line 37
+                | Candidate on line 38
 
 Error at nested_inference.ce:45:10
 44 │ val a = take(Pair(1, 2))

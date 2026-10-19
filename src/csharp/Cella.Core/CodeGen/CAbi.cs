@@ -41,13 +41,16 @@ internal readonly record struct CSignature(ImmutableArray<CPass> Parameters, CPa
 	}
 }
 
-internal sealed class CAbi(LLVMTargetDataRef targetData, string targetTriple)
+internal sealed class CAbi(LLVMTargetDataRef targetData, TargetConfig target)
 {
 	private const int IntegerRegisters = 6;
 	private const int SseRegisters = 8;
 	
-	private readonly bool _isWindowsX64 = targetTriple.StartsWith("x86_64-") && targetTriple.Contains("-windows");
-	private readonly bool _isSystemV = targetTriple.StartsWith("x86_64-") && !targetTriple.Contains("-windows");
+	private readonly bool _isWindowsX64 = target is
+		{ Architecture: TargetArchitecture.X64, System: TargetSystem.Windows };
+	
+	private readonly bool _isSystemV = target is
+		{ Architecture: TargetArchitecture.X64, System: not TargetSystem.Windows };
 	
 	public bool ExtendsSmallIntegers => _isSystemV;
 	
@@ -89,7 +92,7 @@ internal sealed class CAbi(LLVMTargetDataRef targetData, string targetTriple)
 		
 		if (!_isWindowsX64)
 			throw new NotSupportedException(
-				$"Records cannot be passed to or returned from ext functions on '{targetTriple}' yet");
+				$"Records cannot be passed to or returned from ext functions on '{target.TargetTriple}' yet");
 		
 		var size = targetData.ABISizeOfType(type);
 		return size is 1 or 2 or 4 or 8

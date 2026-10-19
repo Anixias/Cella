@@ -1,0 +1,7 @@
+mod test
+
+use a.[x, x]
+
+x: val i32 = 1
+
+main: fun -> i32 => 0

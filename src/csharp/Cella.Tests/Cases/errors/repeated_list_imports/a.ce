@@ -1,0 +1,6 @@
+mod a
+
+x: pub rec
+{
+	v: i32
+}

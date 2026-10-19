@@ -27,6 +27,7 @@ public readonly struct ResolutionContext
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public CopiedParameters? CopiedParameters { get; init; }
 	public Func<IExpressionNode, ResolutionContext, TypeSymbol?, Constant?>? EvaluateConstant { get; init; }
+	public Func<IExpressionNode, ResolutionContext, bool>? MentionsValueParameter { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
 	public Action<Action>? RecordUndo { get; init; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; }
@@ -829,19 +830,15 @@ public readonly struct ResolutionContext
 			return NativeSymbols.Invalid;
 		}
 		
-		if (MentionsValueParameter(expression))
-		{
-			Report(expression, "Cannot use arithmetic on value parameters in generic arguments");
-			return NativeSymbols.Invalid;
-		}
-		
 		var constant = EvaluateConstant?.Invoke(expression, this, null);
 		if (constant is not InvalidConstant && parameter?.ValueType is { } valueType and not InvalidType)
 			constant = EvaluateConstant!(expression, this, valueType);
 		
 		if (constant is null)
 		{
-			if (parameter is not null)
+			if (MentionsValueParameter?.Invoke(expression, this) == true)
+				Report(expression, "Cannot use arithmetic on value parameters in generic arguments");
+			else if (parameter is not null)
 				Report(expression, $"'{expression.SourceLocation.GetText()}' is not a constant");
 			
 			return NativeSymbols.Invalid;
@@ -865,18 +862,6 @@ public readonly struct ResolutionContext
 	
 	private bool IsUndeclaredNever(IExpressionNode expression) =>
 		expression is VarExpressionNode { Identifier.Text: "never" } && FindNamed(expression) is null;
-	
-	private bool MentionsValueParameter(IExpressionNode expression) => expression switch
-	{
-		VarExpressionNode => FindNamed(expression) is TypeParameterSymbol { IsValue: true },
-		AccessExpressionNode { Target: VarExpressionNode target } =>
-			Resolve(target.Identifier) is TypeParameterSymbol { IsValue: false, IsTrait: false },
-		BinaryOpExpressionNode binary => MentionsValueParameter(binary.Left) || MentionsValueParameter(binary.Right),
-		UnaryOpExpressionNode unary => MentionsValueParameter(unary.Operand),
-		ChainedExpressionNode chained => chained.Operands.Any(MentionsValueParameter),
-		CallExpressionNode call => call.Arguments.Any(MentionsValueParameter),
-		_ => false
-	};
 	
 	private TypeSymbol? TryResolveGenericType(IndexerExpressionNode node)
 	{

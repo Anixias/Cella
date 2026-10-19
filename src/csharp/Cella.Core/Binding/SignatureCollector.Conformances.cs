@@ -514,8 +514,8 @@ public sealed partial class SignatureCollector
 			return false;
 		
 		if (own.IsNoref && !required.IsNoref || own.IsCopy && !required.IsCopy || own.HasDrop && !required.HasDrop ||
-		    own.HasNull && !required.HasNull || own.IsAtomic && !required.IsAtomic || own.HasNew && !required.HasNew ||
-		    own.IsExt && !required.IsExt)
+		    own.HasNull && !required.HasNull || own.IsAtomic && !required.IsAtomic ||
+		    own.HasNew && !_typePool.HasNew(required) || own.IsExt && !required.IsExt)
 			return false;
 		
 		var bounds = _typePool.GetBounds(required).Select(bound => _typePool.Substitute(bound, traitMap)).ToList();

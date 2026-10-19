@@ -2,5 +2,7 @@ Error at lambda_overload_ties.ce:6:21
 5 │ 
 6 │ main: fun -> i32 => apply(fun(x) => x)
                         ╘═══╛ Call to 'apply' is ambiguous
+                            | Candidate on line 3
+                            | Candidate on line 4
 
 [compilation failed]

@@ -17,7 +17,7 @@ Error at new_constraint_syntax.ce:11:17
 Error at new_constraint_syntax.ce:13:18
 12 │ 
 13 │ sixth[T: new(box[)]: fun -> i32 = 0
-                      ^ Expected a type
+                      ^ Expected a type or a value
 
 Error at new_constraint_syntax.ce:17:14
 16 │ {

@@ -1,0 +1,29 @@
+Error at main.ce:3:8
+2 │ 
+3 │ use a.[x, x]
+           ^ 'x' is imported more than once
+
+Error at main.ce:3:8
+2 │ 
+3 │ use a.[x, x]
+           ^ 'x' is ambiguous
+           | Also declared in 'test'
+
+Error at main.ce:3:11
+2 │ 
+3 │ use a.[x, x]
+              ^ 'x' is imported more than once
+
+Error at main.ce:3:11
+2 │ 
+3 │ use a.[x, x]
+              ^ 'x' is ambiguous
+              | Also declared in 'test'
+
+Error at main.ce:5:1
+4 │ 
+5 │ x: val i32 = 1
+    ^ 'x' is ambiguous
+    | Also imported from 'a'
+
+[compilation failed]

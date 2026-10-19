@@ -1,0 +1,18 @@
+Error at deferred_shared_errors.ce:6:38
+5 │ 
+6 │ mixed: fun -> i32 => apply(fun(x) => missing + x * 2)
+                                         ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at deferred_shared_errors.ce:10:10
+ 9 │ {
+10 │     val y = missing
+                 ╘═════╛ Symbol 'missing' not found in this scope
+
+Error at deferred_shared_errors.ce:17:21
+16 │ 
+17 │ tied: fun -> i32 => pick(fun(x) => 3)
+                         ╘══╛ Call to 'pick' is ambiguous
+                            | Candidate on line 14
+                            | Candidate on line 15
+
+[compilation failed]

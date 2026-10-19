@@ -1,0 +1,16 @@
+Error at generic_argument_starts.ce:3:12
+2 │ 
+3 │ x: var ptr[drop] = undef
+               ╘══╛ Cannot use 'drop' as a value
+
+Error at generic_argument_starts.ce:5:12
+4 │ 
+5 │ y: var ptr[] = undef
+               ^ Expected a type or a value
+
+Error at generic_argument_starts.ce:7:19
+6 │ 
+7 │ z: var array[i32, ;] = undef
+                      ^ Unexpected character ';'
+
+[compilation failed]

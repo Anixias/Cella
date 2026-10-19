@@ -49,10 +49,13 @@ public sealed class GoldenTests
 		var libraryCases = NameCases(FindCases(_libraryTestsDirectory), _libraryTestsDirectory, LibraryCategory);
 		foreach (var (path, name) in compilerCases.Concat(libraryCases))
 		{
+			var runsInRelease = name.StartsWith("run/") || name.StartsWith(LibraryCategory) || FindOutputs(path)
+				.Any(static output => output.EndsWith("release.out", StringComparison.Ordinal));
+			
 			foreach (var target in _targets.Where(target => RunsOn(path, target)))
 			{
 				cases.Add(name, false, target);
-				if (name.StartsWith("run/") || name.StartsWith(LibraryCategory))
+				if (runsInRelease)
 					cases.Add(name, true, target);
 			}
 		}
@@ -62,16 +65,20 @@ public sealed class GoldenTests
 	
 	private static string GetSystem(string target) => target.Split('-')[0];
 	
-	private static bool RunsOn(string sourcePath, string target)
+	private static List<string> FindOutputs(string sourcePath)
 	{
 		var directory = Path.GetDirectoryName(sourcePath)!;
 		var prefix = Path.GetFileNameWithoutExtension(sourcePath) + ".";
-		var outputs = Directory.EnumerateFiles(directory, prefix + "*out")
+		return Directory.EnumerateFiles(directory, prefix + "*out")
 			.Select(static output => Path.GetFileName(output))
 			.Where(output => output.Length > prefix.Length)
 			.Select(output => output[prefix.Length..])
 			.ToList();
-		
+	}
+	
+	private static bool RunsOn(string sourcePath, string target)
+	{
+		var outputs = FindOutputs(sourcePath);
 		return outputs.Count == 0 || outputs.Any(output => output is "out" or "release.out" ||
 		                                                   output.StartsWith(GetSystem(target) + ".",
 			                                                   StringComparison.Ordinal));

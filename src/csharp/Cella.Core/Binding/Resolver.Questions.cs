@@ -109,6 +109,7 @@ public sealed partial class Resolver
 			ExtSignatureTypes = current.ExtSignatureTypes,
 			CopiedParameters = current.CopiedParameters,
 			EvaluateConstant = current.EvaluateConstant,
+			MentionsValueParameter = current.MentionsValueParameter,
 			GenericTypes = current.GenericTypes,
 			RecordUndo = current.RecordUndo,
 			TrackInstance = current.TrackInstance,

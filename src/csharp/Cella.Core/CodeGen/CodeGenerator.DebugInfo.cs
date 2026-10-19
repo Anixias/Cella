@@ -35,7 +35,7 @@ public sealed unsafe partial class CodeGenerator
 	
 	private LLVMOpaqueDIBuilder* DiBuilder => (LLVMOpaqueDIBuilder*)current.DiBuilder.Handle;
 	
-	private bool UsesCodeView => TargetTriple.Contains("windows");
+	private bool UsesCodeView => IsWindows;
 	
 	private void StartDebugInfo(LoweredModule module)
 	{

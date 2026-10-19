@@ -6,7 +6,7 @@ Error at constraint_syntax.ce:3:10
 Error at constraint_syntax.ce:5:17
 4 │ 
 5 │ second[T: Shape[]: fun -> i32 = 0
-                    ^ Expected a type
+                    ^ Expected a type or a value
 
 Error at constraint_syntax.ce:12:21
 11 │ 

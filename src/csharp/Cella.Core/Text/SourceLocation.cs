@@ -14,6 +14,12 @@ public readonly record struct SourceLocation(ISource Source, TextRange Range)
 	/// <returns>The line and column as a tuple.</returns>
 	public (int Line, int Column) GetLineColumn() => Source.GetLineColumn(Range.Start);
 	
+	public string DescribeStart()
+	{
+		var (line, column) = GetLineColumn();
+		return $"{Source.Name}:{line}:{column}";
+	}
+	
 	public override string ToString()
 	{
 		var start = Source.GetLineColumn(Range.Start);

@@ -44,17 +44,11 @@ public sealed partial class Resolver
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var location = new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString,
-			DescribePanicLocation(context.File, node.Keyword.SourceLocation), node);
+			node.Keyword.SourceLocation.DescribeStart(), node);
 		
 		return (IResolvedExpressionNode?)ResolvePanicCall(target, [message, location], node) ?? Error(node,
 			new Diagnostic(DiagnosticSeverity.Error, node.Message.SourceLocation,
 				$"'{PanicName}' doesn't accept '{message.Type.Name}'"), CurrentTargetType);
-	}
-	
-	private static string DescribePanicLocation(FileSymbol file, SourceLocation location)
-	{
-		var (line, column) = location.GetLineColumn();
-		return $"{file.Name}:{line}:{column}";
 	}
 	
 	private ResolvedFunctionCallExpressionNode? ResolvePanicCall(FunctionSymbol target, IResolvedExpressionNode[] args,
@@ -202,7 +196,7 @@ public sealed partial class Resolver
 		var signature = new FunctionSignature([NativeSymbols.Str, NativeSymbols.Str], NativeSymbols.Never);
 		symbol.QualifiedName = context.Qualify(symbol);
 		var mangledName = Mangling.MangleAdapter(context.Modules?.AssemblyName, "panic",
-			_signatures.GetFunctionInfo(target).MangledName);
+			_signatures.GetFunctionInfo(target).MangledName ?? target.Name);
 		
 		var info = new FunctionInfo(mangledName, symbol, signature, scope, null, context.File);
 		var syntax = new VarExpressionNode(message);

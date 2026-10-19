@@ -27,10 +27,18 @@ public class FilteredScanner : IEnumerable<Token>
 	private IEnumerable<Token> ScanAllTokens()
 	{
 		var position = 0;
+		var codeEnd = 0;
 		while (ScanToken(position) is var lexerResult)
 		{
-			yield return lexerResult.Token;
+			var token = lexerResult.Token;
+			if (token.Type == TokenType.EndOfFile)
+			{
+				yield return Token.EndOfFile(token.SourceLocation.Source, codeEnd);
+				break;
+			}
 			
+			yield return token;
+			codeEnd = token.SourceLocation.Range.End;
 			if (lexerResult.NextPosition <= position)
 				break;
 			

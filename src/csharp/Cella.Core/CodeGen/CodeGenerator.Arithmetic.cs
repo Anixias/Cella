@@ -264,7 +264,7 @@ public sealed partial class CodeGenerator
 		
 		builder.PositionAtEnd(panicBlock);
 		if (_inputs.PanicAdapters.TryGetValue(location.Source.FilePath, out var adapter))
-			EmitValue(new CallValue(adapter, [CreateStr(message), CreateStr(DescribeLocation(location))], location),
+			EmitValue(new CallValue(adapter, [CreateStr(message), CreateStr(location.DescribeStart())], location),
 				builder);
 		else
 			builder.BuildCall2(TrapType, GetTrapFunction(), []);
@@ -273,23 +273,6 @@ public sealed partial class CodeGenerator
 		
 		builder.PositionAtEnd(continueBlock);
 	}
-	
-	private string DescribeLocation(SourceLocation location)
-	{
-		var file = location.Source.FilePath;
-		var path = Path.IsPathFullyQualified(file) &&
-		           (_config.ProjectRoots.Where(root => Contains(root, file)).MaxBy(static root => root.Length) ??
-		            _config.SourceRoot) is { } root
-			? SourcePaths.Relative(root, file)
-			: file;
-		
-		var (line, column) = location.GetLineColumn();
-		return $"{path}:{line}:{column}";
-	}
-	
-	private static bool Contains(string root, string path) =>
-		Path.GetRelativePath(root, path) is var relative && !Path.IsPathRooted(relative) && relative != ".." &&
-		!relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 	
 	private LLVMValueRef GetTrapFunction() => GetIntrinsic("llvm.trap", TrapType);
 	

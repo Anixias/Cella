@@ -48,12 +48,6 @@ internal sealed class ConsoleBuildOutput(string displayDirectory, bool showHints
 		var severity = diagnostic.Severity;
 		var (source, range) = diagnostic.SourceLocation;
 		
-		if (!range.IsValid)
-		{
-			var end = source.GetText(new(0, source.Length)).TrimEnd().Length;
-			range = new(end, end);
-		}
-		
 		var (severityColor, severityLabel) = severity switch
 		{
 			DiagnosticSeverity.Error => (ConsoleColor.Red, "Error"),

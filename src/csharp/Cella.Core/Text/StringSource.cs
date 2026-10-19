@@ -7,6 +7,7 @@ public sealed class StringSource : ISource
 	public static readonly StringSource Empty = new(string.Empty, string.Empty);
 	
 	public string FilePath { get; }
+	public string Name { get; init; }
 	public char this[int position] => _text[position];
 	public int Length => _text.Length;
 	
@@ -19,6 +20,7 @@ public sealed class StringSource : ISource
 		_lines = SplitLines(text);
 		
 		FilePath = filePath;
+		Name = filePath;
 	}
 	
 	private static ImmutableArray<TextRange> SplitLines(string text)

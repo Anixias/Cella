@@ -471,20 +471,14 @@ public sealed unsafe partial class CodeGenerator
 		builder.BuildRetVoid();
 	}
 	
-	private void RemoveStaticDropCalls(List<ModuleState> states)
+	private void RemoveEntryDropsCall()
 	{
-		var name = Mangling.MangleStaticDrops(_assemblySymbol.Name);
-		foreach (var state in states)
-		{
-			var drops = state.Module.GetNamedFunction(name);
-			if (drops.Handle == nint.Zero)
-				continue;
-			
-			while (LLVM.GetFirstUse(drops) is var use && use != null)
-				LLVM.InstructionEraseFromParent(LLVM.GetUser(use));
-			
-			drops.DeleteFunction();
-		}
+		if (entryDropsCall is not { } call)
+			return;
+		
+		var drops = call.CalledValue;
+		call.InstructionEraseFromParent();
+		drops.DeleteFunction();
 	}
 	
 	private LLVMValueRef GetModuleDrops(ModuleState state)

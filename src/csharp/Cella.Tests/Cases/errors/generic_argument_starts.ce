@@ -1,0 +1,9 @@
+mod test
+
+x: var ptr[drop] = undef
+
+y: var ptr[] = undef
+
+z: var array[i32, ;] = undef
+
+main: fun -> i32 => 0

@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using Cella.Core.CodeGen;
 
 namespace Cella.Compiler;
 
@@ -48,6 +49,23 @@ public readonly record struct TargetTriple(string Os, string Arch, string? Abi)
 			_ => throw new Exception($"No LLVM mapping for '{this}'")
 		};
 	}
+	
+	public TargetSystem ToSystem() => Os switch
+	{
+		OsTypes.Windows => TargetSystem.Windows,
+		OsTypes.Linux => TargetSystem.Linux,
+		OsTypes.MacOsX => TargetSystem.MacOs,
+		_ => throw new Exception($"Unknown operating system '{Os}'")
+	};
+	
+	public TargetArchitecture ToArchitecture() => Arch switch
+	{
+		ArchTypes.X64 => TargetArchitecture.X64,
+		ArchTypes.X86 => TargetArchitecture.X86,
+		ArchTypes.Arm64 => TargetArchitecture.Arm64,
+		ArchTypes.Wasm64 => TargetArchitecture.Wasm64,
+		_ => throw new Exception($"Unknown architecture '{Arch}'")
+	};
 	
 	public string ToLlvmFeatures() => (Os, Arch) switch
 	{

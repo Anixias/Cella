@@ -237,6 +237,9 @@ public sealed partial class SignatureCollector
 	private Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType) =>
 		constants!.EvaluateConstant(expression, context, targetType);
 	
+	private bool MentionsValueParameter(IExpressionNode expression, ResolutionContext context) =>
+		constants!.MentionsValueParameter(expression, context);
+	
 	private Constant? EvaluateChecked(IResolvedExpressionNode value)
 	{
 		if (Evaluator.FindConstantError(value) is not { } error)
@@ -373,7 +376,7 @@ public sealed partial class SignatureCollector
 		Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
 		block.IsValue && block.ValueType != declared.ValueType ||
 		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
-		block.HasDrop && !declared.HasDrop || block.HasNew && !declared.HasNew ||
+		block.HasDrop && !declared.HasDrop || block.HasNew && !_typePool.HasNew(declared) ||
 		block.IsAtomic && !declared.IsAtomic || block.IsExt && !declared.IsExt ||
 		_typePool.GetConstructorBounds(block).Any(constructor => !_typePool.GetConstructors(declared)
 			.Any(existing => TypePool.MatchesConstructor(_typePool.SubstituteSignature(existing.Signature, map),

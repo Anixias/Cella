@@ -1,0 +1,16 @@
+Error at redundant_new_bounds.ce:18:20
+17 │ 
+18 │ a[T: Empty + new]: impl
+                        ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+Error at redundant_new_bounds.ce:28:24
+27 │ 
+28 │ b[T: Make + new(i32)]: impl
+                            ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+Error at redundant_new_bounds.ce:38:22
+37 │ 
+38 │ c[T: default + new]: impl
+                          ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+[compilation failed]

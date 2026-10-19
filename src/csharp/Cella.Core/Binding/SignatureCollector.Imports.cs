@@ -35,7 +35,8 @@ public sealed partial class SignatureCollector
 		foreach (var importExpression in node.Imports)
 		{
 			ProbeImport(importExpression, context);
-			var collected = CollectImport(importExpression, context, hidden);
+			var named = CollectImport(importExpression, context, hidden);
+			var collected = named.Select(static entry => entry.Symbol).ToList();
 			imports.AddRange(collected);
 			if (context.ResolveMembers(Modules.Root, importExpression.ModuleName.Parts, 0) is ModulePathSymbol imported)
 				activated.AddRange(Modules.GetModules(imported));
@@ -44,8 +45,8 @@ public sealed partial class SignatureCollector
 			if (importExpression.IsPrelude)
 				prelude.UnionWith(collected);
 			else if (importExpression.Import is TokenImport or ListImport)
-				explicitImports.AddRange(collected.Select(symbol =>
-					(symbol, FindImportName(importExpression, symbol), importExpression.ModuleName.Text)));
+				explicitImports.AddRange(named.Select(entry =>
+					(entry.Symbol, entry.Name!.Value, importExpression.ModuleName.Text)));
 		}
 		
 		foreach (var name in explicitImports.Where(entry => prelude.Contains(entry.Symbol))
@@ -118,13 +119,6 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
-	private static Token FindImportName(ImportExpression import, Symbol symbol) => import.Import switch
-	{
-		TokenImport single => single.Token,
-		ListImport list => list.Tokens.First(token => token.Text == symbol.Name),
-		_ => throw new InvalidOperationException()
-	};
-	
 	private void ReportImportConflicts(List<(Symbol Symbol, Token Name, string Module)> explicitImports,
 		ResolutionContext context, Dictionary<Symbol, HashSet<string>> importers)
 	{
@@ -163,7 +157,8 @@ public sealed partial class SignatureCollector
 			});
 	}
 	
-	private List<Symbol> CollectImport(ImportExpression import, ResolutionContext context, List<Symbol> hidden)
+	private List<(Symbol Symbol, Token? Name)> CollectImport(ImportExpression import, ResolutionContext context,
+		List<Symbol> hidden)
 	{
 		var path = import.ModuleName.Parts;
 		var symbol = context.ResolveMembers(Modules.Root, path, 0);
@@ -184,23 +179,28 @@ public sealed partial class SignatureCollector
 		return [];
 	}
 	
-	private List<Symbol> CollectImport(ModulePathSymbol module, IImport import, ResolutionContext context) =>
-		import switch
-		{
-			FullImport => [..module.Members.Values.SelectMany(static m => m).Where(context.IsVisible)],
-			TokenImport i => ImportMember(module, i.Token, context),
-			ListImport i => [..i.Tokens.SelectMany(t => ImportMember(module, t, context))],
-			_ => []
-		};
+	private List<(Symbol Symbol, Token? Name)> CollectImport(ModulePathSymbol module, IImport import,
+		ResolutionContext context) => import switch
+	{
+		FullImport =>
+		[
+			..module.Members.Values.SelectMany(static m => m).Where(context.IsVisible)
+				.Select(static symbol => (symbol, (Token?)null))
+		],
+		TokenImport i => ImportMember(module, i.Token, context),
+		ListImport i => [..i.Tokens.SelectMany(t => ImportMember(module, t, context))],
+		_ => []
+	};
 	
-	private List<Symbol> ImportMember(ModulePathSymbol module, Token name, ResolutionContext context)
+	private List<(Symbol Symbol, Token? Name)> ImportMember(ModulePathSymbol module, Token name,
+		ResolutionContext context)
 	{
 		if (module.Members.TryGetValue(name.Text, out var members) &&
 		    members.Where(context.IsVisible).ToList() is { Count: > 0 } visible)
-			return visible;
+			return [..visible.Select(symbol => (symbol, (Token?)name))];
 		
 		if (module.Children.TryGetValue(name.Text, out var child))
-			return [child];
+			return [(child, name)];
 		
 		Diagnostics.Add(context.ReportUndefinedMember(name.SourceLocation, module, name.Text));
 		return [];

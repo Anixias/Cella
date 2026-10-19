@@ -2,7 +2,8 @@
 
 public readonly record struct Token
 {
-	public static Token EndOfFile(ISource source) => new(TokenType.EndOfFile, new(source, TextRange.EndOfFile));
+	public static Token EndOfFile(ISource source, int position) =>
+		new(TokenType.EndOfFile, new(source, new(position, position)));
 	
 	public TokenType Type { get; init; }
 	public SourceLocation SourceLocation { get; init; }

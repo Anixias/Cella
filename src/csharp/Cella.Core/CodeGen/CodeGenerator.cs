@@ -99,6 +99,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		_temporarySlots = [];
 	
 	private ModuleState current = null!;
+	private LLVMValueRef? entryDropsCall;
 	private LLVMFunctionInfo currentFunction;
 	private RuntimeChecks checks;
 	
@@ -120,7 +121,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		checks = config.Checks;
 		(_dataLayoutStr, TargetTriple, _targetMachine, _pointerSize) = config.GetDataLayout();
 		_targetData = LLVMTargetDataRef.FromStringRepresentation(_dataLayoutStr);
-		_cAbi = new CAbi(_targetData, TargetTriple);
+		_cAbi = new CAbi(_targetData, config.TargetConfig);
 		_sharedFunctions = assemblySymbol.SignatureTable.Globals.Values
 			.Where(static global => global.Symbol.Visibility is Visibility.Project or Visibility.Public)
 			.SelectMany(static global => FindFunctions(global.Value))
@@ -151,7 +152,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	
 	private bool IsExported(Symbol symbol) => SharesExports && _inputs.Exports.Contains(symbol);
 	
-	private bool SharesExports => _config.ExportsSymbols || TargetTriple.Contains("-linux");
+	private bool SharesExports => _config.ExportsSymbols || _config.TargetConfig.System == TargetSystem.Linux;
+	
+	private bool IsWindows => _config.TargetConfig.System == TargetSystem.Windows;
 	
 	private void Import(LLVMValueRef value, Symbol symbol)
 	{
@@ -310,7 +313,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			if (HasStaticDrops)
 				EmitStaticDrops(states, hasRegistry);
 			else
-				RemoveStaticDropCalls(states);
+				RemoveEntryDropsCall();
 			
 			var fileNames = GetFileNames(states);
 			return [..states.Select(state => Finish(state, fileNames[state]))];
@@ -327,6 +330,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			_foreignOwners.Clear();
 			_requestedInstantiations.Clear();
 			_requestedGlobals.Clear();
+			entryDropsCall = null;
 			current = null!;
 		}
 	}
@@ -411,7 +415,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		var llvmModule = state.Module;
 		var name = state.Lowered.Symbol.Name;
 		AddUnwindTables(llvmModule);
-		if (TargetTriple.Contains("windows"))
+		if (IsWindows)
 			PlaceFunctionsInSections(llvmModule);
 		
 		state.DiBuilder.DIBuilderFinalize();
@@ -474,7 +478,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private static string DescribeWriteFailure(string path, string message) => $"Cannot write '{path}': {message}";
 	
 	public bool UsesWideEntry =>
-		_assemblySymbol.EntryPoint is { Signature.ParameterTypes.IsEmpty: false } && TargetTriple.Contains("windows");
+		_assemblySymbol.EntryPoint is { Signature.ParameterTypes.IsEmpty: false } && IsWindows;
 	
 	public CodeGenResult GenerateLauncher(string startFunction)
 	{
@@ -488,7 +492,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 		
 		var main = module.AddFunction(isWide ? "wmain" : "main", type);
 		var start = module.AddFunction(startFunction, type);
-		if (TargetTriple.Contains("windows"))
+		if (IsWindows)
 			start.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLImportStorageClass;
 		
 		using var builder = _context.CreateBuilder();
@@ -736,7 +740,7 @@ public readonly record struct RuntimeChecks(bool Bounds, bool Overflow);
 public sealed record CodeGenConfig
 (
 	OutputConfig OutputConfig,
-	TargetConfig? TargetConfig, // if null, compiles for current platform
+	TargetConfig TargetConfig,
 	OptimizeMode OptimizeMode
 )
 {
@@ -744,18 +748,16 @@ public sealed record CodeGenConfig
 	public bool ExportsSymbols { get; init; }
 	public string? StartFunction { get; init; }
 	public bool DebugInfo { get; init; }
-	public string? SourceRoot { get; init; }
-	public ImmutableArray<string> ProjectRoots { get; init; } = [];
 	
 	public unsafe (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
 		GetDataLayout()
 	{
 		CodeGenerator.Init();
-		var triple = TargetConfig?.TargetTriple ?? LLVMTargetRef.DefaultTriple;
+		var triple = TargetConfig.TargetTriple;
 		
 		var targetRef = LLVMTargetRef.GetTargetFromTriple(triple);
-		var cpu = string.IsNullOrWhiteSpace(TargetConfig?.Cpu) ? "generic" : TargetConfig.Cpu;
-		var features = TargetConfig?.Features ?? "";
+		var cpu = string.IsNullOrWhiteSpace(TargetConfig.Cpu) ? "generic" : TargetConfig.Cpu;
+		var features = TargetConfig.Features ?? "";
 		
 		var targetMachine = targetRef.CreateTargetMachine(
 			triple,
@@ -791,9 +793,26 @@ public sealed record OutputConfig
 	bool EmitAssembly = false
 );
 
+public enum TargetSystem
+{
+	Windows,
+	Linux,
+	MacOs
+}
+
+public enum TargetArchitecture
+{
+	X64,
+	X86,
+	Arm64,
+	Wasm64
+}
+
 public sealed record TargetConfig
 (
 	string TargetTriple,
+	TargetSystem System,
+	TargetArchitecture Architecture,
 	string? Cpu = null,
 	string? Features = null
 );

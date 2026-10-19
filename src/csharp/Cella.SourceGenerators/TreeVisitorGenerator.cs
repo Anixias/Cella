@@ -48,8 +48,8 @@ public sealed class TreeVisitorGenerator : IIncrementalGenerator
 		});
 		
 		var candidates = context.SyntaxProvider
-			.CreateSyntaxProvider(
-				predicate: static (node, _) => node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 },
+			.ForAttributeWithMetadataName("TreeVisitorAttribute`1",
+				predicate: static (node, _) => node is InterfaceDeclarationSyntax,
 				transform: static (ctx, _) => GetTarget(ctx))
 			.Where(static x => x is not null);
 		
@@ -59,31 +59,11 @@ public sealed class TreeVisitorGenerator : IIncrementalGenerator
 			static (spc, pair) => { Execute(pair.Left, pair.Right, spc); });
 	}
 	
-	private static VisitorTarget? GetTarget(GeneratorSyntaxContext context)
-	{
-		var interfaceSyntax = (InterfaceDeclarationSyntax)context.Node;
-		if (context.SemanticModel.GetDeclaredSymbol(interfaceSyntax) is not INamedTypeSymbol interfaceSymbol)
-			return null;
-		
-		foreach (var attribute in interfaceSymbol.GetAttributes())
-		{
-			if (attribute.AttributeClass is not { } attributeClass)
-				continue;
-			
-			if (attributeClass.Name != "TreeVisitorAttribute")
-				continue;
-			
-			if (attributeClass.TypeArguments.Length != 1)
-				continue;
-			
-			var nodeType = attributeClass.TypeArguments[0];
-			var returnType = GetVisitorReturnType(interfaceSymbol);
-			
-			return new VisitorTarget(interfaceSymbol, nodeType, returnType);
-		}
-		
-		return null;
-	}
+	private static VisitorTarget? GetTarget(GeneratorAttributeSyntaxContext context) =>
+		context.TargetSymbol is INamedTypeSymbol interfaceSymbol && context.Attributes.Length > 0 &&
+		context.Attributes[0].AttributeClass is { } attribute
+			? new VisitorTarget(interfaceSymbol, attribute.TypeArguments[0], GetVisitorReturnType(interfaceSymbol))
+			: null;
 	
 	private static ITypeSymbol? GetVisitorReturnType(INamedTypeSymbol interfaceSymbol)
 	{

@@ -929,7 +929,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens) : BaseParser<
 		                                                           or TokenType.OpBarBar or TokenType.KeywordIs
 		                                                           or TokenType.OpFatArrow);
 	
-	private bool CanStartExpression(int index)
+	public bool CanStartExpression(int index)
 	{
 		if (AtEnd(index))
 			return false;

@@ -1,0 +1,43 @@
+mod test
+
+Empty: trait
+{
+	new: op
+}
+
+Make: trait
+{
+	new: op(value: i32)
+}
+
+a[T: Empty]: rec
+{
+	n: i32
+}
+
+a[T: Empty + new]: impl
+{
+	f: fun(imm self) -> i32 => 0
+}
+
+b[T: Make]: rec
+{
+	n: i32
+}
+
+b[T: Make + new(i32)]: impl
+{
+	g: fun(imm self) -> i32 => 0
+}
+
+c[T: default]: rec
+{
+	n: i32
+}
+
+c[T: default + new]: impl
+{
+	h: fun(imm self) -> i32 => 0
+}
+
+main: fun -> i32 => 0
