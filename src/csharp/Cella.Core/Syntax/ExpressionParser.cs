@@ -330,6 +330,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	public delegate bool? ConditionParser(ref int index);
 	
 	public ConditionParser? ParseWhenCondition { get; init; }
+	public Action<TextRange>? ReportInactive { get; init; }
 	
 	public PatternNode ParsePattern(ref int index)
 	{
@@ -886,7 +887,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			if (ParseWhenCondition(ref index) is not { } condition)
 				throw Expected(index, "a condition");
 			
-			ParseWhenBranch(ref index, condition && !taken ? arms : []);
+			ParseWhenBranch(ref index, arms, condition && !taken);
 			taken |= condition;
 			if (!Peek(index, TokenType.KeywordElse) ||
 			    !Peek(index + 1, TokenType.KeywordWhen) && !Peek(index + 1, TokenType.OpOpenBrace))
@@ -896,17 +897,20 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			if (Match(ref index, TokenType.KeywordWhen))
 				continue;
 			
-			ParseWhenBranch(ref index, taken ? [] : arms);
+			ParseWhenBranch(ref index, arms, !taken);
 			return;
 		}
 	}
 	
-	private void ParseWhenBranch(ref int index, List<MatchExpressionArmNode> arms)
+	private void ParseWhenBranch(ref int index, List<MatchExpressionArmNode> arms, bool isActive)
 	{
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			throw Expected(index, "'{'");
 		
-		ParseMatchArms(ref index, openBrace, arms);
+		ParseMatchArms(ref index, openBrace, isActive ? arms : []);
+		if (!isActive)
+			ReportInactive?.Invoke(
+				new(openBrace.SourceLocation.Range.Start, Tokens[index - 1].SourceLocation.Range.End));
 	}
 	
 	private MatchExpressionArmNode ParseMatchArm(ref int index)

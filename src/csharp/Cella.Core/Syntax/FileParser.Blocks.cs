@@ -79,12 +79,22 @@ public sealed partial class FileParser
 	
 	private bool ParseBranch(ref int index, BranchParser parseBranch, bool isActive)
 	{
-		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			return parseBranch(ref index, openBrace, isActive);
+		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+		{
+			ReportExpected(index, "'{'");
+			return false;
+		}
 		
-		ReportExpected(index, "'{'");
-		return false;
+		if (!parseBranch(ref index, openBrace, isActive))
+			return false;
+		
+		if (!isActive)
+			MarkInactive(new(openBrace.SourceLocation.Range.Start, Tokens[index - 1].SourceLocation.Range.End));
+		
+		return true;
 	}
+	
+	private void MarkInactive(TextRange range) => _inactiveRanges.Add(range);
 	
 	public ImportExpression? ParseImportEntry()
 	{

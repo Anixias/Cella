@@ -2,9 +2,13 @@ package com.anixias.cella.server
 
 import com.anixias.cella.CellaFileType
 import com.anixias.cella.CelpFileType
+import com.anixias.cella.run.CellaRunConfiguration
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.execution.RunManager
+import com.intellij.execution.RunManagerListener
+import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
@@ -57,6 +61,7 @@ import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceClientCapabilities
 import org.eclipse.lsp4j.WorkspaceFolder
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
+import org.eclipse.lsp4j.jsonrpc.services.JsonNotification
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageClient
@@ -92,8 +97,19 @@ class CellaServer(private val project: Project) : Disposable {
 	private val diagnostics = ConcurrentHashMap<String, List<Diagnostic>>()
 	private var connection: Connection? = null
 	private var hasReportedProblem = false
+	private var configuration: JsonObject? = null
 	
 	val highlighter = CellaSemanticHighlighter(project, this)
+	
+	init {
+		project.messageBus.connect(this).subscribe(RunManagerListener.TOPIC, object : RunManagerListener {
+			override fun runConfigurationSelected(settings: RunnerAndConfigurationSettings?) = configure()
+			
+			override fun runConfigurationChanged(settings: RunnerAndConfigurationSettings) = configure()
+			
+			override fun runConfigurationRemoved(settings: RunnerAndConfigurationSettings) = configure()
+		})
+	}
 	
 	val legend: SemanticTokensLegend?
 		get() = connection?.legend
@@ -190,6 +206,28 @@ class CellaServer(private val project: Project) : Disposable {
 	
 	fun versionOf(uri: String) = documents[uri]?.second
 	
+	private fun activeConfiguration(): JsonObject {
+		val selected = RunManager.getInstance(project).selectedConfiguration?.configuration as? CellaRunConfiguration
+		return JsonObject().apply {
+			addProperty("release", selected?.options?.release == true)
+			add("flags", JsonObject().apply {
+				for ((name, value) in selected?.flags.orEmpty())
+					addProperty(name, value)
+			})
+		}
+	}
+	
+	private fun configure() {
+		val active = activeConfiguration()
+		sender.execute {
+			if (active == configuration)
+				return@execute
+			
+			configuration = active
+			connection?.takeIf { it.process.isAlive }?.server?.configuration(active)
+		}
+	}
+	
 	fun diagnosticsFor(file: VirtualFile): List<Diagnostic> = diagnostics[keyOf(uriOf(file))].orEmpty()
 	
 	fun position(document: Document, offset: Int): Position {
@@ -236,8 +274,10 @@ class CellaServer(private val project: Project) : Disposable {
 			launcher.startListening()
 			val server = launcher.remoteProxy
 			val root = project.basePath?.let { Path.of(it).toUri().toString() }
+			val active = activeConfiguration().also { configuration = it }
 			val result = server.initialize(InitializeParams().apply {
 				processId = ProcessHandle.current().pid().toInt()
+				initializationOptions = JsonObject().apply { add("configuration", active) }
 				workspaceFolders = root?.let { listOf(WorkspaceFolder(it, project.name)) }
 				capabilities = ClientCapabilities().apply {
 					workspace = WorkspaceClientCapabilities().apply {
@@ -363,6 +403,9 @@ class CellaValue {
 }
 
 interface CellaLanguageServer : LanguageServer {
+	@JsonNotification("cella/configuration")
+	fun configuration(params: JsonObject)
+	
 	@JsonRequest("cella/runnables")
 	fun runnables(params: DocumentSymbolParams): CompletableFuture<List<CellaRunnable>>
 	

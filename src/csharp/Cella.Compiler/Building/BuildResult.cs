@@ -2,6 +2,7 @@
 using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Compiler.Building;
@@ -24,4 +25,5 @@ public sealed record ProjectCheck
 )
 {
 	public Lazy<SemanticModel>? Model { get; init; }
+	public ImmutableArray<SourceLocation> InactiveCode { get; init; } = [];
 }

@@ -1,9 +1,11 @@
 ﻿using System.Collections.Immutable;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Cella.Compiler;
 using Cella.Compiler.Building;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
+using Cella.Core.CodeGen;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
@@ -27,7 +29,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		}
 	}
 	
-	private sealed record Checker(Builder Builder, CollectedOutput Output);
+	private sealed record Checker(Builder Builder, CollectedOutput Output, BuildOptions Options);
 	
 	private readonly Lock _lock = new();
 	private readonly Dictionary<string, (string Uri, string Text)> _documents = new(Protocol.PathComparer);
@@ -46,6 +48,12 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private bool refreshesTokens;
 	private int refreshCount;
 	
+	private BuildOptions buildOptions = new()
+	{
+		Target = TargetTriple.FromHost().WithDefaultAbi(),
+		ChecksOnly = true
+	};
+	
 	public void Initialize(JsonObject? parameters)
 	{
 		refreshesTokens = (bool?)parameters?["capabilities"]?["workspace"]?["semanticTokens"]?["refreshSupport"] ==
@@ -61,6 +69,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		else if ((string?)parameters?["rootPath"] is { } rootPath)
 			AddRoot(Path.GetFullPath(rootPath));
 		
+		Configure(parameters?["initializationOptions"]?["configuration"] as JsonObject);
 		checking = Task.Run(CheckContinuouslyAsync);
 		RequestCheck();
 	}
@@ -94,6 +103,48 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	}
 	
 	public void RequestCheck() => _changes.Release();
+	
+	public void Configure(JsonObject? configuration)
+	{
+		var target = TargetTriple.FromHost();
+		if ((string?)configuration?["target"] is { Length: > 0 } name)
+		{
+			if (TargetTriple.Parse(name) is { } parsed)
+				target = parsed;
+			else
+				_ = LogAsync(ErrorMessage, $"Unknown target '{name}'");
+		}
+		
+		var flags = new SortedDictionary<string, bool>(StringComparer.Ordinal);
+		if (configuration?["flags"] is JsonObject declared)
+		{
+			foreach (var (flag, value) in declared)
+			{
+				if (value?.GetValueKind() is JsonValueKind.True or JsonValueKind.False)
+					flags[flag] = (bool)value;
+			}
+		}
+		
+		var options = new BuildOptions
+		{
+			Target = target.WithDefaultAbi(),
+			OptimizeMode = (bool?)configuration?["release"] == true ? OptimizeMode.Release : OptimizeMode.Debug,
+			FlagOverrides = flags,
+			ChecksOnly = true
+		};
+		
+		lock (_lock)
+		{
+			if (options.Target == buildOptions.Target && options.OptimizeMode == buildOptions.OptimizeMode &&
+			    flags.Count == buildOptions.FlagOverrides.Count && flags.All(flag =>
+				    buildOptions.FlagOverrides.TryGetValue(flag.Key, out var value) && value == flag.Value))
+				return;
+			
+			buildOptions = options;
+		}
+		
+		RequestCheck();
+	}
 	
 	public async Task<SymbolReference?> FindAsync(string uri, int line, int character)
 	{
@@ -359,14 +410,14 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		await _building.WaitAsync(_stopping.Token);
 		try
 		{
-			if (!_checkers.TryGetValue(root, out var checker))
+			BuildOptions options;
+			lock (_lock)
+				options = buildOptions;
+			
+			if (!_checkers.TryGetValue(root, out var checker) || checker.Options != options)
 			{
 				var output = new CollectedOutput();
-				_checkers[root] = checker = new(new Builder(new BuildOptions
-				{
-					Target = TargetTriple.FromHost().WithDefaultAbi(),
-					ChecksOnly = true
-				}, output), output);
+				_checkers[root] = checker = new(new Builder(options, output), output, options);
 			}
 			
 			checker.Output.Lines.Clear();
@@ -436,6 +487,9 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				if (Protocol.ToUnnecessaryLsp(diagnostic) is { } unnecessary)
 					diagnostics.Add(unnecessary);
 			}
+			
+			foreach (var inactive in project.InactiveCode.Concat(project.Model?.Value.InactiveCalls ?? []))
+				DiagnosticsAt(inactive.Source.FilePath).Add(Protocol.ToInactiveLsp(inactive));
 		}
 		
 		var current = new HashSet<string>(byFile.Keys, Protocol.PathComparer);

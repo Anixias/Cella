@@ -19,5 +19,6 @@ public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 	
 	public ImmutableArray<Token> DroppedNames { get; init; } = [];
 	public ImmutableArray<Token> ContextualKeywords { get; init; } = [];
+	public ImmutableArray<SourceLocation> InactiveCode { get; init; } = [];
 	public bool IsExcluded { get; init; }
 }

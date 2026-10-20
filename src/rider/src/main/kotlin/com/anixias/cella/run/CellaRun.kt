@@ -92,6 +92,7 @@ class CellaRunOptions : RunConfigurationOptions() {
 	var entry by string("")
 	var arguments by string("")
 	var release by property(false)
+	var flags by string("")
 }
 
 class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
@@ -107,12 +108,18 @@ class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
 	
 	val entry: String?
 		get() = options.entry?.takeIf { it.isNotBlank() }
-	
+
+	val flags: Map<String, Boolean>
+		get() = parseFlags(options.flags.orEmpty()) ?: emptyMap()
+
 	override fun checkConfiguration() {
 		val celp = projectPath ?: throw RuntimeConfigurationError("Choose a project to run")
 		if (!Files.isRegularFile(celp))
 			throw RuntimeConfigurationError("'$celp' doesn't exist")
-		
+
+		if (parseFlags(options.flags.orEmpty()) == null)
+			throw RuntimeConfigurationError("Flags must be 'name', 'name=true' or 'name=false'")
+
 		if (entry == null && !CellaProjects.isExecutable(celp))
 			throw RuntimeConfigurationError("'${CellaProjects.name(celp)}' isn't an executable project")
 	}
@@ -138,11 +145,31 @@ class CellaRunConfiguration(project: Project, factory: ConfigurationFactory) :
 		}
 }
 
+internal fun parseFlags(text: String): Map<String, Boolean>? {
+	val flags = linkedMapOf<String, Boolean>()
+	for (entry in text.split(' ', ',', '\t').filter { it.isNotEmpty() }) {
+		val name = entry.substringBefore('=')
+		val value = when (entry.substringAfter('=', "true")) {
+			"true" -> true
+			"false" -> false
+			else -> return null
+		}
+
+		if (name.isEmpty())
+			return null
+
+		flags[name] = value
+	}
+
+	return flags
+}
+
 class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
 	private var project = ""
 	private var entry = ""
 	private var arguments = ""
 	private var release = false
+	private var flags = ""
 	
 	private val panel = panel {
 		row("Project:") {
@@ -164,22 +191,30 @@ class CellaRunEditor : SettingsEditor<CellaRunConfiguration>() {
 			checkBox("Release build")
 				.bindSelected(::release)
 		}
+		row("Flags:") {
+			textField()
+				.bindText(::flags)
+				.align(AlignX.FILL)
+				.comment("name=true or name=false, separated by spaces")
+		}
 	}
-	
+
 	override fun resetEditorFrom(configuration: CellaRunConfiguration) {
 		project = configuration.options.project.orEmpty()
 		entry = configuration.options.entry.orEmpty()
 		arguments = configuration.options.arguments.orEmpty()
 		release = configuration.options.release
+		flags = configuration.options.flags.orEmpty()
 		panel.reset()
 	}
-	
+
 	override fun applyEditorTo(configuration: CellaRunConfiguration) {
 		panel.apply()
 		configuration.options.project = project
 		configuration.options.entry = entry
 		configuration.options.arguments = arguments
 		configuration.options.release = release
+		configuration.options.flags = flags
 	}
 	
 	override fun createEditor() = panel
@@ -206,7 +241,7 @@ class CellaBuildTaskProvider : BeforeRunTaskProvider<CellaBuildTask>() {
 		val cella = configuration as? CellaRunConfiguration ?: return false
 		val celp = cella.projectPath ?: return false
 		ApplicationManager.getApplication().invokeAndWait { FileDocumentManager.getInstance().saveAllDocuments() }
-		return CellaBuild.build(environment.project, celp, cella.options.release, cella.entry).succeeded
+		return CellaBuild.build(environment.project, celp, cella.options.release, cella.entry, cella.flags).succeeded
 	}
 }
 

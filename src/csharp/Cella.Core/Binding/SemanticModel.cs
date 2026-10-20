@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -28,15 +29,21 @@ public sealed class SemanticModel
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
 	private readonly Dictionary<TypeSymbol, bool> _drops = [];
 	private readonly Func<TypeSymbol, bool>? _needsDrop;
+	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
+	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
+	private readonly List<SourceLocation> _inactiveCalls = [];
 	
 	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
 		new(ReferenceEqualityComparer.Instance);
 	
 	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names,
 		Func<TypeSymbol, bool>? needsDrop = null, Func<FunctionSymbol, FunctionInfo?>? functions = null,
-		Func<GlobalSymbol, GlobalInfo?>? globals = null)
+		Func<GlobalSymbol, GlobalInfo?>? globals = null,
+		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null)
 	{
 		_needsDrop = needsDrop;
+		_globals = globals;
+		_typeConstants = typeConstants;
 		foreach (var file in files)
 			Walk(file);
 		
@@ -54,8 +61,7 @@ public sealed class SemanticModel
 		}
 		
 		foreach (var (location, symbols) in named)
-			Add(location, symbols[0],
-				string.Join('\n', symbols.Select(symbol => DescribeNamed(symbol, functions, globals))));
+			Add(location, symbols[0], string.Join('\n', symbols.Select(symbol => DescribeNamed(symbol, functions))));
 		
 		var declared = new Dictionary<Symbol, string>(ReferenceEqualityComparer.Instance);
 		foreach (var reference in _references.Values.SelectMany(static references => references))
@@ -104,6 +110,8 @@ public sealed class SemanticModel
 	
 	public IEnumerable<SymbolReference> GetReferences() =>
 		_references.Values.SelectMany(static references => references);
+	
+	public IReadOnlyList<SourceLocation> InactiveCalls => _inactiveCalls;
 	
 	public static SourceLocation? FindDeclaration(Symbol symbol)
 	{
@@ -230,11 +238,17 @@ public sealed class SemanticModel
 				break;
 			
 			case ResolvedGlobalExpressionNode n:
-				Add(FindName(n.Syntax), n.Symbol, DescribeVariable(n.Symbol, n.Type));
+				Add(FindName(n.Syntax), n.Symbol, DescribeGlobal(n.Symbol, n.Type));
 				break;
 			
 			case ResolvedTypeConstantExpressionNode n:
-				Add(FindName(n.Syntax), n.Constant, DescribeVariable(n.Constant, n.Type));
+				Add(FindName(n.Syntax), n.Constant, DescribeTypeConstant(n));
+				break;
+			
+			case ResolvedErasedCallExpressionNode n:
+				if (n.Syntax.SourceLocation is { Source.FilePath.Length: > 0, Range.IsValid: true } call)
+					_inactiveCalls.Add(call);
+				
 				break;
 			
 			case ResolvedFunctionCallExpressionNode { IsConversion: false } n:
@@ -279,6 +293,13 @@ public sealed class SemanticModel
 				Add(FindName(n.Syntax), n.Parameter, n.Parameter.Name);
 				break;
 			
+			case ResolvedVarStatementNode { Symbol.IsConstant: true, Syntax: VarStatementNode statement } n:
+				Add(n.Symbol.Identifier, n.Symbol,
+					DescribeConstant($"const {n.Symbol.Name}: {TypeName(n.Symbol.Type)}", statement.ExpressionNode,
+						n.Symbol.ConstantValue));
+				
+				break;
+			
 			case ResolvedVarStatementNode n:
 				AddLocal(n.Symbol);
 				break;
@@ -310,7 +331,7 @@ public sealed class SemanticModel
 				break;
 			
 			case ResolvedGlobalNode n:
-				Add(n.Info.Symbol.Syntax.Identifier, n.Info.Symbol, DescribeVariable(n.Info.Symbol, n.Info.Type));
+				AddGlobal(n.Info.Symbol, n.Info);
 				break;
 			
 			case ResolvedRecordNode n:
@@ -341,8 +362,26 @@ public sealed class SemanticModel
 						Add(function.Identifier, method, $"{method.Name}: fun");
 				}
 				
+				foreach (var constant in n.Symbol.Constants)
+					AddGlobal(constant, _globals?.Invoke(constant));
+				
+				break;
+			
+			case ResolvedImplNode n:
+				foreach (var constant in n.Symbol.Constants)
+					AddGlobal(constant, _globals?.Invoke(constant));
+				
 				break;
 		}
+	}
+	
+	private void AddGlobal(GlobalSymbol global, GlobalInfo? info)
+	{
+		Add(global.Syntax.Identifier, global,
+			info is { } known ? DescribeGlobal(global, known.Type) : $"{global.Name}: {global.Syntax.Keyword.Text}");
+		
+		if (info?.Initializer is { } initializer)
+			Walk(initializer);
 	}
 	
 	private void AddLocal(LocalVariableSymbol local) =>
@@ -450,9 +489,38 @@ public sealed class SemanticModel
 			$"{VariableKeyword(local)} {symbol.Name}: {(local.IsMutBinding ? "mut" : "imm")}[{TypeName(
 				type is PointerType { BaseType: var target } ? target : type)}]",
 		LocalVariableSymbol local => $"{VariableKeyword(local)} {symbol.Name}: {TypeName(type)}",
-		GlobalSymbol global => $"{symbol.Name}: {global.Syntax.Keyword.Text} {TypeName(type)}",
 		_ => $"{symbol.Name}: {TypeName(type)}"
 	};
+	
+	private string DescribeGlobal(GlobalSymbol global, TypeSymbol type)
+	{
+		var head = $"{global.Name}: {global.Syntax.Keyword.Text} {TypeName(type)}";
+		return global.IsConstant
+			? DescribeConstant(head, global.Syntax.Initializer, _globals?.Invoke(global)?.Value)
+			: head;
+	}
+	
+	private string DescribeTypeConstant(ResolvedTypeConstantExpressionNode node)
+	{
+		var head = $"{node.Constant.Name}: const {TypeName(node.Type)}";
+		return _typeConstants?.Invoke(node.Use) is var (declared, value)
+			? DescribeConstant(head, declared.Syntax.Initializer, value)
+			: head;
+	}
+	
+	private static string DescribeConstant(string head, IExpressionNode? initializer, Constant? value)
+	{
+		var expression = initializer is null
+			? null
+			: string.Join(' ', initializer.SourceLocation.GetText().ToString().Split('\n')
+				.Select(static line => line.Trim())
+				.Where(static line => line.Length > 0));
+		
+		var text = expression is null ? head : $"{head} = {expression}";
+		return value is not null && ConstantText.Describe(value) is { } shown && shown != expression
+			? $"{text}\n= {shown}"
+			: text;
+	}
 	
 	private static string DescribeMember(MemberSymbol member, TypeSymbol type) => member switch
 	{
@@ -465,14 +533,13 @@ public sealed class SemanticModel
 	
 	private static string DescribeFunction(FunctionInfo info) => DescribeSignature(info, false).Label;
 	
-	private static string DescribeNamed(Symbol symbol, Func<FunctionSymbol, FunctionInfo?>? functions,
-		Func<GlobalSymbol, GlobalInfo?>? globals) => symbol switch
+	private string DescribeNamed(Symbol symbol, Func<FunctionSymbol, FunctionInfo?>? functions) => symbol switch
 	{
 		TraitSymbol trait => $"{trait.Name}: trait",
 		TypeSymbol type => DescribeType(type),
 		ModulePathSymbol module => $"mod {module.Path}",
 		FunctionSymbol function when functions?.Invoke(function) is { } info => DescribeFunction(info),
-		GlobalSymbol global when globals?.Invoke(global) is { } info => DescribeVariable(global, info.Type),
+		GlobalSymbol global when _globals?.Invoke(global) is { } info => DescribeGlobal(global, info.Type),
 		_ => symbol.Name
 	};
 	

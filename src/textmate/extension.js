@@ -6,17 +6,31 @@ const path = require("path");
 const { register } = require("./projects");
 
 const cppTools = "ms-vscode.cpptools";
+const configurationKey = "cella.configuration";
 let client;
 let output;
+let state;
+let configurationItem;
 
 async function activate(context) {
 	output = vscode.window.createOutputChannel("Cella");
+	state = context.workspaceState;
+	configurationItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+	configurationItem.command = "cella.selectConfiguration";
+	configurationItem.tooltip = "Cella build configuration";
+	showConfiguration();
 	context.subscriptions.push(
 		output,
+		configurationItem,
 		vscode.debug.registerDebugConfigurationProvider("cella", new DebugConfigurationProvider(context.extensionPath)),
 		vscode.languages.registerCodeLensProvider({ language: "cella" }, new RunLensProvider()),
 		vscode.tasks.registerTaskProvider("cella", new BuildTaskProvider()),
-		vscode.commands.registerCommand("cella.start", startProgram)
+		vscode.commands.registerCommand("cella.start", startProgram),
+		vscode.commands.registerCommand("cella.selectConfiguration", selectConfiguration),
+		vscode.workspace.onDidChangeConfiguration(event => {
+			if (event.affectsConfiguration("launch"))
+				configurationChanged();
+		})
 	);
 
 	const projects = register(context, () => client, {
@@ -34,6 +48,7 @@ async function activate(context) {
 		: { command: cellaCommand(), args: ["lsp"], transport: TransportKind.stdio, options };
 
 	client = new LanguageClient("cella", "Cella", server, {
+		initializationOptions: () => ({ configuration: serverConfiguration(activeConfiguration()) }),
 		documentSelector: [
 			{ scheme: "file", language: "cella" },
 			{ scheme: "file", language: "cella-project" }
@@ -93,16 +108,23 @@ function isExecutable(project) {
 	return match !== null && (match[1] === "Executable" || match[1] === "WindowedExecutable");
 }
 
-function buildArguments(project, release, entry) {
-	return ["build", project, ...(release ? ["--release"] : []), ...(entry ? ["--entry", entry] : [])];
+function buildArguments(project, release, entry, flags) {
+	return [
+		"build",
+		project,
+		...(release ? ["--release"] : []),
+		...(entry ? ["--entry", entry] : []),
+		...Object.entries(flags ?? {}).flatMap(([name, value]) => ["--flag", `${name}=${value === true}`])
+	];
 }
 
-function build(project, release, entry) {
+function build(project, release, entry, flags) {
 	const directory = path.dirname(project);
 	const name = projectName(project);
-	output.appendLine(`> ${cellaCommand()} ${buildArguments(project, release, entry).join(" ")}`);
+	const args = buildArguments(project, release, entry, flags);
+	output.appendLine(`> ${cellaCommand()} ${args.join(" ")}`);
 	return new Promise(resolve => {
-		const child = childProcess.spawn(cellaCommand(), buildArguments(project, release, entry), { cwd: directory });
+		const child = childProcess.spawn(cellaCommand(), args, { cwd: directory });
 		let text = "";
 		const collect = chunk => {
 			const piece = chunk.toString("utf8");
@@ -138,7 +160,15 @@ class DebugConfigurationProvider {
 		if (!project)
 			return undefined;
 
-		return { type: "cella", request: "launch", name: projectName(project), project };
+		const active = activeConfiguration();
+		return {
+			type: "cella",
+			request: "launch",
+			name: projectName(project),
+			project,
+			release: active.release,
+			flags: active.flags
+		};
 	}
 
 	async resolveDebugConfigurationWithSubstitutedVariables(folder, configuration) {
@@ -160,7 +190,7 @@ class DebugConfigurationProvider {
 
 		const program = await vscode.window.withProgress(
 			{ location: vscode.ProgressLocation.Window, title: `Building ${projectName(project)}` },
-			() => build(project, configuration.release, configuration.function));
+			() => build(project, configuration.release, configuration.function, configuration.flags));
 
 		if (!program) {
 			output.show(true);
@@ -195,13 +225,72 @@ class DebugConfigurationProvider {
 
 function startProgram(project, entry, noDebug) {
 	const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(project));
+	const active = activeConfiguration();
 	return vscode.debug.startDebugging(folder, {
 		type: "cella",
 		request: "launch",
 		name: entry ?? projectName(project),
 		project,
+		release: active.release,
+		flags: active.flags,
 		...(entry ? { function: entry } : {})
 	}, { noDebug });
+}
+
+function launchConfigurations() {
+	return (vscode.workspace.workspaceFolders ?? []).flatMap(folder =>
+		(vscode.workspace.getConfiguration("launch", folder.uri).get("configurations") ?? [])
+			.filter(configuration => configuration.type === "cella" && typeof configuration.name === "string"));
+}
+
+function activeConfiguration() {
+	const name = state?.get(configurationKey) ?? "Debug";
+	if (name === "Debug" || name === "Release")
+		return { name, release: name === "Release", flags: {} };
+
+	const launch = launchConfigurations().find(configuration => configuration.name === name);
+	return launch
+		? { name, release: launch.release === true, flags: launch.flags ?? {} }
+		: { name: "Debug", release: false, flags: {} };
+}
+
+function serverConfiguration(configuration) {
+	return { release: configuration.release, flags: configuration.flags };
+}
+
+function describeConfiguration(configuration) {
+	return [
+		...(configuration.release === true ? ["release"] : []),
+		...Object.entries(configuration.flags ?? {}).map(([name, value]) => `${name}=${value === true}`)
+	].join(" ");
+}
+
+function showConfiguration() {
+	configurationItem.text = `$(tools) ${activeConfiguration().name}`;
+	configurationItem.show();
+}
+
+function configurationChanged() {
+	showConfiguration();
+	client?.sendNotification("cella/configuration", serverConfiguration(activeConfiguration()));
+}
+
+async function selectConfiguration() {
+	const choices = [
+		{ label: "Debug" },
+		{ label: "Release" },
+		...launchConfigurations().map(configuration => ({
+			label: configuration.name,
+			description: describeConfiguration(configuration)
+		}))
+	];
+
+	const picked = await vscode.window.showQuickPick(choices, { placeHolder: "Build configuration" });
+	if (!picked)
+		return;
+
+	await state.update(configurationKey, picked.label);
+	configurationChanged();
 }
 
 class RunLensProvider {

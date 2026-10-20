@@ -707,7 +707,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                       """));
 		
 		Assert.Equal(Code("+: op(imm a: Vec[i64], imm b: Vec[i64]) -> i64"), await HoverAsync(15, 11));
-		Assert.Equal(Code("const count: i32"), await HoverAsync(14, 22));
+		Assert.Equal(Code("const count: i32 = 3"), await HoverAsync(14, 22));
 		Assert.Equal(Code("char"), await HoverAsync(13, 17));
 		Assert.Equal(["15:11"], await UsagesAsync(5, 1, false));
 		
@@ -1331,6 +1331,218 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(["geometry", "physics"], await CompleteUseAsync("game."));
 		Assert.Equal(["solver", "Body", "step"], await CompleteUseAsync("game.physics."));
 		Assert.Equal(["solver", "Body"], await CompleteUseAsync("game.physics.[step, "));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	private const string InactiveSource = """
+	                                      mod test
+	                                      
+	                                      trace: fun(id: i32) when release
+	                                      {
+	                                      }
+	                                      
+	                                      main: fun -> i32
+	                                      {
+	                                      	when debug
+	                                      	{
+	                                      		val a = 1
+	                                      	}
+	                                      	else
+	                                      	{
+	                                      		val b = 2
+	                                      	}
+	                                      	
+	                                      	trace(4)
+	                                      	ret match 1
+	                                      	{
+	                                      		when release
+	                                      		{
+	                                      			1 => 2
+	                                      		}
+	                                      		else => 3
+	                                      	}
+	                                      }
+	                                      
+	                                      """;
+	
+	private static List<string> InactiveRanges(JsonArray diagnostics) =>
+	[
+		..diagnostics
+			.Where(static diagnostic => diagnostic!["tags"] is JsonArray tags && tags.Any(static tag => (int)tag! == 1))
+			.Select(static diagnostic =>
+			{
+				var range = diagnostic!["range"]!;
+				return $"{(int)range["start"]!["line"]!}:{(int)range["start"]!["character"]!}-" +
+				       $"{(int)range["end"]!["line"]!}:{(int)range["end"]!["character"]!}";
+			})
+			.Order(StringComparer.Ordinal)
+	];
+	
+	private async Task ReadInactiveAsync(params (string Uri, string[] Expected)[] files)
+	{
+		var pending = files.ToList();
+		await ReadUntilAsync(message =>
+		{
+			if ((string?)message["method"] != "textDocument/publishDiagnostics")
+				return false;
+			
+			var path = Protocol.ToPath((string)message["params"]!["uri"]!);
+			var ranges = InactiveRanges((JsonArray)message["params"]!["diagnostics"]!);
+			pending.RemoveAll(file => Protocol.PathComparer.Equals(Protocol.ToPath(file.Uri), path) &&
+			                          ranges.SequenceEqual(file.Expected));
+			
+			return pending.Count == 0;
+		});
+	}
+	
+	[Fact]
+	public async Task DimsInactiveCode()
+	{
+		await File.WriteAllTextAsync(SourcePath, InactiveSource, Token);
+		await InitializeAsync();
+		await ReadInactiveAsync((SourceUri, ["13:1-15:2", "17:1-17:9", "21:2-23:3"]));
+		
+		await NotifyAsync("cella/configuration", new JsonObject { ["release"] = true });
+		await ReadInactiveAsync((SourceUri, ["9:1-11:2"]));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ChecksTheConfiguredFlagsAndTarget()
+	{
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n\n[Flags]\nlogging = false\n", Token);
+		
+		var otherPath = Path.Combine(_directory, "other.ce");
+		await File.WriteAllTextAsync(otherPath, "mod test.other\nuse when logging\n\nvalue: fun -> i32 => 1\n", Token);
+		await File.WriteAllTextAsync(SourcePath,
+			"mod test\n\nwhen linux\n{\n\tseparator: val char = '/'\n}\n\nmain: fun -> i32 => 0\n", Token);
+		
+		await InitializeAsync();
+		var otherUri = UriOf(otherPath);
+		await ReadInactiveAsync((otherUri, ["3:0-3:22"]), (SourceUri, ["3:0-5:1"]));
+		
+		await NotifyAsync("cella/configuration", new JsonObject
+		{
+			["target"] = "linux-x64",
+			["flags"] = new JsonObject { ["logging"] = true }
+		});
+		
+		await ReadInactiveAsync((otherUri, []), (SourceUri, []));
+		
+		await NotifyAsync("cella/configuration", new JsonObject());
+		await ReadInactiveAsync((otherUri, ["3:0-3:22"]), (SourceUri, ["3:0-5:1"]));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task StartsWithTheGivenConfiguration()
+	{
+		await File.WriteAllTextAsync(SourcePath, InactiveSource, Token);
+		var id = await RequestAsync("initialize", new JsonObject
+		{
+			["rootUri"] = new Uri(_directory).AbsoluteUri,
+			["capabilities"] = new JsonObject(),
+			["initializationOptions"] = new JsonObject
+			{
+				["configuration"] = new JsonObject { ["release"] = true }
+			}
+		});
+		
+		await ReadResponseAsync(id);
+		await NotifyAsync("initialized", new JsonObject());
+		await ReadInactiveAsync((SourceUri, ["9:1-11:2"]));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	private const string TraitConstantSource = """
+	                                           mod test
+	                                           
+	                                           Number: trait req copy
+	                                           {
+	                                           	maxValue: const Self
+	                                           	bits: const u32
+	                                           	bytes: const u32 = bits / 8
+	                                           }
+	                                           
+	                                           i32: impl Number
+	                                           {
+	                                           	maxValue: const i32 = 0x7FFFFFFF
+	                                           	bits: const u32 = 32
+	                                           }
+	                                           
+	                                           Wide: rec impl Number
+	                                           {
+	                                           	x: i32
+	                                           	
+	                                           	maxValue: const Wide = Wide(i32.maxValue)
+	                                           	bits: const u32 = 64
+	                                           }
+	                                           
+	                                           i64: impl
+	                                           {
+	                                           	limit: const i64 = 5
+	                                           	twice: const i64 = limit * 2
+	                                           }
+	                                           
+	                                           top[T: Number]: fun -> T => T.maxValue
+	                                           
+	                                           total: const u32 = i32.bytes + Wide.bits
+	                                           
+	                                           main: fun -> i32
+	                                           {
+	                                           	const scale = 0x10
+	                                           	ret i32.maxValue - i32(i64.twice) - scale
+	                                           }
+	                                           
+	                                           """;
+	
+	[Fact]
+	public async Task ClassifiesTraitAndImplConstants()
+	{
+		var tokens = await ClassifyAsync(TraitConstantSource);
+		Assert.Contains("4:1:8 variable declaration readonly static", tokens);
+		Assert.Contains("5:1:4 variable declaration readonly static", tokens);
+		Assert.Contains("6:1:5 variable declaration readonly static", tokens);
+		Assert.Contains("6:20:4 variable readonly static", tokens);
+		Assert.Contains("11:1:8 variable declaration readonly static", tokens);
+		Assert.Contains("12:1:4 variable declaration readonly static", tokens);
+		Assert.Contains("19:1:8 variable declaration readonly static", tokens);
+		Assert.Contains("19:33:8 variable readonly static", tokens);
+		Assert.Contains("20:1:4 variable declaration readonly static", tokens);
+		Assert.Contains("25:1:5 variable declaration readonly static", tokens);
+		Assert.Contains("26:1:5 variable declaration readonly static", tokens);
+		Assert.Contains("26:20:5 variable readonly static", tokens);
+		Assert.Contains("29:30:8 variable readonly static", tokens);
+		Assert.Contains("31:23:5 variable readonly static", tokens);
+		Assert.Contains("31:36:4 variable readonly static", tokens);
+		Assert.Contains("36:9:8 variable readonly static", tokens);
+		Assert.Contains("36:28:5 variable readonly static", tokens);
+		Assert.Contains("35:7:5 variable declaration readonly static", tokens);
+		Assert.Contains("36:37:5 variable readonly static", tokens);
+		Assert.Equal(["31:23"], await UsagesAsync(6, 1, false));
+		Assert.Equal(["26:20"], await UsagesAsync(25, 1, false));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task HoversConstantValues()
+	{
+		await File.WriteAllTextAsync(SourcePath, TraitConstantSource, Token);
+		await InitializeAsync();
+		Assert.Equal(Code("maxValue: const Self"), await HoverAsync(4, 2));
+		Assert.Equal(Code("bytes: const u32 = bits / 8"), await HoverAsync(6, 2));
+		Assert.Equal(Code("maxValue: const i32 = 0x7FFFFFFF\n= 2147483647"), await HoverAsync(11, 2));
+		Assert.Equal(Code("bits: const u32 = 32"), await HoverAsync(12, 2));
+		Assert.Equal(Code("maxValue: const Wide = Wide(i32.maxValue)\n= Wide(2147483647)"), await HoverAsync(19, 2));
+		Assert.Equal(Code("twice: const i64 = limit * 2\n= 10"), await HoverAsync(26, 2));
+		Assert.Equal(Code("maxValue: const T"), await HoverAsync(29, 32));
+		Assert.Equal(Code("total: const u32 = i32.bytes + Wide.bits\n= 68"), await HoverAsync(31, 2));
+		Assert.Equal(Code("bytes: const u32 = bits / 8\n= 4"), await HoverAsync(31, 25));
+		Assert.Equal(Code("bits: const u32 = 64"), await HoverAsync(31, 38));
+		Assert.Equal(Code("const scale: i32 = 0x10\n= 16"), await HoverAsync(36, 38));
+		Assert.Equal(Code("maxValue: const i32 = 0x7FFFFFFF\n= 2147483647"), await HoverAsync(36, 11));
+		Assert.Equal(Code("twice: const i64 = limit * 2\n= 10"), await HoverAsync(36, 29));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

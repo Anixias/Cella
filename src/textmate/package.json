@@ -53,7 +53,8 @@
 			{ "command": "cella.runProject", "title": "Run", "category": "Cella" },
 			{ "command": "cella.debugProject", "title": "Debug", "category": "Cella" },
 			{ "command": "cella.newFile", "title": "New Cella File…", "category": "Cella" },
-			{ "command": "cella.refreshProjects", "title": "Refresh", "category": "Cella", "icon": "$(refresh)" }
+			{ "command": "cella.refreshProjects", "title": "Refresh", "category": "Cella", "icon": "$(refresh)" },
+			{ "command": "cella.selectConfiguration", "title": "Select Build Configuration", "category": "Cella" }
 		],
 		"views": {
 			"explorer": [
@@ -167,6 +168,14 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Build in release mode."
+							},
+							"flags": {
+								"type": "object",
+								"additionalProperties": {
+									"type": "boolean"
+								},
+								"default": {},
+								"description": "Values for the project's flags."
 							}
 						}
 					}

@@ -18,11 +18,13 @@ public sealed class ResolvedTraitNode
 
 public sealed class ResolvedImplNode
 (
+	ImplSymbol symbol,
 	TypeSymbol target,
 	IEnumerable<IResolvedDeclarationNode> members,
 	IDeclarationNode syntax
 ) : IResolvedDeclarationNode
 {
+	public ImplSymbol Symbol { get; } = symbol;
 	public TypeSymbol Target { get; } = target;
 	public ImmutableArray<IResolvedDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public IDeclarationNode Syntax { get; } = syntax;

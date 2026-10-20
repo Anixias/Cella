@@ -59,15 +59,19 @@ public static class Protocol
 	};
 	
 	public static JsonObject? ToUnnecessaryLsp(Diagnostic diagnostic) => diagnostic.UnnecessaryLocation is { } location
-		? new JsonObject
-		{
-			["range"] = ToRange(location),
-			["severity"] = HintSeverity,
-			["source"] = "cella",
-			["message"] = diagnostic.Message,
-			["tags"] = new JsonArray(UnnecessaryTag)
-		}
+		? ToUnnecessaryLsp(location, diagnostic.Message)
 		: null;
+	
+	public static JsonObject ToInactiveLsp(SourceLocation location) => ToUnnecessaryLsp(location, "Inactive code");
+	
+	private static JsonObject ToUnnecessaryLsp(SourceLocation location, string message) => new()
+	{
+		["range"] = ToRange(location),
+		["severity"] = HintSeverity,
+		["source"] = "cella",
+		["message"] = message,
+		["tags"] = new JsonArray(UnnecessaryTag)
+	};
 	
 	public static JsonObject ToLsp(Diagnostic diagnostic)
 	{

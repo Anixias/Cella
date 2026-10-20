@@ -18,7 +18,7 @@ public sealed partial class Builder
 		List<(Token Name, Symbol Symbol)> names, TypePool typePool, SignatureCollector signatures)
 	{
 		var model = new SemanticModel(files, names, typePool.NeedsDrop, signatures.FindFunctionInfo,
-			signatures.GetGlobalInfo);
+			signatures.GetGlobalInfo, signatures.DescribeTypeConstant);
 		
 		return new(() => model);
 	}
@@ -36,7 +36,9 @@ public sealed partial class Builder
 		var isReferenceable = !isEntry && project.Project.Referenceable == true && outputType.IsExecutable();
 		var entryPointName = isEntry ? options.Entry : outputType.IsExecutable() ? "main" : null;
 		var flags = CreateFlags(project.Project);
-		var (files, projectImports, parseDiagnostics) = await ProcessProject(project, references, flags, ct);
+		var (files, projectImports, parseDiagnostics, inactiveCode) =
+			await ProcessProject(project, references, flags, ct);
+		
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		
 		if (files.Length == 0)
@@ -253,7 +255,8 @@ public sealed partial class Builder
 			
 			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
 			{
-				Model = options.ChecksOnly ? CreateModel(resolvedFiles, names, typePool, signatureCollector) : null
+				Model = options.ChecksOnly ? CreateModel(resolvedFiles, names, typePool, signatureCollector) : null,
+				InactiveCode = inactiveCode
 			});
 			
 			if (ReportErrors(diagnostics))

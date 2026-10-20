@@ -12,11 +12,12 @@ namespace Cella.Compiler.Building;
 public sealed partial class Builder
 {
 	private async Task<(ImmutableArray<FileNode> Files, ImmutableArray<ImportExpression> Imports, DiagnosticList
-		Diagnostics)> ProcessProject(
+		Diagnostics, ImmutableArray<SourceLocation> InactiveCode)> ProcessProject(
 		ProjectInfo project, ImmutableArray<ProjectInfo> references, IReadOnlyDictionary<string, bool> flags,
 		CancellationToken ct = default)
 	{
 		var files = new List<FileNode>();
+		var inactiveCode = new List<SourceLocation>();
 		var diagnostics = new DiagnosticList();
 		var projectImports = new List<ImportExpression>();
 		foreach (var reference in references)
@@ -29,11 +30,12 @@ public sealed partial class Builder
 		{
 			var (ast, fileDiagnostics) = await ParseFile(project, flags, path, ct);
 			diagnostics.AddRange(fileDiagnostics);
+			inactiveCode.AddRange(ast?.InactiveCode ?? []);
 			if (ast is { IsExcluded: false })
 				files.Add(ast);
 		}
 		
-		return ([..files], [..projectImports], diagnostics);
+		return ([..files], [..projectImports], diagnostics, [..inactiveCode]);
 	}
 	
 	private async Task<List<ImportExpression>> ParseImportList(ProjectInfo project, string setting,

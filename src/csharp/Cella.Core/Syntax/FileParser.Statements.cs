@@ -469,6 +469,7 @@ public sealed partial class FileParser
 	{
 		ParseBlock = ParseBlockStatement,
 		ReportRecovered = Diagnostics.Add,
+		ReportInactive = MarkInactive,
 		ParseWhenCondition = ParseCondition
 	};
 	

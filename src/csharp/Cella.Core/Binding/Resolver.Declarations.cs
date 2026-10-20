@@ -192,7 +192,7 @@ public sealed partial class Resolver
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = target, ImplBlock = impl });
 		var members = node.Members.SelectMany(VisitBodyMember).ToList();
 		_resolutionContexts.Pop();
-		return new ResolvedImplNode(target, members, node);
+		return new ResolvedImplNode(impl, target, members, node);
 	}
 	
 	private IEnumerable<IResolvedDeclarationNode> VisitBodyMember(IDeclarationNode member) => member switch

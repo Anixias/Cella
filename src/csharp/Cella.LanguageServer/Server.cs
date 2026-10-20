@@ -102,6 +102,10 @@ public sealed class Server
 				_workspace.RequestCheck();
 				return (true, null);
 			
+			case "cella/configuration":
+				_workspace.Configure(parameters);
+				return (true, null);
+			
 			case "initialized" or "shutdown":
 				return (true, null);
 			

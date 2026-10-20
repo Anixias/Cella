@@ -369,6 +369,11 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	public (GlobalSymbol Declared, Constant? Value)? DescribeTypeConstant(TypeConstantUse use) =>
+		!TypePool.ContainsTypeParameters(use) && FindTypeConstantSource(use) is var (declared, _)
+			? (declared, EvaluateTypeConstant(use))
+			: null;
+	
 	private (GlobalSymbol Declared, Dictionary<TypeParameterSymbol, TypeSymbol> Map)? FindTypeConstantSource(
 		TypeConstantUse use)
 	{

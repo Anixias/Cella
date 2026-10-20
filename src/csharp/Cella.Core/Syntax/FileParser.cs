@@ -102,6 +102,7 @@ public sealed partial class FileParser
 	private int attributedErrors;
 	private int droppedMembers;
 	private readonly List<Token> _droppedNames = [];
+	private readonly HashSet<TextRange> _inactiveRanges = [];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
@@ -294,7 +295,13 @@ public sealed partial class FileParser
 						ResyncTopLevel(ref index);
 					}
 					else
+					{
+						if (isIncluded && !condition)
+							MarkInactive(new(Tokens[index].SourceLocation.Range.Start,
+								Tokens[^1].SourceLocation.Range.Start));
+						
 						isIncluded &= condition;
+					}
 					
 					conditionAllowed = false;
 					continue;
@@ -358,6 +365,12 @@ public sealed partial class FileParser
 			BrokenDeclarations = _brokenDeclarations,
 			DeclarationsWithSyntaxErrors = _declarationsWithErrors,
 			DroppedNames = [.._droppedNames],
+			InactiveCode =
+			[
+				.._inactiveRanges
+					.OrderBy(static range => range.Start)
+					.Select(range => new SourceLocation(source, range))
+			],
 			ContextualKeywords =
 			[
 				..ContextualKeywords

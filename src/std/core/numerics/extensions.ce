@@ -1,0 +1,11 @@
+﻿mod core.numerics
+
+Number: trait req copy
+{
+	maxValue: const Self
+}
+
+i32: impl Number
+{
+	maxValue: const i32 = 0x7FFFFFFF
+}

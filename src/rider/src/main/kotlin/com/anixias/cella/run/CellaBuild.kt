@@ -51,7 +51,8 @@ object CellaBuild {
 
 	fun lastOutput(celp: Path, entry: String?): Path? = outputs[celp to entry]?.takeIf { Files.isRegularFile(it) }
 
-	fun build(project: Project, celp: Path, release: Boolean, entry: String? = null): CellaBuildResult {
+	fun build(project: Project, celp: Path, release: Boolean, entry: String? = null,
+		flags: Map<String, Boolean> = emptyMap()): CellaBuildResult {
 		val cella = findCella()
 		if (cella == null) {
 			NotificationGroupManager.getInstance().getNotificationGroup("Cella")
@@ -64,7 +65,8 @@ object CellaBuild {
 		val directory = celp.parent
 		val name = CellaProjects.name(celp)
 		val arguments = listOfNotNull(cella, "build", celp.toString(), "--release".takeIf { release }) +
-			(entry?.let { listOf("--entry", it) } ?: emptyList())
+			(entry?.let { listOf("--entry", it) } ?: emptyList()) +
+			flags.flatMap { (name, value) -> listOf("--flag", "$name=$value") }
 		val commandLine = GeneralCommandLine(arguments)
 			.withWorkDirectory(directory.toFile())
 			.withCharset(StandardCharsets.UTF_8)
