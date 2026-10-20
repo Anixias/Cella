@@ -1408,6 +1408,43 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task DimsInactiveCodeAfterAMove()
+	{
+		const string source = "mod test\n\nwhen linux\n{\n\tseparator: val char = '/'\n}\n\nmain: fun -> i32 => 0\n";
+		await File.WriteAllTextAsync(SourcePath, source, Token);
+		await InitializeAsync();
+		await OpenSourceAsync(source);
+		await ReadInactiveAsync((SourceUri, ["3:0-5:1"]));
+
+		var movedPath = Path.Combine(_directory, "moved", "main.ce");
+		Directory.CreateDirectory(Path.GetDirectoryName(movedPath)!);
+		File.Move(SourcePath, movedPath);
+		var movedUri = UriOf(movedPath);
+
+		await NotifyAsync("textDocument/didClose",
+			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
+
+		await NotifyAsync("workspace/didChangeWatchedFiles", new JsonObject
+		{
+			["changes"] = new JsonArray(new JsonObject { ["uri"] = SourceUri, ["type"] = 2 })
+		});
+
+		await NotifyAsync("textDocument/didOpen", new JsonObject
+		{
+			["textDocument"] = new JsonObject
+			{
+				["uri"] = movedUri,
+				["languageId"] = "cella",
+				["version"] = 1,
+				["text"] = source
+			}
+		});
+
+		await ReadInactiveAsync((movedUri, ["3:0-5:1"]), (SourceUri, []));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+
+	[Fact]
 	public async Task ChecksTheConfiguredFlagsAndTarget()
 	{
 		await File.WriteAllTextAsync(ProjectPath,

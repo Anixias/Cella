@@ -23,6 +23,12 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.psi.PsiManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.io.File
@@ -38,9 +44,12 @@ import org.eclipse.lsp4j.CompletionCapabilities
 import org.eclipse.lsp4j.CompletionItemCapabilities
 import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DidChangeTextDocumentParams
+import org.eclipse.lsp4j.DidChangeWatchedFilesParams
 import org.eclipse.lsp4j.DidCloseTextDocumentParams
 import org.eclipse.lsp4j.DidOpenTextDocumentParams
 import org.eclipse.lsp4j.DocumentSymbolParams
+import org.eclipse.lsp4j.FileChangeType
+import org.eclipse.lsp4j.FileEvent
 import org.eclipse.lsp4j.HoverCapabilities
 import org.eclipse.lsp4j.InitializeParams
 import org.eclipse.lsp4j.InitializedParams
@@ -109,6 +118,47 @@ class CellaServer(private val project: Project) : Disposable {
 			
 			override fun runConfigurationRemoved(settings: RunnerAndConfigurationSettings) = configure()
 		})
+		
+		project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
+			override fun after(events: List<VFileEvent>) {
+				val changes = events.filter { it !is VFileContentChangeEvent && affectsSources(it) }.map {
+					FileEvent(Path.of(it.path).toUri().toString(), when (it) {
+						is VFileCreateEvent -> FileChangeType.Created
+						is VFileDeleteEvent -> FileChangeType.Deleted
+						else -> FileChangeType.Changed
+					})
+				}
+				
+				if (changes.isEmpty())
+					return
+				
+				ApplicationManager.getApplication().invokeLater({ followMovedDocuments() }, project.disposed)
+				sender.execute {
+					connection?.takeIf { it.process.isAlive }?.server?.workspaceService
+						?.didChangeWatchedFiles(DidChangeWatchedFilesParams(changes))
+				}
+			}
+		})
+	}
+	
+	private fun affectsSources(event: VFileEvent) = event.file?.isDirectory == true ||
+		event.path.endsWith(".ce", ignoreCase = true) || event.path.endsWith(".celp", ignoreCase = true)
+	
+	private fun followMovedDocuments() {
+		for ((uri, entry) in documents.entries.toList()) {
+			val file = FileDocumentManager.getInstance().getFile(entry.first) ?: continue
+			if (uriOf(file) == uri)
+				continue
+			
+			documents.remove(uri)
+			diagnostics.remove(keyOf(uri))
+			sender.execute {
+				connection?.server?.textDocumentService?.didClose(DidCloseTextDocumentParams(TextDocumentIdentifier(uri)))
+			}
+			
+			if (isCella(file))
+				open(entry.first, file)
+		}
 	}
 	
 	val legend: SemanticTokensLegend?
