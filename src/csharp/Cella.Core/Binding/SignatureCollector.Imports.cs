@@ -12,6 +12,8 @@ public sealed partial class SignatureCollector
 	{
 		var isFirstFile = projectModules is null;
 		projectModules ??= ResolveProjectImports(context);
+		if (isFirstFile)
+			RecordOwnPrelude(context);
 		
 		var imports = new List<Symbol>();
 		var hidden = new List<Symbol>();
@@ -71,6 +73,19 @@ public sealed partial class SignatureCollector
 	
 	private List<ModulePathSymbol?> ResolveProjectImports(ResolutionContext context) =>
 		[..ProjectImports.Select(import => ResolveImportPath(import, ForImport(import, context)))];
+	
+	private void RecordOwnPrelude(ResolutionContext context)
+	{
+		if (context.RecordName is null)
+			return;
+		
+		var quiet = context with { Diagnostics = new DiagnosticList() };
+		foreach (var import in OwnPrelude.Where(static import => !import.HasEntryLocations))
+		{
+			if (quiet.ResolveMembers(Modules.Root, import.ModuleName.Parts, 0) is ModulePathSymbol module)
+				CollectImport(module, import, quiet, [], static _ => { });
+		}
+	}
 	
 	private static ResolutionContext ForImport(ImportExpression import, ResolutionContext context) =>
 		import.HasEntryLocations ? context with { RecordName = null } : context;

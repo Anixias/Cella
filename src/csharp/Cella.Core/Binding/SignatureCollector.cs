@@ -100,6 +100,7 @@ public sealed partial class SignatureCollector
 	public Action<Token, Symbol>? RecordName { get; init; }
 	public CompletionProbe? Probe { get; init; }
 	public ImmutableArray<ImportExpression> ProjectImports { get; init; } = [];
+	public ImmutableArray<ImportExpression> OwnPrelude { get; init; } = [];
 	
 	public ErrorContainment? Containment
 	{

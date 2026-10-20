@@ -7,6 +7,7 @@ using Cella.Core.Binding;
 using Cella.Core.CodeGen;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -38,6 +39,10 @@ public sealed partial class Builder
 		var flags = CreateFlags(project.Project);
 		var (files, projectImports, parseDiagnostics, inactiveCode) =
 			await ProcessProject(project, references, flags, ct);
+		
+		ImmutableArray<ImportExpression> ownPrelude = options.ChecksOnly
+			? [..await ParseImportList(project, nameof(CellaProject.Prelude), flags, new DiagnosticList(), ct)]
+			: [];
 		
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
 		
@@ -135,6 +140,7 @@ public sealed partial class Builder
 			RecordName = recordName,
 			Probe = probe,
 			ProjectImports = projectImports,
+			OwnPrelude = ownPrelude,
 			Containment = containment
 		};
 		

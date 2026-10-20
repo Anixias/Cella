@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -91,7 +92,8 @@ public static class SemanticTokens
 		var isOperator = TokenTypeInfo.GetOperator(text) is not null &&
 		                 reference.Symbol is FunctionSymbol or MethodSymbol;
 		
-		if (!isOperator && !IsName(text) || Classify(reference) is not var (kind, modifiers))
+		if (!isOperator && !IsName(text) && !NamesProjectEntry(reference, text) ||
+		    Classify(reference) is not var (kind, modifiers))
 			return null;
 		
 		if (isOperator)
@@ -106,6 +108,13 @@ public static class SemanticTokens
 	
 	private static JsonArray Names(IEnumerable<string> names) =>
 		new([..names.Select(static name => JsonValue.Create(JsonNamingPolicy.CamelCase.ConvertName(name)))]);
+	
+	private static bool NamesProjectEntry(SymbolReference reference, string text) =>
+		CellaProject.IsProjectFile(reference.Location.Source.FilePath) && reference.Symbol switch
+		{
+			FunctionSymbol function => function.DeclaredName,
+			var symbol => symbol.Name
+		} == text;
 	
 	private static bool IsName(string text) =>
 		new Scanner(new StringSource(text, string.Empty)).ScanToken(0) is

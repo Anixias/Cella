@@ -1636,6 +1636,30 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesALibrarysOwnPrelude()
+	{
+		const string project = "OutputType = \"StaticLibrary\"\nStandardLibrary = \"None\"\n" +
+		                       "Prelude = [\"std.process.panic\"]\n";
+		
+		await File.WriteAllTextAsync(ProjectPath, project, Token);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "panic.ce"),
+			"mod std.process\n\npanic: pub op(message: str, location: str) -> never\n{\n\tloop\n\t{\n\t}\n}\n", Token);
+		
+		var tokens = await ClassifyAsync(project, UriOf(ProjectPath), "cella-project");
+		Assert.Equal(
+		[
+			"0:0:10 property", "1:0:15 property", "2:0:7 property", "2:12:3 namespace", "2:16:7 namespace",
+			"2:24:5 function"
+		], tokens);
+		
+		var parameters = Position(2, 25);
+		parameters["textDocument"]!["uri"] = UriOf(ProjectPath);
+		var hover = (await ReadResponseAsync(await RequestAsync("textDocument/hover", parameters)))["result"];
+		Assert.Equal(Code("panic: op(message: str, location: str) -> never"), (string)hover!["contents"]!["value"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ClassifiesReferencedPreludes()
 	{
 		const string library = "OutputType = \"StaticLibrary\"\nStandardLibrary = \"None\"\n" +
