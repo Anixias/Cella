@@ -47,10 +47,10 @@ foreach ($component in Get-Components) {
 	}
 
 	$destination = if ($component.Kind -eq 'llvm') {
-		Join-Path $Output "hosts/$hostName"
+		Join-Path $Output "llvm/$($component.Version)"
 	}
 	else {
-		Join-Path $Output "toolchains/$($component.Name)"
+		Join-Path $Output "toolchains/$($component.Name)/$($component.Version)"
 	}
 
 	Expand-Asset -Path $archive -Destination $destination

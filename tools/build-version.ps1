@@ -16,7 +16,6 @@ foreach ($folder in $staging, $launcher) {
 	}
 }
 
-$env:CellaToolchainDirectory = ''
 $sources = Join-Path $Repository 'src/csharp'
 foreach ($project in 'Cella.Compiler', 'Cella.LanguageServer') {
 	dotnet publish (Join-Path $sources $project) -c Release -r $hostName --self-contained `

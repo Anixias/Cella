@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: toolchain
-          key: toolchain-${{ runner.os }}-${{ hashFiles('components.json', 'tools/components/**') }}
+          key: toolchain-${{ runner.os }}-${{ hashFiles('components.json', 'tools/components/**', 'tools/fetch-components.ps1') }}
 
       - name: Fetch components
         if: steps.components.outputs.cache-hit != 'true'
@@ -51,5 +51,5 @@ jobs:
       - name: Run the suites
         shell: pwsh
         env:
-          CellaToolchainDirectory: ${{ github.workspace }}/toolchain
+          CELLA_HOME: ${{ github.workspace }}/toolchain
         run: dotnet test --project src/csharp/Cella.Tests -c ${{ matrix.configuration }}

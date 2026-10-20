@@ -13,16 +13,12 @@
     <CreateHardLinksForAdditionalFilesIfPossible>true</CreateHardLinksForAdditionalFilesIfPossible>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(CellaToolchainDirectory)' != ''">
-    <CellaToolchainFolder>$([MSBuild]::EnsureTrailingSlash('$(CellaToolchainDirectory)'))</CellaToolchainFolder>
-  </PropertyGroup>
-
-  <ItemGroup Condition="'$(CellaToolchainFolder)' != '' and Exists('$(CellaToolchainFolder)')">
-    <None Include="$(CellaToolchainFolder)toolchains\**\*" Link="toolchains\%(RecursiveDir)%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" Visible="false"/>
-    <None Include="$(CellaToolchainFolder)hosts\$(RuntimeIdentifier)\**\*" Link="%(RecursiveDir)%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" Visible="false"/>
-  </ItemGroup>
+  <Target Name="AddCellaComponents" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolveCellaComponents"
+          Condition="'$(UsesCellaComponents)' == 'true'">
+    <ItemGroup>
+      <None Include="@(CellaComponentFile)" CopyToOutputDirectory="PreserveNewest" Visible="false"/>
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <None Include="..\..\std\**\*" Exclude="..\..\std\tests\**;..\..\std\**\bin\**;..\..\std\**\obj\**"

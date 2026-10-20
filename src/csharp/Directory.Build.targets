@@ -1,12 +1,81 @@
 ﻿<Project>
 
   <PropertyGroup>
-    <CellaHostLibLLVM Condition="'$(CellaToolchainDirectory)' != ''">$([MSBuild]::EnsureTrailingSlash('$(CellaToolchainDirectory)'))hosts\$(RuntimeIdentifier)\libLLVM.so</CellaHostLibLLVM>
+    <CellaHome>$(CELLA_HOME)</CellaHome>
+    <CellaHome Condition="'$(CellaHome)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">C:\cella</CellaHome>
+    <CellaHome Condition="'$(CellaHome)' == ''">$(HOME)/.cella</CellaHome>
+    <UsesCellaComponents Condition="'$(CellaComponentLayout)' != 'true' and Exists('$(CellaHome)')">true</UsesCellaComponents>
   </PropertyGroup>
 
-  <Target Name="UseHostLibLLVM" AfterTargets="ResolvePackageAssets"
-          Condition="'$(CellaHostLibLLVM)' != '' and Exists('$(CellaHostLibLLVM)')">
-    <ItemGroup>
+  <UsingTask TaskName="ResolveCellaComponents" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Home ParameterType="System.String" Required="true"/>
+      <VersionsFile ParameterType="System.String" Required="true"/>
+      <Host ParameterType="System.String" Required="true"/>
+      <LlvmDirectory ParameterType="System.String" Output="true"/>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true"/>
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Text.RegularExpressions"/>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+var versions = File.ReadAllText(VersionsFile);
+var files = new List<ITaskItem>();
+if (FindVersions("llvm").TryGetValue(Host, out var llvm))
+{
+	LlvmDirectory = Path.Combine(Home, "llvm", llvm);
+	AddComponent(LlvmDirectory, "");
+}
+else
+{
+	Log.LogError($"'{VersionsFile}' lists no LLVM for '{Host}'");
+}
+
+foreach (var toolchain in FindVersions("toolchains"))
+	AddComponent(Path.Combine(Home, "toolchains", toolchain.Key, toolchain.Value),
+		Path.Combine("toolchains", toolchain.Key));
+
+Files = files.ToArray();
+
+Dictionary<string, string> FindVersions(string kind)
+{
+	var section = Regex.Match(versions, "\"" + kind + "\"\\s*:\\s*\\{(?<body>[^}]*)\\}").Groups["body"].Value;
+	return Regex.Matches(section, "\"(?<name>[^\"]+)\"\\s*:\\s*\"(?<version>[^\"]+)\"")
+		.Cast<Match>()
+		.ToDictionary(match => match.Groups["name"].Value, match => match.Groups["version"].Value);
+}
+
+void AddComponent(string directory, string link)
+{
+	if (!Directory.Exists(directory))
+	{
+		Log.LogWarning($"'{directory}' doesn't exist");
+		return;
+	}
+
+	foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+	{
+		var item = new TaskItem(file);
+		item.SetMetadata("Link", Path.Combine(link, file.Substring(directory.Length).TrimStart('\\', '/')));
+		files.Add(item);
+	}
+}
+]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="ResolveCellaComponents" Condition="'$(UsesCellaComponents)' == 'true'">
+    <ResolveCellaComponents Home="$(CellaHome)"
+                            VersionsFile="$(MSBuildThisFileDirectory)..\..\components.json"
+                            Host="$([MSBuild]::ValueOrDefault('$(RuntimeIdentifier)', '$(NETCoreSdkRuntimeIdentifier)'))">
+      <Output TaskParameter="LlvmDirectory" PropertyName="CellaLlvmDirectory"/>
+      <Output TaskParameter="Files" ItemName="CellaComponentFile"/>
+    </ResolveCellaComponents>
+  </Target>
+
+  <Target Name="UseHostLibLLVM" AfterTargets="ResolvePackageAssets" DependsOnTargets="ResolveCellaComponents"
+          Condition="'$(UsesCellaComponents)' == 'true'">
+    <ItemGroup Condition="Exists('$(CellaLlvmDirectory)/libLLVM.so')">
       <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)%(Extension)' == 'libLLVM.so'"/>
       <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)"
                                     Condition="'%(Filename)%(Extension)' == 'libLLVM.so'"/>

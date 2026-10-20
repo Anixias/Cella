@@ -51,7 +51,7 @@ To build a component on its own, run:
 
 The `linux-x64` LLVM (`-Kind llvm -Name linux-x64`) only builds on Linux.
 
-To set up a development toolchain folder for `CellaToolchainDirectory`, run:
+To fill a folder with the components for development builds, run this and set `CELLA_HOME` to the folder:
 
 ```
 ./tools/fetch-components.ps1 -Output <folder>

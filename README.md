@@ -165,13 +165,13 @@ Each release includes a VS Code extension and a Rider plugin. They highlight Cel
 
 ## Building
 
-You need the .NET 10 SDK, PowerShell 7, and a toolchain folder holding the linker and the libraries for each target. To fetch one, run:
+You need the .NET 10 SDK, PowerShell 7, and the linker and libraries for each target. The build takes them from the Cella folder the installer uses: `CELLA_HOME`, or `C:\cella` or `~/.cella`. Without an installed Cella, fetch them into a folder and set `CELLA_HOME` to it:
 
 ```
 pwsh tools/fetch-components.ps1 -Output <folder>
 ```
 
-Set `CellaToolchainDirectory` to that folder and build. The build puts the linker next to the compiler, in `src/csharp/Cella.Compiler/bin/<configuration>/net10.0/<runtime>`, with the `toolchains` folder beside it.
+The build uses the component versions named in `components.json` and puts the linker next to the compiler, in `src/csharp/Cella.Compiler/bin/<configuration>/net10.0/<runtime>`, with the `toolchains` folder beside it.
 
 ```
 dotnet build src/csharp/Cella.sln
