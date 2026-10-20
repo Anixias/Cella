@@ -34,6 +34,7 @@ dependencies {
 	
 	testImplementation(kotlin("test-junit5"))
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
+	testRuntimeOnly("junit:junit:4.13.2")
 }
 
 intellijPlatform {
