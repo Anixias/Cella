@@ -1,7 +1,5 @@
 ﻿mod std.mem
 
-use std.process.panic
-
 ext
 {
 	malloc: fun(size: usize) -> ptr
