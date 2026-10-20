@@ -134,6 +134,7 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		
 		"property" -> CellaColors.FIELD
 		"enumMember" -> CellaColors.ENUM_CASE
+		"namespace" -> CellaColors.MODULE
 		"keyword" -> when {
 			"defaultLibrary" in modifiers -> CellaColors.BUILTIN_TYPE
 			else -> CellaScanner.keywordCategory(text)?.let(CellaHighlighter::colorOf)

@@ -33,19 +33,37 @@ public sealed class SemanticModel
 		new(ReferenceEqualityComparer.Instance);
 	
 	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names,
-		Func<TypeSymbol, bool>? needsDrop = null)
+		Func<TypeSymbol, bool>? needsDrop = null, Func<FunctionSymbol, FunctionInfo?>? functions = null,
+		Func<GlobalSymbol, GlobalInfo?>? globals = null)
 	{
 		_needsDrop = needsDrop;
 		foreach (var file in files)
 			Walk(file);
 		
-		var latest = new Dictionary<SourceLocation, Symbol>();
+		var named = new Dictionary<SourceLocation, List<Symbol>>();
 		foreach (var (name, symbol) in names)
-			latest[name.SourceLocation] = symbol;
+		{
+			if (symbol is FunctionSymbol && named.TryGetValue(name.SourceLocation, out var overloads) &&
+			    overloads.All(static overload => overload is FunctionSymbol))
+			{
+				if (!overloads.Contains(symbol))
+					overloads.Add(symbol);
+			}
+			else
+				named[name.SourceLocation] = [symbol];
+		}
 		
-		foreach (var (location, symbol) in latest)
-			Add(location, symbol,
-				symbol is TraitSymbol trait ? $"{trait.Name}: trait" : DescribeType((TypeSymbol)symbol));
+		foreach (var (location, symbols) in named)
+			Add(location, symbols[0],
+				string.Join('\n', symbols.Select(symbol => DescribeNamed(symbol, functions, globals))));
+		
+		var declared = new Dictionary<Symbol, string>(ReferenceEqualityComparer.Instance);
+		foreach (var reference in _references.Values.SelectMany(static references => references))
+		{
+			if (reference.Symbol is LocalVariableSymbol or ParameterSymbol &&
+			    reference.Declaration == reference.Location)
+				declared.TryAdd(reference.Symbol, reference.Description);
+		}
 		
 		foreach (var references in _references.Values)
 		{
@@ -53,6 +71,8 @@ public sealed class SemanticModel
 			{
 				if (references[i].Symbol is TypeParameterSymbol { Definition: { } definition })
 					references[i] = references[i] with { Declaration = definition.SourceLocation };
+				else if (declared.TryGetValue(references[i].Symbol, out var description))
+					references[i] = references[i] with { Description = description };
 			}
 		}
 	}
@@ -63,12 +83,17 @@ public sealed class SemanticModel
 			return null;
 		
 		SymbolReference? best = null;
+		var bestContains = false;
 		foreach (var reference in references)
 		{
 			var range = reference.Location.Range;
-			if (offset >= range.Start && offset <= range.End &&
-			    (best is null || range.Length < best.Location.Range.Length))
-				best = reference;
+			if (offset < range.Start || offset > range.End)
+				continue;
+			
+			var contains = offset < range.End;
+			if (best is null || contains && !bestContains ||
+			    contains == bestContains && range.Length < best.Location.Range.Length)
+				(best, bestContains) = (reference, contains);
 		}
 		
 		return best;
@@ -258,6 +283,14 @@ public sealed class SemanticModel
 				AddLocal(n.Symbol);
 				break;
 			
+			case ResolvedLoopVariable { Symbol: { IsLoopBinding: true } binding }:
+				AddLocal(binding);
+				break;
+			
+			case ResolvedRangeForStatementNode { Counter: { Identifier.Text: [not '.', ..] } counter }:
+				AddLocal(counter);
+				break;
+			
 			case ResolvedPattern pattern:
 				foreach (var binding in pattern.Bindings.Append(pattern.TypeBinding).OfType<LocalVariableSymbol>())
 					AddLocal(binding);
@@ -266,6 +299,10 @@ public sealed class SemanticModel
 			
 			case ResolvedFunctionNode { Syntax: FunctionNode } n:
 				AddFunction(n.FunctionInfo);
+				break;
+			
+			case ResolvedFunctionNode { Syntax: LambdaDeclarationNode } n:
+				AddParameters(n.FunctionInfo);
 				break;
 			
 			case ResolvedExternalFunctionNode n:
@@ -330,6 +367,11 @@ public sealed class SemanticModel
 		if (info.Symbol.Syntax is FunctionNode function)
 			AddTypeParameters(function.TypeParameters, info.Symbol.DeclaredTypeParameters);
 		
+		AddParameters(info);
+	}
+	
+	private void AddParameters(FunctionInfo info)
+	{
 		var parameters = info.Symbol.Parameters;
 		for (var i = 0; i < parameters.Length && i < info.Signature.ParameterTypes.Length; i++)
 			Add(parameters[i].Definition, parameters[i], DescribeParameter(parameters[i].Name, info.Signature, i));
@@ -404,6 +446,9 @@ public sealed class SemanticModel
 	
 	private static string DescribeVariable(Symbol symbol, TypeSymbol type) => symbol switch
 	{
+		LocalVariableSymbol { IsBorrowBinding: true } local =>
+			$"{VariableKeyword(local)} {symbol.Name}: {(local.IsMutBinding ? "mut" : "imm")}[{TypeName(
+				type is PointerType { BaseType: var target } ? target : type)}]",
 		LocalVariableSymbol local => $"{VariableKeyword(local)} {symbol.Name}: {TypeName(type)}",
 		GlobalSymbol global => $"{symbol.Name}: {global.Syntax.Keyword.Text} {TypeName(type)}",
 		_ => $"{symbol.Name}: {TypeName(type)}"
@@ -419,6 +464,17 @@ public sealed class SemanticModel
 		$"{TypeName(type.OriginalDefinition)}.{enumCase.Name}";
 	
 	private static string DescribeFunction(FunctionInfo info) => DescribeSignature(info, false).Label;
+	
+	private static string DescribeNamed(Symbol symbol, Func<FunctionSymbol, FunctionInfo?>? functions,
+		Func<GlobalSymbol, GlobalInfo?>? globals) => symbol switch
+	{
+		TraitSymbol trait => $"{trait.Name}: trait",
+		TypeSymbol type => DescribeType(type),
+		ModulePathSymbol module => $"mod {module.Path}",
+		FunctionSymbol function when functions?.Invoke(function) is { } info => DescribeFunction(info),
+		GlobalSymbol global when globals?.Invoke(global) is { } info => DescribeVariable(global, info.Type),
+		_ => symbol.Name
+	};
 	
 	public static IEnumerable<int> GetCallParameters(FunctionInfo info) =>
 		Enumerable.Range(0, info.Signature.ParameterTypes.Length).Where(i =>

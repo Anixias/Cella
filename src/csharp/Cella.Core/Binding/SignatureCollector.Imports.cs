@@ -226,10 +226,18 @@ public sealed partial class SignatureCollector
 	{
 		if (module.Members.TryGetValue(name.Text, out var members) &&
 		    members.Where(context.IsVisible).ToList() is { Count: > 0 } visible)
+		{
+			foreach (var symbol in visible)
+				context.RecordName?.Invoke(name, symbol);
+			
 			return [..visible.Select(symbol => (symbol, (Token?)name))];
+		}
 		
 		if (module.Children.TryGetValue(name.Text, out var child))
+		{
+			context.RecordName?.Invoke(name, child);
 			return [(child, name)];
+		}
 		
 		report(context.ReportUndefinedMember(name.SourceLocation, module, name.Text));
 		return [];

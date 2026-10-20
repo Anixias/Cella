@@ -24,6 +24,7 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		AttributesDescriptor("Comments//Line comment", CellaColors.LINE_COMMENT),
 		AttributesDescriptor("Comments//Block comment", CellaColors.BLOCK_COMMENT),
 		AttributesDescriptor("Identifier", CellaColors.IDENTIFIER),
+		AttributesDescriptor("Module", CellaColors.MODULE),
 		AttributesDescriptor("Punctuation//Braces", CellaColors.BRACES),
 		AttributesDescriptor("Punctuation//Parentheses", CellaColors.PARENTHESES),
 		AttributesDescriptor("Punctuation//Brackets", CellaColors.BRACKETS),
@@ -66,7 +67,8 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		"field" to CellaColors.FIELD,
 		"case" to CellaColors.ENUM_CASE,
 		"declaration" to CellaColors.DECLARATION_KEYWORD,
-		"modifier" to CellaColors.MODIFIER_KEYWORD
+		"modifier" to CellaColors.MODIFIER_KEYWORD,
+		"module" to CellaColors.MODULE
 	)
 	
 	override fun getDisplayName() = "Cella"
@@ -77,9 +79,9 @@ class CellaColorSettingsPage : ColorSettingsPage {
 	override fun getAdditionalHighlightingTagToDescriptorMap() = tags
 	
 	override fun getDemoText() = """
-		<declaration>mod</declaration> demo
+		<declaration>mod</declaration> <module>demo</module>
 
-		<declaration>use</declaration> std.io
+		<declaration>use</declaration> <module>std</module>.<module>io</module>
 
 		/* Shapes */
 		<enum>Shape</enum>: <declaration>enum</declaration>

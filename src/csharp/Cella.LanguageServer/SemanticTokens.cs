@@ -21,7 +21,8 @@ public static class SemanticTokens
 		Variable,
 		Property,
 		EnumMember,
-		Keyword
+		Keyword,
+		Namespace
 	}
 	
 	[Flags]
@@ -129,6 +130,7 @@ public static class SemanticTokens
 		TypeSymbol { OriginalDefinition: EnumSymbol } => (Kind.Enum, Modifiers.None),
 		NamedTypeSymbol => (Kind.Type, Modifiers.None),
 		TypeSymbol => (Kind.Keyword, Modifiers.DefaultLibrary),
+		ModulePathSymbol => (Kind.Namespace, Modifiers.None),
 		_ => null
 	};
 }

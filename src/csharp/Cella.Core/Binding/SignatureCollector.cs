@@ -469,6 +469,19 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private void RecordModuleName(ImmutableArray<Token> parts)
+	{
+		var module = Modules.Root;
+		foreach (var part in parts)
+		{
+			if (!module.Children.TryGetValue(part.Text, out var child))
+				return;
+			
+			RecordName?.Invoke(part, child);
+			module = child;
+		}
+	}
+	
 	private void Register(FileNode node)
 	{
 		var file = (FileSymbol)_symbolTable.DeclarationSymbols[node];
@@ -489,6 +502,7 @@ public sealed partial class SignatureCollector
 			Probe = Probe
 		};
 		
+		RecordModuleName(node.ModuleName.Parts);
 		var imports = CollectImports(node, context);
 		_builder.ImportEnvironments[file] = imports;
 		context = context with { Imports = imports };

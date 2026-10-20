@@ -468,6 +468,7 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(
 		[
 			"0:0:3 keyword",
+			"0:4:4 namespace",
 			"2:0:5 struct declaration",
 			"2:7:3 keyword",
 			"4:1:1 property declaration",
@@ -493,12 +494,74 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	private const string ModulePathSource = """
+	                                        mod test
+	                                        
+	                                        use game.geometry.area
+	                                        use game.geometry.[Shape, limit]
+	                                        
+	                                        k: fun(z: i32) -> i32
+	                                        {
+	                                        	ret area(limit) + z.max
+	                                        }
+	                                        
+	                                        """;
+	
+	private async Task WriteGeometryAsync() =>
+		await File.WriteAllTextAsync(Path.Combine(_directory, "geometry.ce"), """
+		                                                                      mod game.geometry
+		                                                                      
+		                                                                      area: pub fun(side: i32) -> i32 => side * side
+		                                                                      Shape: pub rec
+		                                                                      {
+		                                                                      	side: i32
+		                                                                      }
+		                                                                      
+		                                                                      limit: pub val i32 = 3
+		                                                                      
+		                                                                      """, Token);
+	
+	[Fact]
+	public async Task ClassifiesModulePathsAndImports()
+	{
+		await WriteGeometryAsync();
+		await File.WriteAllTextAsync(SourcePath, ModulePathSource, Token);
+		var tokens = await ClassifyAsync(ModulePathSource);
+		Assert.Contains("0:4:4 namespace", tokens);
+		Assert.Contains("2:4:4 namespace", tokens);
+		Assert.Contains("2:9:8 namespace", tokens);
+		Assert.Contains("2:18:4 function", tokens);
+		Assert.Contains("3:19:5 struct", tokens);
+		Assert.Contains("3:26:5 variable readonly static", tokens);
+		Assert.Contains("7:5:4 function", tokens);
+		Assert.Contains("7:10:5 variable readonly static", tokens);
+		Assert.Contains("7:19:1 parameter", tokens);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task HoversModulePathsAndImports()
+	{
+		await WriteGeometryAsync();
+		await File.WriteAllTextAsync(SourcePath, ModulePathSource, Token);
+		await InitializeAsync();
+		Assert.Equal(Code("mod test"), await HoverAsync(0, 5));
+		Assert.Equal(Code("mod game"), await HoverAsync(2, 5));
+		Assert.Equal(Code("mod game.geometry"), await HoverAsync(2, 12));
+		Assert.Equal(Code("area: fun(side: i32) -> i32"), await HoverAsync(2, 20));
+		Assert.Equal(Code("Shape: rec"), await HoverAsync(3, 21));
+		Assert.Equal(Code("limit: val i32"), await HoverAsync(3, 28));
+		Assert.Equal(Code("z: i32"), await HoverAsync(7, 19));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	[Fact]
 	public async Task ClassifiesOperatorsConstantsAndTypeArguments()
 	{
 		Assert.Equal(
 		[
 			"0:0:3 keyword",
+			"0:4:4 namespace",
 			"2:0:3 struct declaration",
 			"2:4:1 typeParameter declaration",
 			"2:7:4 keyword",
@@ -807,6 +870,57 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		var dereference = await DefinitionAsync(31, 6);
 		Assert.Equal(11, (int)dereference!["range"]!["start"]!["line"]!);
 		Assert.Equal(1, (int)dereference["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task HoversVariablesAsDeclared()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      Point: rec
+		                      {
+		                      	x: i32
+		                      }
+		                      
+		                      Box: rec
+		                      {
+		                      	inner: Point
+		                      
+		                      	*: op(imm self) -> imm[Point] => self.inner
+		                      }
+		                      
+		                      g: fun(x: imm[Point], mut y: Point, imm z: Point) -> i32 => x.x + y.x + z.x
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	var points = [Point(1), Point(2)]
+		                      	for imm point in points
+		                      	{
+		                      		val c = Box(point)
+		                      		val n = *c
+		                      		val f = fun(w: imm[Point]) -> i32 => w.x
+		                      	}
+		                      
+		                      	for mut point in points
+		                      		point.x = point.x + 1
+		                      
+		                      	ret 0
+		                      }
+		                      
+		                      """;
+		
+		await File.WriteAllTextAsync(SourcePath, source, Token);
+		await InitializeAsync();
+		Assert.Equal(Code("mut y: Point"), await HoverAsync(14, 66));
+		Assert.Equal(Code("imm z: Point"), await HoverAsync(14, 72));
+		Assert.Equal(Code("val point: imm[Point]"), await HoverAsync(19, 10));
+		Assert.Equal(Code("val point: imm[Point]"), await HoverAsync(21, 15));
+		Assert.Equal(Code("val c: Box"), await HoverAsync(22, 11));
+		Assert.Equal(Code("*: op(imm self) -> imm[Point]"), await HoverAsync(22, 10));
+		Assert.Equal(Code("w: imm[Point]"), await HoverAsync(23, 14));
+		Assert.Equal(Code("val point: mut[Point]"), await HoverAsync(27, 3));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -1169,7 +1283,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await SetTextAsync(source.Replace("ARM", "Color.green => 2"));
 		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 17, 14)).Keys.Order());
 		
-		await SetTextAsync(source.Replace("Color.red => 1", "Color.red => \"}\".byteLength").Replace("ARM", "Color.gr"));
+		await SetTextAsync(source.Replace("Color.red => 1", "Color.red => \"}\".byteLength")
+			.Replace("ARM", "Color.gr"));
+		
 		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 14, 10)).Keys.Order());
 		Assert.Equal(0, await ShutDownAsync());
 	}

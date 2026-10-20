@@ -28,8 +28,8 @@ object CellaColors {
 	val PARENTHESES = key("PARENTHESES", Rider.PARENTHESES)
 	val BRACKETS = key("BRACKETS", Rider.BRACKETS)
 	val COMMA = key("COMMA", Rider.COMMA)
-	val DOT = key("DOT", Rider.DOT)
 	val OPERATOR = key("OPERATOR", Rider.OPERATOR_SIGN)
+	val DOT = key("DOT", OPERATOR)
 	val BAD_CHARACTER = key("BAD_CHARACTER", HighlighterColors.BAD_CHARACTER)
 	
 	val PROJECT_SETTING = key("PROJECT_SETTING", Default.INSTANCE_FIELD)
@@ -54,6 +54,7 @@ object CellaColors {
 	val GLOBAL_VARIABLE = key("GLOBAL_VARIABLE", Rider.STATIC_FIELD)
 	val FIELD = key("FIELD", Rider.FIELD)
 	val ENUM_CASE = key("ENUM_CASE", Rider.STATIC_FIELD)
+	val MODULE = key("MODULE", Rider.NAMESPACE)
 	
 	private fun key(name: String, fallback: TextAttributesKey) = createTextAttributesKey("CELLA_$name", fallback)
 }

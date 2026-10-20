@@ -63,6 +63,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private readonly Dictionary<ResolvedLiteralExpressionNode, LiteralFold> _literalFolds = [];
 	private readonly Dictionary<(IResolvedExpressionNode, FStrType), IResolvedExpressionNode> _templates = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
+	private readonly List<IResolvedExpressionNode> _visited = [];
 	private readonly CopiedParameters _copiedParameters;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
@@ -178,7 +179,9 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		}
 		
 		var isBroken = Containment?.Enter(node) == true;
+		var visited = _visited.Count;
 		var result = ((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
+		_visited.RemoveRange(visited, _visited.Count - visited);
 		if (isBroken)
 			Containment!.Exit();
 		
@@ -205,21 +208,40 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 			return new ResolvedInvalidExpressionNode(node, targetType);
 		}
 		
+		var visited = _visited.Count;
 		_expectations.Push(new(targetType, false));
+		IResolvedExpressionNode result;
 		try
 		{
-			var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+			result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
 			if (result.Type == NativeSymbols.Void)
-				return ReportVoidValue(result, targetType);
-			
-			return targetType is null
-				? result
-				: CoerceToType(result, targetType);
+				result = ReportVoidValue(result, targetType);
+			else if (targetType is not null)
+				result = CoerceToType(result, targetType);
 		}
 		finally
 		{
 			_expectations.Pop();
 		}
+		
+		return KeepVisitedParts(result, visited);
+	}
+	
+	private IResolvedExpressionNode KeepVisitedParts(IResolvedExpressionNode result, int visited)
+	{
+		if (RecordName is null)
+			return result;
+		
+		if (result is ResolvedInvalidExpressionNode { Parts.IsEmpty: true } invalid && _visited.Count > visited)
+			result = new ResolvedInvalidExpressionNode(invalid.Syntax, invalid.Type)
+			{
+				Parts = [.._visited.Skip(visited)],
+				NeedsTargetType = invalid.NeedsTargetType
+			};
+		
+		_visited.RemoveRange(visited, _visited.Count - visited);
+		_visited.Add(result);
+		return result;
 	}
 	
 	private IResolvedExpressionNode ResolveExpected(TypeSymbol targetType, Func<IResolvedExpressionNode> resolve)

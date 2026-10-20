@@ -120,7 +120,7 @@ public readonly struct ResolutionContext
 	
 	private Symbol? Record(Token name, Symbol? symbol)
 	{
-		if (symbol is TypeSymbol or TraitSymbol)
+		if (symbol is TypeSymbol or TraitSymbol or ModulePathSymbol)
 			RecordName?.Invoke(name, symbol);
 		
 		return symbol;
