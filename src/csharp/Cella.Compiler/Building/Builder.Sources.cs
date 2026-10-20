@@ -60,7 +60,11 @@ public sealed partial class Builder
 			
 			var parser = new FileParser(tokens, Path.GetFileName(project.FilePath), project.FilePath, flags);
 			if (parser.ParseImportEntry() is { } import)
-				imports.Add(import with { IsPrelude = setting == nameof(CellaProject.Prelude) });
+				imports.Add(import with
+				{
+					IsPrelude = setting == nameof(CellaProject.Prelude),
+					HasEntryLocations = !entry.IsExact
+				});
 			
 			diagnostics.AddRange(parser.Diagnostics);
 		}

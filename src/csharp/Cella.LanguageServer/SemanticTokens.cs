@@ -76,10 +76,11 @@ public static class SemanticTokens
 		return new JsonObject { ["data"] = data };
 	}
 	
-	public static JsonObject EncodeSettings(string text, IEnumerable<TextRange> settings)
+	public static JsonObject EncodeProject(string text, IEnumerable<TextRange> settings,
+		IEnumerable<SymbolReference> references)
 	{
 		var source = new StringSource(text, string.Empty);
-		return Encode([], settings.Select(range =>
+		return Encode(references.Select(Describe).OfType<Classified>(), settings.Select(range =>
 			new Classified(new SourceLocation(source, range), Kind.Property, Modifiers.None, false)));
 	}
 	

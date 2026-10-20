@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Cella.Compiler;
 using Cella.Compiler.Building;
+using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.CodeGen;
@@ -264,7 +265,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		.FirstOrDefault(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path));
 	
 	private static IEnumerable<SemanticModel> ModelsOf(string path, IEnumerable<ProjectCheck> projects) => projects
-		.Where(project => project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))
+		.Where(project => CellaProject.IsProjectFile(path) ||
+		                  project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)))
 		.Select(static project => project.Model?.Value)
 		.OfType<SemanticModel>();
 	

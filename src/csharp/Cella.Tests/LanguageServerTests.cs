@@ -1596,6 +1596,70 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesProjectImports()
+	{
+		const string project = "OutputType = \"Executable\"\nStandardLibrary = \"None\"\n" +
+		                       "Imports = [\"game.geometry.area\", \"game.geometry.Shape\", \"game.geometry.*\", " +
+		                       "\"game.nothing.x\"]\n";
+		
+		await WriteGeometryAsync();
+		await File.WriteAllTextAsync(ProjectPath, project, Token);
+		var tokens = await ClassifyAsync(project, UriOf(ProjectPath), "cella-project");
+		Assert.Equal(
+		[
+			"0:0:10 property",
+			"1:0:15 property",
+			"2:0:7 property",
+			"2:12:4 namespace",
+			"2:17:8 namespace",
+			"2:26:4 function",
+			"2:34:4 namespace",
+			"2:39:8 namespace",
+			"2:48:5 struct",
+			"2:57:4 namespace",
+			"2:62:8 namespace",
+			"2:76:4 namespace"
+		], tokens);
+		
+		var parameters = Position(2, 27);
+		parameters["textDocument"]!["uri"] = UriOf(ProjectPath);
+		var hover = (await ReadResponseAsync(await RequestAsync("textDocument/hover", parameters)))["result"];
+		Assert.Equal(Code("area: fun(side: i32) -> i32"), (string)hover!["contents"]!["value"]!);
+		
+		var definition =
+			(await ReadResponseAsync(await RequestAsync("textDocument/definition", (JsonObject)parameters.DeepClone())))
+			["result"]![0]!;
+		
+		Assert.EndsWith("geometry.ce", (string)definition["uri"]!);
+		Assert.Equal(2, (int)definition["range"]!["start"]!["line"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesReferencedPreludes()
+	{
+		const string library = "OutputType = \"StaticLibrary\"\nStandardLibrary = \"None\"\n" +
+		                       "Prelude = [\"lib.greet\", \"lib.gr\\u0065et\"]\n";
+		
+		var libraryDirectory = Path.Combine(_directory, "lib");
+		var libraryPath = Path.Combine(libraryDirectory, "lib.celp");
+		Directory.CreateDirectory(libraryDirectory);
+		await File.WriteAllTextAsync(libraryPath, library, Token);
+		await File.WriteAllTextAsync(Path.Combine(libraryDirectory, "lib.ce"),
+			"mod lib\n\ngreet: pub fun -> i32 => 1\n", Token);
+		
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n\n[[ProjectReferences]]\nPath = 'lib/lib.celp'\n",
+			Token);
+		
+		var tokens = await ClassifyAsync(library, UriOf(libraryPath), "cella-project");
+		Assert.Equal(["0:0:10 property", "1:0:15 property", "2:0:7 property", "2:12:3 namespace", "2:16:5 function"],
+			tokens);
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task CompletesCasePatterns()
 	{
 		const string source = """

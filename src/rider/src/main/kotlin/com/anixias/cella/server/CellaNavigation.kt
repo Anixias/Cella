@@ -1,10 +1,13 @@
 package com.anixias.cella.server
 
 import com.anixias.cella.CellaLanguage
+import com.anixias.cella.CelpLanguage
 import com.anixias.cella.highlighting.CellaHighlighter
 import com.anixias.cella.lexer.CellaScanner
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
+import com.anixias.cella.lexer.CelpToken
+import com.anixias.cella.lexer.CelpTokenTypes
 import com.intellij.codeInsight.TargetElementEvaluatorEx
 import com.intellij.codeInsight.TargetElementEvaluatorEx2
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
@@ -50,6 +53,11 @@ private val namedTokens = setOf(
 private val hoverTokens = setOf(CellaToken.IDENTIFIER, CellaToken.BUILTIN_TYPE, CellaToken.OPERATOR)
 
 internal fun isNamed(element: PsiElement) = CellaTokenTypes.tokenOf(element.node?.elementType) in namedTokens
+
+private fun isProjectString(element: PsiElement) =
+	element.language == CelpLanguage && CelpTokenTypes.tokenOf(element.node?.elementType) == CelpToken.STRING
+
+private fun projectStringAt(file: PsiFile, offset: Int): PsiElement? = file.findElementAt(offset)?.takeIf(::isProjectString)
 
 internal fun namedElementAt(file: PsiFile, offset: Int): PsiElement? =
 	file.findElementAt(offset)?.takeIf(::isNamed)
@@ -123,6 +131,11 @@ class CellaTargetElementEvaluator : TargetElementEvaluatorEx2(), TargetElementEv
 
 class CellaDocumentationTargetProvider : DocumentationTargetProvider {
 	override fun documentationTargets(file: PsiFile, offset: Int): List<DocumentationTarget> {
+		if (file.language == CelpLanguage)
+			return listOfNotNull(projectStringAt(file, offset)?.let {
+				CellaDocumentationTarget(it, offset - it.textRange.startOffset)
+			})
+		
 		if (file.language != CellaLanguage)
 			return emptyList()
 		
@@ -131,10 +144,10 @@ class CellaDocumentationTargetProvider : DocumentationTargetProvider {
 	}
 }
 
-class CellaDocumentationTarget(private val element: PsiElement) : DocumentationTarget {
+class CellaDocumentationTarget(private val element: PsiElement, private val inside: Int = 0) : DocumentationTarget {
 	override fun createPointer(): Pointer<out DocumentationTarget> {
 		val pointer = SmartPointerManager.createPointer(element)
-		return Pointer { pointer.element?.let(::CellaDocumentationTarget) }
+		return Pointer { pointer.element?.let { CellaDocumentationTarget(it, inside) } }
 	}
 	
 	override fun computePresentation() = TargetPresentation.builder(element.text).presentation()
@@ -149,7 +162,7 @@ class CellaDocumentationTarget(private val element: PsiElement) : DocumentationT
 			val virtualFile = file.virtualFile ?: return@runReadActionBlocking null
 			val document = file.viewProvider.document ?: return@runReadActionBlocking null
 			Triple(file.project, CellaServer.uriOf(virtualFile),
-				CellaServer.get(file.project).position(document, element.textRange.startOffset))
+				CellaServer.get(file.project).position(document, element.textRange.startOffset + inside))
 		} ?: return null
 		
 		val server = CellaServer.get(project)
@@ -198,7 +211,7 @@ class CellaDocumentationTarget(private val element: PsiElement) : DocumentationT
 
 class CellaGotoDeclarationHandler : GotoDeclarationHandler {
 	override fun getGotoDeclarationTargets(source: PsiElement?, offset: Int, editor: Editor): Array<PsiElement>? {
-		if (source == null || source.language != CellaLanguage || !isNamed(source))
+		if (source == null || !(source.language == CellaLanguage && isNamed(source) || isProjectString(source)))
 			return null
 		
 		val project = editor.project ?: return null

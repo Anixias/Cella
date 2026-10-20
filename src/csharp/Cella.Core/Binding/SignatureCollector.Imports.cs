@@ -22,7 +22,7 @@ public sealed partial class SignatureCollector
 		
 		void Add(ImportExpression import, ModulePathSymbol module, Action<Diagnostic> report, bool isProject)
 		{
-			var named = CollectImport(module, import, context, hidden, report);
+			var named = CollectImport(module, import, ForImport(import, context), hidden, report);
 			var collected = named.Select(static entry => entry.Symbol).ToList();
 			imports.AddRange(collected);
 			activated.AddRange(Modules.GetModules(module));
@@ -70,7 +70,10 @@ public sealed partial class SignatureCollector
 	}
 	
 	private List<ModulePathSymbol?> ResolveProjectImports(ResolutionContext context) =>
-		[..ProjectImports.Select(import => ResolveImportPath(import, context))];
+		[..ProjectImports.Select(import => ResolveImportPath(import, ForImport(import, context)))];
+	
+	private static ResolutionContext ForImport(ImportExpression import, ResolutionContext context) =>
+		import.HasEntryLocations ? context with { RecordName = null } : context;
 	
 	private ModulePathSymbol? ResolveImportPath(ImportExpression import, ResolutionContext context)
 	{

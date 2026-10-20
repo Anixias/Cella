@@ -133,12 +133,12 @@ public sealed class Server
 		"textDocument/semanticTokens/full" => async () =>
 		{
 			var uri = GetUri(parameters);
+			var (references, keywords) = await _workspace.GetTokensAsync(uri);
 			if (CellaProject.IsProjectFile(Protocol.ToPath(uri)))
 				return _workspace.GetText(uri) is { } project
-					? SemanticTokens.EncodeSettings(project, SettingKeys.Find(project))
+					? SemanticTokens.EncodeProject(project, SettingKeys.Find(project), references)
 					: null;
 			
-			var (references, keywords) = await _workspace.GetTokensAsync(uri);
 			return SemanticTokens.Encode(references, keywords);
 		},
 		"textDocument/hover" => () => HoverAsync(parameters),

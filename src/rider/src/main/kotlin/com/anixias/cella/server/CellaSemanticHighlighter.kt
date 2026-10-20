@@ -67,7 +67,7 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 			
 			val type = legend.tokenTypes.getOrNull(data[index + 3]) ?: continue
 			val modifiers = legend.tokenModifiers.filterIndexed { bit, _ -> data[index + 4] and (1 shl bit) != 0 }.toSet()
-			val key = (if (isProject) projectColorOf(type) else colorOf(type, modifiers,
+			val key = (if (isProject && type == "property") CellaColors.PROJECT_SETTING else colorOf(type, modifiers,
 				document.charsSequence.subSequence(start, end).toString())) ?: continue
 			val highlighter = markup.addRangeHighlighter(key, start, end, HighlighterLayer.SYNTAX + 1,
 				HighlighterTargetArea.EXACT_RANGE)
@@ -110,7 +110,6 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 	
 	data class RunnableFunction(val start: Int, val end: Int, val name: String, val isMain: Boolean)
 	
-	private fun projectColorOf(type: String) = if (type == "property") CellaColors.PROJECT_SETTING else null
 
 	private fun colorOf(type: String, modifiers: Set<String>, text: String): TextAttributesKey? = when (type) {
 		"struct" -> when {
