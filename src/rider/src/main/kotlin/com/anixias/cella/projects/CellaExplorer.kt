@@ -16,6 +16,8 @@ import com.jetbrains.rider.projectView.views.impl.SolutionViewSelectInTargetBase
 import com.jetbrains.rider.projectView.views.solutionExplorer.SolutionExplorerViewSettings
 import com.jetbrains.rider.projectView.views.solutionExplorer.nodes.SolutionExplorerFileNode
 import com.jetbrains.rider.workspaceModel.WorkspaceUserModelUpdater
+import java.nio.file.Files
+import java.nio.file.Path
 
 object CellaExplorerSettings : SolutionExplorerViewSettings {
 	override fun isShowAllFiles(project: Project) = false
@@ -33,18 +35,20 @@ class CellaExplorer(project: Project) : SolutionViewPaneBase(project, CellaExplo
 		fun tryGetInstance(project: Project): CellaExplorer? =
 			ProjectView.getInstance(project).getProjectViewPaneById(ID) as? CellaExplorer
 
-		fun hasProjects(folder: VirtualFile?, depth: Int = 3): Boolean {
-			if (folder == null || !folder.isDirectory)
-				return false
+		fun hasProjects(project: Project): Boolean = project.basePath?.let { hasProjects(Path.of(it), 3) } == true
 
-			if (CellaProjects.projectFilesIn(folder).isNotEmpty())
+		private fun hasProjects(folder: Path, depth: Int): Boolean {
+			val entries = runCatching { Files.list(folder).use { it.toList() } }.getOrNull() ?: return false
+			if (entries.any { Files.isRegularFile(it) && it.fileName.toString().endsWith(".celp") })
 				return true
 
-			return depth > 0 && folder.children.any { it.isDirectory && !it.name.startsWith(".") && hasProjects(it, depth - 1) }
+			return depth > 0 && entries.any {
+				Files.isDirectory(it) && !it.fileName.toString().startsWith(".") && hasProjects(it, depth - 1)
+			}
 		}
 	}
 
-	override fun isInitiallyVisible() = hasProjects(project.guessProjectDir())
+	override fun isInitiallyVisible() = hasProjects(project)
 
 	override fun getTitle() = Title
 
@@ -70,6 +74,15 @@ class CellaExplorer(project: Project) : SolutionViewPaneBase(project, CellaExplo
 }
 
 class CellaExplorerRootNode(project: Project) : SolutionViewRootNodeBase(project) {
+	override fun createComparator(): Comparator<AbstractTreeNode<*>> {
+		val nodes = super.createComparator()
+		return Comparator { left, right ->
+			val leftFirst = left is CellaReferencesNode
+			val rightFirst = right is CellaReferencesNode
+			if (leftFirst != rightFirst) (if (leftFirst) -1 else 1) else nodes.compare(left, right)
+		}
+	}
+
 	override fun calculateChildren(): MutableList<AbstractTreeNode<*>> {
 		val nodes = mutableListOf<AbstractTreeNode<*>>()
 		val roots = listOfNotNull(myProject.guessProjectDir()) + WorkspaceUserModelUpdater.getInstance(myProject)

@@ -73,6 +73,7 @@
 		                 order="first, before SolutionExplorer"/>
 		<newProjectWizard.generator implementation="com.anixias.cella.projects.CellaProjectWizard"/>
 		<projectOpenProcessor implementation="com.anixias.cella.projects.CellaProjectOpenProcessor" order="first"/>
+		<postStartupActivity implementation="com.anixias.cella.server.CellaProblemsTab"/>
 	</extensions>
 	
 	<actions>
@@ -94,6 +95,9 @@
 		<action id="Cella.NewFile" class="com.anixias.cella.projects.CellaNewFileAction" text="Cella File">
 			<add-to-group group-id="SolutionViewAddGroup.PrimarySection" anchor="after" relative-to-action="NewFile"/>
 		</action>
+		<group id="Cella.ProblemFilters" class="com.anixias.cella.server.CellaProblemFilters">
+			<add-to-group group-id="ProblemsView.Options" anchor="after" relative-to-action="ProblemsView.SeverityFilters"/>
+		</group>
 		<action id="Cella.RemoveReference" class="com.anixias.cella.projects.CellaRemoveReferenceAction"
 		        text="Remove Reference" icon="AllIcons.General.Remove" use-shortcut-of="$Delete">
 			<add-to-group group-id="SolutionExplorerPopupMenu" anchor="first"/>

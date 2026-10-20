@@ -318,6 +318,7 @@ class CellaServer(private val project: Project) : Disposable {
 		
 		override fun publishDiagnostics(params: PublishDiagnosticsParams) {
 			diagnostics[keyOf(params.uri)] = params.diagnostics
+			CellaProblems.get(project).publish(params.uri, params.diagnostics)
 			refreshAnnotations(params.uri)
 		}
 		

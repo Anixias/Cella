@@ -4,6 +4,7 @@
 	"description": "Cella language support",
 	"version": "0.1.0-dev",
 	"publisher": "anixias",
+	"icon": "icons/cella.png",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
