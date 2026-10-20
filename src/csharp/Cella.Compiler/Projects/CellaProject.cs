@@ -19,15 +19,12 @@ public sealed partial class CellaProject
 	
 	private static readonly HashSet<string> _whenSettingNames =
 	[
-		nameof(OutputType), nameof(SystemLinkPreference), nameof(AssemblyName), nameof(BoundsChecks),
-		nameof(OverflowChecks), nameof(DebugInfo), nameof(Referenceable), nameof(ProjectReferences), nameof(Flags)
+		..ProjectSchema.Settings.Where(static setting => setting.IsConditional).Select(static setting => setting.Name),
+		nameof(OutputType), nameof(Flags)
 	];
 	
 	private static readonly HashSet<string> _settingNames =
-	[
-		.._whenSettingNames, nameof(CellaVersion), nameof(StandardLibrary), nameof(Imports), nameof(Prelude),
-		nameof(When)
-	];
+		[..ProjectSchema.Settings.Select(static setting => setting.Name), nameof(When)];
 	
 	public static bool IsSettingPath(IReadOnlyList<string> path) => path switch
 	{

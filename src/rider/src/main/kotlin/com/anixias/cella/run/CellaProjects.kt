@@ -21,6 +21,9 @@ object CellaProjects {
 		return null
 	}
 
+	fun projectFilesIn(directory: VirtualFile): List<VirtualFile> =
+		directory.children.filter { !it.isDirectory && it.extension == "celp" }.sortedBy { it.name }
+
 	fun name(project: Path) = project.fileName.toString().removeSuffix(".celp")
 
 	fun isExecutable(project: Path): Boolean {

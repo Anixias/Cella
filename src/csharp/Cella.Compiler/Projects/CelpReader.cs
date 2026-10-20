@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -6,6 +7,26 @@ using Cella.Core.Collections;
 namespace Cella.Compiler.Projects;
 
 public sealed record CelpEntry(string Setting, string Value, int Start, int End, bool IsExact);
+public readonly record struct CelpKey(string Name, int? Index = null);
+
+public enum CelpItemKind
+{
+	Value,
+	Table,
+	ArrayTable
+}
+
+public sealed record CelpItem
+(
+	ImmutableArray<CelpKey> Path,
+	CelpItemKind Kind,
+	int LineStart,
+	int KeyStart,
+	int Start,
+	int End,
+	object? Value,
+	bool IsInline
+);
 
 public sealed partial class CelpReader
 {
@@ -17,6 +38,7 @@ public sealed partial class CelpReader
 	private readonly Dictionary<string, List<(int Line, string Name)>> _tables = [];
 	private readonly Dictionary<string, int> _arrays = [];
 	private int position;
+	private int lastKeyStart;
 	
 	private CelpReader(string text)
 	{
@@ -30,6 +52,7 @@ public sealed partial class CelpReader
 	
 	public List<(int Line, string Message)> Errors { get; } = [];
 	public List<CelpEntry> ImportEntries { get; } = [];
+	public List<CelpItem> Items { get; } = [];
 	
 	public static CelpReader Read(string text)
 	{
@@ -59,6 +82,15 @@ public sealed partial class CelpReader
 		var index = _lineStarts.BinarySearch(offset);
 		return (index >= 0 ? index : ~index - 1) + 1;
 	}
+	
+	private int GetLineStart(int offset) => _lineStarts[GetLine(offset) - 1];
+	
+	private static object? ToItemValue(object? value) => value switch
+	{
+		StringValue text => text.Value,
+		List<object?> elements => elements.Select(ToItemValue).ToList(),
+		_ => value
+	};
 	
 	private bool AtEnd => position >= _text.Length;
 	
@@ -111,7 +143,7 @@ public sealed partial class CelpReader
 		if (!AtEnd && Current == '﻿')
 			position++;
 		
-		List<string> table = [];
+		List<CelpKey> table = [];
 		while (true)
 		{
 			SkipBlank();
@@ -132,7 +164,7 @@ public sealed partial class CelpReader
 		}
 	}
 	
-	private List<string> ReadHeader()
+	private List<CelpKey> ReadHeader()
 	{
 		var start = position;
 		var isArray = Match("[[");
@@ -149,43 +181,56 @@ public sealed partial class CelpReader
 		{
 			var path = Resolve(segments);
 			_tables.GetOrAdd(Join(path)).Add((GetLine(start), _text[start..position]));
+			Items.Add(new CelpItem([..path], CelpItemKind.Table, GetLineStart(start), start, start, position, null,
+				false));
+			
 			return path;
 		}
 		
 		var parent = Resolve([..segments.Take(segments.Count - 1)]);
-		var key = Join([..parent, segments[^1]]);
+		var key = Join([..parent, new CelpKey(segments[^1])]);
 		var index = _arrays.GetValueOrDefault(key);
 		_arrays[key] = index + 1;
-		return [..parent, $"{segments[^1]}[{index}]"];
+		List<CelpKey> entry = [..parent, new CelpKey(segments[^1], index)];
+		Items.Add(new CelpItem([..entry], CelpItemKind.ArrayTable, GetLineStart(start), start, start, position, null,
+			false));
+		
+		return entry;
 	}
 	
-	private List<string> Resolve(List<string> segments)
+	private List<CelpKey> Resolve(List<string> segments)
 	{
-		var resolved = new List<string>();
+		var resolved = new List<CelpKey>();
 		foreach (var segment in segments)
 		{
-			var key = Join([..resolved, segment]);
-			resolved.Add(_arrays.TryGetValue(key, out var count) ? $"{segment}[{count - 1}]" : segment);
+			var key = Join([..resolved, new CelpKey(segment)]);
+			resolved.Add(new CelpKey(segment, _arrays.TryGetValue(key, out var count) ? count - 1 : null));
 		}
 		
 		return resolved;
 	}
 	
-	private static string Join(IEnumerable<string> path) => string.Join(Separator, path);
+	private static string Join(IEnumerable<CelpKey> path) => string.Join(Separator,
+		path.Select(static key => key.Index is { } index ? $"{key.Name}[{index}]" : key.Name));
 	
-	private void ReadKeyValue(List<string> table)
+	private void ReadKeyValue(List<CelpKey> table)
 	{
 		var start = position;
 		var segments = ReadKey();
 		var written = _text[start..position].Trim();
+		var keyStart = lastKeyStart;
 		SkipSpaces();
 		if (!Match("="))
 			throw new CelpException(position, "Expected '='");
 		
 		SkipSpaces();
-		List<string> path = [..table, ..segments];
+		List<CelpKey> path = [..table, ..segments.Select(static segment => new CelpKey(segment))];
 		_keys.GetOrAdd(Join(path)).Add((GetLine(start), written));
+		var valueStart = position;
 		var value = ReadValue(path);
+		Items.Add(new CelpItem([..path], CelpItemKind.Value, GetLineStart(start), keyStart, valueStart, position,
+			ToItemValue(value), false));
+		
 		if (table.Count == 0 && segments is
 			    [var setting and (nameof(CellaProject.Imports) or nameof(CellaProject.Prelude))] &&
 		    value is List<object?> elements && elements.All(static element => element is StringValue))
@@ -199,6 +244,7 @@ public sealed partial class CelpReader
 		while (true)
 		{
 			SkipSpaces();
+			lastKeyStart = position;
 			segments.Add(ReadSimpleKey());
 			SkipSpaces();
 			if (AtEnd || Current != '.')
@@ -226,7 +272,7 @@ public sealed partial class CelpReader
 		return _text[start..position];
 	}
 	
-	private object? ReadValue(List<string> path)
+	private object? ReadValue(List<CelpKey> path)
 	{
 		if (AtEnd || IsLineEnd)
 			throw new CelpException(position, "Expected a value");
@@ -252,7 +298,10 @@ public sealed partial class CelpReader
 			position++;
 		
 		var word = _text[start..position];
-		if (word is "true" or "false" || ValuePattern().IsMatch(word))
+		if (word is "true" or "false")
+			return word == "true";
+		
+		if (ValuePattern().IsMatch(word))
 			return null;
 		
 		throw new CelpException(start, "Expected a value");
@@ -262,7 +311,7 @@ public sealed partial class CelpReader
 		"""^([+-]?(0|[1-9](_?[0-9])*)|0x[0-9A-Fa-f](_?[0-9A-Fa-f])*|0o[0-7](_?[0-7])*|0b[01](_?[01])*|[+-]?(0|[1-9](_?[0-9])*)(\.[0-9](_?[0-9])*)?([eE][+-]?[0-9](_?[0-9])*)?|[+-]?(inf|nan)|[0-9]{4}-[0-9]{2}-[0-9]{2}([Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|z|[+-][0-9]{2}:[0-9]{2})?)?|[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?)$""")]
 	private static partial Regex ValuePattern();
 	
-	private List<object?> ReadArray(List<string> path)
+	private List<object?> ReadArray(List<CelpKey> path)
 	{
 		position++;
 		var elements = new List<object?>();
@@ -272,7 +321,10 @@ public sealed partial class CelpReader
 			if (Match("]"))
 				return elements;
 			
-			elements.Add(ReadValue([..path.Take(path.Count - 1), $"{path[^1]}[{elements.Count}]"]));
+			elements.Add(ReadValue(path[^1].Index is null
+				? [..path.Take(path.Count - 1), path[^1] with { Index = elements.Count }]
+				: [..path, new CelpKey("", elements.Count)]));
+			
 			SkipBlank();
 			if (Match(","))
 				continue;
@@ -284,7 +336,7 @@ public sealed partial class CelpReader
 		}
 	}
 	
-	private void ReadInlineTable(List<string> path)
+	private void ReadInlineTable(List<CelpKey> path)
 	{
 		position++;
 		SkipSpaces();
@@ -300,14 +352,19 @@ public sealed partial class CelpReader
 			var start = position;
 			var segments = ReadKey();
 			var written = _text[start..position].Trim();
+			var keyStart = lastKeyStart;
 			SkipSpaces();
 			if (!Match("="))
 				throw new CelpException(position, "Expected '='");
 			
 			SkipSpaces();
-			List<string> key = [..path, ..segments];
+			List<CelpKey> key = [..path, ..segments.Select(static segment => new CelpKey(segment))];
 			_keys.GetOrAdd(Join(key)).Add((GetLine(start), written));
-			ReadValue(key);
+			var valueStart = position;
+			var value = ReadValue(key);
+			Items.Add(new CelpItem([..key], CelpItemKind.Value, GetLineStart(start), keyStart, valueStart, position,
+				ToItemValue(value), true));
+			
 			SkipSpaces();
 			if (Match(","))
 				continue;

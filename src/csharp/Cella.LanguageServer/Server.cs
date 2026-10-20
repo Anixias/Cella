@@ -105,6 +105,20 @@ public sealed class Server
 			case "initialized" or "shutdown":
 				return (true, null);
 			
+			case "cella/projects":
+				return (true, _workspace.ListProjects());
+			
+			case "cella/projectSettings":
+				return (true,
+					ProjectRequests.Describe(Protocol.ToPath(GetUri(parameters)), GetProjectText(parameters)));
+			
+			case "cella/editProject":
+				return (true, new JsonObject
+				{
+					["edits"] = ProjectRequests.Edit(Protocol.ToPath(GetUri(parameters)), GetProjectText(parameters),
+						(JsonArray)parameters!["edits"]!)
+				});
+			
 			default:
 				return (method.StartsWith("$/", StringComparison.Ordinal), null);
 		}
@@ -271,6 +285,9 @@ public sealed class Server
 	
 	private static string GetUri(JsonObject? parameters) => (string)parameters!["textDocument"]!["uri"]!;
 	
+	private string GetProjectText(JsonObject? parameters) =>
+		(string?)parameters?["text"] ?? _workspace.GetText(GetUri(parameters)) ?? "";
+	
 	private Task<SymbolReference?> FindAsync(JsonObject? parameters) => _workspace.FindAsync(GetUri(parameters),
 		(int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!);
 	
@@ -297,7 +314,8 @@ public sealed class Server
 				["openClose"] = true,
 				["change"] = FullSync,
 				["save"] = new JsonObject { ["includeText"] = false }
-			}
+			},
+			["experimental"] = new JsonObject { ["projects"] = true }
 		},
 		["serverInfo"] = new JsonObject { ["name"] = "cella-lsp", ["version"] = SemanticVersion.Current.ToString() }
 	};

@@ -1,4 +1,4 @@
-﻿using System.IO.Pipes;
+using System.IO.Pipes;
 using System.Text.Json.Nodes;
 using Cella.LanguageServer;
 using Xunit;
@@ -192,6 +192,66 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(2, (int)error["range"]!["start"]!["line"]!);
 		Assert.Equal(2, (int)error["range"]!["start"]!["character"]!);
 		Assert.Equal(10, (int)error["range"]!["end"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task DescribesAndEditsProjects()
+	{
+		var library = Path.Combine(_directory, "geometry", "geometry.celp");
+		Directory.CreateDirectory(Path.GetDirectoryName(library)!);
+		await File.WriteAllTextAsync(library, "OutputType = \"StaticLibrary\"\n", Token);
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n\n[When.release]\nBoundsChecks = false\n", Token);
+		
+		var capabilities = await InitializeAsync();
+		Assert.True((bool)capabilities["experimental"]!["projects"]!);
+		
+		var listed = await ReadResponseAsync(await RequestAsync("cella/projects", new JsonObject()));
+		var projects = (JsonArray)listed["result"]!;
+		Assert.Equal(new[] { "geometry", "test" }, projects.Select(static project => (string)project!["name"]!));
+		Assert.Equal("StaticLibrary", (string?)projects[0]!["outputType"]);
+		
+		var projectUri = UriOf(ProjectPath);
+		var added = await ReadResponseAsync(await RequestAsync("cella/editProject", new JsonObject
+		{
+			["textDocument"] = new JsonObject { ["uri"] = projectUri },
+			["edits"] = new JsonArray(
+				new JsonObject { ["addReference"] = UriOf(library) },
+				new JsonObject { ["setting"] = "DebugInfo", ["condition"] = "release", ["value"] = false })
+		}));
+		
+		var edit = Assert.Single((JsonArray)added["result"]!["edits"]!)!;
+		Assert.Equal(5, (int)edit["range"]!["start"]!["line"]!);
+		Assert.Equal("DebugInfo = false\n\n[[ProjectReferences]]\nPath = 'geometry/geometry.celp'\n",
+			(string?)edit["newText"]);
+		
+		var described = await ReadResponseAsync(await RequestAsync("cella/projectSettings", new JsonObject
+		{
+			["textDocument"] = new JsonObject { ["uri"] = projectUri },
+			["text"] = "OutputType = \"Executable\"\n\n[When.release]\nBoundsChecks = false\n"
+		}));
+		
+		var settings = (JsonObject)described["result"]!;
+		Assert.Equal("Executable", (string?)settings["values"]!["OutputType"]);
+		var release = Assert.Single((JsonArray)settings["conditions"]!)!;
+		Assert.Equal("release", (string?)release["condition"]);
+		Assert.False((bool)release["values"]!["BoundsChecks"]!);
+		Assert.Contains((JsonArray)settings["settings"]!, static setting => (string?)setting!["name"] == "OutputType" &&
+		                                                                    (string?)setting["kind"] == "choice");
+		
+		var refused = await ReadResponseAsync(await RequestAsync("cella/editProject", new JsonObject
+		{
+			["textDocument"] = new JsonObject { ["uri"] = projectUri },
+			["edits"] = new JsonArray(new JsonObject
+			{
+				["setting"] = "StandardLibrary",
+				["condition"] = "release",
+				["value"] = "Core"
+			})
+		}));
+		
+		Assert.Equal("Can't set 'StandardLibrary' here", (string?)refused["error"]!["message"]);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

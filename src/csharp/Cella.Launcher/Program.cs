@@ -15,7 +15,7 @@ internal static class Program
 		"  new [name]                      Create a project\n" +
 		"  install [version]               Install a version (the latest when none is given)\n" +
 		"  uninstall <version>             Remove a version\n" +
-		"  list                            List installed and available versions\n" +
+		"  list [--installed]              List installed and available versions\n" +
 		"  lsp                             Start the language server for the current folder\n" +
 		"  self update                     Update this launcher\n" +
 		"  self uninstall                  Remove Cella completely\n" +
@@ -40,6 +40,7 @@ internal static class Program
 				["install", var version] => await Installer.InstallAsync(version),
 				["uninstall", var version] => Installer.Uninstall(version),
 				["list"] => await Installer.ListAsync(),
+				["list", "--installed"] => Installer.ListInstalled(),
 				["self", "install"] => SelfCommands.Install(),
 				["self", "uninstall"] => SelfCommands.Uninstall(false),
 				["self", "uninstall", "--yes"] => SelfCommands.Uninstall(true),

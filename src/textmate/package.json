@@ -25,13 +25,84 @@
 				"id": "cella",
 				"aliases": ["Cella", "cella"],
 				"extensions": [".ce"],
-				"configuration": "./language-configuration.json"
+				"configuration": "./language-configuration.json",
+				"icon": {
+					"light": "./icons/cella.svg",
+					"dark": "./icons/cella.svg"
+				}
 			},
 			{
 				"id": "cella-project",
 				"aliases": ["Cella Project"],
 				"extensions": [".celp"],
-				"configuration": "./celp-language-configuration.json"
+				"configuration": "./celp-language-configuration.json",
+				"icon": {
+					"light": "./icons/cella.svg",
+					"dark": "./icons/cella.svg"
+				}
+			}
+		],
+		"commands": [
+			{ "command": "cella.newProject", "title": "New Project", "category": "Cella" },
+			{ "command": "cella.editProjectFile", "title": "Edit Project File", "category": "Cella", "icon": "$(edit)" },
+			{ "command": "cella.properties", "title": "Properties", "category": "Cella" },
+			{ "command": "cella.addReference", "title": "Add Project Reference…", "category": "Cella" },
+			{ "command": "cella.removeReference", "title": "Remove Reference", "category": "Cella" },
+			{ "command": "cella.buildProject", "title": "Build", "category": "Cella" },
+			{ "command": "cella.runProject", "title": "Run", "category": "Cella" },
+			{ "command": "cella.debugProject", "title": "Debug", "category": "Cella" },
+			{ "command": "cella.newFile", "title": "New Cella File…", "category": "Cella" },
+			{ "command": "cella.refreshProjects", "title": "Refresh", "category": "Cella", "icon": "$(refresh)" }
+		],
+		"views": {
+			"explorer": [
+				{ "id": "cella.projects", "name": "Cella Projects", "when": "cella.hasProjects" }
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "explorer",
+				"contents": "[New Cella Project](command:cella.newProject)",
+				"when": "workbenchState == empty"
+			}
+		],
+		"menus": {
+			"view/title": [
+				{ "command": "cella.refreshProjects", "when": "view == cella.projects", "group": "navigation" }
+			],
+			"view/item/context": [
+				{ "command": "cella.editProjectFile", "when": "view == cella.projects && viewItem =~ /^cellaProject/", "group": "inline" },
+				{ "command": "cella.buildProject", "when": "view == cella.projects && viewItem =~ /^cellaProject/", "group": "1_build@1" },
+				{ "command": "cella.runProject", "when": "view == cella.projects && viewItem == cellaProjectExecutable", "group": "1_build@2" },
+				{ "command": "cella.debugProject", "when": "view == cella.projects && viewItem == cellaProjectExecutable", "group": "1_build@3" },
+				{ "command": "cella.newFile", "when": "view == cella.projects && viewItem =~ /^cella(Project|Folder)/", "group": "2_add@1" },
+				{ "command": "cella.addReference", "when": "view == cella.projects && viewItem =~ /^cella(Project|References)/", "group": "2_add@2" },
+				{ "command": "cella.editProjectFile", "when": "view == cella.projects && viewItem =~ /^cellaProject/", "group": "3_project@1" },
+				{ "command": "cella.properties", "when": "view == cella.projects && viewItem =~ /^cellaProject/", "group": "3_project@2" },
+				{ "command": "cella.removeReference", "when": "view == cella.projects && viewItem == cellaReference", "group": "3_project@1" }
+			],
+			"explorer/context": [
+				{ "command": "cella.addReference", "when": "resourceExtname == .celp", "group": "7_cella@1" },
+				{ "command": "cella.properties", "when": "resourceExtname == .celp", "group": "7_cella@2" }
+			],
+			"commandPalette": [
+				{ "command": "cella.removeReference", "when": "false" },
+				{ "command": "cella.editProjectFile", "when": "cella.hasProjects" },
+				{ "command": "cella.properties", "when": "cella.hasProjects" },
+				{ "command": "cella.addReference", "when": "cella.hasProjects" },
+				{ "command": "cella.buildProject", "when": "cella.hasProjects" },
+				{ "command": "cella.runProject", "when": "cella.hasProjects" },
+				{ "command": "cella.debugProject", "when": "cella.hasProjects" },
+				{ "command": "cella.newFile", "when": "cella.hasProjects" },
+				{ "command": "cella.refreshProjects", "when": "cella.hasProjects" }
+			]
+		},
+		"customEditors": [
+			{
+				"viewType": "cella.projectProperties",
+				"displayName": "Cella Project Properties",
+				"selector": [{ "filenamePattern": "*.celp" }],
+				"priority": "option"
 			}
 		],
 		"grammars": [

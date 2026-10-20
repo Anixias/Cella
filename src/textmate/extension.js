@@ -3,6 +3,7 @@ const { LanguageClient, TransportKind } = require("vscode-languageclient/node");
 const childProcess = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { register } = require("./projects");
 
 const cppTools = "ms-vscode.cpptools";
 let client;
@@ -17,6 +18,14 @@ async function activate(context) {
 		vscode.tasks.registerTaskProvider("cella", new BuildTaskProvider()),
 		vscode.commands.registerCommand("cella.start", startProgram)
 	);
+
+	const projects = register(context, () => client, {
+		cellaCommand,
+		findProject,
+		startProgram,
+		buildTask: project => new BuildTaskProvider().createTask({ type: "cella", project },
+			vscode.workspace.getWorkspaceFolder(vscode.Uri.file(project)) ?? vscode.TaskScope.Workspace)
+	});
 
 	const configured = setting("server.path");
 	const options = { cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath };
@@ -36,6 +45,7 @@ async function activate(context) {
 
 	try {
 		await client.start();
+		await projects.refresh();
 	} catch (error) {
 		vscode.window.showErrorMessage(`Couldn't start the Cella language server '${server.command}': ${error.message}`);
 	}

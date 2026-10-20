@@ -2,6 +2,8 @@ package com.anixias.cella.server
 
 import com.anixias.cella.CellaFileType
 import com.anixias.cella.CelpFileType
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.notification.NotificationGroupManager
@@ -23,6 +25,7 @@ import java.io.File
 import java.net.URI
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -53,6 +56,7 @@ import org.eclipse.lsp4j.TextDocumentItem
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
 import org.eclipse.lsp4j.WorkspaceClientCapabilities
 import org.eclipse.lsp4j.WorkspaceFolder
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest
 import org.eclipse.lsp4j.launch.LSPLauncher
 import org.eclipse.lsp4j.services.LanguageClient
@@ -77,7 +81,11 @@ class CellaServer(private val project: Project) : Disposable {
 		}
 	}
 	
-	private class Connection(val process: Process, val server: CellaLanguageServer, val legend: SemanticTokensLegend?)
+	private class Connection(
+		val process: Process,
+		val server: CellaLanguageServer,
+		val legend: SemanticTokensLegend?,
+		val supportsProjects: Boolean)
 	
 	private val sender = AppExecutorUtil.createBoundedApplicationPoolExecutor("Cella language server", 1)
 	private val documents = ConcurrentHashMap<String, Pair<Document, Int>>()
@@ -114,7 +122,18 @@ class CellaServer(private val project: Project) : Disposable {
 		
 		return result
 	}
-	
+
+	fun <T> requestProject(call: (CellaLanguageServer) -> CompletableFuture<T>): CompletableFuture<Pair<T?, String?>?> =
+		request<Pair<T?, String?>?> { server ->
+			if (connection?.supportsProjects != true)
+				CompletableFuture.completedFuture(null)
+			else
+				call(server).handle<Pair<T?, String?>?> { value, error ->
+					val cause = (error as? CompletionException)?.cause ?: error
+					value to (cause as? ResponseErrorException)?.responseError?.message
+				}
+		}
+
 	fun <T> await(future: CompletableFuture<T?>, milliseconds: Long = 3000): T? {
 		val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(milliseconds)
 		while (true) {
@@ -234,7 +253,10 @@ class CellaServer(private val project: Project) : Disposable {
 			}).get(30, TimeUnit.SECONDS)
 			server.initialized(InitializedParams())
 			hasReportedProblem = false
-			Connection(process, server, result.capabilities.semanticTokensProvider?.legend).also { connection = it }
+			val experimental = result.capabilities.experimental as? JsonObject
+			val supportsProjects = experimental?.get("projects")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
+			Connection(process, server, result.capabilities.semanticTokensProvider?.legend, supportsProjects)
+				.also { connection = it }
 		} catch (exception: Exception) {
 			log.warn("Couldn't start ${command.joinToString(" ")}", exception)
 			val exited = started?.takeIf { it.waitFor(1, TimeUnit.SECONDS) }
@@ -348,4 +370,13 @@ interface CellaLanguageServer : LanguageServer {
 	
 	@JsonRequest("cella/valueAt")
 	fun valueAt(params: TextDocumentPositionParams): CompletableFuture<CellaValue?>
+
+	@JsonRequest("cella/projects")
+	fun projects(params: JsonObject): CompletableFuture<JsonArray>
+
+	@JsonRequest("cella/projectSettings")
+	fun projectSettings(params: JsonObject): CompletableFuture<JsonObject>
+
+	@JsonRequest("cella/editProject")
+	fun editProject(params: JsonObject): CompletableFuture<JsonObject>
 }

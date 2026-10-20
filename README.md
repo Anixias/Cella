@@ -135,6 +135,7 @@ The launcher's own commands:
 cella install [version]     Install a version, the latest when none is given
 cella uninstall <version>   Remove a version
 cella list                  List installed and available versions
+cella list --installed      List installed versions, newest first
 cella self update           Update the launcher
 cella self uninstall        Remove Cella completely
 ```
@@ -160,7 +161,7 @@ Every project references the standard library. Set `StandardLibrary = "Core"` to
 
 ## Editors
 
-Each release includes a VS Code extension and a Rider plugin. They highlight Cella code and run the language server (`cella lsp`) for diagnostics, hover, go-to-definition, find usages and completion.
+Each release includes a VS Code extension and a Rider plugin. They highlight Cella code and run the language server (`cella lsp`) for diagnostics, hover, go-to-definition, find usages and completion. Both show Cella projects in the sidebar with their files and references, create new projects, and edit a project's settings and references in a form that rewrites only the lines it changes.
 
 ## Building
 

@@ -67,6 +67,9 @@
 		<runConfigurationProducer implementation="com.anixias.cella.run.CellaRunConfigurationProducer"/>
 		<runLineMarkerContributor language="Cella" implementationClass="com.anixias.cella.run.CellaRunLineMarker"/>
 		<stepsBeforeRunProvider implementation="com.anixias.cella.run.CellaBuildTaskProvider"/>
+
+		<solutionExplorerCustomization implementation="com.anixias.cella.projects.CellaSolutionExplorerCustomization"/>
+		<newProjectWizard.generator implementation="com.anixias.cella.projects.CellaProjectWizard"/>
 	</extensions>
 	
 	<actions>
@@ -76,6 +79,21 @@
 			<add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
 			<add-to-group group-id="SolutionExplorerPopupMenu" anchor="last"/>
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+		<action id="Cella.Properties" class="com.anixias.cella.projects.CellaPropertiesAction" text="Properties"
+		        use-shortcut-of="ShowIntentionActions">
+			<add-to-group group-id="SolutionExplorerPopupMenu" anchor="after" relative-to-action="EditPropertiesAction"/>
+		</action>
+		<action id="Cella.AddReference" class="com.anixias.cella.projects.CellaAddReferenceAction" text="Reference…">
+			<add-to-group group-id="SolutionViewAddGroup.PrimarySection" anchor="after"
+			              relative-to-action="AddReferenceAction"/>
+		</action>
+		<action id="Cella.NewFile" class="com.anixias.cella.projects.CellaNewFileAction" text="Cella File">
+			<add-to-group group-id="SolutionViewAddGroup.PrimarySection" anchor="after" relative-to-action="NewFile"/>
+		</action>
+		<action id="Cella.RemoveReference" class="com.anixias.cella.projects.CellaRemoveReferenceAction"
+		        text="Remove Reference" icon="AllIcons.General.Remove" use-shortcut-of="$Delete">
+			<add-to-group group-id="SolutionExplorerPopupMenu" anchor="first"/>
 		</action>
 	</actions>
 	

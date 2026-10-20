@@ -395,6 +395,15 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	
 	public string? GetText(string uri) => TextAt(Protocol.ToPath(uri));
 	
+	public JsonArray ListProjects()
+	{
+		string[] roots;
+		lock (_lock)
+			roots = [.._roots];
+		
+		return ProjectRequests.List(roots, TextAt);
+	}
+	
 	private string? TextAt(string path)
 	{
 		lock (_lock)

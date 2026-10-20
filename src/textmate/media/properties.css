@@ -1,0 +1,91 @@
+body {
+	color: var(--vscode-foreground);
+	background: var(--vscode-editor-background);
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	padding: 16px 24px;
+	max-width: 760px;
+}
+
+h2 {
+	font-size: 1.1em;
+	font-weight: 600;
+	margin: 24px 0 8px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: max-content minmax(200px, 1fr);
+	gap: 8px 16px;
+	align-items: center;
+}
+
+.rows {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	align-items: flex-start;
+}
+
+.row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.name {
+	min-width: 120px;
+}
+
+.missing {
+	color: var(--vscode-errorForeground);
+}
+
+.path {
+	color: var(--vscode-descriptionForeground);
+	min-width: 160px;
+}
+
+.errors {
+	color: var(--vscode-errorForeground);
+	margin-top: 16px;
+	white-space: pre-wrap;
+}
+
+select, input, textarea {
+	color: var(--vscode-input-foreground);
+	background: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border, transparent);
+	font-family: inherit;
+	font-size: inherit;
+	padding: 3px 6px;
+}
+
+textarea {
+	resize: vertical;
+}
+
+select:disabled, input:disabled, textarea:disabled, button:disabled {
+	opacity: 0.6;
+}
+
+button {
+	color: var(--vscode-button-secondaryForeground);
+	background: var(--vscode-button-secondaryBackground);
+	border: none;
+	padding: 4px 10px;
+	cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+	background: var(--vscode-button-secondaryHoverBackground);
+}

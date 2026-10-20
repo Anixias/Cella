@@ -56,6 +56,14 @@ internal static class Installer
 		return 0;
 	}
 	
+	public static int ListInstalled()
+	{
+		foreach (var version in Home.FindInstalledVersions())
+			Console.WriteLine(version);
+		
+		return 0;
+	}
+	
 	public static async Task<int> ListAsync()
 	{
 		var installed = Home.FindInstalledVersions();
