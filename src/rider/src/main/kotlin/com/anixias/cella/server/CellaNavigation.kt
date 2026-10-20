@@ -54,7 +54,7 @@ private val hoverTokens = setOf(CellaToken.IDENTIFIER, CellaToken.BUILTIN_TYPE, 
 
 internal fun isNamed(element: PsiElement) = CellaTokenTypes.tokenOf(element.node?.elementType) in namedTokens
 
-private fun isProjectString(element: PsiElement) =
+internal fun isProjectString(element: PsiElement) =
 	element.language == CelpLanguage && CelpTokenTypes.tokenOf(element.node?.elementType) == CelpToken.STRING
 
 private fun projectStringAt(file: PsiFile, offset: Int): PsiElement? = file.findElementAt(offset)?.takeIf(::isProjectString)
@@ -216,7 +216,8 @@ class CellaGotoDeclarationHandler : GotoDeclarationHandler {
 		
 		val project = editor.project ?: return null
 		val file = source.containingFile?.virtualFile ?: return null
-		val location = definitionAt(project, file, editor.document, source.textRange.startOffset) ?: return null
+		val start = if (isProjectString(source)) offset else source.textRange.startOffset
+		val location = definitionAt(project, file, editor.document, start) ?: return null
 		if (location.isAt(source))
 			return null
 		

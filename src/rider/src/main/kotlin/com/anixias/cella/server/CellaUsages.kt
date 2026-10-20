@@ -37,6 +37,8 @@ import com.intellij.psi.search.SearchScope
 import com.intellij.util.AbstractQuery
 import com.intellij.util.Processor
 import com.intellij.util.Query
+import org.eclipse.lsp4j.HoverParams
+import org.eclipse.lsp4j.Position
 import org.eclipse.lsp4j.ReferenceContext
 import org.eclipse.lsp4j.ReferenceParams
 import org.eclipse.lsp4j.TextDocumentIdentifier
@@ -94,6 +96,45 @@ private fun symbolAt(project: Project, location: CellaLocation): CellaSymbol? {
 	return CellaSymbol(location.file, location.offset, name)
 }
 
+private class ProjectTarget(val range: TextRange, val location: CellaLocation)
+
+private val projectTargetsKey = Key.create<Pair<Long, ConcurrentHashMap<Int, ProjectTarget>>>("cella.project.targets")
+
+private fun offsetOf(document: Document, position: Position) =
+	document.getLineStartOffset(position.line) + position.character
+
+private fun projectTargetAt(file: PsiFile, document: Document, offset: Int): ProjectTarget? {
+	val virtualFile = file.virtualFile ?: return null
+	val stamp = document.modificationStamp
+	val targets = document.getUserData(projectTargetsKey)?.takeIf { it.first == stamp }?.second
+		?: ConcurrentHashMap<Int, ProjectTarget>().also { document.putUserData(projectTargetsKey, stamp to it) }
+	
+	targets[offset]?.let { return it }
+	val server = CellaServer.get(file.project)
+	val position = server.position(document, offset)
+	val range = server.await(server.request {
+		it.textDocumentService.hover(HoverParams(TextDocumentIdentifier(CellaServer.uriOf(virtualFile)), position))
+	}, 2000)?.range ?: return null
+	
+	val location = definitionAt(file.project, virtualFile, document, offset) ?: return null
+	val target = ProjectTarget(TextRange(offsetOf(document, range.start), offsetOf(document, range.end)), location)
+	targets[offset] = target
+	return target
+}
+
+private fun projectReference(element: PsiElement, offsetInElement: Int): PsiSymbolReference? {
+	val file = element.containingFile ?: return null
+	val document = file.viewProvider.document ?: return null
+	val elementStart = element.textRange.startOffset
+	val target = projectTargetAt(file, document, elementStart + offsetInElement) ?: return null
+	val symbol = symbolAt(file.project, target.location) ?: return null
+	return object : PsiSymbolReference {
+		override fun getElement() = element
+		override fun getRangeInElement() = target.range.shiftLeft(elementStart)
+		override fun resolveReference() = listOf(symbol)
+	}
+}
+
 class CellaDeclarationProvider : PsiSymbolDeclarationProvider {
 	override fun getDeclarations(element: PsiElement, offsetInElement: Int): Collection<PsiSymbolDeclaration> {
 		val (file, document) = cellaNameAt(element) ?: return emptyList()
@@ -112,6 +153,9 @@ class CellaDeclarationProvider : PsiSymbolDeclarationProvider {
 
 class CellaReferenceProvider : ImplicitReferenceProvider {
 	override fun getImplicitReference(element: PsiElement, offsetInElement: Int): PsiSymbolReference? {
+		if (isProjectString(element))
+			return projectReference(element, offsetInElement)
+		
 		val (file, document) = cellaNameAt(element) ?: return null
 		val resolution = resolveName(file, document, element) as? NameResolution.Referenced ?: return null
 		val symbol = symbolAt(file.project, resolution.location) ?: return null
