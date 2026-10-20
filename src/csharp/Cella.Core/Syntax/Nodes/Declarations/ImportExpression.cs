@@ -8,6 +8,7 @@ public readonly record struct ImportExpression(ModuleName ModuleName, IImport Im
 	public bool IsPrelude { get; init; }
 	public bool HasSyntaxErrors { get; init; }
 	public bool HasEntryLocations { get; init; }
+	public SourceLocation SourceLocation { get; init; }
 }
 
 public interface IImport;

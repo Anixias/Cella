@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
@@ -19,13 +20,15 @@ public enum CompletionSite
 }
 
 public sealed record CompletionCall(string Callee, IReadOnlyList<CompletionCandidate> Candidates, int Argument);
+public sealed record CompletionImport(string Name, string Module, bool InProject);
 
 public sealed record CompletionCandidate
 (
 	Symbol Symbol,
 	FunctionInfo? Function = null,
 	TypeSymbol? Type = null,
-	GlobalInfo? Global = null
+	GlobalInfo? Global = null,
+	CompletionImport? Import = null
 );
 
 public sealed class CompletionProbe(string path, int offset)
@@ -38,6 +41,8 @@ public sealed class CompletionProbe(string path, int offset)
 	public CompletionPlace? Place { get; private set; }
 	public TypeSymbol? ExpectedType { get; private set; }
 	public IReadOnlyList<CompletionCandidate> Candidates { get; private set; } = [];
+	public IReadOnlyList<CompletionCandidate> Importable { get; private set; } = [];
+	public FileNode? File { get; private set; }
 	public CompletionSite? Site { get; private set; }
 	public CompletionCall? Call { get; private set; }
 	
@@ -74,7 +79,8 @@ public sealed class CompletionProbe(string path, int offset)
 			Call = new(callee.Text, [..candidates], call.Argument);
 	}
 	
-	internal void Capture(CompletionPlace place, IEnumerable<CompletionCandidate> candidates, TypeSymbol? expectedType)
+	internal void Capture(CompletionPlace place, IEnumerable<CompletionCandidate> candidates, TypeSymbol? expectedType,
+		FileNode? file = null, IEnumerable<CompletionCandidate>? importable = null)
 	{
 		if (Place is not null)
 			return;
@@ -82,5 +88,7 @@ public sealed class CompletionProbe(string path, int offset)
 		Place = place;
 		ExpectedType = expectedType;
 		Candidates = [..candidates];
+		File = file;
+		Importable = importable is null ? [] : [..importable];
 	}
 }

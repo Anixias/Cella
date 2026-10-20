@@ -202,11 +202,9 @@ public sealed class Server
 			return null;
 		
 		var offset = GetOffset(text, parameters);
-		var probed = Completion.FindNameStart(text, offset) < offset
-			? text
-			: text.Insert(offset, Completion.Placeholder);
-		
-		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset));
+		var inserted = Completion.FindNameStart(text, offset) < offset ? 0 : Completion.Placeholder.Length;
+		var probed = text.Insert(offset, Completion.Placeholder[..inserted]);
+		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset), text, inserted);
 	}
 	
 	private async Task<JsonNode?> FindVisibleGlobalsAsync(JsonObject? parameters)

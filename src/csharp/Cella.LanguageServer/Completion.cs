@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Nodes;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.LanguageServer;
@@ -63,7 +64,7 @@ public static class Completion
 		return start;
 	}
 	
-	public static JsonObject ToList(CompletionProbe? probe)
+	public static JsonObject ToList(CompletionProbe? probe, string text, int inserted)
 	{
 		var items = new JsonArray();
 		IEnumerable<string> keywords = (probe?.Place, probe?.Site) switch
@@ -85,6 +86,21 @@ public static class Completion
 				items.Add(group.Key.Item2
 					? ToFunctionItem(probe, group.Key.Item1, [..group])
 					: ToItem(probe, group.First()));
+			
+			foreach (var group in probe.Importable.Where(static candidate => IsListed(candidate.Import!.Name))
+				         .GroupBy(static candidate => (Import: candidate.Import!, IsFunction(candidate))))
+			{
+				if (ToImportEdit(probe, group.Key.Import, text, inserted) is not { } edit)
+					continue;
+				
+				var item = group.Key.Item2
+					? ToFunctionItem(probe, group.Key.Import.Name, [..group])
+					: ToItem(probe, group.First());
+				
+				item["labelDetails"]!["description"] = group.Key.Import.Module;
+				item["additionalTextEdits"] = new JsonArray(edit);
+				items.Add(item);
+			}
 		}
 		
 		var labels = items.Select(static item => (string)item!["label"]!).ToHashSet();
@@ -228,19 +244,126 @@ public static class Completion
 	
 	private static int RankOf(CompletionProbe probe, CompletionCandidate candidate)
 	{
+		var fits = Fits(probe, candidate);
+		return candidate.Import switch
+		{
+			{ InProject: true } => fits ? 40 : 41,
+			not null => fits ? 50 : 51,
+			_ when fits => 0,
+			_ => candidate.Symbol is LocalVariableSymbol or ParameterSymbol or FieldSymbol or PropertySymbol ? 1 : 2
+		};
+	}
+	
+	private static bool Fits(CompletionProbe probe, CompletionCandidate candidate)
+	{
+		if (probe.Place == CompletionPlace.Member && candidate.Symbol is ModulePathSymbol)
+			return true;
+		
+		if (probe.ExpectedType is not { } expected)
+			return false;
+		
+		if (expected is FunctionType)
+			return IsFunction(candidate);
+		
 		var type = candidate switch
 		{
 			{ Function: { } function } => function.Signature.ReturnType,
 			{ Type: { } declared } => declared,
+			{ Global: { } global } => global.Type,
 			{ Symbol: LocalVariableSymbol local } => local.Type,
+			{ Symbol: TypeSymbol named } => named,
 			_ => null
 		};
 		
-		if (probe.ExpectedType is { } expected && type == expected ||
-		    probe.Place == CompletionPlace.Member && candidate.Symbol is ModulePathSymbol)
-			return 0;
+		return type is not null && (type == expected || type.OriginalDefinition == expected.OriginalDefinition);
+	}
+	
+	private static JsonObject? ToImportEdit(CompletionProbe probe, CompletionImport import, string text, int inserted)
+	{
+		if (probe.File is not { } file)
+			return null;
 		
-		return candidate.Symbol is LocalVariableSymbol or ParameterSymbol or FieldSymbol or PropertySymbol ? 1 : 2;
+		var imports = file.Imports
+			.Where(static candidate => !candidate.IsPrelude && candidate.SourceLocation.Range.IsValid)
+			.ToList();
+		
+		var merged = imports
+			.Where(candidate => !candidate.HasSyntaxErrors && candidate.ModuleName.Text == import.Module)
+			.OrderBy(static candidate => candidate.Import is ListImport ? 0 : 1)
+			.FirstOrDefault(static candidate => candidate.Import is TokenImport or ListImport);
+		
+		switch (merged.Import)
+		{
+			case ListImport { Tokens: [.., var last] } list:
+				var following = list.Tokens.FirstOrDefault(name => CompareNames(import.Name, name.Text) < 0);
+				return following.Text is null
+					? Insert(last.SourceLocation.Range.End, $", {import.Name}")
+					: Insert(following.SourceLocation.Range.Start, $"{import.Name}, ");
+			
+			case TokenImport { Token: var single }:
+				string[] names = [single.Text, import.Name];
+				Array.Sort(names, CompareNames);
+				return Edit(single.SourceLocation.Range, $"[{string.Join(", ", names)}]");
+		}
+		
+		var newline = text.Contains("\r\n") ? "\r\n" : "\n";
+		var line = $"use {import.Module}.{import.Name}";
+		string[] path = [..import.Module.Split('.'), import.Name];
+		var next = imports.FirstOrDefault(candidate => ComparePaths(path, PathOf(candidate)) < 0);
+		if (next.Import is not null)
+			return Insert(next.SourceLocation.Range.Start, line + newline);
+		
+		if (imports.Count > 0)
+			return Insert(imports.Max(static candidate => candidate.SourceLocation.Range.End), newline + line);
+		
+		return Insert((file.ImportCondition ?? file.ModuleName.SourceLocation).Range.End, newline + newline + line);
+		
+		JsonObject Insert(int offset, string newText) => Edit(new TextRange(offset, offset), newText);
+		
+		JsonObject Edit(TextRange range, string newText) => new()
+		{
+			["range"] = new JsonObject
+			{
+				["start"] = ToPosition(text, ToOriginal(range.Start)),
+				["end"] = ToPosition(text, ToOriginal(range.End))
+			},
+			["newText"] = newText
+		};
+		
+		int ToOriginal(int offset) => offset >= probe.Offset + inserted ? offset - inserted : offset;
+	}
+	
+	private static string[] PathOf(ImportExpression import) =>
+	[
+		..import.ModuleName.Parts.Select(static part => part.Text),
+		import.Import switch
+		{
+			TokenImport single => single.Token.Text,
+			ListImport { Tokens: [var first, ..] } => first.Text,
+			_ => "*"
+		}
+	];
+	
+	private static int ComparePaths(string[] left, string[] right)
+	{
+		for (var i = 0; i < Math.Min(left.Length, right.Length); i++)
+		{
+			if (CompareNames(left[i], right[i]) is not 0 and var result)
+				return result;
+		}
+		
+		return left.Length.CompareTo(right.Length);
+	}
+	
+	private static int CompareNames(string left, string right) =>
+		StringComparer.OrdinalIgnoreCase.Compare(left, right) is not 0 and var result
+			? result
+			: string.CompareOrdinal(left, right);
+	
+	private static JsonObject ToPosition(string text, int offset)
+	{
+		var lineStart = offset == 0 ? 0 : text.LastIndexOf('\n', offset - 1) + 1;
+		return new JsonObject { ["line"] = text.AsSpan(0, lineStart).Count('\n'), ["character"] = offset - lineStart };
 	}
 	
 	private static ItemKind KindOf(Symbol symbol) => symbol switch

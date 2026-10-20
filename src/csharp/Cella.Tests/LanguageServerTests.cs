@@ -1334,6 +1334,149 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	private async Task WriteImportableModulesAsync()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "geometry.ce"), """
+		                                                                      mod game.geometry
+		                                                                      
+		                                                                      area: fun -> i32 => 1
+		                                                                      corner: mod fun -> i32 => 2
+		                                                                      Shape: rec
+		                                                                      {
+		                                                                      	size: i32
+		                                                                      }
+		                                                                      
+		                                                                      """, Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "physics.ce"), """
+		                                                                     mod game.physics
+		                                                                     
+		                                                                     step: fun -> i32 => 1
+		                                                                     drift: fun -> i32 => 2
+		                                                                     wind: fun -> i32 => 3
+		                                                                     zoom: fun -> i32 => 4
+		                                                                     
+		                                                                     """, Token);
+		
+		var libraryDirectory = Path.Combine(_directory, "lib");
+		Directory.CreateDirectory(libraryDirectory);
+		await File.WriteAllTextAsync(Path.Combine(libraryDirectory, "lib.celp"),
+			"OutputType = \"StaticLibrary\"\nStandardLibrary = \"None\"\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(libraryDirectory, "util.ce"),
+			"mod util\n\nclamp: pub fun -> i32 => 0\nsecret: fun -> i32 => 0\n", Token);
+		
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n\n[[ProjectReferences]]\nPath = 'lib/lib.celp'\n",
+			Token);
+	}
+	
+	private async Task<Dictionary<string, JsonNode>> CompleteInAsync(string text, string newline = "\n")
+	{
+		text = text.ReplaceLineEndings(newline);
+		var offset = text.IndexOf('|');
+		text = text.Remove(offset, 1);
+		await SetTextAsync(text);
+		var lineStart = text.LastIndexOf('\n', offset - 1) + 1;
+		return ItemsOf(await AskAsync("textDocument/completion", text[..offset].Count(static c => c == '\n'),
+			offset - lineStart));
+	}
+	
+	private static string EditOf(JsonNode item)
+	{
+		var edit = Assert.Single((JsonArray)item["additionalTextEdits"]!)!;
+		var (start, end) = (edit["range"]!["start"]!, edit["range"]!["end"]!);
+		return $"{start["line"]}:{start["character"]}-{end["line"]}:{end["character"]} {edit["newText"]}";
+	}
+	
+	[Fact]
+	public async Task OrdersCompletionsByScopeThenProject()
+	{
+		await WriteImportableModulesAsync();
+		await InitializeAsync();
+		var items = await CompleteInAsync("""
+		                                  mod test
+		                                  
+		                                  use game.physics.step
+		                                  
+		                                  local: fun -> bool => true
+		                                  
+		                                  main: fun -> i32
+		                                  {
+		                                  	val count: i32 = 1
+		                                  	val flag: bool = false
+		                                  	val a: i32 = |
+		                                  	ret 0
+		                                  }
+		                                  
+		                                  """);
+		
+		string[] expected = ["count", "step", "flag", "local", "true", "area", "Shape", "clamp"];
+		Assert.Equal(expected, expected.OrderBy(label => (string)items[label]["sortText"]!, StringComparer.Ordinal));
+		Assert.Equal("game.geometry", (string)items["area"]["labelDetails"]!["description"]!);
+		Assert.Equal("util", (string)items["clamp"]["labelDetails"]!["description"]!);
+		Assert.Null(items["step"]["additionalTextEdits"]);
+		Assert.DoesNotContain("corner", items.Keys);
+		Assert.DoesNotContain("secret", items.Keys);
+		
+		Assert.Equal("2:0-2:0 use game.geometry.area\n", EditOf(items["area"]));
+		Assert.Equal("2:21-2:21 \nuse util.clamp", EditOf(items["clamp"]));
+		Assert.Equal("2:17-2:21 [drift, step]", EditOf(items["drift"]));
+		Assert.Equal("2:17-2:21 [step, wind]", EditOf(items["wind"]));
+		
+		var typed = await CompleteInAsync(
+			"mod test\n\nuse game.physics.step\n\nmain: fun -> i32\n{\n\tval a = ar|\n\tret 0\n}\n");
+		
+		Assert.Equal("2:0-2:0 use game.geometry.area\n", EditOf(typed["area"]));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task MergesImportsInSortedOrder()
+	{
+		await WriteImportableModulesAsync();
+		await InitializeAsync();
+		var items = await CompleteInAsync("""
+		                                  mod test
+		                                  
+		                                  use game.physics.[step, wind]
+		                                  use util.clamp
+		                                  
+		                                  main: fun -> i32
+		                                  {
+		                                  	val a: i32 = |
+		                                  	ret 0
+		                                  }
+		                                  
+		                                  """);
+		
+		Assert.Equal("2:18-2:18 drift, ", EditOf(items["drift"]));
+		Assert.Equal("2:28-2:28 , zoom", EditOf(items["zoom"]));
+		Assert.Equal("2:0-2:0 use game.geometry.area\n", EditOf(items["area"]));
+		
+		var types = await CompleteInAsync(
+			"mod test\n\nuse util.clamp\nuse game.physics.step\n\nmake: fun(s: |) -> i32 => 0\n");
+		
+		Assert.Equal("2:0-2:0 use game.geometry.Shape\n", EditOf(types["Shape"]));
+		Assert.DoesNotContain("area", types.Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task AddsTheFirstImportBelowTheModuleHeader()
+	{
+		await WriteImportableModulesAsync();
+		await InitializeAsync();
+		var plain = await CompleteInAsync("mod test\n\nmain: fun -> i32\n{\n\tval a: i32 = |\n\tret 0\n}\n", "\r\n");
+		Assert.Equal("0:8-0:8 \r\n\r\nuse game.geometry.area", EditOf(plain["area"]));
+		
+		var conditional = await CompleteInAsync(
+			"mod test\nuse when debug\n\nmain: fun -> i32\n{\n\tval a: i32 = |\n\tret 0\n}\n");
+		
+		Assert.Equal("1:14-1:14 \n\nuse game.geometry.area", EditOf(conditional["area"]));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	private const string InactiveSource = """
 	                                      mod test
 	                                      

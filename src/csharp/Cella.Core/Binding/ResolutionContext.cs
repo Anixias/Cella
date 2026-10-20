@@ -662,19 +662,61 @@ public readonly struct ResolutionContext
 	{
 		if (Probe?.Covers(name) == true)
 			Probe.Capture(CompletionPlace.Type, GetAllSymbols().Distinct()
-				.Where(static symbol => symbol is TypeSymbol and not TypeParameterSymbol { IsValue: true }
-					or TraitSymbol
-					or ModulePathSymbol)
-				.Select(static symbol => new CompletionCandidate(symbol)), null);
+					.Where(static symbol => symbol is TypeSymbol and not TypeParameterSymbol { IsValue: true }
+						or TraitSymbol
+						or ModulePathSymbol)
+					.Select(static symbol => new CompletionCandidate(symbol)), null, File.Syntax,
+				GetImportableSymbols()
+					.Where(static entry => entry.Symbol is NamedTypeSymbol or TraitSymbol)
+					.Select(static entry => new CompletionCandidate(entry.Symbol, Import: entry.Import)));
 	}
 	
 	private void ProbeTrait(Token name)
 	{
 		if (Probe?.Covers(name) == true)
 			Probe.Capture(CompletionPlace.Trait, GetAllSymbols().Distinct()
-				.Where(static symbol =>
-					symbol is TraitSymbol or TypeParameterSymbol { IsTrait: true } or ModulePathSymbol)
-				.Select(static symbol => new CompletionCandidate(symbol)), null);
+					.Where(static symbol =>
+						symbol is TraitSymbol or TypeParameterSymbol { IsTrait: true } or ModulePathSymbol)
+					.Select(static symbol => new CompletionCandidate(symbol)), null, File.Syntax,
+				GetImportableSymbols()
+					.Where(static entry => entry.Symbol is TraitSymbol)
+					.Select(static entry => new CompletionCandidate(entry.Symbol, Import: entry.Import)));
+	}
+	
+	public IEnumerable<(Symbol Symbol, CompletionImport Import)> GetImportableSymbols()
+	{
+		if (Modules is not { } modules)
+			yield break;
+		
+		var visible = GetAllSymbols().ToHashSet();
+		var functionNames = visible.OfType<FunctionSymbol>().Select(static function => function.DeclaredName)
+			.ToHashSet();
+		
+		var otherNames = visible.Where(static symbol => symbol is not FunctionSymbol)
+			.Select(static symbol => symbol.Name)
+			.ToHashSet();
+		
+		var pending = new Stack<ModulePathSymbol>([modules.Root]);
+		while (pending.TryPop(out var module))
+		{
+			foreach (var child in module.Children.Values)
+				pending.Push(child);
+			
+			foreach (var (name, members) in module.Members)
+			{
+				if (otherNames.Contains(name))
+					continue;
+				
+				foreach (var member in members)
+				{
+					if (member is FunctionSymbol or NamedTypeSymbol or TraitSymbol or GlobalSymbol &&
+					    (member is FunctionSymbol || !functionNames.Contains(name)) &&
+					    !visible.Contains(member) && IsVisible(member))
+						yield return (member, new CompletionImport(name, module.Path,
+							modules.FindAssembly(member) == modules.AssemblyName));
+				}
+			}
+		}
 	}
 	
 	public IEnumerable<Symbol> GetModuleMembers(ModulePathSymbol module) => module.Members.Values

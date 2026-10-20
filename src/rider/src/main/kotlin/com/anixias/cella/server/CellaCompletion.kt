@@ -21,6 +21,7 @@ import com.intellij.lang.parameterInfo.CreateParameterInfoContext
 import com.intellij.lang.parameterInfo.ParameterInfoHandler
 import com.intellij.lang.parameterInfo.ParameterInfoUIContext
 import com.intellij.lang.parameterInfo.UpdateParameterInfoContext
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
@@ -30,9 +31,11 @@ import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionList
 import org.eclipse.lsp4j.CompletionParams
 import org.eclipse.lsp4j.InsertTextFormat
+import org.eclipse.lsp4j.Position
 import org.eclipse.lsp4j.SignatureHelpParams
 import org.eclipse.lsp4j.SignatureInformation
 import org.eclipse.lsp4j.TextDocumentIdentifier
+import org.eclipse.lsp4j.TextEdit
 import javax.swing.Icon
 
 class CellaCompletionContributor : CompletionContributor() {
@@ -63,8 +66,12 @@ class CellaCompletionContributor : CompletionContributor() {
 			.withBoldness(item.kind == CompletionItemKind.Keyword)
 		
 		val text = item.insertText ?: item.label
-		if (item.insertTextFormat == InsertTextFormat.Snippet)
-			builder = builder.withInsertHandler(SnippetInsertHandler(text))
+		val snippet = if (item.insertTextFormat == InsertTextFormat.Snippet) SnippetInsertHandler(text) else null
+		val edits = item.additionalTextEdits.orEmpty()
+		if (edits.isNotEmpty())
+			builder = builder.withInsertHandler(ImportInsertHandler(edits, snippet))
+		else if (snippet != null)
+			builder = builder.withInsertHandler(snippet)
 		
 		return builder
 	}
@@ -88,6 +95,26 @@ class CellaCompletionContributor : CompletionContributor() {
 		CompletionItemKind.Constant -> AllIcons.Nodes.Constant
 		CompletionItemKind.TypeParameter -> AllIcons.Nodes.Type
 		else -> null
+	}
+}
+
+class ImportInsertHandler(private val edits: List<TextEdit>, private val next: InsertHandler<LookupElement>?) :
+	InsertHandler<LookupElement> {
+	override fun handleInsert(context: InsertionContext, item: LookupElement) {
+		val document = context.document
+		val ranges = edits.map { offsetOf(document, it.range.start) to offsetOf(document, it.range.end) }
+		for ((edit, range) in edits.zip(ranges).sortedByDescending { it.second.first })
+			document.replaceString(range.first, range.second, edit.newText)
+		
+		next?.handleInsert(context, item)
+	}
+	
+	private fun offsetOf(document: Document, position: Position): Int {
+		if (position.line >= document.lineCount)
+			return document.textLength
+		
+		val lineStart = document.getLineStartOffset(position.line)
+		return (lineStart + position.character).coerceAtMost(document.getLineEndOffset(position.line))
 	}
 }
 

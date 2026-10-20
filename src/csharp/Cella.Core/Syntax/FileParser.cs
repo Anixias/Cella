@@ -240,6 +240,7 @@ public sealed partial class FileParser
 		var hasModuleKeyword = false;
 		var moduleNames = new List<SourceLocation>();
 		var conditions = new List<Token>();
+		SourceLocation? importCondition = null;
 		var importsAllowed = false;
 		var conditionAllowed = false;
 		var isIncluded = true;
@@ -313,6 +314,9 @@ public sealed partial class FileParser
 						isIncluded &= condition;
 					}
 					
+					importCondition ??= new SourceLocation(source,
+						useToken.SourceLocation.Range.Join(Tokens[index - 1].SourceLocation.Range));
+					
 					conditionAllowed = false;
 					continue;
 				}
@@ -328,7 +332,12 @@ public sealed partial class FileParser
 				
 				ReportLexicalErrors(importStart, index);
 				if (import is { } parsed)
-					imports.Add(parsed with { HasSyntaxErrors = Diagnostics.ErrorCount > errorsBefore });
+					imports.Add(parsed with
+					{
+						HasSyntaxErrors = Diagnostics.ErrorCount > errorsBefore,
+						SourceLocation = new(source,
+							useToken.SourceLocation.Range.Join(Tokens[index - 1].SourceLocation.Range))
+					});
 				
 				if (!importsAllowed && !precedesModuleName)
 					Report(useToken, "Imports must precede all other declarations");
@@ -370,6 +379,7 @@ public sealed partial class FileParser
 			FullPath = fullPath,
 			ModuleName = moduleName,
 			Imports = imports.ToImmutableArray(),
+			ImportCondition = importCondition,
 			Declarations = declarations.ToImmutableArray(),
 			BrokenStatements = _brokenStatements,
 			BrokenDeclarations = _brokenDeclarations,

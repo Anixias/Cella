@@ -16,13 +16,19 @@ public sealed partial class Resolver
 			return;
 		
 		if (Probe.Covers(name))
-			Probe.Capture(CompletionPlace.Name, GetNameCandidates(), expectedType);
+			Probe.Capture(CompletionPlace.Name, GetNameCandidates(), expectedType,
+				CurrentResolutionContext.File.Syntax, GetImportableCandidates());
 		
 		Probe.CaptureCall(name, GetNameCandidates());
 	}
 	
 	private IEnumerable<CompletionCandidate> GetNameCandidates() =>
 		CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate);
+	
+	private IEnumerable<CompletionCandidate> GetImportableCandidates() => CurrentResolutionContext
+		.GetImportableSymbols()
+		.Where(static entry => entry.Symbol is not TraitSymbol)
+		.Select(entry => ToCandidate(entry.Symbol) with { Import = entry.Import });
 	
 	private void ProbeMember(AccessExpressionNode node, Func<IEnumerable<CompletionCandidate>> candidates)
 	{
