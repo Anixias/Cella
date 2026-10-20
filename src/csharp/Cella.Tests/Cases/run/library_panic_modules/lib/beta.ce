@@ -1,0 +1,3 @@
+mod lib.beta
+
+increment: pub fun(value: u8) -> u8 => value + 1

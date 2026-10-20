@@ -1,0 +1,4 @@
+OutputType = "StaticLibrary"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+Imports = ["lib.alpha.panic"]

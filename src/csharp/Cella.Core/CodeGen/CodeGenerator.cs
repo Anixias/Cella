@@ -84,6 +84,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private readonly LLVMValueRef _true;
 	private readonly LLVMValueRef _false;
 	private readonly HashSet<FunctionSymbol> _sharedFunctions;
+	private readonly HashSet<FunctionSymbol> _panicAdapters;
 	private readonly ModuleIndex _modules;
 	private readonly Dictionary<FunctionSymbol, LoweredFunction> _genericBodies;
 	private readonly CodeGenInputs _inputs;
@@ -114,6 +115,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	{
 		_modules = modules;
 		_inputs = inputs;
+		_panicAdapters = [..inputs.PanicAdapters.Values.Select(static adapter => adapter.Symbol)];
 		_genericBodies = inputs.GenericFunctions.ToDictionary(static function => function.Info.Symbol);
 		Init();
 		_true = LLVMValueRef.CreateConstInt(_context.Int1Type, 1uL);

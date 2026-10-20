@@ -1,6 +1,6 @@
 mod test
 
-use std.panic
+use std.process.panic
 
 ext
 {

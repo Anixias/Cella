@@ -1,0 +1,5 @@
+mod test
+
+use lib.beta.increment
+
+main: fun -> i32 => i32(increment(255))

@@ -232,6 +232,6 @@ public sealed partial class CodeGenerator
 		while (symbol.ContainingFunction is { } outer)
 			symbol = outer.Symbol;
 		
-		return _assemblySymbol.SignatureTable.Functions.ContainsKey(symbol);
+		return _assemblySymbol.SignatureTable.Functions.ContainsKey(symbol) || _panicAdapters.Contains(symbol);
 	}
 }
