@@ -1,6 +1,4 @@
-﻿using System.Collections.Immutable;
-
-namespace Cella.Core.Text;
+﻿namespace Cella.Core.Text;
 
 public readonly record struct Token
 {
@@ -12,7 +10,6 @@ public readonly record struct Token
 	public int Line { get; }
 	public string Text { get; }
 	public string? Error { get; init; }
-	public ImmutableArray<SourceLocation> HiddenCharacters { get; init; } = [];
 	public InterpolatedString? Interpolation { get; init; }
 	public string? Suffix { get; init; }
 	public ReadOnlySpan<char> AsSpan() => Text.AsSpan();

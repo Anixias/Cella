@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Immutable;
 
 namespace Cella.Core.Text;
 
@@ -16,20 +15,13 @@ public class FilteredScanner : IEnumerable<Token>
 	{
 		var pos = position;
 		var result = _scanner.ScanToken(pos);
-		var hidden = ImmutableArray<SourceLocation>.Empty;
 		while (result.NextPosition > pos && result.Token.Type.IsFiltered)
 		{
-			hidden = hidden.AddRange(result.Token.HiddenCharacters);
 			pos = result.NextPosition;
 			result = _scanner.ScanToken(pos);
 		}
 		
-		return hidden.IsEmpty
-			? result
-			: result with
-			{
-				Token = result.Token with { HiddenCharacters = [..hidden, ..result.Token.HiddenCharacters] }
-			};
+		return result;
 	}
 	
 	private IEnumerable<Token> ScanAllTokens()
@@ -41,10 +33,7 @@ public class FilteredScanner : IEnumerable<Token>
 			var token = lexerResult.Token;
 			if (token.Type == TokenType.EndOfFile)
 			{
-				yield return Token.EndOfFile(token.SourceLocation.Source, codeEnd) with
-				{
-					HiddenCharacters = token.HiddenCharacters
-				};
+				yield return Token.EndOfFile(token.SourceLocation.Source, codeEnd);
 				
 				break;
 			}

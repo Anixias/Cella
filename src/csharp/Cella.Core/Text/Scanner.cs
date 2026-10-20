@@ -20,21 +20,6 @@ public class Scanner
 	
 	public ScanResult ScanToken(int position)
 	{
-		var result = ScanAny(position);
-		if (result.Token.Type == TokenType.EndOfFile)
-			return result;
-		
-		var range = result.Token.SourceLocation.Range;
-		var hidden = Enumerable.Range(range.Start, range.End - range.Start)
-			.Where(index => IsHiddenCharacter(Source[index]))
-			.Select(index => new SourceLocation(Source, new TextRange(index, index + 1)))
-			.ToImmutableArray();
-		
-		return hidden.IsEmpty ? result : result with { Token = result.Token with { HiddenCharacters = hidden } };
-	}
-	
-	private ScanResult ScanAny(int position)
-	{
 		if (position < 0 || position >= Source.Length)
 			return ScanResult.EndOfFile(Source);
 		

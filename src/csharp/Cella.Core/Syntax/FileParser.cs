@@ -211,10 +211,20 @@ public sealed partial class FileParser
 			    !Diagnostics.Any(d => d.SourceLocation == token.SourceLocation && d.Message == error))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation, error));
 			
-			foreach (var location in token.HiddenCharacters)
+			foreach (var location in FindHiddenCharacters(i))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 					$"Cannot use U+{(int)location.GetText()[0]:X4} in source"));
 		}
+	}
+	
+	private IEnumerable<SourceLocation> FindHiddenCharacters(int index)
+	{
+		var (source, range) = Tokens[index].SourceLocation;
+		var start = index == 0 ? 0 : Tokens[index - 1].SourceLocation.Range.End;
+		var end = Tokens[index].Type == TokenType.EndOfFile ? source.Length : range.End;
+		for (var i = start; i < end; i++)
+			if (Scanner.IsHiddenCharacter(source[i]))
+				yield return new(source, new(i, i + 1));
 	}
 	
 	private FileNode? ParseFile(ref int index)

@@ -9,3 +9,5 @@ main: fun -> i32
 	// ⁦admin⁩ check
 	ret x
 }
+
+// trailing ⁦note
