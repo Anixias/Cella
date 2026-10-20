@@ -8,16 +8,8 @@ param(
 . "$PSScriptRoot/Release.Common.ps1"
 
 $hostName = Get-HostName
-$index = try {
-	Invoke-RestMethod -Uri $IndexUrl
-}
-catch {
-	if (-not (Test-NotFound $_)) {
-		throw
-	}
-
-	$null
-}
+$index = $null
+$indexRead = $false
 $downloads = Join-Path $Work 'assets'
 New-Item -ItemType Directory -Force $downloads | Out-Null
 
@@ -26,9 +18,35 @@ foreach ($component in Get-Components) {
 		continue
 	}
 
+	$destination = if ($component.Kind -eq 'llvm') {
+		Join-Path $Output "llvm/$($component.Version)"
+	}
+	else {
+		Join-Path $Output "toolchains/$($component.Name)/$($component.Version)"
+	}
+
+	if (Test-Path $destination) {
+		Write-Host "Keeping $($component.Kind) $($component.Name) $($component.Version) in $destination"
+		continue
+	}
+
 	$asset = Get-ComponentAsset $component
 	$archive = if ($Built) { Join-Path $Built $asset } else { '' }
 	if (-not $archive -or -not (Test-Path $archive)) {
+		if (-not $indexRead) {
+			$index = try {
+				Invoke-RestMethod -Uri $IndexUrl
+			}
+			catch {
+				if (-not (Test-NotFound $_)) {
+					throw
+				}
+
+				$null
+			}
+			$indexRead = $true
+		}
+
 		$release = if ($index) { $index.versions.($component.Version) } else { $null }
 		$published = if ($release) { $release.($component.Kind).($component.Name) } else { $null }
 		if ($published) {
@@ -44,13 +62,6 @@ foreach ($component in Get-Components) {
 				-Work $Work
 			$archive = Join-Path $downloads $asset
 		}
-	}
-
-	$destination = if ($component.Kind -eq 'llvm') {
-		Join-Path $Output "llvm/$($component.Version)"
-	}
-	else {
-		Join-Path $Output "toolchains/$($component.Name)/$($component.Version)"
 	}
 
 	Expand-Asset -Path $archive -Destination $destination

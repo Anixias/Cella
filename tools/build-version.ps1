@@ -30,6 +30,11 @@ $components = Get-ComponentVersions
 	Set-Content (Join-Path $staging 'components.json')
 New-Archive -Directory $staging -Path (Join-Path $Output (Get-VersionAsset -Version $version -HostName $hostName))
 
+$installer = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer'
+if ($IsWindows -and -not (Get-Command vswhere -ErrorAction SilentlyContinue) -and (Test-Path $installer)) {
+	$env:PATH = "$installer;$env:PATH"
+}
+
 dotnet publish (Join-Path $sources 'Cella.Launcher') -c Release -r $hostName -o $launcher
 if ($LASTEXITCODE -ne 0) {
 	throw 'Publishing the launcher failed'

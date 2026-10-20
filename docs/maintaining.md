@@ -8,6 +8,10 @@ The scripts in `tools/` need PowerShell 7 (`pwsh`).
 
 A commit adds a changelog entry by putting `[~]` in its description. Everything after the token is the entry, written in Markdown. Text before the token and commits without one are left out.
 
+## Installing a development build
+
+`tools/install-dev.cmd` (or `pwsh tools/install-dev.ps1`) builds the working tree the way a release does and installs it into `CELLA_HOME` as the `-dev` version in `version.txt`, replacing the one there. It also replaces the launcher, fetches any missing components, and stops processes running from that version's folder, such as an editor's language server. Projects without a `CellaVersion` pin use it as long as no newer release is installed.
+
 ## Releasing
 
 Releases are made from a clean `main`.

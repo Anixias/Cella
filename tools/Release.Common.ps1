@@ -13,6 +13,10 @@ function Get-CellaVersion {
 	(Get-Content (Join-Path $Repository 'version.txt') -Raw).Trim()
 }
 
+function Get-CellaHome {
+	if ($env:CELLA_HOME) { $env:CELLA_HOME } elseif ($IsWindows) { 'C:\cella' } else { Join-Path $HOME '.cella' }
+}
+
 function Get-ComponentVersions {
 	Get-Content (Join-Path $Repository 'components.json') -Raw | ConvertFrom-Json -AsHashtable
 }
