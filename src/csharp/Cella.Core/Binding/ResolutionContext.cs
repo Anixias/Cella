@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding.Constants;
+using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -804,6 +805,7 @@ public readonly struct ResolutionContext
 		return named switch
 		{
 			TypeParameterSymbol { IsValue: true } value => value,
+			LocalVariableSymbol local when FindParametricArgument(local) is { } argument => argument,
 			VariableSymbol => ResolveValueExpression(expression, parameter),
 			null when expression is AccessExpressionNode access && ResolveModule(access.Target) is { } module =>
 				ReportMissingMember(access, module),
@@ -815,6 +817,16 @@ public readonly struct ResolutionContext
 			_ => ResolveValueExpression(expression, parameter)
 		};
 	}
+	
+	private TypeParameterSymbol? FindParametricArgument(LocalVariableSymbol local) =>
+		(local.ConstantValue as ParametricConstant)?.Value switch
+		{
+			ResolvedValueParameterExpressionNode value => value.Parameter,
+			ResolvedTypeConstantExpressionNode { Use: { Owner: TypeParameterSymbol, Trait: not null } use } =>
+				TypePool.GetConstantProjection(use),
+			ResolvedVarExpressionNode { Symbol: LocalVariableSymbol source } => FindParametricArgument(source),
+			_ => null
+		};
 	
 	private TypeSymbol ReportMissingMember(AccessExpressionNode access, ModulePathSymbol module)
 	{
@@ -1061,6 +1073,7 @@ public readonly struct ResolutionContext
 			IdentifierArgumentNode argument => Resolve(argument.Identifier) switch
 			{
 				TypeParameterSymbol { IsValue: true } value => value,
+				LocalVariableSymbol local when FindParametricArgument(local) is { } parametric => parametric,
 				VariableSymbol => ResolveValueExpression(new VarExpressionNode(argument.Identifier), parameter),
 				var symbol => AsTraitArgument(symbol, argument.SourceLocation) ?? ResolveNamedType(argument.Identifier)
 			},

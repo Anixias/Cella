@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Number: trait req copy
+{
+	zero: const Self
+}
+
+i32: impl Number
+{
+	zero: const i32 = 7
+}
+
+u8: impl Number
+{
+	zero: const u8 = 250
+}
+
+Sized: trait
+{
+	bits: const usize
+}
+
+i64: impl Sized
+{
+	bits: const usize = 64
+}
+
+pick[T: Number]: fun -> T
+{
+	const zero = T.zero
+	const copied = zero
+	ret copied
+}
+
+count[N: const usize]: fun -> usize
+{
+	const n = N
+	const doubled = n * 2
+	ret doubled
+}
+
+bytes[T]: fun -> usize
+{
+	const size = sizeOf(T)
+	ret size + 1
+}
+
+inner[M: const usize]: fun -> usize => M
+
+alias[N: const usize]: fun -> usize
+{
+	const n = N
+	const again = n
+	var buffer: array[u8, again]
+	ret buffer.length + inner[n]()
+}
+
+projected[T: Sized]: fun -> usize
+{
+	const width = T.bits
+	ret inner[width]()
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", pick[i32](), i32(pick[u8]()))
+	printf("%zu %zu %zu\n", count[3](), bytes[i64](), bytes[u16]())
+	printf("%zu %zu\n", alias[2](), projected[i64]())
+	ret 0
+}

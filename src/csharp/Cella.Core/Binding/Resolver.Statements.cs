@@ -251,7 +251,8 @@ public sealed partial class Resolver
 		
 		var constant = node.IsConstant && initializer is not null && type is not InvalidType &&
 		               !_typePool.NeedsDrop(type)
-			? _evaluator.Evaluate(initializer)
+			? _evaluator.Evaluate(initializer) ??
+			  (_signatures.IsParametric(initializer) ? new ParametricConstant(initializer) : null)
 			: null;
 		
 		if (node.IsConstant)

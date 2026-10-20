@@ -392,8 +392,9 @@ public sealed partial class SignatureCollector
 		return defaults;
 	}
 	
-	private bool IsParametric(IResolvedExpressionNode node) => node switch
+	public bool IsParametric(IResolvedExpressionNode node) => node switch
 	{
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: ParametricConstant } } => true,
 		ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode or ResolvedValueParameterExpressionNode => true,
 		ResolvedTypeConstantExpressionNode n => TypePool.ContainsTypeParameters(n.Owner),
 		ResolvedUnaryOpExpressionNode { Operation: NativeImpl } n => IsParametric(n.Operand),

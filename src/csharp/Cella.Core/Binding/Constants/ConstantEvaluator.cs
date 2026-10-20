@@ -275,8 +275,8 @@ public sealed class ConstantEvaluator
 		ResolvedConversionExpressionNode n => FoldAll([n.Source], values => Convert(values[0], n.Conversion)),
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol symbol } when
 			_bindings.TryGetValue(symbol, out var bound) => bound,
-		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: { } value } } => value,
-		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } => FoldGlobal(global),
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: { } value } } => FoldStored(value),
+		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } => FoldStored(getGlobalValue(global)),
 		ResolvedTypeConstantExpressionNode n => FoldTypeConstant(n),
 		ResolvedValueParameterExpressionNode n when substitution is not null &&
 		                                            typePool.SubstituteParameter(n.Parameter, substitution) is
@@ -297,11 +297,11 @@ public sealed class ConstantEvaluator
 		_ => null
 	};
 	
-	private Constant? FoldGlobal(GlobalSymbol global) => getGlobalValue(global) switch
+	private Constant? FoldStored(Constant? value) => value switch
 	{
 		ParametricConstant parametric when substitution is not null => Fold(parametric.Value),
 		ParametricConstant => null,
-		var value => value
+		_ => value
 	};
 	
 	private IntegerConstant? FoldLayout(TypeSymbol target, bool isAlignment)

@@ -149,6 +149,9 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 			
 			case ResolvedTypeConstantExpressionNode { Owner: TypeParameterSymbol owner }:
 				return new(isArithmetic, $"'{text}' depends on '{owner.Name}'");
+			
+			case ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { ConstantValue: ParametricConstant source } }:
+				return FindValueParameterUse(source.Value, isArithmetic);
 		}
 		
 		var keepsArithmetic = isArithmetic && node is ResolvedBinaryOpExpressionNode or ResolvedUnaryOpExpressionNode

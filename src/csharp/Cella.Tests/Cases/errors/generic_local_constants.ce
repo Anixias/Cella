@@ -1,0 +1,23 @@
+mod test
+
+inner[M: const usize]: fun -> usize => M
+
+shifted[N: const usize]: fun -> usize
+{
+	const n = N + 1
+	ret inner[n]()
+}
+
+sized[T]: fun -> usize
+{
+	const size = sizeOf(T)
+	ret inner[size]()
+}
+
+copied[T: copy]: fun(value: T) -> usize
+{
+	const kept = value
+	ret 0
+}
+
+main: fun -> i32 => i32(shifted[1]() + sized[i32]())

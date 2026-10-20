@@ -1,0 +1,16 @@
+Error at generic_local_constants.ce:8:12
+7 │ const n = N + 1
+8 │ ret inner[n]()
+              ^ Cannot use arithmetic on value parameters in generic arguments
+
+Error at generic_local_constants.ce:14:12
+13 │ const size = sizeOf(T)
+14 │ ret inner[size]()
+               ╘══╛ 'size' is not a constant
+
+Error at generic_local_constants.ce:19:15
+18 │ {
+19 │     const kept = value
+                      ╘═══╛ The initial value of 'kept' must be a constant
+
+[compilation failed]
