@@ -46,4 +46,14 @@ Point: rec
 
 Point: impl Built
 
+Droppy: trait req drop
+
+Combined: trait req Bounded + Droppy
+
+dropped[T: Bounded + drop]: fun -> i32 => 0
+
+both[T: Bounded + Droppy]: fun -> i32 => 0
+
+combined[T: Combined]: fun -> i32 => 0
+
 main: fun -> i32 => 0

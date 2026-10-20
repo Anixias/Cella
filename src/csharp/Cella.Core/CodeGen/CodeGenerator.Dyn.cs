@@ -22,14 +22,17 @@ public sealed partial class CodeGenerator
 	
 	private LLVMValueRef EmitDynCall(FunctionInfo info, DynType dyn, CallValue v, LLVMBuilderRef builder)
 	{
-		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToArray();
+		var args = v.Arguments.Select((argument, i) => i == 0 && CopiesReceiver(info)
+			? EmitAddress(argument, builder)
+			: EmitValue(argument, builder)).ToArray();
+		
 		var trait = _typePool.GetTraitType(info.Symbol.Trait!, TypePool.GetTraitArguments(info));
 		var table = EmitDynPath(dyn.Instance!, trait, builder.BuildExtractValue(args[0], 1, "table"), builder);
 		args[0] = builder.BuildExtractValue(args[0], 0, "object");
 		var slot = (uint)(_typePool.GetDynSlot(trait.Trait, info.Symbol) + DynTableHeader.Length);
 		var entry = builder.BuildStructGEP2(GetDynTableType(trait.Trait), table, slot, "entry");
 		var method = builder.BuildLoad2(OpaquePointer, entry, "method");
-		var parameterTypes = MapParameterTypes(info);
+		var parameterTypes = MapParameterTypes(info, type => type is DynType ? OpaquePointer : MapValueType(type));
 		parameterTypes[0] = OpaquePointer;
 		var functionType = CreateInternalFunctionType(info.Signature.ReturnType, [], parameterTypes);
 		return BuildInternalCall(builder, functionType, method, info.Signature.ReturnType, [], args);
@@ -58,7 +61,9 @@ public sealed partial class CodeGenerator
 	
 	private LLVMTypeRef GetDynTableType(TraitSymbol trait)
 	{
-		var entries = _typePool.FindDynMembers(trait)!.Value.Length + _typePool.GetDynRequirements(trait).Length;
+		var entries = _typePool.FindDynMembers(trait)!.Value.Length + _typePool.CountDynRequirements(trait) +
+		              _typePool.GetDynCalls(trait).Length;
+		
 		return _context.GetStructType([..DynTableHeader, ..Enumerable.Repeat(OpaquePointer, entries)], false);
 	}
 	
@@ -123,14 +128,7 @@ public sealed partial class CodeGenerator
 		if (existing.Handle != nint.Zero)
 			return existing;
 		
-		var call = objectType switch
-		{
-			ClosureType closure when TakesCopies(closure.Signature, function) => GetClosureCallThunk(function, closure),
-			ClosureType closure => GetFunctionValue(closure.Function),
-			FunctionType stored => GetStoredCallThunk(function, stored),
-			_ => throw new InvalidOperationException()
-		};
-		
+		var call = GetDynCallEntry(function, objectType);
 		var size = _typePool.SizeTable.GetSize(objectType);
 		var table = current.Module.AddGlobal(FunctionDynTableType, name);
 		table.Initializer = _context.GetConstStruct(
@@ -144,6 +142,28 @@ public sealed partial class CodeGenerator
 		table.IsGlobalConstant = true;
 		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		return table;
+	}
+	
+	private LLVMValueRef GetDynCallEntry(FunctionType function, TypeSymbol objectType) => objectType switch
+	{
+		ClosureType closure when TakesCopies(closure.Signature, function) => GetClosureCallThunk(function, closure),
+		ClosureType closure => GetFunctionValue(closure.Function),
+		FunctionType stored => GetStoredCallThunk(function, stored),
+		_ => throw new InvalidOperationException()
+	};
+	
+	private uint GetDynCallSlot(TraitType trait, FunctionType function)
+	{
+		var calls = _typePool.GetDynCalls(trait);
+		var index = calls.IndexOf(function);
+		if (index < 0)
+			index = calls.Select(_typePool.GetRefFunctionType).ToImmutableArray().IndexOf(function);
+		
+		if (index < 0)
+			throw new InvalidOperationException($"'{trait.Name}' has no call slot for '{function.Name}'");
+		
+		return (uint)(DynTableHeader.Length + _typePool.FindDynMembers(trait.Trait)!.Value.Length +
+		              _typePool.CountDynRequirements(trait.Trait) + index);
 	}
 	
 	private ImmutableArray<FunctionInfo> GetDynMemberInfos(TraitType trait, TypeSymbol objectType) =>
@@ -162,9 +182,11 @@ public sealed partial class CodeGenerator
 		
 		LLVMValueRef[] entries =
 		[
-			..members.Select(GetFunctionValue),
-			.._typePool.GetDynRequirements(trait).Select(required =>
-				GetDynTable(required, objectType, GetDynMemberInfos(required, objectType)))
+			..members.Select(GetDynEntry),
+			.._typePool.GetDynRequirements(trait).Select(required => required is null
+				? LLVMValueRef.CreateConstNull(OpaquePointer)
+				: GetDynTable(required, objectType, GetDynMemberInfos(required, objectType))),
+			.._typePool.GetDynCalls(trait).Select(function => GetDynCallEntry(function, objectType))
 		];
 		
 		var size = _typePool.SizeTable.GetSize(objectType);
@@ -180,6 +202,33 @@ public sealed partial class CodeGenerator
 		table.IsGlobalConstant = true;
 		table.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		return table;
+	}
+	
+	private static bool CopiesReceiver(FunctionInfo member) =>
+		member.Signature.ParameterTypes.Length > 0 && member.Signature.GetMode(0) == ParameterMode.ReadOnly;
+	
+	private LLVMValueRef GetDynEntry(FunctionInfo member)
+	{
+		var function = GetFunctionValue(member);
+		if (!CopiesReceiver(member))
+			return function;
+		
+		var name = $"dyn${function.Name}";
+		var existing = current.Module.GetNamedFunction(name);
+		if (existing.Handle != nint.Zero)
+			return existing;
+		
+		var returnType = member.Signature.ReturnType;
+		var parameterTypes = MapParameterTypes(member);
+		parameterTypes[0] = OpaquePointer;
+		var thunk = current.Module.AddFunction(name, CreateInternalFunctionType(returnType, [], parameterTypes));
+		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
+		using var builder = CreateGeneratedBuilder(thunk, name, SourceLocation.None);
+		var args = parameterTypes.Select((_, i) => thunk.GetParam((uint)i)).ToArray();
+		args[0] = LoadValue(builder, member.Signature.ParameterTypes[0], args[0], "self");
+		var result = BuildInternalCall(builder, current.Functions[member].FunctionType, function, returnType, [], args);
+		EmitThunkReturn(thunk, returnType, returnType, result, builder);
+		return thunk;
 	}
 	
 	private LLVMValueRef EmitTypeId(TypeSymbol type)

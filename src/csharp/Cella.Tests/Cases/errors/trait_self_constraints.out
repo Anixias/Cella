@@ -62,4 +62,39 @@ Error at trait_self_constraints.ce:47:13
                  ╘═══╛ 'Built' requires 'Self: new(i32)'
                      | 'Point' has no constructor taking 'i32'
 
+Error at trait_self_constraints.ce:51:21
+50 │ 
+51 │ Combined: trait req Bounded + Droppy
+                         ╘═════╛ Cannot combine 'copy' and 'drop'
+                               | 'Bounded' requires 'copy'
+
+Error at trait_self_constraints.ce:51:31
+50 │ 
+51 │ Combined: trait req Bounded + Droppy
+                                   ╘════╛ Cannot combine 'copy' and 'drop'
+                                        | 'Droppy' requires 'drop'
+
+Error at trait_self_constraints.ce:53:12
+52 │ 
+53 │ dropped[T: Bounded + drop]: fun -> i32 => 0
+                ╘═════╛ Cannot combine 'copy' and 'drop'
+                      | 'Bounded' requires 'copy'
+
+Error at trait_self_constraints.ce:53:22
+52 │ 
+53 │ dropped[T: Bounded + drop]: fun -> i32 => 0
+                          ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at trait_self_constraints.ce:55:9
+54 │ 
+55 │ both[T: Bounded + Droppy]: fun -> i32 => 0
+             ╘═════╛ Cannot combine 'copy' and 'drop'
+                   | 'Bounded' requires 'copy'
+
+Error at trait_self_constraints.ce:55:19
+54 │ 
+55 │ both[T: Bounded + Droppy]: fun -> i32 => 0
+                       ╘════╛ Cannot combine 'copy' and 'drop'
+                            | 'Droppy' requires 'drop'
+
 [compilation failed]

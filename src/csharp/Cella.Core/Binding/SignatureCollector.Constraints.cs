@@ -93,7 +93,7 @@ public sealed partial class SignatureCollector
 					ReportHiddenType(node.Traits[j], bound, GetOwnerVisibility(owner, context), owner.Name);
 		
 		_boundLists.Add((node.Traits, bounds, parameter, CurrentOwner));
-		_constrainedParameters.Add(parameter);
+		_constrainedParameters.Add((node, parameter, bounds, CurrentOwner));
 		ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
 		ImmutableArray<FunctionType> functions = [..bounds.OfType<FunctionType>().Distinct()];
 		if (functions.Length > 1)
@@ -198,10 +198,47 @@ public sealed partial class SignatureCollector
 	
 	private void InheritSelfConstraints()
 	{
-		foreach (var parameter in _constrainedParameters)
-			_typePool.InheritSelfConstraints(parameter);
+		foreach (var constrained in _constrainedParameters)
+			_typePool.InheritSelfConstraints(constrained.Parameter);
 		
 		_typePool.ResetFacts();
+	}
+	
+	private void ReportInheritedConflicts()
+	{
+		foreach (var (node, parameter, bounds, errorOwner) in _constrainedParameters)
+		{
+			if (parameter.InheritedConstraints.IsEmpty)
+				continue;
+			
+			using var frame = Own(errorOwner);
+			var sources = node.Keywords
+				.Select(static keyword =>
+					(Location: keyword.SourceLocation, Keyword: keyword.Type, Trait: (TraitType?)null))
+				.Concat(node.Traits.SelectMany((traitNode, j) => bounds[j] is TraitType trait
+					? _typePool.GetSelfConstraints(trait, parameter)
+						.Select(keyword => (Location: traitNode.SourceLocation, Keyword: keyword,
+							Trait: (TraitType?)trait))
+					: []))
+				.ToList();
+			
+			var drops = sources.Where(static source => source.Keyword == TokenType.KeywordDrop).ToList();
+			foreach (var copying in _copyingConstraints)
+			{
+				var conflicting = sources.Where(source => source.Keyword == copying).Concat(drops).ToList();
+				if (drops.Count == 0 || conflicting.Count == drops.Count ||
+				    conflicting.All(static source => source.Trait is null) ||
+				    conflicting.Select(static source => source.Location).Distinct().Count() < 2)
+					continue;
+				
+				var message = $"Cannot combine '{copying.Representation}' and 'drop'";
+				foreach (var (location, keyword, trait) in conflicting)
+					Diagnostics.Add(new(DiagnosticSeverity.Error, location, message)
+					{
+						Hints = trait is null ? [] : [$"'{trait.Name}' requires '{keyword.Representation}'"]
+					});
+			}
+		}
 	}
 	
 	private void ReportRequirementCycles(IEnumerable<FileNode> files)
@@ -354,6 +391,11 @@ public sealed partial class SignatureCollector
 		
 		ReportKeywordConflicts(keywords);
 	}
+	
+	private static readonly TokenType[] _copyingConstraints =
+	[
+		TokenType.KeywordCopy, TokenType.KeywordAtomic, TokenType.KeywordExt, TokenType.KeywordNull
+	];
 	
 	private void ReportKeywordConflicts(ImmutableArray<Token> keywords)
 	{

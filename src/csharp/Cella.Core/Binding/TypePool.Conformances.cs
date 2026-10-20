@@ -139,6 +139,7 @@ public sealed partial class TypePool
 		FunctionType function => [function],
 		TypeParameterSymbol parameter => GetFunctionBounds(parameter),
 		DynType { Function: { } function } => [function],
+		DynType { Instance: { } trait } => GetDynCalls(trait),
 		_ => []
 	};
 	
@@ -195,10 +196,26 @@ public sealed partial class TypePool
 	public ImmutableArray<TraitType> GetDynRequirements(TraitSymbol trait) =>
 		[..GetRequiredTraits(trait).Where(required => !FindTypeParameters(required).Contains(trait.Self))];
 	
-	public ImmutableArray<TraitType> GetDynRequirements(TraitType trait)
+	public int CountDynRequirements(TraitSymbol trait) =>
+		GetDynRequirements(trait).Length + GetParameterBounds(trait.Self).Length;
+	
+	public ImmutableArray<TraitType?> GetDynRequirements(TraitType trait)
 	{
 		var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
-		return [..GetDynRequirements(trait.Trait).Select(required => SubstituteTrait(required, map))];
+		return
+		[
+			..GetDynRequirements(trait.Trait).Select(required => SubstituteTrait(required, map)),
+			..GetParameterBounds(trait.Trait.Self).Select(bound => map.GetValueOrDefault(bound) as TraitType)
+		];
+	}
+	
+	public ImmutableArray<FunctionType> GetDynCalls(TraitSymbol trait) =>
+		[..GetFunctionBounds(trait.Self).Where(function => !FindTypeParameters(function).Contains(trait.Self))];
+	
+	public ImmutableArray<FunctionType> GetDynCalls(TraitType trait)
+	{
+		var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
+		return [..GetDynCalls(trait.Trait).Select(function => SubstituteFunctionType(function, map))];
 	}
 	
 	public IEnumerable<TraitType> GetDynTraits(TraitType trait) =>
@@ -216,7 +233,7 @@ public sealed partial class TypePool
 		while (pending.TryDequeue(out var entry))
 		{
 			yield return entry;
-			foreach (var required in GetDynRequirements(entry.Trait))
+			foreach (var required in GetDynRequirements(entry.Trait).OfType<TraitType>())
 			{
 				if (visited.Add(required))
 					pending.Enqueue((required, [..entry.Path, required]));

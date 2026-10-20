@@ -59,8 +59,36 @@ i32: impl Named
 
 i32: impl Wrapper[Named]
 
-largest[T: Bounded]: fun -> T => T.maxValue
+Measured: trait req copy
+{
+	measure: fun(self) -> i64
+	doubled: fun(imm self) -> i64
+	{
+		val copy = self
+		ret copy.measure() * 2
+	}
+}
 
+Wide: rec impl Measured
+{
+	a: i64
+	b: i64
+	c: i64
+	d: i64
+	e: i64
+
+	measure: fun(self) -> i64 => self.a + self.b + self.c + self.d + self.e
+}
+
+Callback: trait req fun[i32 -> i32]
+
+Logged: trait req Callback
+
+[T: fun[i32 -> i32]]: impl Callback
+
+[T: fun[i32 -> i32]]: impl Logged
+
+largest[T: Bounded]: fun -> T => T.maxValue
 kept[T: Bounded]: fun(value: T) -> T
 {
 	val first = value
@@ -78,10 +106,22 @@ build[T: Built]: fun -> T => T(7)
 
 named[T: Wrapper[Named]]: fun(imm value: T) -> i32 => value.name()
 
+measured: fun(imm item: dyn[Measured]) -> i64 => item.measure() + item.doubled()
+
+wrapped: fun(imm item: dyn[Wrapper[Named]]) -> i32 => item.name() + dyn[Named](item).name()
+
+called: fun(imm f: dyn[Logged]) -> i32 => f(5) + calledBack(dyn[Callback](f))
+
+calledBack: fun(imm f: dyn[Callback]) -> i32 => f(4)
 main: fun -> i32
 {
 	printf("%d %u\n", largest[i32](), largest[u8]())
 	printf("%d %u\n", kept[i32](12), limited[u8](34))
 	printf("%d %d\n", build[Meters]().value, named[i32](imm 21))
+	val wide = Wide(1, 2, 3, 4, 5)
+	val number: i32 = 21
+	val offset = 10
+	val add = fun(x: i32) -> i32 => x + offset
+	printf("%lld %d %d\n", measured(imm wide), wrapped(imm number), called(imm add))
 	ret 0
 }

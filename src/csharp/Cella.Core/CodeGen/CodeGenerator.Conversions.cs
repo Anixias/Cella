@@ -63,6 +63,17 @@ public sealed partial class CodeGenerator
 				return BuildFunctionValue(type, builder.BuildLoad2(OpaquePointer, entry, "code"),
 					builder.BuildExtractValue(address, 0, "object"), builder);
 			
+			case DynType { Instance: { } trait }:
+			{
+				var traitTable = builder.BuildExtractValue(address, 1, "table");
+				var slot = builder.BuildStructGEP2(GetDynTableType(trait.Trait), traitTable,
+					GetDynCallSlot(trait, target),
+					"entry");
+				
+				return BuildFunctionValue(type, builder.BuildLoad2(OpaquePointer, slot, "code"),
+					builder.BuildExtractValue(address, 0, "object"), builder);
+			}
+			
 			default:
 				throw new InvalidOperationException();
 		}

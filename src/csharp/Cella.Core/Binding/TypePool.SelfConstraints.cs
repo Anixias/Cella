@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Symbols;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -16,7 +17,7 @@ public sealed partial class TypePool
 		var traits = GetInheritedTraits(parameter);
 		parameter.InheritedConstraints =
 		[
-			..traits.SelectMany(static trait => trait.Trait.Self.DeclaredConstraints)
+			..GetSelfConstraints(traits)
 				.Except(parameter.DeclaredConstraints)
 				.Distinct()
 		];
@@ -74,6 +75,12 @@ public sealed partial class TypePool
 		if (constructors.Count > count)
 			SetConstructorBounds(parameter, [..constructors]);
 	}
+	
+	public IEnumerable<TokenType> GetSelfConstraints(TraitType trait, TypeParameterSymbol parameter) =>
+		GetSelfConstraints(AddRequiredTraits([trait], parameter)).Distinct();
+	
+	private static IEnumerable<TokenType> GetSelfConstraints(IEnumerable<TraitType> traits) =>
+		traits.SelectMany(static trait => trait.Trait.Self.DeclaredConstraints);
 	
 	public void ResetFacts() => _facts.Clear();
 	
