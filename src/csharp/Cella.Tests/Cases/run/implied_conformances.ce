@@ -1,0 +1,104 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Additive: trait
+{
+	+: op(imm left: Self, imm right: Self) -> Self
+}
+
+Multiplicative: trait
+{
+	*: op(imm left: Self, imm right: Self) -> Self
+}
+
+Number: trait req copy + noref + Additive + Multiplicative
+{
+	zero: fun -> Self
+}
+
+Ring: trait req Number
+{
+	square: fun(self) -> Self => self * self
+}
+
+Named: trait
+{
+	name: fun(imm self) -> i32
+}
+
+Labeled: trait req Named
+{
+	label: fun(imm self) -> i32 => self.name() * 10
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64 => 5
+}
+
+Hashable: trait req Hash
+{
+	twice: fun(imm self) -> u64 => self.hash() * 2
+}
+
+[T: copy]: impl Hashable
+
+i32: impl Ring
+{
+	zero: fun -> i32 => 0
+}
+
+Money: rec impl Ring
+{
+	cents: i32
+
+	+: op(left: Money, right: Money) -> Money => Money(left.cents + right.cents)
+	*: op(left: Money, right: Money) -> Money => Money(left.cents * right.cents / 100)
+	zero: fun -> Money => Money(0)
+}
+
+Pair[T]: rec
+{
+	first: T
+	second: T
+}
+
+Pair[T: Number]: impl Ring
+{
+	+: op(left: Pair[T], right: Pair[T]) -> Pair[T] => Pair(left.first + right.first, left.second + right.second)
+	*: op(left: Pair[T], right: Pair[T]) -> Pair[T] => Pair(left.first * right.first, left.second * right.second)
+	zero: fun -> Pair[T] => Pair(T.zero(), T.zero())
+}
+
+Tag: rec impl Labeled
+{
+	id: i32
+
+	name: fun(imm self) -> i32 => self.id
+}
+
+sum[T: Additive]: fun(imm a: T, imm b: T) -> T => a + b
+
+grow[T: Ring]: fun(value: T) -> T => (value + value).square() + T.zero()
+
+describe: fun(imm item: dyn[Named]) -> i32 => item.name()
+
+hashOf[T: Hash]: fun(imm value: T) -> u64 => value.hash()
+
+main: fun -> i32
+{
+	val x = 3
+	val y = 4
+	val pair = Pair(2, 5)
+	val tag = Tag(7)
+	printf("%d %d\n", sum(imm x, imm y), grow(x))
+	printf("%d %d\n", grow(Money(300)).cents, sum(imm pair, imm pair).second)
+	printf("%d %d\n", grow(pair).first, grow(pair).second)
+	printf("%d %d\n", tag.label(), describe(dyn[Labeled](tag)))
+	printf("%d %d\n", i32(tag.twice()), i32(hashOf(imm tag)))
+	ret 0
+}

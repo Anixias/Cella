@@ -15,7 +15,7 @@ Counted[T]: trait req Source[T]
 	count: fun(imm self) -> i32
 }
 
-Steps: rec impl Source[i32] + Counted[i32]
+Steps: rec impl Counted[i32]
 {
 	at: i32
 
@@ -38,7 +38,7 @@ Sortable: trait req Compare[Self]
 	rank: fun(imm self) -> i32
 }
 
-Card: rec impl Compare[Card] + Sortable
+Card: rec impl Sortable
 {
 	value: i32
 

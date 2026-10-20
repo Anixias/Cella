@@ -17,7 +17,7 @@ Shape: trait req Named
 	area: fun(imm self) -> f64
 }
 
-Big: rec impl Named + Shape
+Big: rec impl Shape
 {
 	values: array[i64, 5]
 
@@ -25,7 +25,7 @@ Big: rec impl Named + Shape
 	area: fun(self) -> f64 => 1.0
 }
 
-Small: rec impl Named + Shape
+Small: rec impl Shape
 {
 	value: u16
 

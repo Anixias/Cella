@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Version: rec impl lib.Eq + lib.Ord
+Version: rec impl lib.Ord
 {
 	major: i32
 
@@ -13,7 +13,7 @@ Version: rec impl lib.Eq + lib.Ord
 	<: op(a: Version, b: Version) -> bool => a.major < b.major
 }
 
-Square: rec impl lib.Named + lib.Shape
+Square: rec impl lib.Shape
 {
 	side: f64
 

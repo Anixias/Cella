@@ -23,7 +23,7 @@ Number: pub trait req Additive + Multiplicative
 	one: const Self
 }
 
-i8: impl Number + Additive + Multiplicative
+i8: impl Number
 {
 	minValue: const i8 = -0x80
 	maxValue: const i8 =  0x7F
@@ -31,7 +31,7 @@ i8: impl Number + Additive + Multiplicative
 	one: const i8 = 1
 }
 
-u8: impl Number + Additive + Multiplicative
+u8: impl Number
 {
 	minValue: const u8 = 0
 	maxValue: const u8 = 0xFF
@@ -39,7 +39,7 @@ u8: impl Number + Additive + Multiplicative
 	one: const u8 = 1
 }
 
-i16: impl Number + Additive + Multiplicative
+i16: impl Number
 {
 	minValue: const i16 = -0x8000
 	maxValue: const i16 =  0x7FFF
@@ -47,7 +47,7 @@ i16: impl Number + Additive + Multiplicative
 	one: const i16 = 1
 }
 
-u16: impl Number + Additive + Multiplicative
+u16: impl Number
 {
 	minValue: const u16 = 0
 	maxValue: const u16 = 0xFFFF
@@ -55,7 +55,7 @@ u16: impl Number + Additive + Multiplicative
 	one: const u16 = 1
 }
 
-i32: impl Number + Additive + Multiplicative
+i32: impl Number
 {
 	minValue: const i32 = -0x80000000
 	maxValue: const i32 =  0x7FFFFFFF
@@ -63,7 +63,7 @@ i32: impl Number + Additive + Multiplicative
 	one: const i32 = 1
 }
 
-u32: impl Number + Additive + Multiplicative
+u32: impl Number
 {
 	minValue: const u32 = 0
 	maxValue: const u32 = 0xFFFFFFFF
@@ -71,7 +71,7 @@ u32: impl Number + Additive + Multiplicative
 	one: const u32 = 1
 }
 
-i64: impl Number + Additive + Multiplicative
+i64: impl Number
 {
 	minValue: const i64 = -0x80000000_00000000
 	maxValue: const i64 =  0x7FFFFFFF_FFFFFFFF
@@ -79,7 +79,7 @@ i64: impl Number + Additive + Multiplicative
 	one: const i64 = 1
 }
 
-u64: impl Number + Additive + Multiplicative
+u64: impl Number
 {
 	minValue: const u64 = 0
 	maxValue: const u64 = 0xFFFFFFFF_FFFFFFFF
@@ -87,7 +87,7 @@ u64: impl Number + Additive + Multiplicative
 	one: const u64 = 1
 }
 
-i128: impl Number + Additive + Multiplicative
+i128: impl Number
 {
 	minValue: const i128 = -0x80000000_00000000_00000000_00000000
 	maxValue: const i128 =  0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
@@ -95,7 +95,7 @@ i128: impl Number + Additive + Multiplicative
 	one: const i128 = 1
 }
 
-u128: impl Number + Additive + Multiplicative
+u128: impl Number
 {
 	minValue: const u128 = 0
 	maxValue: const u128 = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
@@ -103,7 +103,7 @@ u128: impl Number + Additive + Multiplicative
 	one: const u128 = 1
 }
 
-isize: impl Number + Additive + Multiplicative
+isize: impl Number
 {
 	minValue: const isize = -isize.maxValue - 1
 	maxValue: const isize = isize(usize.maxValue >> 1)
@@ -111,7 +111,7 @@ isize: impl Number + Additive + Multiplicative
 	one: const isize = 1
 }
 
-usize: impl Number + Additive + Multiplicative
+usize: impl Number
 {
 	minValue: const usize = 0
 	maxValue: const usize = ~0

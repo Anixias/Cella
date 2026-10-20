@@ -16,7 +16,7 @@ Ord: trait req Eq
 	<=: op(imm a: Self, imm b: Self) -> bool => a < b || a == b
 }
 
-Version: rec impl Eq + Ord
+Version: rec impl Ord
 {
 	major: i32
 	minor: i32
@@ -25,7 +25,7 @@ Version: rec impl Eq + Ord
 	<: op(a: Version, b: Version) -> bool => a.major < b.major || a.major == b.major && a.minor < b.minor
 }
 
-i32: impl Eq + Ord
+i32: impl Ord
 
 Box[T]: rec
 {

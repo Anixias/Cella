@@ -1,0 +1,87 @@
+mod test
+
+Additive: trait
+{
+	+: op(imm left: Self, imm right: Self) -> Self
+}
+
+Number: trait req copy + Additive
+{
+}
+
+Ring: trait req Number
+{
+}
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+Ord: trait req Eq
+{
+	<: op(imm a: Self, imm b: Self) -> bool
+}
+
+Ordered: trait req Eq
+{
+}
+
+Hash: trait
+{
+	hash: fun(imm self) -> u64 => 0
+}
+
+[T]: impl Hash
+
+Hashable: trait req Hash
+{
+}
+
+i8: impl Number + Additive
+
+i16: impl Ring + Additive + Number
+
+Plain: rec impl Ord
+{
+	n: i32
+
+	<: op(a: Plain, b: Plain) -> bool => a.n < b.n
+}
+
+Twice: rec
+{
+	n: i32
+}
+
+Twice: impl Ord
+{
+	==: op(a: Twice, b: Twice) -> bool => a.n == b.n
+	<: op(a: Twice, b: Twice) -> bool => a.n < b.n
+}
+
+Twice: impl Ordered
+
+Defaulted: rec impl Hashable
+{
+	n: i32
+}
+
+Replaced: rec impl Hashable + Hash
+{
+	n: i32
+
+	hash: fun(imm self) -> u64 => 1
+}
+
+Stray: rec
+{
+	n: i32
+}
+
+Stray: impl Hashable
+{
+	hash: fun(imm self) -> u64 => 2
+}
+
+main: fun -> i32 => 0

@@ -15,7 +15,7 @@ Ord: trait req Eq
 	<: op(imm a: Self, imm b: Self) -> bool
 }
 
-i32: impl Eq + Ord
+i32: impl Ord
 f64: impl Eq
 
 Describe: trait

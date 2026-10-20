@@ -1,17 +1,22 @@
 Error at required_traits.ce:18:17
 17 │ 
 18 │ Plain: rec impl Ord
-                     ╘═╛ 'Plain' needs 'Eq'
-
-Error at required_traits.ce:25:11
-24 │ 
-25 │ f64: impl Ord
-               ╘═╛ 'f64' needs 'Eq'
+                     ╘═╛ 'Plain' needs 'Eq.=='
 
 Error at required_traits.ce:32:19
 31 │ 
 32 │ Box[T: Ord]: impl Ord
-                       ╘═╛ 'Box[T]' needs 'Eq'
+                       ╘═╛ 'Box[T]' implements 'Eq' more than once
+
+Error at required_traits.ce:32:19
+31 │ 
+32 │ Box[T: Ord]: impl Ord
+                       ╘═╛ 'Box[T]' needs 'Eq.=='
+
+Error at required_traits.ce:37:20
+36 │ 
+37 │ Box[T: Hash]: impl Eq
+                        ╘╛ 'Box[T]' implements 'Eq' more than once
 
 Error at required_traits.ce:42:1
 41 │ 

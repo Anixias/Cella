@@ -153,6 +153,7 @@ public sealed partial class SignatureCollector
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);
 		
+		AddImpliedConformances();
 		ReportRedundantBounds();
 		RegisterConstructorBounds();
 		foreach (var constrained in _constrainedParameters)

@@ -31,6 +31,52 @@ public sealed partial class SignatureCollector
 			_typePool.AddConformance(conformance);
 	}
 	
+	private void AddImpliedConformances()
+	{
+		var implied = new List<Conformance>();
+		foreach (var conformance in _localConformances)
+		{
+			var self = GetConformanceSelf(conformance);
+			if (self is InvalidType)
+				continue;
+			
+			var visited = new HashSet<TraitType>();
+			var pending = new Queue<TraitType>(_typePool.GetRequiredTraits(
+				_typePool.GetTraitType(conformance.Trait, conformance.Arguments), self));
+			
+			while (pending.TryDequeue(out var required))
+			{
+				if (!visited.Add(required) || _typePool.HasConformance(self, required) ||
+				    _foreignErrors.Keys.Any(written => written.Target == conformance.Target &&
+				                                       written.Trait == required.Trait))
+					continue;
+				
+				if (!implied.Any(existing => existing.Impl == conformance.Impl &&
+				                             existing.Target == conformance.Target &&
+				                             existing.Trait == required.Trait &&
+				                             existing.Arguments.SequenceEqual(required.Arguments)))
+					implied.Add(new(required.Trait, required.Arguments, conformance.Target, conformance.Parameters,
+						conformance.Impl, conformance.Location)
+					{
+						IsImplied = true,
+						Owner = conformance.Owner
+					});
+				
+				foreach (var next in _typePool.GetRequiredTraits(required, self))
+					pending.Enqueue(next);
+			}
+		}
+		
+		foreach (var conformance in implied)
+		{
+			_localConformances.Add(conformance);
+			if (FindForeignError(conformance) is { } error)
+				_foreignErrors[conformance] = error;
+			else
+				_typePool.AddConformance(conformance);
+		}
+	}
+	
 	private string? FindForeignError(Conformance conformance)
 	{
 		var trait = DescribeTrait(conformance);

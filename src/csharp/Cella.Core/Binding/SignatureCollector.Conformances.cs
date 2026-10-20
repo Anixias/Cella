@@ -16,15 +16,21 @@ public sealed partial class SignatureCollector
 			         (Target: c.Target is TypeParameterSymbol ? null : c.Target, c.Trait)))
 			ReportOverlaps([..sameTrait]);
 		
+		ReportRedundantConformances();
+		
 		foreach (var conformance in _localConformances)
 		{
 			using var frame = Own(conformance.Owner);
 			if (_foreignErrors.TryGetValue(conformance, out var foreignError))
+			{
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location, foreignError));
+				if (conformance.IsImplied)
+					continue;
+			}
 			
 			MatchRequirements(conformance);
 			MatchConstants(conformance);
-			CheckRequiredTraits(conformance);
+			CheckSelfConstraints(conformance);
 		}
 		
 		foreach (var impl in _impls)
@@ -79,22 +85,42 @@ public sealed partial class SignatureCollector
 		conformance.Impl?.Constants.FirstOrDefault(constant => constant.Name == name) ??
 		conformance.Target.OriginalDefinition.GetStaticField(name);
 	
-	private void CheckRequiredTraits(Conformance conformance)
+	private void CheckSelfConstraints(Conformance conformance)
 	{
 		var self = GetConformanceSelf(conformance);
 		if (self is InvalidType)
 			return;
 		
 		var trait = _typePool.GetTraitType(conformance.Trait, conformance.Arguments);
-		foreach (var required in _typePool.GetRequiredTraits(trait, self))
-		{
-			if (!_typePool.Conforms(self, required))
-				ReportConformance(conformance.Location,
-					$"'{DiagnosticReporter.DescribeType(self)}' needs '{required.Name}'");
-		}
-		
 		if (_typePool.FindSelfViolation(trait, self) is { } violation)
 			Diagnostics.Add(violation.At(conformance.Location));
+	}
+	
+	private void ReportRedundantConformances()
+	{
+		var written = _localConformances.Where(static conformance => !conformance.IsImplied).ToList();
+		foreach (var conformance in written)
+		{
+			var self = GetConformanceSelf(conformance);
+			if (self is InvalidType)
+				continue;
+			
+			var trait = _typePool.GetTraitType(conformance.Trait, conformance.Arguments);
+			var requirer = written
+				.Where(other => other != conformance && other.Impl == conformance.Impl &&
+				                other.Target == conformance.Target)
+				.Select(other => _typePool.GetTraitType(other.Trait, other.Arguments))
+				.FirstOrDefault(other => other != trait && Requires(other, trait, self));
+			
+			if (requirer is null || _typePool.HasConformance(self, trait, conformance))
+				continue;
+			
+			using var frame = Own(conformance.Owner);
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, conformance.Location, $"Redundant '{trait.Name}'")
+			{
+				Hints = [$"Required by '{requirer.Name}'"]
+			});
+		}
 	}
 	
 	private void ReportOverlaps(List<Conformance> conformances)

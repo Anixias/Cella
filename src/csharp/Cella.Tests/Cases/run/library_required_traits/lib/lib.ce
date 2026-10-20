@@ -21,7 +21,7 @@ Shape: pub trait req Named
 	area: fun(imm self) -> f64
 }
 
-Circle: pub rec impl Named + Shape
+Circle: pub rec impl Shape
 {
 	radius: f64
 	id: i32
@@ -30,7 +30,7 @@ Circle: pub rec impl Named + Shape
 	area: fun(self) -> f64 => self.radius * 2.0
 }
 
-i32: impl Eq + Ord
+i32: impl Ord
 
 within[T: Ord]: pub fun(imm value: T, imm low: T, imm high: T) -> bool => low <= value && value <= high
 

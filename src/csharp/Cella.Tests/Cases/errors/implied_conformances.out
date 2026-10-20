@@ -1,0 +1,44 @@
+Hint at implied_conformances.ce:41:19
+40 │ 
+41 │ i8: impl Number + Additive
+                       ╘══════╛ Redundant 'Additive'
+                              | Required by 'Number'
+
+Hint at implied_conformances.ce:43:18
+42 │ 
+43 │ i16: impl Ring + Additive + Number
+                      ╘══════╛ Redundant 'Additive'
+                             | Required by 'Ring'
+
+Hint at implied_conformances.ce:43:29
+42 │ 
+43 │ i16: impl Ring + Additive + Number
+                                 ╘════╛ Redundant 'Number'
+                                      | Required by 'Ring'
+
+Error at implied_conformances.ce:45:17
+44 │ 
+45 │ Plain: rec impl Ord
+                     ╘═╛ 'Plain' needs 'Eq.=='
+
+Error at implied_conformances.ce:57:13
+56 │ 
+57 │ Twice: impl Ord
+                 ╘═╛ 'Twice' implements 'Eq' more than once
+
+Error at implied_conformances.ce:63:13
+62 │ 
+63 │ Twice: impl Ordered
+                 ╘═════╛ 'Twice' implements 'Eq' more than once
+
+Error at implied_conformances.ce:63:13
+62 │ 
+63 │ Twice: impl Ordered
+                 ╘═════╛ 'Twice' needs 'Eq.=='
+
+Error at implied_conformances.ce:84:2
+83 │ {
+84 │     hash: fun(imm self) -> u64 => 2
+         ╘══╛ 'hash' isn't a member of 'Hashable'
+
+[compilation failed]

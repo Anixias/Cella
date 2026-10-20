@@ -285,6 +285,16 @@ public sealed partial class TypePool
 		}
 	}
 	
+	public bool HasConformance(TypeSymbol type, TraitType trait, Conformance? except = null) =>
+		type is TypeParameterSymbol parameter
+			? AddRequiredTraits(GetDeclaredBounds(parameter), parameter).Contains(trait) ||
+			  _blanketConformances.Any(blanket => blanket != except && blanket.Trait == trait.Trait &&
+			                                      Satisfies(blanket.Parameters, [parameter]) &&
+			                                      GetConformanceArguments(blanket, parameter)
+				                                      .SequenceEqual(trait.Arguments))
+			: GetConformanceCandidates(type).Any(conformance => conformance != except &&
+			                                                    Provides(conformance, type, trait));
+	
 	private bool Provides(Conformance conformance, TypeSymbol type, TraitType trait) =>
 		conformance.Trait == trait.Trait && Matches(conformance, type) &&
 		GetConformanceArguments(conformance, type).SequenceEqual(trait.Arguments);

@@ -1,21 +1,16 @@
-Error at main.ce:8:11
-7 │ 
-8 │ u16: impl Keyed
-              ╘═══╛ 'u16' needs 'Hash'
-
 Error at main.ce:13:10
 12 │ 
 13 │ u8: impl lib.Hash
               ╘══════╛ 'Hash' and 'u8' are both declared in other projects
 
-Error at main.ce:18:10
-17 │ 
-18 │ u8: impl Keyed
-              ╘═══╛ 'u8' needs 'Hash'
-
 Error at main.ce:23:11
 22 │ 
 23 │ u16: impl lib.Hash
                ╘══════╛ 'Hash' and 'u16' are both declared in other projects
+
+Error at main.ce:28:11
+27 │ 
+28 │ u32: impl Keyed
+               ╘═══╛ 'Hash' and 'u32' are both declared in other projects
 
 [compilation failed]

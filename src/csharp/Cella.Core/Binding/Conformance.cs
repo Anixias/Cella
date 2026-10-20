@@ -22,6 +22,7 @@ public sealed class Conformance
 	public ImmutableArray<TypeParameterSymbol> Parameters { get; } = parameters;
 	public ImplSymbol? Impl { get; } = impl;
 	public SourceLocation Location { get; } = location;
+	public bool IsImplied { get; init; }
 	public Dictionary<FunctionSymbol, Witness> Witnesses { get; } = [];
 	public Dictionary<GlobalSymbol, GlobalSymbol> ConstantWitnesses { get; } = [];
 	public ErrorContainment.Owner Owner { get; set; }

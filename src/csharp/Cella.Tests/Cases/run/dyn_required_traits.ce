@@ -23,7 +23,7 @@ Solid: trait req Shape
 	volume: fun(imm self) -> f64
 }
 
-Circle: rec impl Named + Shape + Solid
+Circle: rec impl Solid
 {
 	radius: f64
 	id: i32
@@ -39,7 +39,7 @@ Circle: rec impl Named + Shape + Solid
 	volume: fun(self) -> f64 => self.area() * 2.0
 }
 
-Square: rec impl Named + Shape
+Square: rec impl Shape
 {
 	side: f64
 
