@@ -124,7 +124,7 @@ public sealed class SemanticModel
 			MethodSymbol method => FindDeclaration(method.Function),
 			GlobalSymbol global => global.Syntax.Identifier.SourceLocation,
 			LocalVariableSymbol local => local.Identifier.SourceLocation,
-			ParameterSymbol parameter => parameter.Definition,
+			ParameterSymbol { IsWritten: true } parameter => parameter.Definition,
 			FieldSymbol { Node: { } field } => field.Identifier.SourceLocation,
 			PropertySymbol { Node: { } property } => property.Identifier.SourceLocation,
 			EnumCaseSymbol enumCase => enumCase.Node.Identifier.SourceLocation,
@@ -425,7 +425,10 @@ public sealed class SemanticModel
 	{
 		var parameters = info.Symbol.Parameters;
 		for (var i = 0; i < parameters.Length && i < info.Signature.ParameterTypes.Length; i++)
-			Add(parameters[i].Definition, parameters[i], DescribeParameter(parameters[i].Name, info.Signature, i));
+		{
+			if (parameters[i].IsWritten)
+				Add(parameters[i].Definition, parameters[i], DescribeParameter(parameters[i].Name, info.Signature, i));
+		}
 	}
 	
 	private static Token? FindCallName(IExpressionNode syntax, FunctionSymbol function) => syntax switch

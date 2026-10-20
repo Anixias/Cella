@@ -717,12 +717,14 @@ public sealed class ParameterSymbol : VariableSymbol
 	public SourceLocation Definition { get; }
 	public ParameterMode Mode { get; init; }
 	public bool IsNamed { get; init; } = true;
+	public bool IsWritten { get; }
 	public string? WrittenName => IsNamed ? Name : null;
 	
 	public ParameterSymbol(Token identifier) : base(identifier.Text)
 	{
 		Definition = identifier.SourceLocation;
 		IsNamed = identifier.Text != "_";
+		IsWritten = true;
 	}
 	
 	public ParameterSymbol(string name, SourceLocation definition) : base(name)

@@ -1415,20 +1415,20 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await InitializeAsync();
 		await OpenSourceAsync(source);
 		await ReadInactiveAsync((SourceUri, ["3:0-5:1"]));
-
+		
 		var movedPath = Path.Combine(_directory, "moved", "main.ce");
 		Directory.CreateDirectory(Path.GetDirectoryName(movedPath)!);
 		File.Move(SourcePath, movedPath);
 		var movedUri = UriOf(movedPath);
-
+		
 		await NotifyAsync("textDocument/didClose",
 			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
-
+		
 		await NotifyAsync("workspace/didChangeWatchedFiles", new JsonObject
 		{
 			["changes"] = new JsonArray(new JsonObject { ["uri"] = SourceUri, ["type"] = 2 })
 		});
-
+		
 		await NotifyAsync("textDocument/didOpen", new JsonObject
 		{
 			["textDocument"] = new JsonObject
@@ -1439,11 +1439,11 @@ public sealed class LanguageServerTests : IAsyncDisposable
 				["text"] = source
 			}
 		});
-
+		
 		await ReadInactiveAsync((movedUri, ["3:0-5:1"]), (SourceUri, []));
 		Assert.Equal(0, await ShutDownAsync());
 	}
-
+	
 	[Fact]
 	public async Task ChecksTheConfiguredFlagsAndTarget()
 	{
@@ -1580,6 +1580,35 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(Code("const scale: i32 = 0x10\n= 16"), await HoverAsync(36, 38));
 		Assert.Equal(Code("maxValue: const i32 = 0x7FFFFFFF\n= 2147483647"), await HoverAsync(36, 11));
 		Assert.Equal(Code("twice: const i64 = limit * 2\n= 10"), await HoverAsync(36, 29));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task KeepsImplicitSelfOutOfDeclarations()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Box[T]: rec
+		                                         {
+		                                         	data: T
+		                                         
+		                                         	new: op(own value: T)
+		                                         	{
+		                                         		self.data = data
+		                                         	}
+		                                         }
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Null(await AskAsync("textDocument/hover", 8, 15));
+		Assert.Null(await DefinitionAsync(8, 15));
+		Assert.Null(await DefinitionAsync(8, 3));
+		Assert.Empty(await UsagesAsync(8, 3, true));
+		Assert.Equal(4, (int)(await DefinitionAsync(8, 8))!["range"]!["start"]!["line"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
