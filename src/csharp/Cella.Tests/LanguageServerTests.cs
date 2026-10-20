@@ -1547,6 +1547,55 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesOperatorOperandsAsParameters()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Number: trait req copy
+		                                 {
+		                                 	new: op(seed: i32)
+		                                 	+: op(imm a: Self, imm b: Self) -> Self
+		                                 	-: op(imm a: Self, imm b: Self) -> Self => a + b
+		                                 }
+		                                 
+		                                 Point: rec
+		                                 {
+		                                 	x: i32
+		                                 	
+		                                 	new: op(value: i32)
+		                                 	{
+		                                 		self.x = value
+		                                 	}
+		                                 	
+		                                 	==: op(imm a: Point, imm b: Point) -> bool => a.x == b.x
+		                                 }
+		                                 
+		                                 Point: impl Number
+		                                 {
+		                                 	+: op(imm a: Point, imm b: Point) -> Point => Point(a.x + b.x)
+		                                 }
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		Assert.Contains("4:9:4 parameter declaration", tokens);
+		Assert.Contains("5:11:1 parameter declaration", tokens);
+		Assert.Contains("5:24:1 parameter declaration", tokens);
+		Assert.Contains("6:44:1 parameter", tokens);
+		Assert.Contains("13:9:5 parameter declaration", tokens);
+		Assert.Contains("15:11:5 parameter", tokens);
+		Assert.Contains("18:12:1 parameter declaration", tokens);
+		Assert.Contains("18:47:1 parameter", tokens);
+		Assert.Contains("23:11:1 parameter declaration", tokens);
+		Assert.Contains("23:59:1 parameter", tokens);
+		Assert.Equal(Code("imm a: Self"), await HoverAsync(5, 11));
+		Assert.Equal(["15:11"], await UsagesAsync(13, 9, false));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task CompletesCasePatterns()
 	{
 		const string source = """

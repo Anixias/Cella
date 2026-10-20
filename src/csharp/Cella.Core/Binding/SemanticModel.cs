@@ -29,6 +29,7 @@ public sealed class SemanticModel
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
 	private readonly Dictionary<TypeSymbol, bool> _drops = [];
 	private readonly Func<TypeSymbol, bool>? _needsDrop;
+	private readonly Func<FunctionSymbol, FunctionInfo?>? _functions;
 	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
 	private readonly List<SourceLocation> _inactiveCalls = [];
@@ -42,6 +43,7 @@ public sealed class SemanticModel
 		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null)
 	{
 		_needsDrop = needsDrop;
+		_functions = functions;
 		_globals = globals;
 		_typeConstants = typeConstants;
 		foreach (var file in files)
@@ -322,7 +324,7 @@ public sealed class SemanticModel
 				AddFunction(n.FunctionInfo);
 				break;
 			
-			case ResolvedFunctionNode { Syntax: LambdaDeclarationNode } n:
+			case ResolvedFunctionNode { Syntax: LambdaDeclarationNode or ConstructorNode } n:
 				AddParameters(n.FunctionInfo);
 				break;
 			
@@ -360,6 +362,16 @@ public sealed class SemanticModel
 				{
 					if (method.Function.Syntax is IFunctionNode function)
 						Add(function.Identifier, method, $"{method.Name}: fun");
+					
+					if (method.Function.Syntax is FunctionNode { Body: null } &&
+					    _functions?.Invoke(method.Function) is { } info)
+						AddParameters(info);
+				}
+				
+				foreach (var constructor in n.Symbol.Constructors)
+				{
+					if (_functions?.Invoke(constructor) is { } info)
+						AddParameters(info);
 				}
 				
 				foreach (var constant in n.Symbol.Constants)
