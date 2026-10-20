@@ -49,7 +49,9 @@ public sealed partial class SignatureCollector
 	private readonly SignatureTable _dependencyTable;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
-	private readonly HashSet<(SourceLocation, string)> _reportedImportErrors = [];
+	private readonly Dictionary<SourceLocation, Diagnostic> _projectImportFailures = [];
+	private readonly HashSet<Token> _repeatedProjectImports = [];
+	private List<ModulePathSymbol?>? projectModules;
 	
 	private readonly List<(List<(Symbol Symbol, Token Name, string Module)> Imports, ResolutionContext Context)>
 		_explicitImports = [];
@@ -75,15 +77,17 @@ public sealed partial class SignatureCollector
 	private readonly List<(TypeSymbol Type, GlobalSymbol Constant, GlobalSymbol Witness)>
 		_traitConstantsInProgress = [];
 	
-	private readonly List<ConstraintCheck> _deferredChecks = [];
+	private readonly List<(ConstraintCheck Check, ErrorContainment.Owner Owner)> _deferredChecks = [];
 	
-	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext, Symbol?)>
+	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext, Symbol?, ErrorContainment.Owner)>
 		_pendingConstructorBounds = [];
 	
-	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol)> _boundLists = [];
+	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol, ErrorContainment.Owner)>
+		_boundLists = [];
+	
 	private readonly List<(FieldNode, TypeSymbol)> _requiredFields = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
-	private readonly List<(TypeSymbol Type, ITypeNode Node)> _variadicTypes = [];
+	private readonly List<(TypeSymbol Type, ITypeNode Node, ErrorContainment.Owner Owner)> _variadicTypes = [];
 	private readonly HashSet<FunctionSymbol> _lambdas = [];
 	private IConstantResolver? constants;
 	
@@ -93,6 +97,13 @@ public sealed partial class SignatureCollector
 	public bool QualifiesEntryPoint { get; init; }
 	public Action<Token, Symbol>? RecordName { get; init; }
 	public CompletionProbe? Probe { get; init; }
+	public ImmutableArray<ImportExpression> ProjectImports { get; init; } = [];
+	
+	public ErrorContainment? Containment
+	{
+		get => _extSignatureTypes.Containment;
+		init => _extSignatureTypes.Containment = _copiedParameters.Containment = value;
+	}
 	
 	public SignatureCollector(string assemblyName, string? entryPointName, SymbolTable symbolTable,
 		TypePool typePool, IEnumerable<AssemblySymbol> dependencies, IEnumerable<AssemblySymbol> indirectDependencies,
@@ -141,8 +152,13 @@ public sealed partial class SignatureCollector
 		RegisterConstructorBounds();
 		
 		foreach (var file in files)
+		{
 			foreach (var declaration in file.Declarations)
+			{
+				using var frame = Own(declaration);
 				Complete(_symbolTable.DeclarationSymbols[declaration]);
+			}
+		}
 		
 		ReportRedundantRequirements();
 		ReportDeferredChecks();
@@ -177,10 +193,13 @@ public sealed partial class SignatureCollector
 	public AssemblySymbol FinishAssembly(string name)
 	{
 		ReportDuplicateDeclarations();
+		Diagnostics.AddRange(_projectImportFailures.Values);
 		var importers = new Dictionary<Symbol, HashSet<string>>();
+		var ambiguous = new Dictionary<Token, (Symbol Symbol, SortedSet<string> Modules)>();
 		foreach (var (imports, context) in _explicitImports)
-			ReportOnce(() => ReportImportConflicts(imports, context, importers));
+			CollectImportConflicts(imports, context, ambiguous, importers);
 		
+		ReportImportConflicts(ambiguous);
 		ReportImportedDeclarations(importers);
 		
 		ReportPlainNameConflicts();
@@ -411,6 +430,31 @@ public sealed partial class SignatureCollector
 	private Constant GetGlobalValue(GlobalSymbol global) =>
 		GetGlobalInfo(global) is { Value: { } value } ? value : InvalidConstant.Instance;
 	
+	private ErrorContainment.Owner CurrentOwner => Containment?.Current ?? default;
+	
+	private ErrorContainment.Scope Own(IDeclarationNode? declaration)
+	{
+		Containment?.Enter(declaration);
+		return new(Containment);
+	}
+	
+	private ErrorContainment.Scope Own(ErrorContainment.Owner owner)
+	{
+		Containment?.Enter(owner);
+		return new(Containment);
+	}
+	
+	private ErrorContainment.Scope Own(Symbol symbol) => Own(GetDeclaration(symbol));
+	
+	private void ReportOn(IDeclarationNode? subject, Diagnostic diagnostic)
+	{
+		using var frame = Own(subject);
+		Diagnostics.Add(diagnostic);
+	}
+	
+	public IDeclarationNode? GetDeclaration(Symbol symbol) =>
+		_declarations.TryGetValue(symbol, out var declaration) ? declaration.Node : null;
+	
 	private void ReportBorrowingVariables()
 	{
 		foreach (var (global, node, type) in _variables)
@@ -418,6 +462,7 @@ public sealed partial class SignatureCollector
 			if (!_typePool.HoldsBorrows(type))
 				continue;
 			
+			using var frame = Own(global);
 			var kind = global.ContainingType is null ? "module" : "static";
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
 				$"Cannot store borrows in {kind} variables"));
@@ -435,6 +480,7 @@ public sealed partial class SignatureCollector
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
 			CopiedParameters = _copiedParameters,
+			Containment = Containment,
 			EvaluateConstant = EvaluateConstant,
 			FindValueParameterUse = FindValueParameterUse,
 			GenericTypes = [],

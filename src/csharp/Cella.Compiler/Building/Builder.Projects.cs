@@ -34,10 +34,8 @@ public sealed partial class Builder
 		var isReferenceable = !isEntry && project.Project.Referenceable == true && outputType.IsExecutable();
 		var entryPointName = isEntry ? options.Entry : outputType.IsExecutable() ? "main" : null;
 		var flags = CreateFlags(project.Project);
-		var (files, parseDiagnostics) = await ProcessProject(project, references, flags, ct);
+		var (files, projectImports, parseDiagnostics) = await ProcessProject(project, references, flags, ct);
 		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
-		var phases = new Dictionary<Diagnostic, int>(ReferenceEqualityComparer.Instance);
-		RecordPhase(diagnostics, phases, 0);
 		
 		if (files.Length == 0)
 		{
@@ -125,13 +123,18 @@ public sealed partial class Builder
 			? (name, symbol) => names.Add((name, symbol))
 			: (Action<Token, Symbol>?)null;
 		
+		var containment = new ErrorContainment(files);
 		var signatureCollector = new SignatureCollector(GetIdentity(project), entryPointName, symbolTable, typePool,
 			dependencySymbols, indirectSymbols, FindAliases(project, dependencyList), pointerBitSize)
 		{
 			QualifiesEntryPoint = isEntry,
 			RecordName = recordName,
-			Probe = probe
+			Probe = probe,
+			ProjectImports = projectImports,
+			Containment = containment
 		};
+		
+		signatureCollector.Diagnostics.Gate = containment;
 		
 		foreach (var alias in signatureCollector.Modules.AliasConflicts)
 		{
@@ -141,15 +144,15 @@ public sealed partial class Builder
 			generatesCode = false;
 		}
 		
-		var containment = new ErrorContainment(files);
-		containment.MarkSyntaxErrors(parseDiagnostics);
 		var resolver = new Resolver(symbolTable, signatureCollector, typePool, pointerBitSize)
 		{
 			Containment = containment,
 			RecordName = recordName,
-			Probe = probe
+			Probe = probe,
+			ProjectImports = projectImports
 		};
 		
+		resolver.Diagnostics.Gate = containment;
 		signatureCollector.Collect([..files], resolver);
 		
 		var assemblySymbol = signatureCollector.FinishAssembly(GetIdentity(project));
@@ -178,7 +181,7 @@ public sealed partial class Builder
 		
 		diagnostics.Add(signatureCollector.Diagnostics);
 		diagnostics.Add(resolver.Diagnostics);
-		RecordPhase(diagnostics, phases, 1);
+		containment.IsResolving = true;
 		
 		// Phase 3: Symbol resolution
 		ImmutableArray<ResolvedFileNode> resolvedFiles;
@@ -189,11 +192,9 @@ public sealed partial class Builder
 			resolver.ReportInfiniteInstantiations();
 			resolver.ReportAtomicInstances();
 			resolver.ReportTraitConstantInstances();
-			RecordPhase(diagnostics, phases, 2);
 		}
 		
 		containment.AddDeclarations(resolvedFiles);
-		containment.MarkErrors(diagnostics.SelectMany(static list => list));
 		
 		// Phase 4: Type checking
 		{
@@ -205,8 +206,6 @@ public sealed partial class Builder
 				typeChecker.Check(resolvedAst);
 			
 			typeChecker.Complete();
-			containment.MarkErrors(typeChecker.Diagnostics);
-			RecordPhase(diagnostics, phases, 3);
 		}
 		
 		// Phase 5: Lowering
@@ -248,8 +247,7 @@ public sealed partial class Builder
 					output.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
-			var found = diagnostics.SelectMany(static list => list).ToList();
-			diagnostics = [new(containment.Filter(found, diagnostic => phases.GetValueOrDefault(diagnostic, 4)))];
+			diagnostics = [new(diagnostics.SelectMany(static list => list))];
 			
 			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
 			{
@@ -506,12 +504,6 @@ public sealed partial class Builder
 			ImportedFunctions = ownImports,
 			ImportedGlobals = ownGlobalImports
 		};
-	}
-	
-	private static void RecordPhase(List<DiagnosticList> diagnostics, Dictionary<Diagnostic, int> phases, int phase)
-	{
-		foreach (var diagnostic in diagnostics.SelectMany(static list => list))
-			phases.TryAdd(diagnostic, phase);
 	}
 	
 	private bool ReportErrors(List<DiagnosticList> diagnostics)

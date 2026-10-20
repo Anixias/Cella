@@ -89,6 +89,7 @@ public sealed partial class SignatureCollector
 	{
 		foreach (var member in members)
 		{
+			using var frame = Own(member);
 			var symbol = _symbolTable.DeclarationSymbols[member];
 			var context = _declarations[symbol].Context;
 			switch (member)
@@ -140,8 +141,8 @@ public sealed partial class SignatureCollector
 		var functions = members.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(owner, [
 			..members.OfType<PropertyNode>()
-				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
-			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
+				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
+			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);
 		
 		ReportModeOperators(type, [..functions[true]]);
@@ -180,9 +181,10 @@ public sealed partial class SignatureCollector
 		
 		ReportTypeParameters(node.TypeParameters, node.Members);
 		
-		var storedTypes = new List<(ITypeNode Node, TypeSymbol Type)>();
+		var storedTypes = new List<(FieldNode Field, ITypeNode Node, TypeSymbol Type)>();
 		foreach (var member in node.Members)
 		{
+			using var frame = Own(member);
 			var symbol = _symbolTable.DeclarationSymbols[member];
 			var context = _declarations[symbol].Context;
 			
@@ -204,7 +206,7 @@ public sealed partial class SignatureCollector
 					ReportHiddenType(field.Type, fieldType, GetEffectiveVisibility(fieldSymbol.Visibility, record),
 						field.Identifier.Text);
 					
-					storedTypes.Add((field.Type, fieldType));
+					storedTypes.Add((field, field.Type, fieldType));
 					break;
 				
 				case ConstructorNode constructor:
@@ -233,12 +235,12 @@ public sealed partial class SignatureCollector
 		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(record.Name, [
 			..node.Members.OfType<FieldNode>()
-				.Select(static f => (f.Identifier, (FunctionNode?)null, MemberKind.Field)),
+				.Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Field)),
 			..node.Members.OfType<GlobalNode>()
-				.Select(static g => (g.Identifier, (FunctionNode?)null, MemberKind.Field)),
+				.Select(static g => (g.Identifier, (IDeclarationNode?)g, MemberKind.Field)),
 			..node.Members.OfType<PropertyNode>()
-				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
-			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
+				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
+			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);
 		
 		ReportConstructorConflicts(node.Members);
@@ -253,10 +255,10 @@ public sealed partial class SignatureCollector
 			ReportUnionMembers(node, _declarations[record].Context);
 		else
 		{
-			foreach (var (typeNode, type) in storedTypes)
+			foreach (var (member, typeNode, type) in storedTypes)
 			{
 				if (!node.IsRef && !TypePool.ContainsTypeParameters(type) && _typePool.HoldsBorrows(type))
-					Diagnostics.Add(ReportStoredBorrow(typeNode, node.Identifier, node.Modifiers, "records", "rec"));
+					ReportOn(member, ReportStoredBorrow(typeNode, node.Identifier, node.Modifiers, "records", "rec"));
 			}
 		}
 		
@@ -272,6 +274,7 @@ public sealed partial class SignatureCollector
 		
 		foreach (var field in fields)
 		{
+			using var frame = Own(field);
 			var symbol = (FieldSymbol)_symbolTable.DeclarationSymbols[field];
 			if (field.WriteVisibility is { } write)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, write.SourceLocation,
@@ -356,6 +359,7 @@ public sealed partial class SignatureCollector
 	{
 		foreach (var type in _symbolTable.DeclarationSymbols.Values.OfType<TypeSymbol>())
 		{
+			using var frame = Own(type);
 			foreach (var (field, fieldType) in GetStoredFields(type))
 			{
 				if (!ContainsType(fieldType, type))

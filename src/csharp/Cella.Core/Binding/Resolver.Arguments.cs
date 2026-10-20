@@ -444,7 +444,7 @@ public sealed partial class Resolver
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
 		CallExpressionNode or ArrayExpressionNode or LambdaExpressionNode => true,
-		MatchExpressionNode match => match.Arms.Any(arm => IsDeferred(arm.Value)),
+		MatchExpressionNode match => match.Arms.Any(arm => arm.Value is { } value && IsDeferred(value)),
 		AccessExpressionNode => FindGenericCaseEnum(node) is not null,
 		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null ||
 		                          FindOpenLocal(name) is { } open && (open.IsCaseName || NeedsTarget(open.Initializer)),

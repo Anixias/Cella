@@ -1,0 +1,16 @@
+Error at test.celp:6:5
+5 │ "util\u002efive",
+6 │ """util.missing""",
+       ╘══════════╛ Module 'util' has no member 'missing'
+
+Error at test.celp:7:8
+6 │ """util.missing""",
+7 │ 'util.absent',
+          ╘════╛ Module 'util' has no member 'absent'
+
+Error at test.celp:8:3
+7 │ 'util.absent',
+8 │ "util.\u0028",
+     ╘═════════╛ Expected a name, '[' or '*'
+
+[compilation failed]

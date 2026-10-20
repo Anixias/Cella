@@ -25,11 +25,11 @@ public sealed class MatchExpressionArmNode
 	IEnumerable<PatternNode> patterns,
 	IExpressionNode? guard,
 	SourceLocation sourceLocation,
-	IExpressionNode value
+	IExpressionNode? value
 )
 {
 	public ImmutableArray<PatternNode> Patterns { get; } = patterns.ToImmutableArray();
 	public IExpressionNode? Guard { get; } = guard;
 	public SourceLocation SourceLocation { get; } = sourceLocation;
-	public IExpressionNode Value { get; } = value;
+	public IExpressionNode? Value { get; } = value;
 }

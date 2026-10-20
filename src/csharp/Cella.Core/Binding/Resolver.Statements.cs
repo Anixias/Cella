@@ -106,6 +106,7 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(CallExpressionNode node)
 	{
+		ProbeCall(node);
 		_callArguments.Add(null);
 		var result = VisitCall(node);
 		var arguments = _callArguments[^1];

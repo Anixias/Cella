@@ -116,6 +116,8 @@ public sealed partial class Resolver
 		return call is not null;
 	}
 	
+	private readonly HashSet<ImportExpression> _ambiguousPanicImports = [];
+	
 	private void RecordPanicTarget(FileSymbol file, FileNode node)
 	{
 		switch (CurrentResolutionContext.Resolve(PanicName))
@@ -133,11 +135,17 @@ public sealed partial class Resolver
 	private void ReportAmbiguousPanic(FileNode node)
 	{
 		var context = CurrentResolutionContext;
-		var imports = node.Imports
-			.Where(import => import.Import is FullImport &&
-			                 context.ResolveMembers(_signatures.Modules.Root, import.ModuleName.Parts, 0) is
-				                 ModulePathSymbol module &&
-			                 module.Members.GetValueOrDefault(PanicName)?.Any(context.IsVisible) == true)
+		
+		bool ImportsPanic(ImportExpression import) => import.Import is FullImport &&
+		                                              context.ResolveMembers(_signatures.Modules.Root,
+			                                              import.ModuleName.Parts, 0) is ModulePathSymbol module &&
+		                                              module.Members.GetValueOrDefault(PanicName)
+			                                              ?.Any(context.IsVisible) ==
+		                                              true;
+		
+		var imports = ProjectImports.Where(ImportsPanic)
+			.Where(_ambiguousPanicImports.Add)
+			.Concat(node.Imports.Where(ImportsPanic))
 			.ToList();
 		
 		foreach (var import in imports)

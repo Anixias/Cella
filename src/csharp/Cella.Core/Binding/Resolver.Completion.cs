@@ -12,16 +12,46 @@ public sealed partial class Resolver
 	
 	private void ProbeName(Token name, TypeSymbol? expectedType)
 	{
-		if (Probe?.Covers(name) == true)
-			Probe.Capture(CompletionPlace.Name, CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate),
-				expectedType);
+		if (Probe is null)
+			return;
+		
+		var candidates = CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate);
+		if (Probe.Covers(name))
+			Probe.Capture(CompletionPlace.Name, candidates, expectedType);
+		
+		Probe.CaptureCall(name, candidates);
 	}
 	
 	private void ProbeMember(AccessExpressionNode node, Func<IEnumerable<CompletionCandidate>> candidates)
 	{
-		if (Probe?.Covers(node.Member) == true)
+		if (Probe is null)
+			return;
+		
+		if (Probe.Covers(node.Member))
 			Probe.Capture(CompletionPlace.Member, candidates(), CurrentTargetType);
+		
+		Probe.CaptureCall(node.Member, candidates());
 	}
+	
+	private void ProbeCall(CallExpressionNode node)
+	{
+		if (Probe is null || FindCallee(node.Target) is not { } callee)
+			return;
+		
+		var (source, range) = node.SourceLocation;
+		var start = node.OpenParen.SourceLocation.Range.End;
+		var end = node.CloseParen?.SourceLocation.Range.Start ?? range.End;
+		Probe.EnterCall(callee, new(source, new TextRange(start, end)),
+			node.Arguments.Select(static argument => argument.SourceLocation));
+	}
+	
+	private static Token? FindCallee(IExpressionNode target) => target switch
+	{
+		VarExpressionNode name => name.Identifier,
+		AccessExpressionNode access => access.Member,
+		IndexerExpressionNode indexer => FindCallee(indexer.Target),
+		_ => null
+	};
 	
 	private void ProbePattern(PatternNode pattern, TypeSymbol subjectType)
 	{

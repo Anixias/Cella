@@ -109,6 +109,7 @@ public sealed partial class Resolver
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = current.ExtSignatureTypes,
 			CopiedParameters = current.CopiedParameters,
+			Containment = current.Containment,
 			EvaluateConstant = current.EvaluateConstant,
 			FindValueParameterUse = current.FindValueParameterUse,
 			GenericTypes = current.GenericTypes,

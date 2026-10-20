@@ -43,6 +43,11 @@ Error at trailing_commas.ce:47:28
 47 │     val g = fun(a: i32, b: i32,) -> i32 = a * b
                                    ^ Cannot end lists with ','
 
+Error at trailing_commas.ce:47:38
+46 │ {
+47 │     val g = fun(a: i32, b: i32,) -> i32 = a * b
+                                             ^ Expected '=>' or '{'
+
 Error at trailing_commas.ce:53:21
 52 │ {
 53 │     val v: array[i32, 2,] = [1, 2]

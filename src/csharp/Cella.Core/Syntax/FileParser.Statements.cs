@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using Cella.Core.Binding;
+using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
@@ -48,7 +49,9 @@ public sealed partial class FileParser
 			}
 			
 			var start = index;
+			RecordSite(index, CompletionSite.Statement);
 			var errorsBefore = Diagnostics.ErrorCount;
+			var attributedBefore = attributedErrors;
 			IStatementNode? statement = null;
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
@@ -71,7 +74,9 @@ public sealed partial class FileParser
 			if (statement is null)
 			{
 				var resynced = ResyncStatement(ref index, start);
+				ReportLexicalErrors(start, index);
 				AddBrokenStatement(statements, start, Math.Max(index - 1, start));
+				attributedErrors = attributedBefore + (Diagnostics.ErrorCount - errorsBefore);
 				if (!resynced)
 					continue;
 				
@@ -79,9 +84,11 @@ public sealed partial class FileParser
 				return true;
 			}
 			
-			if (Diagnostics.ErrorCount > errorsBefore)
-				_brokenStatements.Add(statement.SourceLocation);
+			ReportLexicalErrors(start, index);
+			if (Diagnostics.ErrorCount - errorsBefore > attributedErrors - attributedBefore)
+				_brokenStatements.Add(statement);
 			
+			attributedErrors = attributedBefore + (Diagnostics.ErrorCount - errorsBefore);
 			statements.Add(statement);
 		}
 		
@@ -110,11 +117,10 @@ public sealed partial class FileParser
 				_ => new(extent, null, false)
 			};
 			
-			if (previous is BrokenStatementNode)
-				_brokenStatements.RemoveAt(_brokenStatements.Count - 1);
+			_brokenStatements.Remove(previous);
 		}
 		
-		_brokenStatements.Add(extent);
+		_brokenStatements.Add(broken);
 		statements.Add(broken);
 	}
 	

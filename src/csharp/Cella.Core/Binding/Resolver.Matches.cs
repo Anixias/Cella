@@ -109,7 +109,7 @@ public sealed partial class Resolver
 		var guards = new List<IResolvedExpressionNode?>(node.Arms.Length);
 		var values = new IResolvedExpressionNode?[node.Arms.Length];
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
-		var bare = new List<(int Index, IEnumerable<LocalVariableSymbol?> Bindings)>();
+		var bare = new List<(int Index, IExpressionNode Value, IEnumerable<LocalVariableSymbol?> Bindings)>();
 		for (var i = 0; i < node.Arms.Length; i++)
 		{
 			var arm = node.Arms[i];
@@ -117,11 +117,13 @@ public sealed partial class Resolver
 			var guard = ResolveGuard(arm.Guard, bindings);
 			patterns.Add(armPatterns);
 			guards.Add(guard);
-			if (target is null && IsCaseNameSyntax(arm.Value) &&
-			    !bindings.Any(binding => binding?.Name == GetCaseToken(arm.Value)?.Text))
-				bare.Add((i, bindings));
+			if (arm.Value is not { } armValue)
+				values[i] = new ResolvedInvalidExpressionNode(node);
+			else if (target is null && IsCaseNameSyntax(armValue) &&
+			         !bindings.Any(binding => binding?.Name == GetCaseToken(armValue)?.Text))
+				bare.Add((i, armValue, bindings));
 			else
-				values[i] = VisitInScope(arm.Value, bindings, target, hint);
+				values[i] = VisitInScope(armValue, bindings, target, hint);
 			
 			summaries.AddRange(SummarizeArm(arm.Patterns, armPatterns, guard, enumType, arm.SourceLocation));
 		}
@@ -132,8 +134,8 @@ public sealed partial class Resolver
 			..hint is null ? [] : new[] { hint }
 		];
 		
-		foreach (var (i, bindings) in bare)
-			values[i] = VisitCaseName(node.Arms[i].Value, peers) ?? VisitInScope(node.Arms[i].Value, bindings);
+		foreach (var (i, armValue, bindings) in bare)
+			values[i] = VisitCaseName(armValue, peers) ?? VisitInScope(armValue, bindings);
 		
 		ReportArmConflicts(summaries);
 		var unguarded = patterns.Where((_, i) => guards[i] is null).SelectMany(static armPatterns => armPatterns)

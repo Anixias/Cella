@@ -8,54 +8,78 @@ namespace Cella.Core.Binding;
 
 public sealed partial class SignatureCollector
 {
-	private void ReportOnce(Action report)
-	{
-		var captured = new List<Diagnostic>();
-		var previous = Diagnostics.Redirect(captured);
-		report();
-		Diagnostics.Redirect(previous);
-		Diagnostics.AddRange(captured.Where(diagnostic =>
-			_reportedImportErrors.Add((diagnostic.SourceLocation, diagnostic.Message))));
-	}
-	
 	private ImportEnvironment CollectImports(FileNode node, ResolutionContext context)
 	{
-		ImportEnvironment? environment = null;
-		ReportOnce(() => environment = CollectFileImports(node, context));
-		return environment!;
-	}
-	
-	private ImportEnvironment CollectFileImports(FileNode node, ResolutionContext context)
-	{
+		var isFirstFile = projectModules is null;
+		projectModules ??= ResolveProjectImports(context);
+		
 		var imports = new List<Symbol>();
 		var hidden = new List<Symbol>();
 		var explicitImports = new List<(Symbol Symbol, Token Name, string Module)>();
 		var activated = new List<ModuleSymbol>();
 		var prelude = new HashSet<Symbol>();
-		foreach (var importExpression in node.Imports)
+		var projectNames = new HashSet<Token>();
+		
+		void Add(ImportExpression import, ModulePathSymbol module, Action<Diagnostic> report, bool isProject)
 		{
-			ProbeImport(importExpression, context);
-			var named = CollectImport(importExpression, context, hidden);
+			var named = CollectImport(module, import, context, hidden, report);
 			var collected = named.Select(static entry => entry.Symbol).ToList();
 			imports.AddRange(collected);
-			if (context.ResolveMembers(Modules.Root, importExpression.ModuleName.Parts, 0) is ModulePathSymbol imported)
-				activated.AddRange(Modules.GetModules(imported));
-			
+			activated.AddRange(Modules.GetModules(module));
 			activated.AddRange(collected.OfType<ModulePathSymbol>().SelectMany(Modules.GetModules));
-			if (importExpression.IsPrelude)
+			if (import.IsPrelude)
 				prelude.UnionWith(collected);
-			else if (importExpression.Import is TokenImport or ListImport)
-				explicitImports.AddRange(named.Select(entry =>
-					(entry.Symbol, entry.Name!.Value, importExpression.ModuleName.Text)));
+			else if (import.Import is TokenImport or ListImport)
+			{
+				explicitImports.AddRange(
+					named.Select(entry => (entry.Symbol, entry.Name!.Value, import.ModuleName.Text)));
+				
+				if (isProject)
+					projectNames.UnionWith(named.Select(static entry => entry.Name!.Value));
+			}
+		}
+		
+		for (var i = 0; i < ProjectImports.Length; i++)
+		{
+			if (projectModules[i] is { } module)
+				Add(ProjectImports[i], module, diagnostic => _projectImportFailures.TryAdd(diagnostic.SourceLocation,
+					diagnostic), true);
+		}
+		
+		foreach (var import in node.Imports)
+		{
+			using var frame = Own(new ErrorContainment.Owner(null, import.HasSyntaxErrors));
+			ProbeImport(import, context);
+			if (ResolveImportPath(import, context) is { } module)
+				Add(import, module, Diagnostics.Add, false);
 		}
 		
 		foreach (var name in explicitImports.Where(entry => prelude.Contains(entry.Symbol))
-			         .Select(static entry => entry.Name).Distinct())
+			         .Select(static entry => entry.Name)
+			         .Distinct()
+			         .Where(name => isFirstFile || !projectNames.Contains(name)))
 			Diagnostics.Add(new(DiagnosticSeverity.Hint, name.SourceLocation, "Redundant import"));
 		
 		_explicitImports.Add((explicitImports, context));
-		ReportRepeatedImports(node.Imports.Where(static import => !import.IsPrelude));
+		ReportRepeatedImports([
+			..ProjectImports.Where(static import => !import.IsPrelude),
+			..node.Imports.Where(static import => !import.HasSyntaxErrors)
+		]);
+		
 		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated);
+	}
+	
+	private List<ModulePathSymbol?> ResolveProjectImports(ResolutionContext context) =>
+		[..ProjectImports.Select(import => ResolveImportPath(import, context))];
+	
+	private ModulePathSymbol? ResolveImportPath(ImportExpression import, ResolutionContext context)
+	{
+		var path = import.ModuleName.Parts;
+		var symbol = context.ResolveMembers(Modules.Root, path, 0);
+		if (symbol is not null and not ModulePathSymbol)
+			Diagnostics.Add(ResolutionContext.ReportNotModule(symbol, path));
+		
+		return symbol as ModulePathSymbol;
 	}
 	
 	private void ProbeImport(ImportExpression import, ResolutionContext context)
@@ -111,16 +135,27 @@ public sealed partial class SignatureCollector
 			_ => []
 		});
 		
+		var projectTokens = ProjectImports.SelectMany(static import => import.Import switch
+		{
+			TokenImport single => [single.Token],
+			ListImport list => list.Tokens,
+			_ => []
+		}).ToHashSet();
+		
 		foreach (var repeated in names.GroupBy(static e => (e.Module, e.Token.Text)).Where(static g => g.Count() > 1))
 		{
 			foreach (var (_, token) in repeated)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
-					$"'{token.Text}' is imported more than once"));
+			{
+				if (!projectTokens.Contains(token) || _repeatedProjectImports.Add(token))
+					Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
+						$"'{token.Text}' is imported more than once"));
+			}
 		}
 	}
 	
-	private void ReportImportConflicts(List<(Symbol Symbol, Token Name, string Module)> explicitImports,
-		ResolutionContext context, Dictionary<Symbol, HashSet<string>> importers)
+	private static void CollectImportConflicts(List<(Symbol Symbol, Token Name, string Module)> explicitImports,
+		ResolutionContext context, Dictionary<Token, (Symbol Symbol, SortedSet<string> Modules)> ambiguous,
+		Dictionary<Symbol, HashSet<string>> importers)
 	{
 		foreach (var (symbol, name, module) in explicitImports)
 		{
@@ -133,15 +168,22 @@ public sealed partial class SignatureCollector
 			    symbol is FunctionSymbol && declared.All(static member => member is FunctionSymbol))
 				continue;
 			
-			var message = $"'{symbol.Name}' is ambiguous";
-			Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, message)
-			{
-				Hints = [$"Also declared in '{context.File.Module.Name}'"]
-			});
+			if (!ambiguous.TryGetValue(name, out var entry))
+				ambiguous[name] = entry = (symbol, new SortedSet<string>(StringComparer.Ordinal));
 			
+			entry.Modules.Add(context.File.Module.Name);
 			foreach (var member in declared)
 				importers.GetOrAdd(member).Add(module);
 		}
+	}
+	
+	private void ReportImportConflicts(Dictionary<Token, (Symbol Symbol, SortedSet<string> Modules)> ambiguous)
+	{
+		foreach (var (name, (symbol, modules)) in ambiguous)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"'{symbol.Name}' is ambiguous")
+			{
+				Hints = [..modules.Select(static module => $"Also declared in '{module}'")]
+			});
 	}
 	
 	private void ReportImportedDeclarations(Dictionary<Symbol, HashSet<string>> importers)
@@ -157,43 +199,30 @@ public sealed partial class SignatureCollector
 			});
 	}
 	
-	private List<(Symbol Symbol, Token? Name)> CollectImport(ImportExpression import, ResolutionContext context,
-		List<Symbol> hidden)
+	private static List<(Symbol Symbol, Token? Name)> CollectImport(ModulePathSymbol module, ImportExpression import,
+		ResolutionContext context, List<Symbol> hidden, Action<Diagnostic> report)
 	{
-		var path = import.ModuleName.Parts;
-		var symbol = context.ResolveMembers(Modules.Root, path, 0);
-		if (symbol is ModulePathSymbol module)
+		if (import.Import is FullImport)
+			hidden.AddRange(module.Members.Values
+				.Concat(module.PrivateMembers.Values)
+				.SelectMany(static m => m)
+				.Where(m => !context.IsVisible(m)));
+		
+		return import.Import switch
 		{
-			if (import.Import is FullImport)
-				hidden.AddRange(module.Members.Values
-					.Concat(module.PrivateMembers.Values)
-					.SelectMany(static m => m)
-					.Where(m => !context.IsVisible(m)));
-			
-			return CollectImport(module, import.Import, context);
-		}
-		
-		if (symbol is not null)
-			Diagnostics.Add(ResolutionContext.ReportNotModule(symbol, path));
-		
-		return [];
+			FullImport =>
+			[
+				..module.Members.Values.SelectMany(static m => m).Where(context.IsVisible)
+					.Select(static symbol => (symbol, (Token?)null))
+			],
+			TokenImport i => ImportMember(module, i.Token, context, report),
+			ListImport i => [..i.Tokens.SelectMany(t => ImportMember(module, t, context, report))],
+			_ => []
+		};
 	}
 	
-	private List<(Symbol Symbol, Token? Name)> CollectImport(ModulePathSymbol module, IImport import,
-		ResolutionContext context) => import switch
-	{
-		FullImport =>
-		[
-			..module.Members.Values.SelectMany(static m => m).Where(context.IsVisible)
-				.Select(static symbol => (symbol, (Token?)null))
-		],
-		TokenImport i => ImportMember(module, i.Token, context),
-		ListImport i => [..i.Tokens.SelectMany(t => ImportMember(module, t, context))],
-		_ => []
-	};
-	
-	private List<(Symbol Symbol, Token? Name)> ImportMember(ModulePathSymbol module, Token name,
-		ResolutionContext context)
+	private static List<(Symbol Symbol, Token? Name)> ImportMember(ModulePathSymbol module, Token name,
+		ResolutionContext context, Action<Diagnostic> report)
 	{
 		if (module.Members.TryGetValue(name.Text, out var members) &&
 		    members.Where(context.IsVisible).ToList() is { Count: > 0 } visible)
@@ -202,7 +231,7 @@ public sealed partial class SignatureCollector
 		if (module.Children.TryGetValue(name.Text, out var child))
 			return [(child, name)];
 		
-		Diagnostics.Add(context.ReportUndefinedMember(name.SourceLocation, module, name.Text));
+		report(context.ReportUndefinedMember(name.SourceLocation, module, name.Text));
 		return [];
 	}
 }

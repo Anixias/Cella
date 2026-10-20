@@ -1,0 +1,4 @@
+<case>\test.celp:2: 'x' is set more than once
+<case>\test.celp:3: '"a=b"' is set more than once
+<case>\test.celp:4: '"a=b"' is set more than once
+[compilation failed]

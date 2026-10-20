@@ -23,8 +23,11 @@ public sealed partial class SignatureCollector
 				return;
 			
 			foreach (var entryPoint in _entryPoints)
+			{
+				using var frame = Own(entryPoint.Symbol);
 				Diagnostics.Add(new(DiagnosticSeverity.Error, GetIdentifier(entryPoint.Symbol.Syntax).SourceLocation,
 					$"The program has more than one '{_entryPointName}' function"));
+			}
 			
 			return;
 		}
@@ -44,6 +47,7 @@ public sealed partial class SignatureCollector
 		
 		foreach (var candidate in candidates)
 		{
+			using var frame = Own(candidate.Symbol);
 			Diagnostics.Add(candidate.Symbol.Syntax is FunctionNode { TypeParameters: [var first, ..] }
 				? new(DiagnosticSeverity.Error, first.Identifier.SourceLocation,
 					$"Cannot declare {DescribeTypeParameter(first, false)}s on '{_entryPointName}'")
@@ -85,18 +89,21 @@ public sealed partial class SignatureCollector
 	
 	private void ReportExtSignatureTypes()
 	{
-		foreach (var (type, node, isPassed) in GetExtSignatureTypes())
+		foreach (var (type, node, isPassed, symbol) in GetExtSignatureTypes())
+		{
+			using var frame = Own(symbol);
 			_extSignatureTypes.Add(type, node, isPassed);
+		}
 		
 		_extSignatureTypes.Report(Diagnostics);
 	}
 	
-	private IEnumerable<(TypeSymbol Type, ITypeNode Node, bool IsPassed)> GetExtSignatureTypes()
+	private IEnumerable<(TypeSymbol Type, ITypeNode Node, bool IsPassed, Symbol Symbol)> GetExtSignatureTypes()
 	{
 		foreach (var (global, info) in _builder.Globals)
 		{
 			if (global.IsExternal)
-				yield return (info.Type, global.Syntax.Type, false);
+				yield return (info.Type, global.Syntax.Type, false, global);
 		}
 		
 		foreach (var (function, info) in _builder.Functions)
@@ -115,11 +122,11 @@ public sealed partial class SignatureCollector
 			{
 				if (parameters[i].Ellipsis is null && !IsWrittenBorrow(parameters[i].Type))
 					yield return (info.Signature.GetDeclaredType(i), parameters[i].Type,
-						ExtSignatureTypes.PassesByValue(info.Signature.GetMode(i)));
+						ExtSignatureTypes.PassesByValue(info.Signature.GetMode(i)), function);
 			}
 			
 			if (returnType is not null)
-				yield return (info.Signature.ReturnType, returnType, true);
+				yield return (info.Signature.ReturnType, returnType, true, function);
 		}
 	}
 	

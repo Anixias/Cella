@@ -13,7 +13,8 @@ public enum PathState : byte
 	Moved = 8
 }
 
-public readonly record struct MoveSite(MovePath Path, SourceLocation Location, int Depth = 0);
+public readonly record struct MoveSite(MovePath Path, SourceLocation Location, int Depth = 0, int CrossedLoop = 0);
+public readonly record struct WriteSite(SourceLocation Location, int CrossedLoop = 0);
 
 public sealed class InitState
 {
@@ -126,13 +127,37 @@ public sealed class InitState
 	}
 	
 	public void Set(MovePath path, PathState state) => Fill(path.Index, path.End, state,
-		ImmutableHashSet<MoveSite>.Empty, ImmutableHashSet<SourceLocation>.Empty);
+		ImmutableHashSet<MoveSite>.Empty, ImmutableHashSet<WriteSite>.Empty);
 	
 	public void Write(MovePath path, SourceLocation location) => Fill(path.Index, path.End, PathState.Initialized,
-		ImmutableHashSet<MoveSite>.Empty, [location]);
+		ImmutableHashSet<MoveSite>.Empty, [new WriteSite(location)]);
 	
 	public void Move(MovePath path, SourceLocation location) =>
 		Fill(path.Index, path.End, PathState.Moved, [new(path, location)], null);
+	
+	public InitState Cross(LoopEdge edge)
+	{
+		if (edge.IsEmpty)
+			return this;
+		
+		var crossed = Copy();
+		var moves = new Dictionary<ImmutableHashSet<MoveSite>, ImmutableHashSet<MoveSite>>(
+			ReferenceEqualityComparer.Instance);
+		
+		var writes = new Dictionary<ImmutableHashSet<WriteSite>, ImmutableHashSet<WriteSite>>(
+			ReferenceEqualityComparer.Instance);
+		
+		for (var c = 0; c < crossed._chunks.Length; c++)
+		{
+			if (crossed._chunks[c].HasSites)
+				crossed.Own(c).CrossSites(edge, moves, writes);
+		}
+		
+		crossed.shapes = crossed.shapes.ToImmutableDictionary(static entry => entry.Key,
+			entry => Shape.MapLeaves(entry.Value, leaf => new LeafShape(leaf.State, edge.Cross(leaf.Moves))));
+		
+		return crossed;
+	}
 	
 	public void ApplyDefaults(MovePath path) => ApplyDefaults(path.Index, path.End);
 	
@@ -142,7 +167,7 @@ public sealed class InitState
 	
 	public IEnumerable<MoveSite> GetOwnMoves(MovePath path) => GetChunk(path.Index).GetMoves(path.Index % ChunkSize);
 	
-	public IEnumerable<SourceLocation> GetOwnWrites(MovePath path) =>
+	public IEnumerable<WriteSite> GetOwnWrites(MovePath path) =>
 		GetChunk(path.Index).GetWrites(path.Index % ChunkSize);
 	
 	public IEnumerable<MoveSite> GetMoves(MovePath path) => Enumerable.Range(path.Index, path.End - path.Index)
@@ -214,7 +239,7 @@ public sealed class InitState
 	}
 	
 	private void Fill(int start, int end, PathState state, ImmutableHashSet<MoveSite> moves,
-		ImmutableHashSet<SourceLocation>? writes)
+		ImmutableHashSet<WriteSite>? writes)
 	{
 		RemoveShapes(start, end);
 		writeLog?.Add((start, end));
@@ -261,15 +286,38 @@ public sealed class InitState
 	(
 		PathState[] states,
 		ImmutableHashSet<MoveSite>[]? moves,
-		ImmutableHashSet<SourceLocation>[]? writes
+		ImmutableHashSet<WriteSite>[]? writes
 	)
 	{
 		private ImmutableHashSet<MoveSite>[]? moves = moves;
-		private ImmutableHashSet<SourceLocation>[]? writes = writes;
+		private ImmutableHashSet<WriteSite>[]? writes = writes;
 		
 		public PathState[] States { get; } = states;
 		
 		public static Chunk Empty { get; } = Filled(PathState.None);
+		
+		public bool HasSites => moves is not null || writes is not null;
+		
+		public void CrossSites(LoopEdge edge,
+			Dictionary<ImmutableHashSet<MoveSite>, ImmutableHashSet<MoveSite>> crossedMoves,
+			Dictionary<ImmutableHashSet<WriteSite>, ImmutableHashSet<WriteSite>> crossedWrites)
+		{
+			for (var i = 0; moves is not null && i < moves.Length; i++)
+			{
+				if (!crossedMoves.TryGetValue(moves[i], out var crossed))
+					crossedMoves[moves[i]] = crossed = edge.Cross(moves[i]);
+				
+				moves[i] = crossed;
+			}
+			
+			for (var i = 0; writes is not null && i < writes.Length; i++)
+			{
+				if (!crossedWrites.TryGetValue(writes[i], out var crossed))
+					crossedWrites[writes[i]] = crossed = edge.Cross(writes[i]);
+				
+				writes[i] = crossed;
+			}
+		}
 		
 		public static Chunk Filled(PathState state)
 		{
@@ -280,12 +328,12 @@ public sealed class InitState
 		
 		public ImmutableHashSet<MoveSite> GetMoves(int index) => moves?[index] ?? ImmutableHashSet<MoveSite>.Empty;
 		
-		public ImmutableHashSet<SourceLocation> GetWrites(int index) =>
-			writes?[index] ?? ImmutableHashSet<SourceLocation>.Empty;
+		public ImmutableHashSet<WriteSite> GetWrites(int index) =>
+			writes?[index] ?? ImmutableHashSet<WriteSite>.Empty;
 		
 		public void SetMoves(int index, ImmutableHashSet<MoveSite> value) => FillMoves(index, 1, value);
 		
-		public void SetWrites(int index, ImmutableHashSet<SourceLocation> value) => FillWrites(index, 1, value);
+		public void SetWrites(int index, ImmutableHashSet<WriteSite> value) => FillWrites(index, 1, value);
 		
 		public void FillMoves(int offset, int count, ImmutableHashSet<MoveSite> value)
 		{
@@ -296,17 +344,17 @@ public sealed class InitState
 			moves.AsSpan(offset, count).Fill(value);
 		}
 		
-		public void FillWrites(int offset, int count, ImmutableHashSet<SourceLocation> value)
+		public void FillWrites(int offset, int count, ImmutableHashSet<WriteSite> value)
 		{
 			if (writes is null && value.IsEmpty)
 				return;
 			
-			writes ??= Allocate<SourceLocation>();
+			writes ??= Allocate<WriteSite>();
 			writes.AsSpan(offset, count).Fill(value);
 		}
 		
 		public Chunk Clone() => new((PathState[])States.Clone(), (ImmutableHashSet<MoveSite>[]?)moves?.Clone(),
-			(ImmutableHashSet<SourceLocation>[]?)writes?.Clone());
+			(ImmutableHashSet<WriteSite>[]?)writes?.Clone());
 		
 		public static bool Covers(Chunk outer, Chunk inner, int length)
 		{

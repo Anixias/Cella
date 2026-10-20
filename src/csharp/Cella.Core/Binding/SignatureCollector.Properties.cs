@@ -10,6 +10,7 @@ public sealed partial class SignatureCollector
 	private void CompleteProperty(PropertySymbol property)
 	{
 		var node = property.Node!;
+		using var frame = Own(node);
 		var type = node.Type is { } typeNode ? GetPropertyType(property, typeNode) : null;
 		if (node.Keyword is not null)
 			ReportMissingAccessors(property);

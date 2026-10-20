@@ -184,9 +184,11 @@ public sealed class Server
 			return null;
 		
 		var offset = GetOffset(text, parameters);
-		var start = Completion.FindNameStart(text, offset);
-		var probed = Completion.Repair(start < offset ? text : text.Insert(offset, Completion.Placeholder), offset);
-		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset), text, start);
+		var probed = Completion.FindNameStart(text, offset) < offset
+			? text
+			: text.Insert(offset, Completion.Placeholder);
+		
+		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset));
 	}
 	
 	private async Task<JsonNode?> FindVisibleGlobalsAsync(JsonObject? parameters)
@@ -234,14 +236,8 @@ public sealed class Server
 		if (_workspace.GetText(uri) is not { } text)
 			return null;
 		
-		var offset = GetOffset(text, parameters);
-		if (Completion.FindCall(text, offset) is not var (nameEnd, callee, argument))
-			return null;
-		
-		var probed = Completion.IsEmptyArgument(text, offset) ? text.Insert(offset, Completion.Placeholder) : text;
-		return await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, nameEnd) is { } probe
-			? Completion.ToSignatureHelp(probe, callee, argument)
-			: null;
+		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), text, GetOffset(text, parameters));
+		return probe?.Call is { } call ? Completion.ToSignatureHelp(call) : null;
 	}
 	
 	private static int GetOffset(string text, JsonObject? parameters) => Protocol.ToOffset(text,

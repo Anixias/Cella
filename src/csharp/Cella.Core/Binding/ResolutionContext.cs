@@ -27,6 +27,7 @@ public readonly struct ResolutionContext
 	public DiagnosticList Diagnostics { get; init; }
 	public ExtSignatureTypes? ExtSignatureTypes { get; init; }
 	public CopiedParameters? CopiedParameters { get; init; }
+	public ErrorContainment? Containment { get; init; }
 	public Func<IExpressionNode, ResolutionContext, TypeSymbol?, Constant?>? EvaluateConstant { get; init; }
 	public Func<IExpressionNode, ResolutionContext, ValueParameterUse?>? FindValueParameterUse { get; init; }
 	public Dictionary<IndexerExpressionNode, TypeSymbol?>? GenericTypes { get; init; }
@@ -1017,7 +1018,7 @@ public readonly struct ResolutionContext
 	private void AddSizeCheck(TypeSymbol type, SourceLocation location)
 	{
 		var checks = TypePool.SizeChecks;
-		checks.Add((type, location, ContainingFunction?.Symbol));
+		checks.Add((type, location, ContainingFunction?.Symbol, Containment?.Current ?? default));
 		RecordUndo?.Invoke(() => checks.RemoveAt(checks.Count - 1));
 	}
 	

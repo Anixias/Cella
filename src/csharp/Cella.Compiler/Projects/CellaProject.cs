@@ -82,6 +82,8 @@ public sealed partial class CellaProject
 	
 	public Dictionary<string, ProjectSettings> When { get; } = [];
 	
+	public ImmutableArray<CelpEntry> ImportEntries { get; private set; } = [];
+	
 	public static IEnumerable<string> FindProjects(string directory) =>
 		Directory.EnumerateFiles(directory, ProjectSearchPattern, SearchOption.AllDirectories);
 	
@@ -91,40 +93,6 @@ public sealed partial class CellaProject
 		.Select(Path.GetFileName)
 		.OfType<string>()
 		.Order(StringComparer.Ordinal);
-	
-	private static string DescribeSyntaxError(string line, string message)
-	{
-		if (message.StartsWith("Escape characters 10 ", StringComparison.Ordinal))
-			return "Unterminated string";
-		
-		if (message.StartsWith("Bare keys contains an invalid string '10'", StringComparison.Ordinal))
-			return line.StartsWith('[') ? "Expected ']'" : "Expected '='";
-		
-		if (message.StartsWith("Reached end of file", StringComparison.Ordinal))
-			return line.StartsWith("[[", StringComparison.Ordinal) ? "Expected ']]'" :
-				line.StartsWith('[') ? "Expected ']'" : "Unexpected end of file";
-		
-		if (message.StartsWith("Bare keys is empty", StringComparison.Ordinal))
-			return "Expected a key";
-		
-		if (message.StartsWith("There is a non-newline", StringComparison.Ordinal))
-			return "Expected a new line after the value";
-		
-		if (message.StartsWith("Unexpected value found", StringComparison.Ordinal))
-			return "Expected a value";
-		
-		if (message.StartsWith("An invalid escape sequence", StringComparison.Ordinal))
-			return "Invalid escape sequence";
-		
-		if (message.StartsWith("Table Header '", StringComparison.Ordinal) &&
-		    message.EndsWith("' is already defined.", StringComparison.Ordinal))
-			return $"'[{message["Table Header '".Length..^"' is already defined.".Length]}]' appears more than once";
-		
-		if (message.EndsWith(" is already defined.", StringComparison.Ordinal))
-			return $"'{line.Split('=')[0].Trim()}' is set more than once";
-		
-		return message;
-	}
 	
 	// All cella files in or under the project directory belong to that project
 	public static IEnumerable<string> FindSourceFiles(string directory) => FindSourceFiles(directory, true);
@@ -137,9 +105,14 @@ public sealed partial class CellaProject
 		var buffer = new MemoryStream();
 		await stream.CopyToAsync(buffer);
 		var bytes = buffer.ToArray();
-		var lines = Encoding.UTF8.GetString(bytes).Split('\n');
-		using var content = new MemoryStream(bytes);
+		var reader = CelpReader.Read(Encoding.UTF8.GetString(bytes.AsSpan(bytes is [0xEF, 0xBB, 0xBF, ..] ? 3 : 0)));
+		if (reader.Errors.Count > 0)
+		{
+			errors.AddRange(reader.Errors.Select(error => ProjectDiagnostic.At(path, error.Line, error.Message)));
+			return null;
+		}
 		
+		using var content = new MemoryStream(bytes);
 		TomlDocument document;
 		try
 		{
@@ -148,14 +121,7 @@ public sealed partial class CellaProject
 		catch (CsTomlSerializeException e)
 		{
 			errors.AddRange((e.ParseExceptions ?? []).Select(error =>
-			{
-				var line = error.LineNumber >= 1 && error.LineNumber <= lines.Length
-					? lines[error.LineNumber - 1].Trim()
-					: "";
-				
-				return ProjectDiagnostic.At(path, (int)error.LineNumber,
-					DescribeSyntaxError(line, (error.InnerException ?? error).Message));
-			}));
+				ProjectDiagnostic.At(path, (int)error.LineNumber, "Unsupported TOML")));
 			
 			return null;
 		}
@@ -171,6 +137,7 @@ public sealed partial class CellaProject
 			return null;
 		
 		var project = root.GetValue<CellaProject>();
+		project.ImportEntries = [..reader.ImportEntries];
 		project.ProjectReferences?.RemoveAll(static r => r.Path is null);
 		
 		foreach (var (key, node) in root["When"u8])
@@ -411,7 +378,8 @@ public sealed partial class CellaProject
 			],
 			Flags = Flags,
 			Imports = Imports,
-			Prelude = Prelude
+			Prelude = Prelude,
+			ImportEntries = ImportEntries
 		};
 	}
 	

@@ -177,6 +177,20 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	public BlockParser? ParseBlock { get; init; }
 	public Action<Diagnostic>? ReportRecovered { get; init; }
 	
+	private int speculations;
+	
+	private bool CanRecover => ReportRecovered is not null && speculations == 0;
+	
+	private void Recover(Diagnostic diagnostic)
+	{
+		if (ReportRecovered is not { } report || speculations > 0)
+			throw new ParseException(diagnostic);
+		
+		report(diagnostic);
+	}
+	
+	protected override void ReportSeparatorError(Diagnostic diagnostic) => Recover(diagnostic);
+	
 	private readonly Dictionary<IExpressionNode, SourceLocation> _extents = [];
 	
 	public override IExpressionNode Parse(ref int index) => ParseExpression(ref index);
@@ -361,9 +375,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		
 		if (value is null)
 		{
-			index = start;
-			ParseBitwiseOr(ref index);
-			throw Expected(start, "a pattern");
+			valueEnd = start;
+			value = ParseBitwiseOr(ref valueEnd);
 		}
 		
 		index = valueEnd;
@@ -391,17 +404,21 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	
 	private T InBrackets<T>(ref int index, ParseStep<T> parse) => WithDepth(ref index, bracketDepth + 1, parse);
 	
-	private static T? TryParse<T>(int start, ParseStep<T> parse, out int end) where T : class
+	private T? TryParse<T>(int start, ParseStep<T> parse, out int end) where T : class
 	{
 		end = start;
+		speculations++;
 		try
 		{
-			var result = parse(ref end);
-			return result;
+			return parse(ref end);
 		}
 		catch (ParseException)
 		{
 			return null;
+		}
+		finally
+		{
+			speculations--;
 		}
 	}
 	
@@ -781,13 +798,8 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var (source, range) = (own ?? keyword).SourceLocation;
 		if (IsNextNewline(index) && Peek(index, TokenType.OpFatArrow))
 		{
-			var diagnostic = new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-				"Cannot start a line with '=>'");
-			
-			if (ReportRecovered is not { } report)
-				throw new ParseException(diagnostic);
-			
-			report(diagnostic);
+			Recover(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
+				"Cannot start a line with '=>'"));
 		}
 		
 		if (Match(ref index, TokenType.OpFatArrow))
@@ -908,10 +920,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		}
 		
 		var (patterns, guard, location) = ParseArmHead(ref index);
-		if (!Match(ref index, TokenType.OpFatArrow))
-			throw Expected(index, "'=>'");
+		if (Match(ref index, TokenType.OpFatArrow))
+			return new MatchExpressionArmNode(patterns, guard, location, ParseExpression(ref index));
 		
-		return new MatchExpressionArmNode(patterns, guard, location, ParseExpression(ref index));
+		var error = Expected(index, "'=>'");
+		if (!StartsLine(index) && !Peek(index, TokenType.OpCloseBrace))
+			throw error;
+		
+		Recover(error.Diagnostic);
+		return new MatchExpressionArmNode(patterns, guard, location, null);
 	}
 	
 	private PanicExpressionNode ParsePanic(ref int index, Token keyword, IExpressionNode? qualifier) =>
@@ -1101,9 +1118,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 						break;
 					}
 					
-					if (IsNextNewline(index) && ReportRecovered is { } report)
+					if (IsNextNewline(index) && CanRecover)
 					{
-						report(Expected(index - 1, "a name after '.'").Diagnostic);
+						Recover(Expected(index - 1, "a name after '.'").Diagnostic);
 						var (dotSource, dotRange) = dot.SourceLocation;
 						var missing = new Token(TokenType.Identifier,
 							new SourceLocation(dotSource, new TextRange(dotRange.End, dotRange.End)), "");
@@ -1173,18 +1190,38 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			if (arguments.Count > 0)
 			{
 				if (!Match(ref index, out var comma, TokenType.OpComma))
-					throw Expected(index, "',' or ')'", openParen);
+					return RecoverUnclosed(index, "',' or ')'", target, arguments, openParen);
 				
 				if (RejectTrailingComma(index, comma, TokenType.OpCloseParen))
 					continue;
 			}
 			
+			if (StartsLine(index) && !CanStartExpression(index))
+				return RecoverUnclosed(index, "')'", target, arguments, openParen);
+			
 			arguments.Add(InBrackets(ref index, ParseArgument));
 		}
 		
-		range = range.Join(closeParen.SourceLocation.Range);
+		return new(target, arguments, new(source, range.Join(closeParen.SourceLocation.Range)))
+		{
+			OpenParen = openParen,
+			CloseParen = closeParen
+		};
+	}
+	
+	private CallExpressionNode RecoverUnclosed(int index, string expected, IExpressionNode target,
+		List<IExpressionNode> arguments, Token openParen)
+	{
+		var error = Expected(index, expected, openParen);
+		if (!StartsLine(index))
+			throw error;
 		
-		return new(target, arguments, new(source, range));
+		Recover(error.Diagnostic);
+		var (source, range) = Extent(target);
+		return new(target, arguments, new(source, range.Join(Tokens[index - 1].SourceLocation.Range)))
+		{
+			OpenParen = openParen
+		};
 	}
 	
 	private IExpressionNode ParseArgument(ref int index)

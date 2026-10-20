@@ -100,7 +100,8 @@ public sealed partial class FileParser
 		return new(new(parts.ToImmutableArray()), import);
 	}
 	
-	private bool IsOnSameLine(int index) => !AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line;
+	private bool IsOnSameLine(int index) =>
+		!AtEnd(index) && (index == 0 || Tokens[index].Line == Tokens[index - 1].Line);
 	
 	private ListImport? ParseImportList(ref int index, Token openBracket)
 	{
@@ -112,7 +113,7 @@ public sealed partial class FileParser
 				if (!Match(ref index, out var comma, TokenType.OpComma))
 				{
 					ReportExpected(index, "',' or ']'", openBracket);
-					return null;
+					return StartsLine(index) ? new ListImport([..names]) : null;
 				}
 				
 				if (RejectTrailingComma(index, comma, TokenType.OpCloseBracket))
@@ -123,7 +124,7 @@ public sealed partial class FileParser
 			    !Match(ref index, out name, TokenType.KeywordPanic))
 			{
 				ReportExpected(index, "a name");
-				return null;
+				return names.Count > 0 && StartsLine(index) ? new ListImport([..names]) : null;
 			}
 			
 			names.Add(name);

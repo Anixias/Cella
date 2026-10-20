@@ -1,12 +1,11 @@
 ﻿using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
 
 namespace Cella.LanguageServer;
 
-public static partial class Completion
+public static class Completion
 {
 	public const string Placeholder = "cellaCompletionProbe";
 	
@@ -53,15 +52,6 @@ public static partial class Completion
 	
 	private static readonly string[] _topLevelKeywords = ["mod", "use", "ext", "pub", "pvt"];
 	
-	[GeneratedRegex(@"^\s*\S+(\[[^\]]*\])?\s*:\s*((pub|pvt|mod|ref|ext)\s+)*$")]
-	private static partial Regex DeclarationStart();
-	
-	[GeneratedRegex(@"\bmatch\b")]
-	private static partial Regex MatchKeyword();
-	
-	[GeneratedRegex(@"^\s*use\b")]
-	private static partial Regex UseKeyword();
-	
 	public static bool IsNameCharacter(char c) => char.IsLetterOrDigit(c) || c == '_';
 	
 	public static int FindNameStart(string text, int offset)
@@ -73,126 +63,18 @@ public static partial class Completion
 		return start;
 	}
 	
-	public static string Repair(string text, int offset)
+	public static JsonObject ToList(CompletionProbe? probe)
 	{
-		var lineStart = LineStartOf(text, offset);
-		var lineEnd = text.IndexOf('\n', offset) is >= 0 and var end ? end : text.Length;
-		if (lineEnd > offset && text[lineEnd - 1] == '\r')
-			lineEnd--;
-		
-		var line = text[lineStart..lineEnd];
-		if (UseKeyword().IsMatch(line))
-			return line.Count(static c => c == '[') > line.Count(static c => c == ']')
-				? text.Insert(lineEnd, "]")
-				: text;
-		
-		return CompleteArm(text, lineStart, lineEnd);
-	}
-	
-	private static string CompleteArm(string text, int lineStart, int lineEnd)
-	{
-		if (text[lineStart..lineEnd].Contains("=>") || FindOpenBrace(text, lineStart) is not { } brace)
-			return text;
-		
-		var braceLineStart = LineStartOf(text, brace);
-		var header = text[braceLineStart..brace];
-		if (string.IsNullOrWhiteSpace(header) && braceLineStart > 0)
-			header = text[LineStartOf(text, braceLineStart - 1)..(braceLineStart - 1)];
-		
-		return MatchKeyword().IsMatch(header) ? text.Insert(lineEnd, " => 0") : text;
-	}
-	
-	private static int LineStartOf(string text, int offset) => text.LastIndexOf('\n', Math.Max(offset - 1, 0)) + 1;
-	
-	private static int? FindOpenBrace(string text, int offset)
-	{
-		var depth = 0;
-		for (var i = offset - 1; i >= 0; i--)
-		{
-			if (text[i] == '}')
-				depth++;
-			else if (text[i] == '{' && depth-- == 0)
-				return i;
-		}
-		
-		return null;
-	}
-	
-	public static bool IsEmptyArgument(string text, int offset)
-	{
-		var before = text[..offset].TrimEnd();
-		var after = text[offset..].TrimStart();
-		return before is [.., '(' or ','] && after is [')' or ',', ..];
-	}
-	
-	public static (int NameEnd, string Callee, int Argument)? FindCall(string text, int offset)
-	{
-		var tokens = new FilteredScanner(new StringSource(text, string.Empty))
-			.TakeWhile(token => token.Type != TokenType.EndOfFile && token.SourceLocation.Range.Start < offset)
-			.ToList();
-		
-		var depth = 0;
-		var argument = 0;
-		var open = -1;
-		for (var i = tokens.Count - 1; i >= 0 && open < 0; i--)
-		{
-			switch (tokens[i].Type)
-			{
-				case TokenType.OpCloseParen or TokenType.OpCloseBracket or TokenType.OpCloseBrace:
-					depth++;
-					break;
-				
-				case TokenType.OpOpenParen when depth == 0:
-					open = tokens[i].SourceLocation.Range.Start;
-					break;
-				
-				case TokenType.OpOpenBracket or TokenType.OpOpenBrace when depth == 0:
-					return null;
-				
-				case TokenType.OpOpenParen or TokenType.OpOpenBracket or TokenType.OpOpenBrace:
-					depth--;
-					break;
-				
-				case TokenType.OpComma when depth == 0:
-					argument++;
-					break;
-			}
-		}
-		
-		var end = open;
-		while (end > 0 && char.IsWhiteSpace(text[end - 1]))
-			end--;
-		
-		if (end > 0 && text[end - 1] == ']')
-		{
-			var brackets = 0;
-			while (end > 0)
-			{
-				var c = text[--end];
-				brackets += c == ']' ? 1 : c == '[' ? -1 : 0;
-				if (brackets == 0)
-					break;
-			}
-		}
-		
-		var start = end > 0 ? FindNameStart(text, end) : end;
-		return start < end ? (end, text[start..end], argument) : null;
-	}
-	
-	public static JsonObject ToList(CompletionProbe? probe, string text, int nameStart)
-	{
-		var lineStart = text.LastIndexOf('\n', Math.Max(nameStart - 1, 0)) + 1;
-		var before = nameStart > lineStart ? text[lineStart..nameStart] : "";
 		var items = new JsonArray();
-		IEnumerable<string> keywords = probe?.Place switch
+		IEnumerable<string> keywords = (probe?.Place, probe?.Site) switch
 		{
-			CompletionPlace.Name when string.IsNullOrWhiteSpace(before) =>
-				_statementKeywords.Concat(_expressionKeywords).Distinct(),
-			CompletionPlace.Name => _expressionKeywords,
-			CompletionPlace.Type => _typeKeywords,
-			CompletionPlace.Member => [],
-			_ when DeclarationStart().IsMatch(before) => _declarationKeywords,
-			_ when string.IsNullOrWhiteSpace(before) => _topLevelKeywords,
+			(CompletionPlace.Name, CompletionSite.Statement) => _statementKeywords.Concat(_expressionKeywords)
+				.Distinct(),
+			(CompletionPlace.Name, _) => _expressionKeywords,
+			(CompletionPlace.Type, _) => _typeKeywords,
+			(CompletionPlace.Member, _) => [],
+			(_, CompletionSite.Declaration) => _declarationKeywords,
+			(_, CompletionSite.TopLevel) => _topLevelKeywords,
 			_ => []
 		};
 		
@@ -217,10 +99,11 @@ public static partial class Completion
 		return new JsonObject { ["isIncomplete"] = false, ["items"] = items };
 	}
 	
-	public static JsonObject? ToSignatureHelp(CompletionProbe probe, string callee, int activeParameter)
+	public static JsonObject? ToSignatureHelp(CompletionCall call)
 	{
-		var functions = probe.Candidates
-			.Where(candidate => IsFunction(candidate) && NameOf(candidate) == callee)
+		var activeParameter = call.Argument;
+		var functions = call.Candidates
+			.Where(candidate => IsFunction(candidate) && NameOf(candidate) == call.Callee)
 			.Select(static candidate => candidate.Function!.Value)
 			.ToList();
 		

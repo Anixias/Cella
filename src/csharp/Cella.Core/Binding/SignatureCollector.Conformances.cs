@@ -18,6 +18,7 @@ public sealed partial class SignatureCollector
 		
 		foreach (var conformance in _localConformances)
 		{
+			using var frame = Own(conformance.Owner);
 			if (_foreignErrors.TryGetValue(conformance, out var foreignError))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location, foreignError));
 			
@@ -99,9 +100,12 @@ public sealed partial class SignatureCollector
 				.Select(other => FindOverlap(conformance, other))
 				.FirstOrDefault(static found => found is not null);
 			
-			if (overlap is var (target, trait))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
-					$"'{DiagnosticReporter.DescribeType(target)}' implements '{trait.Name}' more than once"));
+			if (overlap is not var (target, trait))
+				continue;
+			
+			using var frame = Own(conformance.Owner);
+			Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+				$"'{DiagnosticReporter.DescribeType(target)}' implements '{trait.Name}' more than once"));
 		}
 	}
 	
@@ -619,13 +623,17 @@ public sealed partial class SignatureCollector
 			    _witnessMembers.Contains(function))
 				continue;
 			
+			using var frame = Own(function);
 			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function),
 				$"'{name}' isn't a member of {string.Join(" or ", traits)}"));
 		}
 		
 		foreach (var constant in impl.Constants.Where(constant => !_witnessConstants.Contains(constant)))
+		{
+			using var frame = Own(constant);
 			Diagnostics.Add(new(DiagnosticSeverity.Error, constant.Syntax.Identifier.SourceLocation,
 				$"'{constant.Name}' isn't a member of {string.Join(" or ", traits)}"));
+		}
 	}
 	
 	private bool DeferConstraintCheck(ConstraintCheck check)
@@ -633,7 +641,7 @@ public sealed partial class SignatureCollector
 		if (!MentionsPending(check.Argument))
 			return false;
 		
-		_deferredChecks.Add(check);
+		_deferredChecks.Add((check, CurrentOwner));
 		return true;
 	}
 	
@@ -650,10 +658,13 @@ public sealed partial class SignatureCollector
 	
 	private void ReportDeferredChecks()
 	{
-		foreach (var check in _deferredChecks)
+		foreach (var (check, owner) in _deferredChecks)
 		{
-			if (_typePool.FindConstraintViolation(check.Parameter, check.Argument, check.Map) is { } violation)
-				Diagnostics.Add(violation.At(check.Location));
+			if (_typePool.FindConstraintViolation(check.Parameter, check.Argument, check.Map) is not { } violation)
+				continue;
+			
+			using var frame = Own(owner);
+			Diagnostics.Add(violation.At(check.Location));
 		}
 		
 		_deferredChecks.Clear();

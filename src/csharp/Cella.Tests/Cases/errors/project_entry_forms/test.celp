@@ -1,0 +1,9 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+"Imports" = [
+	"util\u002efive",
+	"""util.missing""",
+	'util.absent',
+	"util.\u0028",
+]

@@ -1,0 +1,9 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+Imports = [
+	"lib.Helper",
+]
+
+[[ProjectReferences]]
+Path = 'lib/lib.celp'

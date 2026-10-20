@@ -24,7 +24,14 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	}
 	
 	public DiagnosticList Diagnostics { get; } = new();
-	public ErrorContainment? Containment { get; init; }
+	
+	public ErrorContainment? Containment
+	{
+		get => _extSignatureTypes.Containment;
+		init => _extSignatureTypes.Containment = _copiedParameters.Containment = value;
+	}
+	
+	public ImmutableArray<ImportExpression> ProjectImports { get; init; } = [];
 	public Action<Token, Symbol>? RecordName { get; init; }
 	
 	private const int UserConversionCost = 100;
@@ -155,18 +162,27 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	{
 		var outerNesting = reportedNesting;
 		reportedNesting = false;
+		Containment?.Enter(node);
 		var result = ((IDeclarationNodeVisitor<IResolvedDeclarationNode>)this).Visit(node);
+		Containment?.Exit();
 		reportedNesting = outerNesting;
 		return result;
 	}
 	
 	private IResolvedStatementNode VisitNode(IStatementNode node)
 	{
-		if (RuntimeHelpers.TryEnsureSufficientExecutionStack())
-			return ((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
+		if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
+		{
+			ReportNesting(node.SourceLocation);
+			return new ResolvedInvalidStatementNode(node);
+		}
 		
-		ReportNesting(node.SourceLocation);
-		return new ResolvedInvalidStatementNode(node);
+		var isBroken = Containment?.Enter(node) == true;
+		var result = ((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
+		if (isBroken)
+			Containment!.Exit();
+		
+		return result;
 	}
 	
 	private void ReportNesting(SourceLocation location)
@@ -437,7 +453,24 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		(Symbol Owner, TypeParameterSymbol Parameter) To,
 		bool IsExpansive,
 		SourceLocation Location
-	);
+	)
+	{
+		public ErrorContainment.Owner ErrorOwner { get; init; }
+	}
+	
+	private ErrorContainment.Owner CurrentOwner => Containment?.Current ?? default;
+	
+	private ErrorContainment.Scope Own(ErrorContainment.Owner owner)
+	{
+		Containment?.Enter(owner);
+		return new(Containment);
+	}
+	
+	private ErrorContainment.Scope Own(Symbol symbol)
+	{
+		Containment?.Enter(_signatures.GetDeclaration(symbol));
+		return new(Containment);
+	}
 	
 	private readonly record struct CallForm(int Omitted, TypeSymbol? Element, int Packed);
 	

@@ -47,7 +47,7 @@ public sealed partial class SignatureCollector
 			if ((FindConversionError(type, conversion, signature) ??
 			     FindBuiltInConversion(type, conversion, signature)) is var (location, message))
 			{
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+				ReportOn(conversion, new(DiagnosticSeverity.Error, location, message));
 				continue;
 			}
 			
@@ -62,8 +62,8 @@ public sealed partial class SignatureCollector
 			if (sameTarget.Select(static c => c.Node.Identifier.Type).Distinct().Count() > 1)
 			{
 				var message = $"Cannot declare both 'as' and 'new' conversions to '{sameTarget.Key.Name}'";
-				Diagnostics.AddRange(sameTarget.Select(c =>
-					new Diagnostic(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message)));
+				foreach (var c in sameTarget)
+					ReportOn(c.Node, new(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message));
 				
 				continue;
 			}
@@ -75,8 +75,8 @@ public sealed partial class SignatureCollector
 				var message = $"Conversion to '{sameTarget.Key.Name}' with '{receiver}' is declared more than " +
 				              $"once in '{type.Name}'";
 				
-				Diagnostics.AddRange(sameMode.Select(c =>
-					new Diagnostic(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message)));
+				foreach (var c in sameMode)
+					ReportOn(c.Node, new(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message));
 			}
 		}
 		
@@ -84,8 +84,8 @@ public sealed partial class SignatureCollector
 		foreach (var sameSource in sameSources)
 		{
 			var message = $"Conversion from '{sameSource.Key.Name}' is declared more than once in '{type.Name}'";
-			Diagnostics.AddRange(sameSource.Select(c =>
-				new Diagnostic(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message)));
+			foreach (var c in sameSource)
+				ReportOn(c.Node, new(DiagnosticSeverity.Error, c.Node.Identifier.SourceLocation, message));
 		}
 	}
 	
@@ -162,7 +162,7 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			if (FindLoopOperatorError(node, signature) is var (location, message))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+				ReportOn(node, new(DiagnosticSeverity.Error, location, message));
 			else
 				valid.Add((node, signature));
 		}
@@ -175,8 +175,8 @@ public sealed partial class SignatureCollector
 		{
 			var (name, mode) = sameMode.Key;
 			var message = $"'{name}' with '{DescribeReceiver(mode)}' is declared more than once in '{type.Name}'";
-			Diagnostics.AddRange(sameMode.Select(o =>
-				new Diagnostic(DiagnosticSeverity.Error, o.Node.Identifier.SourceLocation, message)));
+			foreach (var o in sameMode)
+				ReportOn(o.Node, new(DiagnosticSeverity.Error, o.Node.Identifier.SourceLocation, message));
 		}
 	}
 	
@@ -217,7 +217,7 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			if (FindIndexerError(type, indexer, signature) is var (location, message))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+				ReportOn(indexer, new(DiagnosticSeverity.Error, location, message));
 			else
 				valid.Add((indexer, signature));
 		}
@@ -226,8 +226,8 @@ public sealed partial class SignatureCollector
 		foreach (var sameMode in sameModes)
 		{
 			var message = $"'[]' with '{DescribeReceiver(sameMode.Key)}' is declared more than once in '{type.Name}'";
-			Diagnostics.AddRange(sameMode.Select(i =>
-				new Diagnostic(DiagnosticSeverity.Error, i.Node.Identifier.SourceLocation, message)));
+			foreach (var i in sameMode)
+				ReportOn(i.Node, new(DiagnosticSeverity.Error, i.Node.Identifier.SourceLocation, message));
 		}
 		
 		if (sameModes.Count > 0 || valid is not [var first, var aligned])
@@ -235,12 +235,14 @@ public sealed partial class SignatureCollector
 		
 		var second = aligned with { Signature = AlignTypeParameters(first.Node, aligned.Node, aligned.Signature) };
 		if (!HaveSameIndices(first.Signature, second.Signature))
-			Diagnostics.AddRange(valid.Select(static i => new Diagnostic(DiagnosticSeverity.Error,
-				i.Node.Identifier.SourceLocation, "Cannot declare '[]' operators with different parameters")));
+			foreach (var i in valid)
+				ReportOn(i.Node, new(DiagnosticSeverity.Error, i.Node.Identifier.SourceLocation,
+					"Cannot declare '[]' operators with different parameters"));
 		
 		if (GetIndexedType(first.Signature) != GetIndexedType(second.Signature))
-			Diagnostics.AddRange(valid.Select(static i => new Diagnostic(DiagnosticSeverity.Error,
-				i.Node.ReturnType!.SourceLocation, "Cannot declare '[]' operators with different target types")));
+			foreach (var i in valid)
+				ReportOn(i.Node, new(DiagnosticSeverity.Error, i.Node.ReturnType!.SourceLocation,
+					"Cannot declare '[]' operators with different target types"));
 	}
 	
 	private FunctionSignature AlignTypeParameters(FunctionNode model, FunctionNode node, FunctionSignature signature)
@@ -295,7 +297,7 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			if (FindDereferenceError(type, dereference, signature) is var (location, message))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+				ReportOn(dereference, new(DiagnosticSeverity.Error, location, message));
 			else
 				valid.Add((dereference, signature));
 		}
@@ -303,13 +305,14 @@ public sealed partial class SignatureCollector
 		foreach (var sameMode in valid.GroupBy(static d => d.Signature.GetMode(0)).Where(static g => g.Count() > 1))
 		{
 			var message = $"'*' with '{DescribeReceiver(sameMode.Key)}' is declared more than once in '{type.Name}'";
-			Diagnostics.AddRange(sameMode.Select(d =>
-				new Diagnostic(DiagnosticSeverity.Error, d.Node.Identifier.SourceLocation, message)));
+			foreach (var d in sameMode)
+				ReportOn(d.Node, new(DiagnosticSeverity.Error, d.Node.Identifier.SourceLocation, message));
 		}
 		
 		if (valid.Select(static d => GetIndexedType(d.Signature)).Distinct().Count() > 1)
-			Diagnostics.AddRange(valid.Select(static d => new Diagnostic(DiagnosticSeverity.Error,
-				d.Node.ReturnType!.SourceLocation, "Cannot declare '*' operators with different target types")));
+			foreach (var d in valid)
+				ReportOn(d.Node, new(DiagnosticSeverity.Error, d.Node.ReturnType!.SourceLocation,
+					"Cannot declare '*' operators with different target types"));
 	}
 	
 	private static (SourceLocation Location, string Message)? FindDereferenceError(TypeSymbol type, FunctionNode node,
@@ -343,7 +346,7 @@ public sealed partial class SignatureCollector
 					continue;
 				
 				var parameter = node.TypeParameters[i].Identifier;
-				Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.SourceLocation,
+				ReportOn(node, new(DiagnosticSeverity.Error, parameter.SourceLocation,
 					$"Cannot infer '{parameter.Text}' from the operands of '{node.Identifier.Text}'"));
 			}
 		}
@@ -357,7 +360,7 @@ public sealed partial class SignatureCollector
 		{
 			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[node]].Signature;
 			if (FindOperatorError(type, node, signature) is var (location, message))
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+				ReportOn(node, new(DiagnosticSeverity.Error, location, message));
 		}
 	}
 	
@@ -439,7 +442,7 @@ public sealed partial class SignatureCollector
 	}
 	
 	private void ReportMemberConflicts(string owner,
-		IEnumerable<(Token Name, FunctionNode? Function, MemberKind Kind)> members)
+		IEnumerable<(Token Name, IDeclarationNode? Member, MemberKind Kind)> members)
 	{
 		var sameNames = members
 			.GroupBy(static member => member.Name.Text)
@@ -449,10 +452,12 @@ public sealed partial class SignatureCollector
 		{
 			if (sameName.All(static member => member.Kind == MemberKind.Function))
 			{
-				var functions = sameName.Select(static member => member.Function!).ToList();
-				Diagnostics.AddRange(functions
-					.Select(function => FindConflict(function, functions))
-					.OfType<Diagnostic>());
+				List<IDeclarationNode> functions = [..sameName.Select(static member => member.Member!)];
+				foreach (var function in functions)
+				{
+					if (FindConflict(function, functions) is { } conflict)
+						ReportOn(function, conflict);
+				}
 				
 				continue;
 			}
@@ -464,16 +469,18 @@ public sealed partial class SignatureCollector
 				? $"Field '{sameName.Key}' is declared more than once in '{owner}'"
 				: $"'{sameName.Key}' is declared more than once in '{owner}'";
 			
-			Diagnostics.AddRange(sameName.Select(member =>
-				new Diagnostic(DiagnosticSeverity.Error, member.Name.SourceLocation, message)));
+			foreach (var member in sameName)
+				ReportOn(member.Member, new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
 		}
 	}
 	
 	private void ReportConstructorConflicts(ImmutableArray<IDeclarationNode> members)
 	{
 		List<IDeclarationNode> constructors = [..members.OfType<ConstructorNode>()];
-		Diagnostics.AddRange(constructors
-			.Select(constructor => FindConflict(constructor, constructors))
-			.OfType<Diagnostic>());
+		foreach (var constructor in constructors)
+		{
+			if (FindConflict(constructor, constructors) is { } conflict)
+				ReportOn(constructor, conflict);
+		}
 	}
 }

@@ -12,6 +12,7 @@ public sealed partial class SignatureCollector
 	{
 		foreach (var declaration in node.Declarations)
 		{
+			using var frame = Own(declaration);
 			var symbol = _symbolTable.DeclarationSymbols[declaration];
 			var context = _declarations[symbol].Context;
 			switch (declaration)
@@ -58,6 +59,7 @@ public sealed partial class SignatureCollector
 	{
 		foreach (var member in members.OfType<FunctionNode>())
 		{
+			using var frame = Own(member);
 			var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[member];
 			RegisterBounds(member.TypeParameters, function.DeclaredTypeParameters, _declarations[function].Context,
 				function);
@@ -81,7 +83,7 @@ public sealed partial class SignatureCollector
 					if (bounds[j] is { } bound)
 						ReportHiddenType(nodes[i].Traits[j], bound, GetOwnerVisibility(owner, context), owner.Name);
 			
-			_boundLists.Add((nodes[i].Traits, bounds, parameters[i]));
+			_boundLists.Add((nodes[i].Traits, bounds, parameters[i], CurrentOwner));
 			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>().Distinct()];
 			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
 			ImmutableArray<FunctionType> functions = [..bounds.OfType<FunctionType>().Distinct()];
@@ -99,7 +101,7 @@ public sealed partial class SignatureCollector
 				_typePool.SetParameterBounds(parameters[i], traitParameters);
 			
 			if (!nodes[i].Constructors.IsEmpty)
-				_pendingConstructorBounds.Add((nodes[i], parameters[i], context, owner));
+				_pendingConstructorBounds.Add((nodes[i], parameters[i], context, owner, CurrentOwner));
 		}
 	}
 	
@@ -118,7 +120,7 @@ public sealed partial class SignatureCollector
 		var deferring = context with { DeferConstraintCheck = DeferAlways };
 		var required = node.RequiredTraits.Select(deferring.ResolveTrait).ToList();
 		ReportRepeatedTraits(node.RequiredTraits, required);
-		_boundLists.Add((node.RequiredTraits, [..required], trait.Self));
+		_boundLists.Add((node.RequiredTraits, [..required], trait.Self, CurrentOwner));
 		for (var i = 0; i < required.Count; i++)
 		{
 			if (required[i] is { } requiredTrait)
@@ -140,8 +142,9 @@ public sealed partial class SignatureCollector
 	
 	private void ReportRedundantBounds()
 	{
-		foreach (var (nodes, bounds, self) in _boundLists)
+		foreach (var (nodes, bounds, self, errorOwner) in _boundLists)
 		{
+			using var frame = Own(errorOwner);
 			for (var i = 0; i < nodes.Length; i++)
 			{
 				if (bounds[i] is not TraitType bound || bounds.Count(other => other == bound) > 1)
@@ -183,6 +186,7 @@ public sealed partial class SignatureCollector
 	{
 		foreach (var (node, type) in _requiredFields)
 		{
+			using var frame = Own(node);
 			if (!_typePool.HasDefaultPart(type))
 				Diagnostics.Add(new(DiagnosticSeverity.Hint,
 					node.Modifiers.First(static modifier => modifier.Type == TokenType.KeywordReq).SourceLocation,
@@ -201,6 +205,7 @@ public sealed partial class SignatureCollector
 		
 		foreach (var trait in cyclic)
 		{
+			using var frame = Own(trait);
 			Diagnostics.Add(new(DiagnosticSeverity.Error, trait.Node.Identifier.SourceLocation,
 				$"'{trait.Name}' requires itself"));
 			
@@ -229,8 +234,9 @@ public sealed partial class SignatureCollector
 	
 	private void RegisterConstructorBounds()
 	{
-		foreach (var (node, parameter, context, owner) in _pendingConstructorBounds)
+		foreach (var (node, parameter, context, owner, errorOwner) in _pendingConstructorBounds)
 		{
+			using var frame = Own(errorOwner);
 			var deferring = context with { DeferConstraintCheck = DeferAlways };
 			var constructors = node.Constructors
 				.Select(constructor => CollectConstructorBound(constructor, parameter, deferring))
@@ -256,7 +262,7 @@ public sealed partial class SignatureCollector
 	
 	private bool DeferAlways(ConstraintCheck check)
 	{
-		_deferredChecks.Add(check);
+		_deferredChecks.Add((check, CurrentOwner));
 		return true;
 	}
 	

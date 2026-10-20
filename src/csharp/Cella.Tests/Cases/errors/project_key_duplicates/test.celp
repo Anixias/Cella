@@ -1,0 +1,4 @@
+OutputType = "Executable"
+Flags = { x = true, x = false }
+"a=b" = 1
+"a=b" = 2

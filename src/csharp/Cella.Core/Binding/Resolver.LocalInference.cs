@@ -163,7 +163,7 @@ public sealed partial class Resolver
 			or TokenType.FloatLiteral or TokenType.StringLiteral or TokenType.KeywordNull,
 		InterpolatedStringExpressionNode or UndefExpressionNode { Type: null } => true,
 		ArrayExpressionNode array => !array.Values.IsEmpty && array.Values.All(IsOpenSyntax),
-		MatchExpressionNode match => match.Arms.All(arm => IsCaseNameSyntax(arm.Value)),
+		MatchExpressionNode match => match.Arms.All(arm => arm.Value is { } value && IsCaseNameSyntax(value)),
 		LambdaExpressionNode lambda => lambda.Parameters.Any(static parameter => parameter.Type is null),
 		UnaryOpExpressionNode { Op.Type: TokenType.OpMinus } unary => IsOpenSyntax(unary.Operand),
 		VarExpressionNode name when FindOpenLocal(name) is not null => true,
@@ -189,7 +189,7 @@ public sealed partial class Resolver
 	private bool NeedsTarget(IExpressionNode initializer) => initializer switch
 	{
 		ArrayExpressionNode or LambdaExpressionNode => true,
-		MatchExpressionNode match => match.Arms.All(arm => IsCaseNameSyntax(arm.Value)),
+		MatchExpressionNode match => match.Arms.All(arm => arm.Value is { } value && IsCaseNameSyntax(value)),
 		VarExpressionNode name when FindOpenLocal(name) is { } other => other.IsCaseName ||
 		                                                                NeedsTarget(other.Initializer),
 		_ => false

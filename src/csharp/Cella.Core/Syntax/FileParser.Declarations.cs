@@ -1,4 +1,5 @@
-﻿using Cella.Core.Syntax.Nodes;
+﻿using Cella.Core.Binding;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -261,6 +262,14 @@ public sealed partial class FileParser
 	
 	private DeclarationModifiers ParseDeclarationModifiers(ref int index, Token? block)
 	{
+		var start = index;
+		var modifiers = ParseDeclarationKeywords(ref index, block);
+		RecordSites(start, index, CompletionSite.Declaration);
+		return modifiers;
+	}
+	
+	private DeclarationModifiers ParseDeclarationKeywords(ref int index, Token? block)
+	{
 		var keywords = new List<Token>();
 		while (Match(ref index, out var keyword, _topLevelContextualKeywords, _visibilityKeywords))
 		{
@@ -274,6 +283,14 @@ public sealed partial class FileParser
 	}
 	
 	private DeclarationModifiers ParseMemberModifiers(ref int index, Token? block)
+	{
+		var start = index;
+		var modifiers = ParseMemberKeywords(ref index, block);
+		RecordSites(start, index, CompletionSite.Declaration);
+		return modifiers;
+	}
+	
+	private DeclarationModifiers ParseMemberKeywords(ref int index, Token? block)
 	{
 		var tokens = new List<Token>();
 		var keywords = new List<Token>();
@@ -350,10 +367,16 @@ public sealed partial class FileParser
 	
 	private delegate T? DeclarationParser<T>(ref int index) where T : class;
 	
+	private readonly record struct ErrorWindow(int Errors, int Attributed, int FirstNested, int Start);
+	
+	private ErrorWindow OpenErrorWindow(int index) =>
+		new(Diagnostics.ErrorCount, attributedErrors, _parsedDeclarations.Count, index);
+	
 	private T? ParseDeclaration<T>(ref int index, Token start, string kind, DeclarationParser<T> parse)
 		where T : class
 	{
 		var errorCount = Diagnostics.ErrorCount;
+		var window = OpenErrorWindow(index);
 		var outerNesting = reportedNesting;
 		reportedNesting = false;
 		T? declaration;
@@ -373,8 +396,41 @@ public sealed partial class FileParser
 		if (declaration is null && Diagnostics.ErrorCount == errorCount)
 			Report(start, $"Invalid {kind} declaration");
 		
-		_declarationExtents.Add(Span(start, Tokens[Math.Max(index - 1, 0)]));
+		RecordSyntaxErrors(declaration, window, index);
 		return declaration;
+	}
+	
+	private bool RecordSyntaxErrors(bool parsed, List<IDeclarationNode> declarations, int first, ErrorWindow window,
+		int end)
+	{
+		RecordSyntaxErrors(declarations[first..], window, end);
+		return parsed;
+	}
+	
+	private void RecordSyntaxErrors(object? declaration, ErrorWindow window, int end)
+	{
+		ReportLexicalErrors(window.Start, end);
+		var errors = Diagnostics.ErrorCount - window.Errors;
+		var ownErrors = errors - (attributedErrors - window.Attributed);
+		attributedErrors = window.Attributed + errors;
+		
+		IDeclarationNode[] nodes = declaration switch
+		{
+			IDeclarationNode node => [node],
+			IEnumerable<IDeclarationNode> list => [..list],
+			_ => []
+		};
+		
+		if (ownErrors > 0)
+		{
+			_brokenDeclarations.UnionWith(_parsedDeclarations.Skip(window.FirstNested));
+			_brokenDeclarations.UnionWith(nodes);
+		}
+		
+		if (errors > 0)
+			_declarationsWithErrors.UnionWith(nodes);
+		
+		_parsedDeclarations.AddRange(nodes);
 	}
 	
 	private List<IDeclarationNode>? ParseExternalDeclarations(ref int index, Token? block)

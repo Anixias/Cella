@@ -6,6 +6,7 @@ namespace Cella.Core.Syntax.Nodes;
 public readonly record struct ImportExpression(ModuleName ModuleName, IImport Import)
 {
 	public bool IsPrelude { get; init; }
+	public bool HasSyntaxErrors { get; init; }
 }
 
 public interface IImport;

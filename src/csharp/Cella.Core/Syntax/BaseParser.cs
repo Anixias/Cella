@@ -70,7 +70,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 				$"Expected ',' or a new line before the next {item}"));
 	}
 	
-	private bool StartsLine(int index) => index > 0 && !AtEnd(index) && Tokens[index - 1].Line != Tokens[index].Line;
+	protected bool StartsLine(int index) => index > 0 && !AtEnd(index) && Tokens[index - 1].Line != Tokens[index].Line;
 	
 	protected virtual void ReportSeparatorError(Diagnostic diagnostic) => throw new ParseException(diagnostic);
 	

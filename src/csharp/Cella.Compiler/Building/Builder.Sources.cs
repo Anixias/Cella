@@ -11,7 +11,8 @@ namespace Cella.Compiler.Building;
 
 public sealed partial class Builder
 {
-	private async Task<(ImmutableArray<FileNode> Files, DiagnosticList Diagnostics)> ProcessProject(
+	private async Task<(ImmutableArray<FileNode> Files, ImmutableArray<ImportExpression> Imports, DiagnosticList
+		Diagnostics)> ProcessProject(
 		ProjectInfo project, ImmutableArray<ProjectInfo> references, IReadOnlyDictionary<string, bool> flags,
 		CancellationToken ct = default)
 	{
@@ -19,69 +20,44 @@ public sealed partial class Builder
 		var diagnostics = new DiagnosticList();
 		var projectImports = new List<ImportExpression>();
 		foreach (var reference in references)
-			projectImports.AddRange(await ParseImportList(reference, reference.Project.Prelude,
-				nameof(CellaProject.Prelude), flags, diagnostics, ct));
+			projectImports.AddRange(await ParseImportList(reference, nameof(CellaProject.Prelude), flags, diagnostics,
+				ct));
 		
-		projectImports.AddRange(await ParseImportList(project, project.Project.Imports, nameof(CellaProject.Imports),
-			flags, diagnostics, ct));
+		projectImports.AddRange(await ParseImportList(project, nameof(CellaProject.Imports), flags, diagnostics, ct));
 		
 		foreach (var path in CellaProject.FindSourceFiles(project.Directory).Order(StringComparer.Ordinal))
 		{
 			var (ast, fileDiagnostics) = await ParseFile(project, flags, path, ct);
 			diagnostics.AddRange(fileDiagnostics);
 			if (ast is { IsExcluded: false })
-				files.Add(projectImports.Count == 0
-					? ast
-					: new FileNode(ast.SourceLocation)
-					{
-						FileName = ast.FileName,
-						FullPath = ast.FullPath,
-						ModuleName = ast.ModuleName,
-						Declarations = ast.Declarations,
-						Imports = [..projectImports, ..ast.Imports],
-						DeclarationExtents = ast.DeclarationExtents
-					});
+				files.Add(ast);
 		}
 		
-		return ([..files], diagnostics);
+		return ([..files], [..projectImports], diagnostics);
 	}
 	
-	private async Task<List<ImportExpression>> ParseImportList(ProjectInfo project, List<string>? list,
-		string setting, IReadOnlyDictionary<string, bool> flags, DiagnosticList diagnostics, CancellationToken ct)
+	private async Task<List<ImportExpression>> ParseImportList(ProjectInfo project, string setting,
+		IReadOnlyDictionary<string, bool> flags, DiagnosticList diagnostics, CancellationToken ct)
 	{
-		if (list is not { Count: > 0 } entries)
+		var entries = project.Project.ImportEntries.Where(entry => entry.Setting == setting).ToList();
+		if (entries.Count == 0)
 			return [];
 		
-		var text = await ReadTextAsync(project.FilePath, ct);
-		var ranges = FindImportEntries(text, setting);
-		var isLocated = ranges.Count == entries.Count;
+		var source = new StringSource(await ReadTextAsync(project.FilePath, ct), project.FilePath);
 		var imports = new List<ImportExpression>();
-		for (var i = 0; i < entries.Count; i++)
+		foreach (var entry in entries)
 		{
-			var (start, length) = isLocated ? ranges[i] : (0, entries[i].Length);
-			var entryText = isLocated ? text : entries[i];
-			var display = new StringSource(entryText, project.FilePath);
-			var blanked = string.Create(entryText.Length, (entryText, start, length), static (span, state) =>
-			{
-				for (var c = 0; c < span.Length; c++)
-					span[c] = c >= state.start && c < state.start + state.length || state.entryText[c] == '\n'
-						? state.entryText[c]
-						: ' ';
-			});
-			
-			var source = new StringSource(blanked, project.FilePath);
-			var keyword = new Token(TokenType.KeywordUse, new SourceLocation(display, new TextRange(start, start)),
-				"use");
-			
-			ImmutableArray<Token> tokens =
-			[
-				keyword,
-				..new FilteredScanner(source).Select(token =>
-					token with { SourceLocation = token.SourceLocation with { Source = display } })
-			];
+			var span = new SourceLocation(source, new TextRange(entry.Start, entry.End));
+			ImmutableArray<Token> tokens = entry.IsExact
+				? ScanRange(source, entry.Start, entry.End)
+				:
+				[
+					..new FilteredScanner(new StringSource(entry.Value, project.FilePath))
+						.Select(token => token with { SourceLocation = span })
+				];
 			
 			var parser = new FileParser(tokens, Path.GetFileName(project.FilePath), project.FilePath, flags);
-			if (parser.ParseImport() is { } import)
+			if (parser.ParseImportEntry() is { } import)
 				imports.Add(import with { IsPrelude = setting == nameof(CellaProject.Prelude) });
 			
 			diagnostics.AddRange(parser.Diagnostics);
@@ -90,53 +66,24 @@ public sealed partial class Builder
 		return imports;
 	}
 	
-	private static List<(int Start, int Length)> FindImportEntries(string text, string setting)
+	private static ImmutableArray<Token> ScanRange(StringSource source, int start, int end)
 	{
-		var entries = new List<(int Start, int Length)>();
-		if (FindImportsList(text, setting) is not { } open)
-			return entries;
-		
-		for (var i = open; i < text.Length && text[i] != ']'; i++)
+		var scanner = new Scanner(source);
+		var tokens = ImmutableArray.CreateBuilder<Token>();
+		for (var position = start; position < end;)
 		{
-			if (text[i] == '#')
-			{
-				while (i < text.Length && text[i] != '\n')
-					i++;
-				
-				continue;
-			}
+			var (token, next) = scanner.ScanToken(position);
+			if (token.Type == TokenType.EndOfFile || next <= position)
+				break;
 			
-			if (text[i] is not ('"' or '\''))
-				continue;
+			if (!token.Type.IsFiltered)
+				tokens.Add(token);
 			
-			var quote = text[i];
-			var start = i + 1;
-			for (i = start; i < text.Length && text[i] != quote; i++)
-			{
-				if (quote == '"' && text[i] == '\\')
-					i++;
-			}
-			
-			entries.Add((start, i - start));
+			position = next;
 		}
 		
-		return entries;
-	}
-	
-	private static int? FindImportsList(string text, string setting)
-	{
-		var offset = 0;
-		foreach (var line in text.Split('\n'))
-		{
-			var trimmed = line.TrimStart();
-			if (trimmed.StartsWith(setting, StringComparison.Ordinal) &&
-			    trimmed[setting.Length..].TrimStart().StartsWith('=') && line.IndexOf('[') is >= 0 and var bracket)
-				return offset + bracket + 1;
-			
-			offset += line.Length + 1;
-		}
-		
-		return null;
+		tokens.Add(Token.EndOfFile(source, end));
+		return tokens.ToImmutable();
 	}
 	
 	private async Task<(FileNode? Ast, List<Diagnostic> Diagnostics)> ParseFile(ProjectInfo project,
@@ -161,7 +108,7 @@ public sealed partial class Builder
 		var tokens = new FilteredScanner(source).ToImmutableArray();
 		ct.ThrowIfCancellationRequested();
 		
-		var parser = new FileParser(tokens, source.Name, sourcePath, flags);
+		var parser = new FileParser(tokens, source.Name, sourcePath, flags) { Probe = probe };
 		var ast = parser.Parse();
 		diagnostics.AddRange(parser.Diagnostics);
 		return (ast, diagnostics);

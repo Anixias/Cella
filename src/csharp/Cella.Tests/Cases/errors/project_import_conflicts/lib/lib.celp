@@ -1,0 +1,2 @@
+OutputType = "StaticLibrary"
+StandardLibrary = "None"

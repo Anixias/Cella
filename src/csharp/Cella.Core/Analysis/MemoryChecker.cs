@@ -55,12 +55,13 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		var requiredFields = GetRequiredFields(function);
 		var paths = MovePaths.Build(function, allEvents, requiredFields, typePool);
 		var entryState = CreateEntryState(function, paths);
+		var edges = new LoopEdges(LoopForest.Find(CfgUtils.GetReversePostorder(function)));
 		var analysis = Inspect(function, paths, requiredFields, entryState,
-			SolveInitialization(function, events, paths, entryState)
+			SolveInitialization(function, events, paths, entryState, edges)
 				.Select(entry => new Visit(entry.Key, entry.Value, events[entry.Key])));
 		
 		if (analysis.Diagnostics.Count > 0)
-			analysis = Follow(function, events, allEvents, requiredFields, analysis);
+			analysis = Follow(function, events, allEvents, requiredFields, analysis, edges);
 		
 		var found = new List<Diagnostic>(analysis.Diagnostics);
 		var previous = diagnostics.Redirect(found);
@@ -75,7 +76,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	}
 	
 	private Analysis Follow(LoweredFunction function, Dictionary<BasicBlock, List<MemoryEvent>> events,
-		List<MemoryEvent> allEvents, List<Place> requiredFields, Analysis fallback)
+		List<MemoryEvent> allEvents, List<Place> requiredFields, Analysis fallback, LoopEdges edges)
 	{
 		var tracked = FindTrackedLocals(function);
 		if (tracked.Count == 0)
@@ -83,11 +84,11 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		
 		var paths = MovePaths.Build(function, allEvents, requiredFields, typePool, true);
 		var order = CfgUtils.GetReversePostorder(function);
-		var followed = SelectLoops(LoopForest.Find(order), events, fallback.ErrorRoots, tracked);
+		var followed = SelectLoops(edges.Loops, events, fallback.ErrorRoots, tracked);
 		var entryState = CreateEntryState(function, paths);
 		while (true)
 		{
-			var follower = new LoopFollower(function, paths, _layout, _values, tracked,
+			var follower = new LoopFollower(function, paths, _layout, _values, tracked, edges,
 				(state, memoryEvent) => Transfer(state, memoryEvent, paths));
 			
 			if (follower.Solve(order, followed, entryState) is { } visits)
@@ -153,7 +154,8 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		} &&
 		target == local;
 	
-	private static HashSet<Loop> SelectLoops(List<Loop> loops, Dictionary<BasicBlock, List<MemoryEvent>> events,
+	private static HashSet<Loop> SelectLoops(IReadOnlyCollection<Loop> loops,
+		Dictionary<BasicBlock, List<MemoryEvent>> events,
 		HashSet<VariableSymbol> roots, HashSet<LocalVariableSymbol> tracked)
 	{
 		var candidates = loops.Where(static loop => loop.HasExit).ToList();
@@ -447,7 +449,9 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		var path = paths.GetRoot(write.Place.Root);
 		if ((state.GetOwnState(path) & (PathState.Initialized | PathState.Moved)) != 0)
 			Report(write.Location, "Cannot reassign values",
-				DescribeSites(write.Location, state.GetOwnWrites(path), "Assigned"), write.Place.Root);
+				DescribeSites(write.Location,
+					state.GetOwnWrites(path).Select(static site => (site.Location, site.CrossedLoop)), "Assigned"),
+				write.Place.Root);
 	}
 	
 	private Uninitialized? FindUninitialized(Place place, InitState state, MovePaths paths)
@@ -592,23 +596,20 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	}
 	
 	private static IEnumerable<string> DescribeMoves(SourceLocation location, IEnumerable<MoveSite> moves) =>
-		DescribeSites(location, moves.Select(static move => move.Location), "Moved");
+		DescribeSites(location, moves.Select(static move => (move.Location, move.CrossedLoop)), "Moved");
 	
-	private static IEnumerable<string> DescribeSites(SourceLocation location, IEnumerable<SourceLocation> sites,
-		string action) => sites
-		.OrderBy(static at => at.Range.Start)
-		.Select(at => at == location
-			? $"{action} here in an earlier iteration"
-			: IsOnLaterLine(at, location)
-				? $"{action} on line {at.GetLineColumn().Line} in an earlier iteration"
-				: $"{action} on line {at.GetLineColumn().Line}")
-		.Distinct();
+	private static IEnumerable<string> DescribeSites(SourceLocation location,
+		IEnumerable<(SourceLocation Location, int CrossedLoop)> sites, string action) => sites
+		.GroupBy(static site => site.Location)
+		.OrderBy(static group => group.Key.Range.Start)
+		.Select(group => DescribeSite(action, group.Key, location, group.All(static site => site.CrossedLoop > 0)));
 	
-	public static bool IsOnLaterLine(SourceLocation site, SourceLocation use) =>
-		site.Source == use.Source && site.GetLineColumn().Line > use.GetLineColumn().Line;
+	public static string DescribeSite(string action, SourceLocation site, SourceLocation use, bool isEarlier) =>
+		(site == use ? $"{action} here" : $"{action} on line {site.GetLineColumn().Line}") +
+		(isEarlier ? " in an earlier iteration" : "");
 	
 	private Dictionary<BasicBlock, InitState> SolveInitialization(LoweredFunction function,
-		Dictionary<BasicBlock, List<MemoryEvent>> events, MovePaths paths, InitState entryState)
+		Dictionary<BasicBlock, List<MemoryEvent>> events, MovePaths paths, InitState entryState, LoopEdges edges)
 	{
 		var order = CfgUtils.GetReversePostorder(function);
 		var entryStates = new Dictionary<BasicBlock, InitState>();
@@ -625,7 +626,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				{
 					if (CfgUtils.GetSuccessors(predecessor).Contains(block) &&
 					    exitStates.TryGetValue(predecessor, out var exitState))
-						state.JoinWith(exitState);
+						state.JoinWith(exitState.Cross(edges.Get(predecessor, block)));
 				}
 				
 				entryStates[block] = state.Copy();

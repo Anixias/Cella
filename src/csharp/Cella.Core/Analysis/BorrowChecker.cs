@@ -40,7 +40,7 @@ public sealed class BorrowChecker
 		ViewRecord
 	}
 	
-	private readonly record struct Invalidation(Ending Ending, SourceLocation Location);
+	private readonly record struct Invalidation(Ending Ending, SourceLocation Location, int CrossedLoop = 0);
 	
 	private readonly HashSet<SourceLocation> _reported = [];
 	private readonly Dictionary<ClosureValue, ClosureEnvironment> _environments = [];
@@ -166,6 +166,7 @@ public sealed class BorrowChecker
 		Dictionary<BasicBlock, List<MemoryEvent>> events)
 	{
 		var order = CfgUtils.GetReversePostorder(function);
+		var edges = new LoopEdges(LoopForest.Find(order));
 		var initialState = CreateInitialState(function);
 		var entryStates = new Dictionary<BasicBlock, BorrowState>();
 		var exitStates = new Dictionary<BasicBlock, BorrowState>();
@@ -180,7 +181,7 @@ public sealed class BorrowChecker
 				{
 					if (CfgUtils.GetSuccessors(predecessor).Contains(block) &&
 					    exitStates.TryGetValue(predecessor, out var exitState))
-						state.JoinWith(exitState);
+						state.JoinWith(exitState.Cross(edges.Get(predecessor, block)));
 				}
 				
 				entryStates[block] = state.Copy();
@@ -320,12 +321,9 @@ public sealed class BorrowChecker
 		};
 		
 		var hints = endings
-			.Select(ending => ending.Location != location
-				? $"{Describe(ending.Ending)} on line {ending.Location.GetLineColumn().Line}" +
-				  (MemoryChecker.IsOnLaterLine(ending.Location, location) ? " in an earlier iteration" : "")
-				: ending.Ending == Ending.Dropped
-					? "Dropped here"
-					: $"{Describe(ending.Ending)} here in an earlier iteration")
+			.GroupBy(static ending => (ending.Ending, ending.Location))
+			.Select(group => MemoryChecker.DescribeSite(Describe(group.Key.Ending), group.Key.Location, location,
+				group.All(static ending => ending.CrossedLoop > 0)))
 			.Distinct();
 		
 		diagnostics.Add(new(DiagnosticSeverity.Error, location, message)
@@ -1057,6 +1055,25 @@ public sealed class BorrowChecker
 				                                               s.Path[..^1].SequenceEqual(place.Path)).ToList())
 					sources[source] = [];
 			}
+		}
+		
+		public BorrowState Cross(LoopEdge edge)
+		{
+			if (edge.IsEmpty)
+				return this;
+			
+			var crossed = new BorrowState();
+			foreach (var (holder, sources) in _holds)
+				crossed._holds[holder] = sources.ToDictionary(static entry => entry.Key,
+					entry => entry.Value.IsEmpty
+						? entry.Value
+						:
+						[
+							..entry.Value.Select(ending => ending with { CrossedLoop = edge.Cross(ending.CrossedLoop) })
+						],
+					PlaceComparer.Instance);
+			
+			return crossed;
 		}
 		
 		public bool JoinWith(BorrowState other)

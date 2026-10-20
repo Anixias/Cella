@@ -11,6 +11,8 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
 	private List<Diagnostic>? redirect;
 	
+	public IDiagnosticGate? Gate { get; set; }
+	
 	public DiagnosticList() : this([])
 	{
 	}
@@ -29,12 +31,16 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	
 	public void Add(Diagnostic diagnostic)
 	{
+		if (Gate?.Admit(diagnostic) == false)
+			return;
+		
 		if (redirect is { } target)
 		{
 			target.Add(diagnostic);
 			return;
 		}
 		
+		Gate?.Record(diagnostic);
 		var key = new LineColumnKey(diagnostic.Line, diagnostic.Column);
 		_diagnostics.GetOrAdd(key).Add(diagnostic);
 		Count++;

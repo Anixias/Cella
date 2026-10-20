@@ -5,127 +5,107 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed class ErrorContainment
+public sealed class ErrorContainment : IDiagnosticGate
 {
-	private const int FirstWholeBodyPhase = 3;
-	
 	private sealed class Group
 	{
 		public bool IsBroken { get; set; }
 	}
 	
-	private readonly Dictionary<string, List<TextRange>> _declarations = [];
-	private readonly Dictionary<string, List<TextRange>> _brokenRegions = [];
-	private readonly Dictionary<string, List<TextRange>> _brokenStatements = [];
-	private readonly Dictionary<string, List<TextRange>> _syntaxDeclarations = [];
+	public readonly record struct Owner(IDeclarationNode? Declaration, bool IsSilenced);
+	
+	public readonly struct Scope(ErrorContainment? containment) : IDisposable
+	{
+		public void Dispose() => containment?.Exit();
+	}
+	
+	private readonly HashSet<IStatementNode> _brokenStatements = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _brokenDeclarations = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _syntaxErrors = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _signatureErrors = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _resolutionErrors = new(ReferenceEqualityComparer.Instance);
+	private readonly Dictionary<IDeclarationNode, PropertyNode> _accessors = new(ReferenceEqualityComparer.Instance);
+	private readonly List<Owner> _frames = [];
+	
+	private readonly Dictionary<Diagnostic, (IDeclarationNode Declaration, bool IsResolving)> _owners =
+		new(ReferenceEqualityComparer.Instance);
+	
 	private readonly Dictionary<IResolvedDeclarationNode, Group> _groups = [];
-	private readonly Dictionary<string, List<(TextRange Range, Group Group)>> _groupExtents = [];
 	
 	public ErrorContainment(IEnumerable<FileNode> files)
 	{
 		foreach (var file in files)
 		{
-			foreach (var (source, range) in file.DeclarationExtents)
-				GetList(_declarations, source.FilePath).Add(range);
-			
-			foreach (var (source, range) in file.BrokenStatements)
-				GetList(_brokenStatements, source.FilePath).Add(range);
+			_brokenStatements.UnionWith(file.BrokenStatements);
+			_brokenDeclarations.UnionWith(file.BrokenDeclarations);
+			_syntaxErrors.UnionWith(file.DeclarationsWithSyntaxErrors);
+			AddAccessors(file.Declarations);
 		}
 	}
 	
-	public void MarkSyntaxErrors(IEnumerable<Diagnostic> diagnostics)
+	public bool IsResolving { get; set; }
+	
+	public Owner Current
 	{
-		foreach (var diagnostic in diagnostics)
+		get
 		{
-			if (diagnostic.Severity != DiagnosticSeverity.Error ||
-			    FindInnermost(diagnostic.SourceLocation) is not { } declaration)
-				continue;
+			for (var i = _frames.Count - 1; i >= 0; i--)
+			{
+				if (_frames[i] is { IsSilenced: true } or { Declaration: not null })
+					return _frames[i];
+			}
 			
-			var path = diagnostic.SourceLocation.Source.FilePath;
-			GetList(_syntaxDeclarations, path).Add(declaration);
-			GetList(_brokenRegions, path).Add(FindBrokenStatement(diagnostic.SourceLocation) ?? declaration);
+			return default;
 		}
 	}
 	
-	public IEnumerable<Diagnostic> Filter(IReadOnlyCollection<Diagnostic> diagnostics, Func<Diagnostic, int> phaseOf)
+	public void Enter(IDeclarationNode? declaration) =>
+		_frames.Add(new(declaration is null ? null : Canonical(declaration), false));
+	
+	public void Enter(Owner owner) => _frames.Add(owner);
+	
+	public bool Enter(IStatementNode statement)
 	{
-		var firstErrors = new Dictionary<(string Path, TextRange Range), int>();
-		foreach (var diagnostic in diagnostics)
-		{
-			if (diagnostic.Severity != DiagnosticSeverity.Error || phaseOf(diagnostic) == 0 ||
-			    FindInnermost(diagnostic.SourceLocation) is not { } declaration)
-				continue;
-			
-			var key = (diagnostic.SourceLocation.Source.FilePath, declaration);
-			var phase = phaseOf(diagnostic);
-			firstErrors[key] = firstErrors.TryGetValue(key, out var first) ? Math.Min(first, phase) : phase;
-		}
+		if (!_brokenStatements.Contains(statement))
+			return false;
 		
-		return diagnostics.Where(diagnostic =>
+		_frames.Add(new(null, true));
+		return true;
+	}
+	
+	public void Exit() => _frames.RemoveAt(_frames.Count - 1);
+	
+	public bool HasBrokenSyntax(IDeclarationNode declaration) => _brokenDeclarations.Contains(Canonical(declaration));
+	
+	public bool Admit(Diagnostic diagnostic)
+	{
+		if (_owners.ContainsKey(diagnostic))
+			return true;
+		
+		for (var i = _frames.Count - 1; i >= 0; i--)
 		{
-			var phase = phaseOf(diagnostic);
-			if (phase == 0)
-				return true;
-			
-			if (IsInBrokenRegion(diagnostic.SourceLocation))
+			var (declaration, isSilenced) = _frames[i];
+			if (isSilenced)
 				return false;
 			
-			if (phase >= FirstWholeBodyPhase && HasSyntaxError(diagnostic.SourceLocation))
+			if (declaration is null)
+				continue;
+			
+			if (_brokenDeclarations.Contains(declaration) || IsResolving && _signatureErrors.Contains(declaration))
 				return false;
 			
-			return FindInnermost(diagnostic.SourceLocation) is not { } declaration ||
-			       !firstErrors.TryGetValue((diagnostic.SourceLocation.Source.FilePath, declaration), out var first) ||
-			       first >= phase;
-		});
-	}
-	
-	private TextRange? FindInnermost(SourceLocation location) => FindInnermost(_declarations, location);
-	
-	private static TextRange? FindInnermost(Dictionary<string, List<TextRange>> extents, SourceLocation location)
-	{
-		if (!extents.TryGetValue(location.Source.FilePath, out var ranges))
-			return null;
-		
-		TextRange? innermost = null;
-		foreach (var range in ranges)
-		{
-			if (Contains(range, location.Range.Start) &&
-			    (innermost is not { } current || range.Length < current.Length))
-				innermost = range;
+			_owners[diagnostic] = (declaration, IsResolving);
+			return true;
 		}
 		
-		return innermost;
+		return true;
 	}
 	
-	private TextRange? FindBrokenStatement(SourceLocation location)
+	public void Record(Diagnostic diagnostic)
 	{
-		if (FindInnermost(_brokenStatements, location) is { } containing)
-			return containing;
-		
-		if (!_brokenStatements.TryGetValue(location.Source.FilePath, out var statements))
-			return null;
-		
-		var start = location.Range.Start;
-		return statements
-			.Where(statement => statement.End <= start &&
-			                    location.Source.GetText(new TextRange(statement.End, start)).IsWhiteSpace())
-			.Select(static statement => (TextRange?)statement)
-			.FirstOrDefault();
+		if (diagnostic.Severity == DiagnosticSeverity.Error && _owners.TryGetValue(diagnostic, out var owner))
+			(owner.IsResolving ? _resolutionErrors : _signatureErrors).Add(owner.Declaration);
 	}
-	
-	private bool HasSyntaxError(SourceLocation location) =>
-		FindInnermost(location) is { } declaration &&
-		_syntaxDeclarations.TryGetValue(location.Source.FilePath, out var declarations) &&
-		declarations.Contains(declaration);
-	
-	private bool ContainsSyntaxError(SourceLocation extent) =>
-		_syntaxDeclarations.TryGetValue(extent.Source.FilePath, out var declarations) &&
-		declarations.Any(declaration =>
-			declaration.Start >= extent.Range.Start && declaration.End <= extent.Range.End);
-	
-	public bool IsInBrokenRegion(SourceLocation location) =>
-		_brokenRegions.TryGetValue(location.Source.FilePath, out var regions) &&
-		regions.Any(region => Contains(region, location.Range.Start));
 	
 	public void AddDeclarations(IEnumerable<ResolvedFileNode> files)
 	{
@@ -133,41 +113,17 @@ public sealed class ErrorContainment
 		{
 			var declarations = Collect(file.Declarations)
 				.Select(static node => (Node: node, Extent: GetExtent(node)))
-				.OrderBy(static entry => entry.Extent.Range.Start)
-				.ThenByDescending(static entry => entry.Extent.Range.End);
+				.OrderBy(static entry => entry.Extent.Start)
+				.ThenByDescending(static entry => entry.Extent.End);
 			
 			(TextRange Range, Group Group)? outer = null;
 			foreach (var (node, extent) in declarations)
 			{
-				if (outer is not { } current || extent.Range.Start < current.Range.Start ||
-				    extent.Range.End > current.Range.End)
-				{
-					outer = (extent.Range,
-						new Group { IsBroken = IsInBrokenRegion(extent) || ContainsSyntaxError(extent) });
-					
-					GetList(_groupExtents, extent.Source.FilePath).Add(outer.Value);
-				}
+				if (outer is not { } current || extent.Start < current.Range.Start || extent.End > current.Range.End)
+					outer = (extent, new Group());
 				
+				outer.Value.Group.IsBroken |= HasErrors(Canonical(node.Syntax));
 				_groups[node] = outer.Value.Group;
-			}
-		}
-	}
-	
-	public void MarkErrors(IEnumerable<Diagnostic> diagnostics)
-	{
-		foreach (var diagnostic in diagnostics)
-		{
-			if (diagnostic.Severity != DiagnosticSeverity.Error)
-				continue;
-			
-			var (source, range) = diagnostic.SourceLocation;
-			if (!_groupExtents.TryGetValue(source.FilePath, out var extents))
-				continue;
-			
-			foreach (var (extent, group) in extents)
-			{
-				if (Contains(extent, range.Start))
-					group.IsBroken = true;
 			}
 		}
 	}
@@ -180,15 +136,43 @@ public sealed class ErrorContainment
 	
 	public bool IsBroken(IResolvedDeclarationNode node) => _groups.TryGetValue(node, out var group) && group.IsBroken;
 	
-	private static bool Contains(TextRange range, int position) => position >= range.Start && position <= range.End;
-	
-	private static List<T> GetList<T>(Dictionary<string, List<T>> lists, string path)
+	private void AddAccessors(IEnumerable<IDeclarationNode> declarations)
 	{
-		if (!lists.TryGetValue(path, out var list))
-			lists[path] = list = [];
-		
-		return list;
+		foreach (var declaration in declarations)
+		{
+			switch (declaration)
+			{
+				case PropertyNode property:
+					foreach (var accessor in property.Accessors)
+						_accessors[accessor] = property;
+					
+					break;
+				
+				case RecordNode record:
+					AddAccessors(record.Members);
+					break;
+				
+				case EnumNode enumNode:
+					AddAccessors(enumNode.Members);
+					break;
+				
+				case TraitNode trait:
+					AddAccessors(trait.Members);
+					break;
+				
+				case ImplNode impl:
+					AddAccessors(impl.Members);
+					break;
+			}
+		}
 	}
+	
+	private IDeclarationNode Canonical(IDeclarationNode declaration) =>
+		_accessors.TryGetValue(declaration, out var property) ? property : declaration;
+	
+	private bool HasErrors(IDeclarationNode declaration) =>
+		_syntaxErrors.Contains(declaration) || _brokenDeclarations.Contains(declaration) ||
+		_signatureErrors.Contains(declaration) || _resolutionErrors.Contains(declaration);
 	
 	private static IEnumerable<IResolvedDeclarationNode> Collect(IEnumerable<IResolvedDeclarationNode> declarations)
 	{
@@ -227,12 +211,12 @@ public sealed class ErrorContainment
 		}
 	}
 	
-	private static SourceLocation GetExtent(IResolvedDeclarationNode node) => node switch
+	private static TextRange GetExtent(IResolvedDeclarationNode node) => node switch
 	{
-		ResolvedFunctionNode { Syntax: FunctionNode function } => function.Extent,
-		ResolvedFunctionNode function => function.Syntax.SourceLocation,
-		ResolvedGlobalNode { Syntax: GlobalNode global } => global.Extent,
-		ResolvedGlobalNode global => global.Syntax.SourceLocation,
+		ResolvedFunctionNode { Syntax: FunctionNode function } => function.Extent.Range,
+		ResolvedFunctionNode function => function.Syntax.SourceLocation.Range,
+		ResolvedGlobalNode { Syntax: GlobalNode global } => global.Extent.Range,
+		ResolvedGlobalNode global => global.Syntax.SourceLocation.Range,
 		_ => throw new ArgumentOutOfRangeException(nameof(node))
 	};
 }

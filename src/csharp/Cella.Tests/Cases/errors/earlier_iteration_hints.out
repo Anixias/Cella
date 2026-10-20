@@ -1,0 +1,25 @@
+Error at earlier_iteration_hints.ce:19:27
+18 │ val a = N(1)
+19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
+                              ^ Cannot use moved values
+                              | Moved on line 19 in an earlier iteration
+
+Error at earlier_iteration_hints.ce:19:48
+18 │ val a = N(1)
+19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
+                                                   ^ Cannot use moved values
+                                                   | Moved here in an earlier iteration
+
+Error at earlier_iteration_hints.ce:27:20
+26 │ {
+27 │     val r = both(imm a.id,
+                          ╘══╛ Cannot use moved values
+                             | Moved on line 28
+
+Error at earlier_iteration_hints.ce:40:21
+39 │ {
+40 │     val t = take(own a)
+                          ^ Cannot use moved values
+                          | Moved on line 45 in an earlier iteration
+
+[compilation failed]

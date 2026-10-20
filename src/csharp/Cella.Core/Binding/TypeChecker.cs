@@ -48,14 +48,19 @@ public sealed class TypeChecker
 		}
 		
 		var brokenUsers = AttachInlinedUses();
+		var failed = new List<IResolvedDeclarationNode>();
 		foreach (var (node, diagnostics, _) in _checked)
 		{
-			if (!containment.IsBroken(node))
-				Diagnostics.AddRange(diagnostics);
+			if (containment.IsBroken(node))
+				continue;
+			
+			Diagnostics.AddRange(diagnostics);
+			if (diagnostics.Any(IsError))
+				failed.Add(node);
 		}
 		
-		foreach (var user in brokenUsers)
-			containment.Mark(user);
+		foreach (var node in brokenUsers.Concat(failed))
+			containment.Mark(node);
 		
 		_checked.Clear();
 		_inlineDeclarations.Clear();

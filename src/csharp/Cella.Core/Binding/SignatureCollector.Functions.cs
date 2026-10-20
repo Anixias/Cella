@@ -272,6 +272,7 @@ public sealed partial class SignatureCollector
 		if (index < 0)
 		{
 			_inProgress.Add((symbol, isValue));
+			Containment?.Enter(_declarations.TryGetValue(symbol, out var declaration) ? declaration.Node : null);
 			return true;
 		}
 		
@@ -283,7 +284,11 @@ public sealed partial class SignatureCollector
 		return false;
 	}
 	
-	private void Exit() => _inProgress.RemoveAt(_inProgress.Count - 1);
+	private void Exit()
+	{
+		_inProgress.RemoveAt(_inProgress.Count - 1);
+		Containment?.Exit();
+	}
 	
 	private void ReportCycle(Symbol symbol, bool isValue)
 	{
@@ -409,7 +414,7 @@ public sealed partial class SignatureCollector
 			return false;
 		
 		if (last.Mode is null)
-			_variadicTypes.Add((types[^1], last.Type));
+			_variadicTypes.Add((types[^1], last.Type, CurrentOwner));
 		
 		return true;
 	}
@@ -434,8 +439,9 @@ public sealed partial class SignatureCollector
 	
 	private void ReportVariadicTypes()
 	{
-		foreach (var (type, node) in _variadicTypes.Where(static entry => entry.Type is not InvalidType))
+		foreach (var (type, node, owner) in _variadicTypes.Where(static entry => entry.Type is not InvalidType))
 		{
+			using var frame = Own(owner);
 			var message = _typePool.FindRunElements(type).Count switch
 			{
 				0 => $"'{type.Name}' doesn't meet 'new(ptr[T], usize)'",

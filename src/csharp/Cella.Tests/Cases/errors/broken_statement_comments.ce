@@ -1,0 +1,12 @@
+mod test
+
+broken: fun -> i32
+{
+	val p = (1
+	// note
+	val b: bool = 5
+	val c = undefinedName
+	ret 0
+}
+
+main: fun -> i32 => 0

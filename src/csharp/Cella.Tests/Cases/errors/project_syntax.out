@@ -1,3 +1,5 @@
-<case>\test.celp:7: '[When."debug"]' appears more than once
+<case>\test.celp:3: '[When.debug]' appears more than once
+<case>\test.celp:4: 'DebugInfo' is set more than once
+<case>\test.celp:6: '[When."debug"]' appears more than once
 <case>\test.celp:7: 'DebugInfo' is set more than once
 [compilation failed]

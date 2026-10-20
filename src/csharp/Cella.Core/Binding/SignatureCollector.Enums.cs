@@ -77,12 +77,12 @@ public sealed partial class SignatureCollector
 		
 		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(enumType.Name, [
-			..node.Cases.Select(static c => (c.Identifier, (FunctionNode?)null, MemberKind.Case)),
+			..node.Cases.Select(static c => (c.Identifier, (IDeclarationNode?)null, MemberKind.Case)),
 			..node.Members.OfType<GlobalNode>()
-				.Select(static g => (g.Identifier, (FunctionNode?)null, MemberKind.Field)),
+				.Select(static g => (g.Identifier, (IDeclarationNode?)g, MemberKind.Field)),
 			..node.Members.OfType<PropertyNode>()
-				.Select(static p => (p.Identifier, (FunctionNode?)null, MemberKind.Property)),
-			..functions[false].Select(static f => (f.Identifier, (FunctionNode?)f, MemberKind.Function))
+				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
+			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);
 		
 		ReportModeOperators(enumType, [..functions[true]]);
@@ -102,8 +102,9 @@ public sealed partial class SignatureCollector
 			.ToList();
 		
 		if (missing.Count > 0)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
-				"Cannot use 'default' when fields have no default") { Hints = [..missing] });
+			ReportOn(members.OfType<ConstructorNode>().First(static c => c.Default is not null),
+				new(DiagnosticSeverity.Error, keyword.SourceLocation,
+					"Cannot use 'default' when fields have no default") { Hints = [..missing] });
 	}
 	
 	private void CompletePlainEnum(EnumSymbol enumType, ResolutionContext context,

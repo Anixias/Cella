@@ -42,6 +42,7 @@ public sealed partial class Resolver
 		Diagnostics = Diagnostics,
 		ExtSignatureTypes = _extSignatureTypes,
 		CopiedParameters = _copiedParameters,
+		Containment = Containment,
 		EvaluateConstant = EvaluateConstant,
 		FindValueParameterUse = FindValueParameterUse,
 		GenericTypes = [],
@@ -53,7 +54,7 @@ public sealed partial class Resolver
 	
 	private void ReportTooLargeTypes()
 	{
-		foreach (var (type, location, owner) in _typePool.SizeChecks)
+		foreach (var (type, location, owner, errorOwner) in _typePool.SizeChecks)
 		{
 			if (owner is not null && TypePool.ContainsTypeParameters(type))
 			{
@@ -63,7 +64,10 @@ public sealed partial class Resolver
 				checks.Add((type, location));
 			}
 			else if (_typePool.IsTooLarge(type, _pointerBitSize))
+			{
+				using var frame = Own(errorOwner);
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{type.Name}' is too large"));
+			}
 		}
 		
 		_typePool.SizeChecks.Clear();
@@ -97,11 +101,12 @@ public sealed partial class Resolver
 		};
 		
 		_resolutionContexts.Push(resolutionContext);
+		Containment?.Enter(node);
 		if (node is FunctionNode { Identifier.Type: TokenType.KeywordPanic } panic)
 			ReportPanicDeclaration(panic, info);
 		
-		var extent = node is FunctionNode declared ? declared.Extent : node.SourceLocation;
-		var resolvedBody = Containment?.IsInBrokenRegion(extent) == true ? null : InferLocals(() => VisitNode(body));
+		var resolvedBody = Containment?.HasBrokenSyntax(node) == true ? null : InferLocals(() => VisitNode(body));
+		Containment?.Exit();
 		_resolutionContexts.Pop();
 		
 		return new ResolvedFunctionNode(info, resolvedBody, node);

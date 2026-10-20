@@ -20,13 +20,15 @@ public sealed class LoopFollower
 	private readonly PriorityQueue<(BasicBlock Block, Context Context), (int Sequence, int Order)> _queue = new();
 	private readonly HashSet<(BasicBlock Block, Context Context)> _queued = [];
 	private readonly PassSkipper _skipper;
+	private readonly LoopEdges _edges;
 	
 	private KnownValues known = KnownValues.Empty;
 	
 	public LoopFollower(LoweredFunction function, MovePaths paths, ShapeLayout layout, ValueEvaluator values,
-		HashSet<LocalVariableSymbol> tracked, Action<InitState, MemoryEvent> transfer)
+		HashSet<LocalVariableSymbol> tracked, LoopEdges edges, Action<InitState, MemoryEvent> transfer)
 	{
 		_values = values;
+		_edges = edges;
 		_tracked = tracked;
 		_transfer = transfer;
 		_linearizer = new EventLinearizer(function)
@@ -114,7 +116,8 @@ public sealed class LoopFollower
 		
 		foreach (var successor in GetSuccessors(block, context, values))
 		{
-			if (FindTarget(context, successor, values, state) is not var (target, targetValues, targetState))
+			if (FindTarget(context, successor, values, state.Cross(_edges.Get(block, successor))) is not var
+			    (target, targetValues, targetState))
 				return false;
 			
 			Merge(successor, target, targetValues, targetState);
@@ -161,7 +164,8 @@ public sealed class LoopFollower
 				}
 				
 				var head = _nodes[(loop.Head, target)];
-				if (_skipper.Skip(loop, head.Known, head.State, values, state) is var (skippedValues, skippedState))
+				if (_skipper.Skip(loop, _edges.GetDepth(loop), head.Known, head.State, values, state) is var
+				    (skippedValues, skippedState))
 					(values, state) = (skippedValues, skippedState);
 			}
 			

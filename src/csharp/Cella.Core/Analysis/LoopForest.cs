@@ -1,4 +1,5 @@
-﻿using Cella.Core.Lowering;
+﻿using System.Collections.Immutable;
+using Cella.Core.Lowering;
 
 namespace Cella.Core.Analysis;
 
@@ -8,6 +9,65 @@ public sealed class Loop(BasicBlock head, HashSet<BasicBlock> body)
 	public HashSet<BasicBlock> Body { get; } = body;
 	
 	public bool HasExit => Body.Any(block => CfgUtils.GetSuccessors(block).Any(successor => !Body.Contains(successor)));
+}
+
+public readonly record struct LoopEdge(int Exit, int Back)
+{
+	public bool IsEmpty => Exit == 0 && Back == 0;
+	
+	public int Cross(int crossedLoop)
+	{
+		if (Exit > 0 && crossedLoop >= Exit)
+			crossedLoop = 0;
+		
+		return Back == 0 ? crossedLoop : crossedLoop == 0 ? Back : Math.Min(crossedLoop, Back);
+	}
+	
+	public ImmutableHashSet<MoveSite> Cross(ImmutableHashSet<MoveSite> sites)
+	{
+		var edge = this;
+		return sites.IsEmpty
+			? sites
+			: [..sites.Select(site => site with { CrossedLoop = edge.Cross(site.CrossedLoop) })];
+	}
+	
+	public ImmutableHashSet<WriteSite> Cross(ImmutableHashSet<WriteSite> sites)
+	{
+		var edge = this;
+		return sites.IsEmpty
+			? sites
+			: [..sites.Select(site => site with { CrossedLoop = edge.Cross(site.CrossedLoop) })];
+	}
+}
+
+public sealed class LoopEdges(IReadOnlyCollection<Loop> loops)
+{
+	private readonly Dictionary<Loop, int> _depths =
+		loops.ToDictionary(static loop => loop, loop => loops.Count(other => other.Body.Contains(loop.Head)));
+	
+	private readonly Dictionary<(BasicBlock From, BasicBlock To), LoopEdge> _edges = [];
+	
+	public IReadOnlyCollection<Loop> Loops { get; } = loops;
+	
+	public int GetDepth(Loop loop) => _depths[loop];
+	
+	public LoopEdge Get(BasicBlock from, BasicBlock to)
+	{
+		if (_edges.TryGetValue((from, to), out var edge))
+			return edge;
+		
+		var exits = _depths.Where(entry => entry.Key.Body.Contains(from) && !entry.Key.Body.Contains(to))
+			.Select(static entry => entry.Value)
+			.DefaultIfEmpty(0)
+			.Min();
+		
+		var back = _depths.Where(entry => entry.Key.Head == to && entry.Key.Body.Contains(from))
+			.Select(static entry => entry.Value)
+			.DefaultIfEmpty(0)
+			.Max();
+		
+		return _edges[(from, to)] = new LoopEdge(exits, back);
+	}
 }
 
 public static class LoopForest

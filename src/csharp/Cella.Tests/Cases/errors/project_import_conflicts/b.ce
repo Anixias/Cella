@@ -1,0 +1,6 @@
+mod b
+
+Helper: rec
+{
+	z: i32
+}

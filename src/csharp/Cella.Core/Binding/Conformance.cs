@@ -24,6 +24,7 @@ public sealed class Conformance
 	public SourceLocation Location { get; } = location;
 	public Dictionary<FunctionSymbol, Witness> Witnesses { get; } = [];
 	public Dictionary<GlobalSymbol, GlobalSymbol> ConstantWitnesses { get; } = [];
+	public ErrorContainment.Owner Owner { get; set; }
 }
 
 public abstract record Witness;

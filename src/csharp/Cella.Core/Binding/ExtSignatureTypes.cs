@@ -7,61 +7,71 @@ namespace Cella.Core.Binding;
 
 public sealed class ExtSignatureTypes(TypePool typePool)
 {
-	private readonly List<(TypeSymbol Type, ITypeNode Node, bool IsPassed)> _types = [];
+	private readonly List<(TypeSymbol Type, ITypeNode Node, bool IsPassed, ErrorContainment.Owner Owner)> _types = [];
 	
-	public void Add(TypeSymbol type, ITypeNode node, bool isPassed) => _types.Add((type, node, isPassed));
+	public ErrorContainment? Containment { get; set; }
+	
+	public void Add(TypeSymbol type, ITypeNode node, bool isPassed) =>
+		_types.Add((type, node, isPassed, Containment?.Current ?? default));
 	
 	public static bool PassesByValue(ParameterMode mode) => mode is ParameterMode.ReadOnly or ParameterMode.Own;
 	
 	public void Report(DiagnosticList diagnostics)
 	{
-		foreach (var (type, node, isPassed) in _types)
+		foreach (var (type, node, isPassed, owner) in _types)
 		{
-			if (isPassed && type is ArrayType)
-			{
-				diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
-					$"Cannot use '{type.Name}' in 'ext' signatures"));
-				
-				continue;
-			}
-			
-			List<SourceLocation> nested = type is FunctionType { IsExternal: true } &&
-			                              node is FunctionTypeNode { IsExternal: true }
-				? [node.SourceLocation]
-				: [..FindNestedExtFunctions(type, node)];
-			
-			bool IsOwn(SourceLocation location) => !nested.Any(inner => inner.Range.Contains(location.Range));
-			
-			if (HasPlainEnum(type) && Locate(type, node, HasPlainEnum) is var (enumType, _, enumLocation) &&
-			    IsOwn(enumLocation))
-				diagnostics.Add(Report(enumLocation, "Cannot use plain enums in 'ext' signatures", enumType,
-					typePool.FindPlainEnum(enumType)!));
-			
-			if (IsForeign(type))
-			{
-				var (located, locatedNode, location) = Locate(type, node, IsForeign);
-				if (IsOwn(location))
-					diagnostics.Add(Report(location,
-						$"Cannot use '{GetWrittenName(located, locatedNode)}' in 'ext' signatures", located,
-						typePool.FindForeign(located)!));
-			}
-			else if (FindUnconstrained(type) is { } parameter)
-			{
-				var (_, _, location) = Locate(type, node, static part => FindUnconstrained(part) is not null);
-				if (IsOwn(location))
-					diagnostics.Add(new(DiagnosticSeverity.Error, location,
-						$"Cannot use '{parameter.Name}' in 'ext' signatures"));
-			}
-			else if (HasDestructor(type))
-			{
-				var (located, _, location) = Locate(type, node, HasDestructor);
-				if (IsOwn(location))
-					diagnostics.Add(Report(location, "Cannot use types with destructors in 'ext' signatures", located,
-						typePool.FindDestructor(located)!));
-			}
+			Containment?.Enter(owner);
+			Report(diagnostics, type, node, isPassed);
+			Containment?.Exit();
 		}
 		
 		_types.Clear();
+	}
+	
+	private void Report(DiagnosticList diagnostics, TypeSymbol type, ITypeNode node, bool isPassed)
+	{
+		if (isPassed && type is ArrayType)
+		{
+			diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+				$"Cannot use '{type.Name}' in 'ext' signatures"));
+			
+			return;
+		}
+		
+		List<SourceLocation> nested = type is FunctionType { IsExternal: true } &&
+		                              node is FunctionTypeNode { IsExternal: true }
+			? [node.SourceLocation]
+			: [..FindNestedExtFunctions(type, node)];
+		
+		bool IsOwn(SourceLocation location) => !nested.Any(inner => inner.Range.Contains(location.Range));
+		
+		if (HasPlainEnum(type) && Locate(type, node, HasPlainEnum) is var (enumType, _, enumLocation) &&
+		    IsOwn(enumLocation))
+			diagnostics.Add(Report(enumLocation, "Cannot use plain enums in 'ext' signatures", enumType,
+				typePool.FindPlainEnum(enumType)!));
+		
+		if (IsForeign(type))
+		{
+			var (located, locatedNode, location) = Locate(type, node, IsForeign);
+			if (IsOwn(location))
+				diagnostics.Add(Report(location,
+					$"Cannot use '{GetWrittenName(located, locatedNode)}' in 'ext' signatures", located,
+					typePool.FindForeign(located)!));
+		}
+		else if (FindUnconstrained(type) is { } parameter)
+		{
+			var (_, _, location) = Locate(type, node, static part => FindUnconstrained(part) is not null);
+			if (IsOwn(location))
+				diagnostics.Add(new(DiagnosticSeverity.Error, location,
+					$"Cannot use '{parameter.Name}' in 'ext' signatures"));
+		}
+		else if (HasDestructor(type))
+		{
+			var (located, _, location) = Locate(type, node, HasDestructor);
+			if (IsOwn(location))
+				diagnostics.Add(Report(location, "Cannot use types with destructors in 'ext' signatures", located,
+					typePool.FindDestructor(located)!));
+		}
 	}
 	
 	private static IEnumerable<SourceLocation> FindNestedExtFunctions(TypeSymbol type, ITypeNode node) =>

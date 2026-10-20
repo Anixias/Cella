@@ -1,0 +1,6 @@
+mod a
+
+Helper: rec
+{
+	y: i32
+}

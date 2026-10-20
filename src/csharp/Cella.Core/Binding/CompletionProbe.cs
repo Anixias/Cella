@@ -10,6 +10,15 @@ public enum CompletionPlace
 	Type
 }
 
+public enum CompletionSite
+{
+	Statement,
+	Declaration,
+	TopLevel
+}
+
+public sealed record CompletionCall(string Callee, IReadOnlyList<CompletionCandidate> Candidates, int Argument);
+
 public sealed record CompletionCandidate
 (
 	Symbol Symbol,
@@ -28,12 +37,40 @@ public sealed class CompletionProbe(string path, int offset)
 	public CompletionPlace? Place { get; private set; }
 	public TypeSymbol? ExpectedType { get; private set; }
 	public IReadOnlyList<CompletionCandidate> Candidates { get; private set; } = [];
+	public CompletionSite? Site { get; private set; }
+	public CompletionCall? Call { get; private set; }
 	
-	internal bool Covers(Token token)
+	private (SourceLocation Callee, TextRange Arguments, int Argument)? enclosingCall;
+	
+	internal bool Covers(Token token) => Place is null && IsAt(token.SourceLocation);
+	
+	private bool IsAt(SourceLocation location) =>
+		IsIn(location) && location.Range.Start <= Offset && Offset <= location.Range.End;
+	
+	private bool IsIn(SourceLocation location) =>
+		location.Range.IsValid && _pathComparer.Equals(location.Source.FilePath, Path);
+	
+	internal void RecordSite(Token token, CompletionSite site)
 	{
-		var (source, range) = token.SourceLocation;
-		return Place is null && range.IsValid && range.Start <= Offset && Offset <= range.End &&
-		       _pathComparer.Equals(source.FilePath, Path);
+		if (Site is null && IsAt(token.SourceLocation))
+			Site = site;
+	}
+	
+	internal void EnterCall(Token callee, SourceLocation arguments, IEnumerable<SourceLocation> argumentList)
+	{
+		var range = arguments.Range;
+		if (!IsIn(arguments) || Offset < range.Start || Offset > range.End ||
+		    enclosingCall is { Arguments: var outer } && (range.Start < outer.Start || range.End > outer.End))
+			return;
+		
+		enclosingCall = (callee.SourceLocation, range,
+			argumentList.Count(argument => argument.Range.End < Offset));
+	}
+	
+	internal void CaptureCall(Token callee, IEnumerable<CompletionCandidate> candidates)
+	{
+		if (enclosingCall is { } call && call.Callee == callee.SourceLocation)
+			Call = new(callee.Text, [..candidates], call.Argument);
 	}
 	
 	internal void Capture(CompletionPlace place, IEnumerable<CompletionCandidate> candidates, TypeSymbol? expectedType)

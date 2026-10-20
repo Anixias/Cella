@@ -1,4 +1,5 @@
-﻿using Cella.Core.Syntax.Nodes;
+﻿using Cella.Core.Binding;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Core.Syntax;
@@ -159,6 +160,7 @@ public sealed partial class FileParser
 			if (!SeparateMember(ref index, ref errorsBefore, "member"))
 				continue;
 			
+			RecordSite(index, CompletionSite.TopLevel);
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
 				if (!ParseWhen(ref index, (ref i, open, isActive) =>
@@ -193,7 +195,10 @@ public sealed partial class FileParser
 			}
 			
 			var start = index;
-			if (ParseMember(ref index, block) is { } member)
+			var window = OpenErrorWindow(index);
+			var member = ParseMember(ref index, block);
+			RecordSyntaxErrors(member, window, index);
+			if (member is not null)
 			{
 				members.Add(member);
 				continue;
@@ -286,6 +291,7 @@ public sealed partial class FileParser
 			if (!SeparateMember(ref index, ref errorsBefore, "member"))
 				continue;
 			
+			RecordSite(index, CompletionSite.TopLevel);
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
 				if (!ParseWhen(ref index, (ref i, open, isActive) => isActive
@@ -316,9 +322,12 @@ public sealed partial class FileParser
 				continue;
 			}
 			
+			var window = OpenErrorWindow(index);
 			if (MatchOperatorName(ref index, out var symbol))
 			{
-				if (ParseOperatorMember(ref index, symbol, block) is not { } operatorMember)
+				var operatorMember = ParseOperatorMember(ref index, symbol, block);
+				RecordSyntaxErrors(operatorMember, window, index);
+				if (operatorMember is null)
 					return false;
 				
 				members.Add(operatorMember);
@@ -331,7 +340,9 @@ public sealed partial class FileParser
 				if (!isConversion)
 					Report(lifecycleKeyword, $"Cannot declare {DescribeLifecycle(lifecycleKeyword)} in enums");
 				
-				if (ParseLifecycleMember(ref index, lifecycleKeyword, block) is not { } lifecycleMember)
+				var lifecycleMember = ParseLifecycleMember(ref index, lifecycleKeyword, block);
+				RecordSyntaxErrors(isConversion ? lifecycleMember : null, window, index);
+				if (lifecycleMember is null)
 					return false;
 				
 				if (isConversion)
@@ -342,7 +353,9 @@ public sealed partial class FileParser
 			
 			if (StartsEnumMember(index))
 			{
-				if (ParseEnumMember(ref index, block) is not { } member)
+				var member = ParseEnumMember(ref index, block);
+				RecordSyntaxErrors(member, window, index);
+				if (member is null)
 					return false;
 				
 				members.Add(member);

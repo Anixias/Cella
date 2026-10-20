@@ -13,5 +13,7 @@ public sealed class CallExpressionNode
 	public IExpressionNode Target { get; } = target;
 	public ImmutableArray<IExpressionNode> Arguments { get; } = arguments.ToImmutableArray();
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public required Token OpenParen { get; init; }
+	public Token? CloseParen { get; init; }
 	public bool IsContained => Target.IsContained;
 }

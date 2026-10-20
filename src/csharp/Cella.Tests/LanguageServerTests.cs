@@ -978,6 +978,34 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		await InitializeAsync();
 		var members = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val broken = )\n\tp.|"));
 		Assert.Equal(["length", "shift", "x"], members.Keys.Order());
+		
+		var looped = ItemsOf(await AskAtCursorAsync("textDocument/completion",
+			"while p.x < 2 // match retries\n\t{\n\t\tp.|\n\t}"));
+		
+		Assert.Equal(["length", "shift", "x"], looped.Keys.Order());
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task OffersKeywordsByPlace()
+	{
+		await InitializeAsync();
+		Assert.Contains("ret", ItemsOf(await AskAtCursorAsync("textDocument/completion", "|")).Keys);
+		
+		var expression = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val r = |"));
+		Assert.Contains("true", expression.Keys);
+		Assert.DoesNotContain("ret", expression.Keys);
+		
+		await SetTextAsync("mod test\n\nhelper: \n\nmain: fun -> i32 => 0\n");
+		var declaration = ItemsOf(await AskAsync("textDocument/completion", 2, 8));
+		Assert.Contains("fun", declaration.Keys);
+		Assert.Contains("pub", declaration.Keys);
+		Assert.DoesNotContain("use", declaration.Keys);
+		
+		await SetTextAsync("mod test\n\n\n\nmain: fun -> i32 => 0\n");
+		var topLevel = ItemsOf(await AskAsync("textDocument/completion", 2, 0));
+		Assert.Contains("use", topLevel.Keys);
+		Assert.DoesNotContain("ret", topLevel.Keys);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -1001,6 +1029,17 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		var signature = Assert.Single((JsonArray)method!["signatures"]!)!;
 		Assert.Equal("shift: fun(by: i32)", (string)signature["label"]!);
 		Assert.Equal(11, (int)signature["parameters"]![0]!["label"]![0]!);
+		
+		var unclosed = await AskAtCursorAsync("textDocument/signatureHelp", "scale(mut p, |");
+		Assert.Equal(1, (int)unclosed!["activeParameter"]!);
+		Assert.Equal(2, ((JsonArray)unclosed["signatures"]!).Count);
+		
+		var nested = await AskAtCursorAsync("textDocument/signatureHelp", "scale(mut p, twice(|))");
+		var inner = Assert.Single((JsonArray)nested!["signatures"]!)!;
+		Assert.Equal("twice: fun(value: i32) -> i32", (string)inner["label"]!);
+		Assert.Equal(0, (int)nested["activeParameter"]!);
+		
+		Assert.Null(await AskAtCursorAsync("textDocument/signatureHelp", "scale(mut p, 1)|"));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
@@ -1129,6 +1168,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		
 		await SetTextAsync(source.Replace("ARM", "Color.green => 2"));
 		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 17, 14)).Keys.Order());
+		
+		await SetTextAsync(source.Replace("Color.red => 1", "Color.red => \"}\".byteLength").Replace("ARM", "Color.gr"));
+		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 14, 10)).Keys.Order());
 		Assert.Equal(0, await ShutDownAsync());
 	}
 }

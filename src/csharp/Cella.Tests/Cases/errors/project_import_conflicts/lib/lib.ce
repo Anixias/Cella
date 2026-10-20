@@ -1,0 +1,6 @@
+mod lib
+
+Helper: pub rec
+{
+	x: i32
+}

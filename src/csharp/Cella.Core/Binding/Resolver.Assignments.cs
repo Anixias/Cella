@@ -34,7 +34,7 @@ public sealed partial class Resolver
 	private static bool IsBorrowSyntax(IExpressionNode node) => node switch
 	{
 		BorrowExpressionNode => true,
-		MatchExpressionNode match => match.Arms.All(static arm => IsBorrowSyntax(arm.Value)),
+		MatchExpressionNode match => match.Arms.All(static arm => arm.Value is { } value && IsBorrowSyntax(value)),
 		_ => false
 	};
 	

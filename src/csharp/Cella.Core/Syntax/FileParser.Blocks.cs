@@ -1,4 +1,5 @@
-﻿using Cella.Core.Syntax.Nodes;
+﻿using Cella.Core.Binding;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
 
@@ -20,6 +21,7 @@ public sealed partial class FileParser
 			if (!SeparateMember(ref index, ref errorsBefore, "declaration"))
 				continue;
 			
+			RecordSite(index, CompletionSite.TopLevel);
 			if (!StartsContextualName(index) &&
 			    Match(ref index, out var useToken, _topLevelContextualKeywords, TokenType.KeywordUse))
 			{
@@ -42,7 +44,10 @@ public sealed partial class FileParser
 	private bool SeparateMember(ref int index, ref int? errorsBefore, string item)
 	{
 		if (errorsBefore == Diagnostics.ErrorCount)
+		{
 			SeparateItems(ref index, item);
+			attributedErrors += Diagnostics.ErrorCount - errorsBefore.Value;
+		}
 		else if (errorsBefore is not null)
 			Match(ref index, TokenType.OpComma);
 		
@@ -81,10 +86,14 @@ public sealed partial class FileParser
 		return false;
 	}
 	
-	public ImportExpression? ParseImport()
+	public ImportExpression? ParseImportEntry()
 	{
-		var index = 1;
-		return ParseImportExpression(ref index);
+		var index = 0;
+		if (!AtEnd(index))
+			return ParseImportExpression(ref index);
+		
+		ReportExpected(index, "a module name");
+		return null;
 	}
 	
 	public bool? ParseCondition()

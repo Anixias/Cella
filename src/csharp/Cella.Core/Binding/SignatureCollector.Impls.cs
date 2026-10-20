@@ -23,6 +23,7 @@ public sealed partial class SignatureCollector
 	
 	private void AddConformance(Conformance conformance)
 	{
+		conformance.Owner = CurrentOwner;
 		_localConformances.Add(conformance);
 		if (FindForeignError(conformance) is { } error)
 			_foreignErrors[conformance] = error;
@@ -264,12 +265,16 @@ public sealed partial class SignatureCollector
 		var conformances = _impls.Except(blocks).ToList();
 		foreach (var impl in conformances)
 		{
+			using var frame = Own(impl);
 			if (GetImplTarget(impl).OriginalDefinition is NamedTypeSymbol named)
 				ReportParameterViolations(named.TypeParameters, impl, (ImplNode)_declarations[impl].Node);
 		}
 		
 		foreach (var impl in blocks)
+		{
+			using var frame = Own(impl);
 			CheckMemberBlock(impl, (ImplNode)_declarations[impl].Node);
+		}
 		
 		foreach (var sameModule in blocks.Where(static impl => impl.IsExtension)
 			         .GroupBy(impl => (Target: GetExtendedType(impl), impl.ExtensionFile!.Module)))
@@ -302,6 +307,7 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			var target = DiagnosticReporter.DescribeType(GetImplTarget(member.Impl).OriginalDefinition);
+			using var frame = Own(member.Function);
 			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(member.Function),
 				$"'{target}.{member.Name}' is declared more than once with the same signature"));
 		}
@@ -432,8 +438,11 @@ public sealed partial class SignatureCollector
 						others.Select(other => AlignTypeParameters(function, other.Function!,
 							GetDeclaredSignature(other.Function!, other.Block, declared))).OfType<FunctionSignature>());
 				
-				if (message is not null)
-					Diagnostics.Add(new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
+				if (message is null)
+					continue;
+				
+				using var frame = member.Function is { } owner ? Own(owner) : Own(declaration.Node);
+				Diagnostics.Add(new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
 			}
 		}
 	}

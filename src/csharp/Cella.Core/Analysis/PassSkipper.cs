@@ -15,7 +15,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 	private readonly ValueEvaluator _values = values;
 	private readonly Dictionary<Loop, List<BasicBlock>?> _passes = [];
 	
-	public (KnownValues Known, InitState State)? Skip(Loop loop, KnownValues entry, InitState entryState,
+	public (KnownValues Known, InitState State)? Skip(Loop loop, int depth, KnownValues entry, InitState entryState,
 		KnownValues next, InitState nextState)
 	{
 		if (GetPass(loop) is not { } pass || entry.Entries.Count != next.Entries.Count)
@@ -26,7 +26,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 			.Select(static e => e.Symbol)
 			.ToHashSet();
 		
-		if (changing.Count == 0 || new Scan(this, loop, pass, entry, changing).Run() is not { } scan)
+		if (changing.Count == 0 || new Scan(this, loop, depth, pass, entry, changing).Run() is not { } scan)
 			return null;
 		
 		if (Apply(scan, entryState, 1) is not { } single ||
@@ -174,6 +174,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 	(
 		PassSkipper skipper,
 		Loop loop,
+		int crossedLoop,
 		List<BasicBlock> pass,
 		KnownValues entry,
 		HashSet<LocalVariableSymbol> changing
@@ -471,7 +472,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 				Groups.Add(group = new Group(path, prefix));
 			
 			if (moves)
-				effect = new LeafShape(PathState.Moved, [new MoveSite(path, location, prefix.Length + 1)]);
+				effect = new LeafShape(PathState.Moved, [new MoveSite(path, location, prefix.Length + 1, crossedLoop)]);
 			
 			group.Touches.Add(new Touch(order, offset.Value, effect, observes));
 		}

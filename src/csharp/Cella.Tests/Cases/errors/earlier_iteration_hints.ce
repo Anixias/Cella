@@ -1,0 +1,49 @@
+mod test
+
+N: rec
+{
+	id: i32
+
+	drop: op { }
+}
+
+take: fun(own n: N) -> i32 => 1
+
+show: fun(imm n: N) { }
+
+both: fun(imm a: i32, b: i32) -> i32 => a + b
+
+oneLine: fun
+{
+	val a = N(1)
+	for i in 0..3 { show(imm a)  val t = take(own a) }
+}
+
+multiLine: fun
+{
+	var a = N(1)
+	for i in 0..3
+	{
+		val r = both(imm a.id,
+			take(own a))
+		a = N(2)
+	}
+}
+
+nested: fun
+{
+	var a = N(1)
+	for i in 0..3
+	{
+		for j in 0..2
+		{
+			val t = take(own a)
+			a = N(2)
+		}
+
+		show(imm a)
+		val u = take(own a)
+	}
+}
+
+main: fun -> i32 => 0

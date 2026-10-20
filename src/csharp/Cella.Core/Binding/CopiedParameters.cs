@@ -6,16 +6,23 @@ namespace Cella.Core.Binding;
 
 public sealed class CopiedParameters(TypePool typePool)
 {
-	private readonly List<(TypeSymbol Type, SourceLocation Location)> _parameters = [];
+	private readonly List<(TypeSymbol Type, SourceLocation Location, ErrorContainment.Owner Owner)> _parameters = [];
 	
-	public void Add(TypeSymbol type, SourceLocation location) => _parameters.Add((type, location));
+	public ErrorContainment? Containment { get; set; }
+	
+	public void Add(TypeSymbol type, SourceLocation location) =>
+		_parameters.Add((type, location, Containment?.Current ?? default));
 	
 	public void Report(DiagnosticList diagnostics)
 	{
-		foreach (var (type, location) in _parameters)
+		foreach (var (type, location, owner) in _parameters)
 		{
-			if (type is not InvalidType && !typePool.IsCopy(type))
-				diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot copy '{type.Name}'"));
+			if (type is InvalidType || typePool.IsCopy(type))
+				continue;
+			
+			Containment?.Enter(owner);
+			diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot copy '{type.Name}'"));
+			Containment?.Exit();
 		}
 		
 		_parameters.Clear();

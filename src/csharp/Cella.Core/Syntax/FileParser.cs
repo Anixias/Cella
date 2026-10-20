@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using Cella.Core.Binding;
+using System.Collections.Immutable;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -91,8 +92,14 @@ public sealed partial class FileParser
 	
 	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
 	
-	private readonly List<SourceLocation> _declarationExtents = [];
-	private readonly List<SourceLocation> _brokenStatements = [];
+	private readonly HashSet<IStatementNode> _brokenStatements = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _brokenDeclarations = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _declarationsWithErrors = new(ReferenceEqualityComparer.Instance);
+	private readonly List<IDeclarationNode> _parsedDeclarations = [];
+	private readonly bool[] _lexicalReported = new bool[tokens.Length];
+	
+	public CompletionProbe? Probe { get; init; }
+	private int attributedErrors;
 	private readonly List<Token> _droppedNames = [];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
@@ -173,22 +180,39 @@ public sealed partial class FileParser
 	public override FileNode? Parse(ref int index)
 	{
 		var file = ParseFile(ref index);
-		ReportLexicalErrors();
+		ReportLexicalErrors(0, Tokens.Length);
 		return file;
 	}
 	
-	private void ReportLexicalErrors()
+	private void RecordSite(int index, CompletionSite site)
 	{
-		var reported = Diagnostics.Select(static d => (d.SourceLocation, d.Message)).ToHashSet();
-		foreach (var token in Tokens)
+		if (Probe is not null && !AtEnd(index))
+			Probe.RecordSite(Tokens[index], site);
+	}
+	
+	private void RecordSites(int start, int end, CompletionSite site)
+	{
+		for (var i = start; i <= end; i++)
+			RecordSite(i, site);
+	}
+	
+	private void ReportLexicalErrors(int start, int end)
+	{
+		for (var i = start; i < end && i < Tokens.Length; i++)
 		{
-			if (token.Error is { } error && reported.Add((token.SourceLocation, error)))
+			if (_lexicalReported[i])
+				continue;
+			
+			_lexicalReported[i] = true;
+			var token = Tokens[i];
+			if (token.Error is { } error &&
+			    !Diagnostics.Any(d => d.SourceLocation == token.SourceLocation && d.Message == error))
 				Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation, error));
+			
+			foreach (var location in token.HiddenCharacters)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+					$"Cannot use U+{(int)location.GetText()[0]:X4} in source"));
 		}
-		
-		foreach (var location in Tokens.SelectMany(static token => token.HiddenCharacters))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot use U+{(int)location.GetText()[0]:X4} in source"));
 	}
 	
 	private FileNode? ParseFile(ref int index)
@@ -211,6 +235,8 @@ public sealed partial class FileParser
 		
 		while (!AtEnd(index))
 		{
+			RecordSite(index, CompletionSite.TopLevel);
+			
 			// Parse module name
 			if (!IsVisibilityBlock(index, _topLevelContextualKeywords) && !StartsContextualName(index) &&
 			    Match(ref index, _topLevelContextualKeywords, TokenType.KeywordMod))
@@ -276,12 +302,15 @@ public sealed partial class FileParser
 				var precedesModuleName = moduleNameAllowed;
 				conditionAllowed = false;
 				moduleNameAllowed = false;
-				if (ParseImportExpression(ref index) is { } import)
-					imports.Add(import);
-				else
+				var importStart = index;
+				var errorsBefore = Diagnostics.ErrorCount;
+				var import = ParseImportExpression(ref index);
+				if (import is null)
 					ResyncTopLevel(ref index);
 				
-				_declarationExtents.Add(Span(useToken, Tokens[index - 1]));
+				ReportLexicalErrors(importStart, index);
+				if (import is { } parsed)
+					imports.Add(parsed with { HasSyntaxErrors = Diagnostics.ErrorCount > errorsBefore });
 				
 				if (!importsAllowed && !precedesModuleName)
 					Report(useToken, "Imports must precede all other declarations");
@@ -324,8 +353,9 @@ public sealed partial class FileParser
 			ModuleName = moduleName,
 			Imports = imports.ToImmutableArray(),
 			Declarations = declarations.ToImmutableArray(),
-			DeclarationExtents = [.._declarationExtents],
-			BrokenStatements = [.._brokenStatements],
+			BrokenStatements = _brokenStatements,
+			BrokenDeclarations = _brokenDeclarations,
+			DeclarationsWithSyntaxErrors = _declarationsWithErrors,
 			DroppedNames = [.._droppedNames],
 			ContextualKeywords =
 			[
@@ -340,8 +370,11 @@ public sealed partial class FileParser
 	private bool ParseTopLevelDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
 		bool insideBraces = false)
 	{
+		var window = OpenErrorWindow(index);
+		var first = declarations.Count;
 		if (StartsContextualName(index))
-			return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
+			return RecordSyntaxErrors(ParseNamedDeclaration(ref index, declarations, block, insideBraces), declarations,
+				first, window, index);
 		
 		var visibilityIndex = index;
 		if (StartsVisibleExternals(index) &&
@@ -414,13 +447,12 @@ public sealed partial class FileParser
 			else
 				SkipDeclaration(ref index, panicStart, insideBlock);
 			
-			return true;
+			return RecordSyntaxErrors(true, declarations, first, window, index);
 		}
 		
-		if (Peek(index, TokenType.OpOpenBracket))
-			return ParseBlanketImpl(ref index, declarations, block, insideBraces);
-		
-		return ParseNamedDeclaration(ref index, declarations, block, insideBraces);
+		return RecordSyntaxErrors(Peek(index, TokenType.OpOpenBracket)
+			? ParseBlanketImpl(ref index, declarations, block, insideBraces)
+			: ParseNamedDeclaration(ref index, declarations, block, insideBraces), declarations, first, window, index);
 	}
 	
 	private (ITypeNode Target, int End)? FindUnnamedImplTarget(int index)

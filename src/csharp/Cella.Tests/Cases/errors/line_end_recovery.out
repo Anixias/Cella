@@ -1,0 +1,22 @@
+Error at line_end_recovery.ce:8:2
+7 │ val x = two(1, 2
+8 │ val y: bool = 5
+    ╘═╛ Expected ',' or ')'
+      | To match the '(' on line 7
+
+Error at line_end_recovery.ce:8:16
+7 │ val x = two(1, 2
+8 │ val y: bool = 5
+                  ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at line_end_recovery.ce:13:2
+12 │     2
+13 │ }
+     ^ Expected '=>'
+
+Error at line_end_recovery.ce:14:16
+13 │ }
+14 │ val z: bool = 6
+                   ^ Cannot convert type 'integer literal' to 'bool'
+
+[compilation failed]

@@ -89,6 +89,7 @@ public sealed partial class Resolver
 	{
 		foreach (var symbol in _symbolTable.DeclarationSymbols.Values)
 		{
+			using var frame = Own(symbol);
 			switch (symbol)
 			{
 				case NamedTypeSymbol { IsGenericDefinition: true } definition:
@@ -138,7 +139,7 @@ public sealed partial class Resolver
 	
 	private void AddInstantiation(Instantiation instantiation)
 	{
-		_instantiations.Add(instantiation);
+		_instantiations.Add(instantiation with { ErrorOwner = CurrentOwner });
 		Journal(() => _instantiations.RemoveAt(_instantiations.Count - 1));
 	}
 	
@@ -220,8 +221,11 @@ public sealed partial class Resolver
 			.DistinctBy(static instantiation => instantiation.Location);
 		
 		foreach (var instantiation in locations)
+		{
+			using var frame = Own(instantiation.ErrorOwner);
 			Diagnostics.Add(new(DiagnosticSeverity.Error, instantiation.Location,
 				$"Instantiating '{DescribeInstantiated(instantiation.To.Owner)}' never ends"));
+		}
 		
 		return;
 		

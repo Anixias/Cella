@@ -1,0 +1,17 @@
+Error at broken_statement_comments.ce:7:2
+6 │ // note
+7 │ val b: bool = 5
+    ╘═╛ Expected ')'
+      | To match the '(' on line 5
+
+Error at broken_statement_comments.ce:7:16
+6 │ // note
+7 │ val b: bool = 5
+                  ^ Cannot convert type 'integer literal' to 'bool'
+
+Error at broken_statement_comments.ce:8:10
+7 │ val b: bool = 5
+8 │ val c = undefinedName
+            ╘═══════════╛ Symbol 'undefinedName' not found in this scope
+
+[compilation failed]

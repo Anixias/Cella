@@ -13,13 +13,16 @@ public sealed partial class Resolver
 		FunctionSymbol Callee,
 		ImmutableArray<TypeSymbol> TypeArguments,
 		SourceLocation Location
-	);
+	)
+	{
+		public ErrorContainment.Owner ErrorOwner { get; init; }
+	}
 	
 	private readonly List<GenericUse> _genericUses = [];
 	
 	private void AddGenericUse(GenericUse use)
 	{
-		_genericUses.Add(use);
+		_genericUses.Add(use with { ErrorOwner = CurrentOwner });
 		Journal(() => _genericUses.RemoveAt(_genericUses.Count - 1));
 	}
 	
@@ -63,6 +66,7 @@ public sealed partial class Resolver
 				    !reported.Add(use.Location))
 					continue;
 				
+				using var frame = Own(use.ErrorOwner);
 				Diagnostics.Add(new(DiagnosticSeverity.Error, use.Location,
 					$"Cannot use '{requirement.Operator}' atomically on '{argument.Name}'")
 				{

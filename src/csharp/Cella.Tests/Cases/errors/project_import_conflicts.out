@@ -1,0 +1,20 @@
+Error at a.ce:3:1
+2 │ 
+3 │ Helper: rec
+    ╘════╛ 'Helper' is ambiguous
+         | Also imported from 'lib'
+
+Error at b.ce:3:1
+2 │ 
+3 │ Helper: rec
+    ╘════╛ 'Helper' is ambiguous
+         | Also imported from 'lib'
+
+Error at test.celp:5:7
+4 │ Imports = [
+5 │     "lib.Helper",
+             ╘════╛ 'Helper' is ambiguous
+                  | Also declared in 'a'
+                  | Also declared in 'b'
+
+[compilation failed]

@@ -1,0 +1,16 @@
+mod test
+
+two: fun(a: i32, b: i32) -> i32 => a + b
+
+main: fun -> i32
+{
+	val x = two(1, 2
+	val y: bool = 5
+	val n = match x
+	{
+		1 => 10
+		2
+	}
+	val z: bool = 6
+	ret n
+}

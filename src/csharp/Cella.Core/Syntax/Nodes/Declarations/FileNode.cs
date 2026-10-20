@@ -11,8 +11,12 @@ public sealed class FileNode(SourceLocation sourceLocation) : IDeclarationNode
 	public required ModuleName ModuleName { get; init; }
 	public required ImmutableArray<IDeclarationNode> Declarations { get; init; }
 	public required ImmutableArray<ImportExpression> Imports { get; init; }
-	public ImmutableArray<SourceLocation> DeclarationExtents { get; init; } = [];
-	public ImmutableArray<SourceLocation> BrokenStatements { get; init; } = [];
+	public IReadOnlySet<IStatementNode> BrokenStatements { get; init; } = ImmutableHashSet<IStatementNode>.Empty;
+	public IReadOnlySet<IDeclarationNode> BrokenDeclarations { get; init; } = ImmutableHashSet<IDeclarationNode>.Empty;
+	
+	public IReadOnlySet<IDeclarationNode> DeclarationsWithSyntaxErrors { get; init; } =
+		ImmutableHashSet<IDeclarationNode>.Empty;
+	
 	public ImmutableArray<Token> DroppedNames { get; init; } = [];
 	public ImmutableArray<Token> ContextualKeywords { get; init; } = [];
 	public bool IsExcluded { get; init; }
