@@ -556,6 +556,33 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesTypesWithBrokenOrMissingBodies()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 A: rec
+		                                 {
+		                                 	x: i32
+		                                 	
+		                                 	+: op(imm a: A, imm b: A) -> A = a
+		                                 }
+		                                 
+		                                 B: rec
+		                                 
+		                                 main: fun -> i32 => A(1).x
+		                                 
+		                                 """);
+		
+		Assert.Contains("2:0:1 struct declaration", tokens);
+		Assert.Contains("4:1:1 property declaration", tokens);
+		Assert.Contains("9:0:1 struct declaration", tokens);
+		Assert.Contains("11:20:1 struct", tokens);
+		Assert.Contains("11:25:1 property", tokens);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ClassifiesOperatorsConstantsAndTypeArguments()
 	{
 		Assert.Equal(

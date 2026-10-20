@@ -30,6 +30,8 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		AttributesDescriptor("Punctuation//Brackets", CellaColors.BRACKETS),
 		AttributesDescriptor("Punctuation//Comma", CellaColors.COMMA),
 		AttributesDescriptor("Punctuation//Dot", CellaColors.DOT),
+		AttributesDescriptor("Punctuation//Colon", CellaColors.COLON),
+		AttributesDescriptor("Punctuation//Arrow", CellaColors.ARROW),
 		AttributesDescriptor("Punctuation//Operator", CellaColors.OPERATOR),
 		AttributesDescriptor("Bad character", CellaColors.BAD_CHARACTER),
 		AttributesDescriptor("Types//Drop type", CellaColors.DROP_TYPE),

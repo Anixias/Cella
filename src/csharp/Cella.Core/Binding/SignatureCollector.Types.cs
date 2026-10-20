@@ -71,7 +71,7 @@ public sealed partial class SignatureCollector
 		}
 		
 		ReportMembers(trait.Name, trait.Self, node.Members);
-		ReportConstructorConflicts(node.Members);
+		ReportConstructorConflicts(ParsedMembers(node.Members));
 	}
 	
 	private void CompleteImpl(ImplSymbol impl)
@@ -136,11 +136,15 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private ImmutableArray<IDeclarationNode> ParsedMembers(ImmutableArray<IDeclarationNode> members) =>
+		[..members.Where(member => Containment?.HasBrokenSyntax(member) != true)];
+	
 	private void ReportMembers(string owner, TypeSymbol type, ImmutableArray<IDeclarationNode> members)
 	{
-		var functions = members.OfType<FunctionNode>().ToLookup(IsModeOperator);
+		var parsed = ParsedMembers(members);
+		var functions = parsed.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(owner, [
-			..members.OfType<PropertyNode>()
+			..parsed.OfType<PropertyNode>()
 				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
 			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);
@@ -232,18 +236,19 @@ public sealed partial class SignatureCollector
 			}
 		}
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsModeOperator);
+		var parsed = ParsedMembers(node.Members);
+		var functions = parsed.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(record.Name, [
-			..node.Members.OfType<FieldNode>()
+			..parsed.OfType<FieldNode>()
 				.Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Field)),
-			..node.Members.OfType<GlobalNode>()
+			..parsed.OfType<GlobalNode>()
 				.Select(static g => (g.Identifier, (IDeclarationNode?)g, MemberKind.Field)),
-			..node.Members.OfType<PropertyNode>()
+			..parsed.OfType<PropertyNode>()
 				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
 			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);
 		
-		ReportConstructorConflicts(node.Members);
+		ReportConstructorConflicts(parsed);
 		ReportModeOperators(record, [..functions[true]]);
 		ReportOperators(record, functions[false]);
 		_typePool.RegisterRecord(record);

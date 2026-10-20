@@ -16,9 +16,14 @@ import com.intellij.model.Pointer
 import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.event.EditorMouseListener
+import com.intellij.openapi.editor.event.EditorMouseMotionListener
 import com.intellij.openapi.editor.richcopy.HtmlSyntaxInfoUtil
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
@@ -49,6 +54,32 @@ internal fun isNamed(element: PsiElement) = CellaTokenTypes.tokenOf(element.node
 internal fun namedElementAt(file: PsiFile, offset: Int): PsiElement? =
 	file.findElementAt(offset)?.takeIf(::isNamed)
 		?: file.findElementAt(offset - 1)?.takeIf(::isNamed)
+
+private val hoveredCharacterKey = Key.create<Int>("cella.hoveredCharacter")
+
+internal fun trackHoveredCharacter(editor: Editor) {
+	editor.addEditorMouseMotionListener(object : EditorMouseMotionListener {
+		override fun mouseMoved(event: EditorMouseEvent) {
+			val point = event.mouseEvent.point
+			val offset = editor.logicalPositionToOffset(editor.xyToLogicalPosition(point))
+			val character = if (offset > 0 && point.x < editor.offsetToXY(offset).x) offset - 1 else offset
+			editor.putUserData(hoveredCharacterKey, character)
+		}
+	})
+	
+	editor.addEditorMouseListener(object : EditorMouseListener {
+		override fun mouseExited(event: EditorMouseEvent) = editor.putUserData(hoveredCharacterKey, null)
+	})
+}
+
+private fun hoveredElementAt(file: PsiFile, offset: Int): PsiElement? {
+	val document = file.viewProvider.document ?: return null
+	val character = EditorFactory.getInstance().getEditors(document)
+		.firstNotNullOfOrNull { it.getUserData(hoveredCharacterKey) }
+		?.takeIf { it in offset - 1..offset } ?: return null
+	
+	return file.findElementAt(character)?.takeIf(::isNamed)
+}
 
 internal class CellaLocation(val file: VirtualFile, val offset: Int) {
 	fun isAt(element: PsiElement) =
@@ -95,7 +126,8 @@ class CellaDocumentationTargetProvider : DocumentationTargetProvider {
 		if (file.language != CellaLanguage)
 			return emptyList()
 		
-		return listOfNotNull(namedElementAt(file, offset)?.let(::CellaDocumentationTarget))
+		return listOfNotNull((hoveredElementAt(file, offset) ?: namedElementAt(file, offset))
+			?.let(::CellaDocumentationTarget))
 	}
 }
 

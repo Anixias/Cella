@@ -42,6 +42,7 @@ class CellaEditorListener : EditorFactoryListener {
 			}, server)
 		}
 		
+		trackHoveredCharacter(editor)
 		server.open(document, file!!)
 	}
 	

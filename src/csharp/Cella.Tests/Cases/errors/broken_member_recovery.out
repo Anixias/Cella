@@ -1,0 +1,11 @@
+Error at broken_member_recovery.ce:8:33
+7 │ 
+8 │ +: op(imm a: A, imm b: A) -> A = a
+                                   ^ Expected '=>' or '{'
+
+Error at broken_member_recovery.ce:18:16
+17 │ val a = A(1, 2)
+18 │ val b: bool = 3
+                   ^ Cannot convert type 'integer literal' to 'bool'
+
+[compilation failed]

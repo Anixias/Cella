@@ -367,10 +367,10 @@ public sealed partial class FileParser
 	
 	private delegate T? DeclarationParser<T>(ref int index) where T : class;
 	
-	private readonly record struct ErrorWindow(int Errors, int Attributed, int FirstNested, int Start);
+	private readonly record struct ErrorWindow(int Errors, int Attributed, int FirstNested, int Dropped, int Start);
 	
 	private ErrorWindow OpenErrorWindow(int index) =>
-		new(Diagnostics.ErrorCount, attributedErrors, _parsedDeclarations.Count, index);
+		new(Diagnostics.ErrorCount, attributedErrors, _parsedDeclarations.Count, droppedMembers, index);
 	
 	private T? ParseDeclaration<T>(ref int index, Token start, string kind, DeclarationParser<T> parse)
 		where T : class
@@ -426,6 +426,9 @@ public sealed partial class FileParser
 			_brokenDeclarations.UnionWith(_parsedDeclarations.Skip(window.FirstNested));
 			_brokenDeclarations.UnionWith(nodes);
 		}
+		
+		if (droppedMembers > window.Dropped)
+			_brokenDeclarations.UnionWith(nodes);
 		
 		if (errors > 0)
 			_declarationsWithErrors.UnionWith(nodes);

@@ -15,14 +15,15 @@ public sealed partial class FileParser
 		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
 			return null;
 		
-		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
+		if (MissesBody(index))
 		{
 			ReportMissing(index, "'{'");
 			return null;
 		}
 		
 		var members = new List<IDeclarationNode>();
-		if (!ParseMembers(ref index, openBrace, null, members))
+		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
+		    !ParseMembers(ref index, openBrace, null, members))
 			return null;
 		
 		return new(identifier, modifiers.Tokens, isRef, members)
@@ -34,6 +35,11 @@ public sealed partial class FileParser
 			IsOwn = isOwn
 		};
 	}
+	
+	private bool MissesBody(int index) =>
+		!Peek(index, TokenType.OpOpenBrace) && !AtEnd(index) &&
+		(IsOnSameLine(index) || Peek(index, TokenType.Identifier) && !Peek(index + 1, TokenType.OpColon) &&
+			!Peek(index + 1, TokenType.OpOpenBracket));
 	
 	private ITypeNode ParseImplTarget(ref int index, Token identifier)
 	{
@@ -148,7 +154,6 @@ public sealed partial class FileParser
 	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)
 	{
 		int? errorsBefore = null;
-		var failed = false;
 		while (!Match(ref index, TokenType.OpCloseBrace))
 		{
 			if (AtEnd(index))
@@ -204,12 +209,11 @@ public sealed partial class FileParser
 				continue;
 			}
 			
-			failed = true;
 			if (ResyncMember(ref index, start))
 				return false;
 		}
 		
-		return !failed;
+		return true;
 	}
 	
 	private EnumNode? ParseEnum(ref int index, Token identifier, DeclarationModifiers modifiers, bool isExternal,
@@ -243,9 +247,7 @@ public sealed partial class FileParser
 		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
 			return null;
 		
-		if (!Peek(index, TokenType.OpOpenBrace) && !AtEnd(index) &&
-		    (IsOnSameLine(index) || Peek(index, TokenType.Identifier) && !Peek(index + 1, TokenType.OpColon) &&
-			    !Peek(index + 1, TokenType.OpOpenBracket)))
+		if (MissesBody(index))
 		{
 			ReportMissing(index, "'{'");
 			return null;
@@ -327,10 +329,11 @@ public sealed partial class FileParser
 			{
 				var operatorMember = ParseOperatorMember(ref index, symbol, block);
 				RecordSyntaxErrors(operatorMember, window, index);
-				if (operatorMember is null)
+				if (operatorMember is not null)
+					members.Add(operatorMember);
+				else if (ResyncMember(ref index, window.Start))
 					return false;
 				
-				members.Add(operatorMember);
 				continue;
 			}
 			
@@ -342,10 +345,10 @@ public sealed partial class FileParser
 				
 				var lifecycleMember = ParseLifecycleMember(ref index, lifecycleKeyword, block);
 				RecordSyntaxErrors(isConversion ? lifecycleMember : null, window, index);
-				if (lifecycleMember is null)
+				if (lifecycleMember is null && ResyncMember(ref index, window.Start))
 					return false;
 				
-				if (isConversion)
+				if (isConversion && lifecycleMember is not null)
 					members.Add(lifecycleMember);
 				
 				continue;
@@ -355,10 +358,11 @@ public sealed partial class FileParser
 			{
 				var member = ParseEnumMember(ref index, block);
 				RecordSyntaxErrors(member, window, index);
-				if (member is null)
+				if (member is not null)
+					members.Add(member);
+				else if (ResyncMember(ref index, window.Start))
 					return false;
 				
-				members.Add(member);
 				continue;
 			}
 			

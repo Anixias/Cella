@@ -75,12 +75,13 @@ public sealed partial class SignatureCollector
 		foreach (var member in node.Members)
 			Complete(_symbolTable.DeclarationSymbols[member]);
 		
-		var functions = node.Members.OfType<FunctionNode>().ToLookup(IsModeOperator);
+		var parsed = ParsedMembers(node.Members);
+		var functions = parsed.OfType<FunctionNode>().ToLookup(IsModeOperator);
 		ReportMemberConflicts(enumType.Name, [
 			..node.Cases.Select(static c => (c.Identifier, (IDeclarationNode?)null, MemberKind.Case)),
-			..node.Members.OfType<GlobalNode>()
+			..parsed.OfType<GlobalNode>()
 				.Select(static g => (g.Identifier, (IDeclarationNode?)g, MemberKind.Field)),
-			..node.Members.OfType<PropertyNode>()
+			..parsed.OfType<PropertyNode>()
 				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
 			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);

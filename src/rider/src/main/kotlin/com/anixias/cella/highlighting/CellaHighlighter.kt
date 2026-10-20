@@ -45,7 +45,9 @@ class CellaHighlighter : SyntaxHighlighterBase() {
 			CellaToken.LEFT_BRACKET, CellaToken.RIGHT_BRACKET -> CellaColors.BRACKETS
 			CellaToken.COMMA -> CellaColors.COMMA
 			CellaToken.DOT -> CellaColors.DOT
-			CellaToken.COLON, CellaToken.ARROW, CellaToken.OPERATOR -> CellaColors.OPERATOR
+			CellaToken.COLON -> CellaColors.COLON
+			CellaToken.ARROW -> CellaColors.ARROW
+			CellaToken.OPERATOR -> CellaColors.OPERATOR
 			CellaToken.BAD_CHARACTER -> CellaColors.BAD_CHARACTER
 			CellaToken.WHITESPACE -> null
 		}

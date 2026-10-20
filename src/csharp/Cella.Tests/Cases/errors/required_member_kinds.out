@@ -23,4 +23,9 @@ Error at required_member_kinds.ce:10:5
 10 │ p: req prop i32
         ╘═╛ Cannot declare required properties
 
+Hint at required_member_kinds.ce:14:6
+13 │ }
+14 │ cb: req fun[-> i32]
+         ╘═╛ Redundant 'req'
+
 [compilation failed]

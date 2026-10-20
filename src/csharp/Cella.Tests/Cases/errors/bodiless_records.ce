@@ -12,9 +12,11 @@ Marker: trait
 
 Tagged: rec impl Marker
 
+Bad: rec impl Marker x
+
 Kept: rec
 {
 	value: i32
 }
 
-main: fun -> i32 => Kept(0).value
+main: fun -> i32 => Kept(0).value + i32(sizeOf(R)) + i32(sizeOf(Box[i32]))

@@ -100,6 +100,7 @@ public sealed partial class FileParser
 	
 	public CompletionProbe? Probe { get; init; }
 	private int attributedErrors;
+	private int droppedMembers;
 	private readonly List<Token> _droppedNames = [];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>

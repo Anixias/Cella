@@ -1,26 +1,6 @@
-Error at bodiless_records.ce:3:4
-2 │ 
-3 │ U: union
-       ╘═══╛ Expected '{'
-
-Error at bodiless_records.ce:5:4
-4 │ 
-5 │ R: rec
-       ╘═╛ Expected '{'
-
-Error at bodiless_records.ce:7:12
-6 │ 
-7 │ Shape: ref rec
-               ╘═╛ Expected '{'
-
-Error at bodiless_records.ce:9:9
-8 │ 
-9 │ Box[T]: rec
-            ╘═╛ Expected '{'
-
-Error at bodiless_records.ce:13:18
-12 │ 
-13 │ Tagged: rec impl Marker
-                      ╘════╛ Expected '{'
+Error at bodiless_records.ce:15:22
+14 │ 
+15 │ Bad: rec impl Marker x
+                          ^ Expected '+'
 
 [compilation failed]

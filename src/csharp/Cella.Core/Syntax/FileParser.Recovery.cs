@@ -210,6 +210,7 @@ public sealed partial class FileParser
 	
 	private bool ResyncMember(ref int index, int start)
 	{
+		droppedMembers++;
 		var braces = 0;
 		var brackets = 0;
 		int? bracesAtError = null;
