@@ -148,6 +148,7 @@ public sealed partial class SignatureCollector
 		ReportRequirementCycles(files);
 		InheritSelfConstraints();
 		ReportInheritedConflicts();
+		ReportRedundantKeywords();
 		
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);

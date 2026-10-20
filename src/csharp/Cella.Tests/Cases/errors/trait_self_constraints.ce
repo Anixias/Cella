@@ -56,4 +56,10 @@ both[T: Bounded + Droppy]: fun -> i32 => 0
 
 combined[T: Combined]: fun -> i32 => 0
 
+repeated[T: Bounded + copy]: fun -> i32 => 0
+
+Limited: trait req Bounded + copy
+
+indirect[T: Limited + copy + noref]: fun -> i32 => 0
+
 main: fun -> i32 => 0

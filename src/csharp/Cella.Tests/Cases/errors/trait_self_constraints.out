@@ -97,4 +97,22 @@ Error at trait_self_constraints.ce:55:19
                        ╘════╛ Cannot combine 'copy' and 'drop'
                             | 'Droppy' requires 'drop'
 
+Hint at trait_self_constraints.ce:59:23
+58 │ 
+59 │ repeated[T: Bounded + copy]: fun -> i32 => 0
+                           ╘══╛ Redundant 'copy'
+                              | Required by 'Bounded'
+
+Hint at trait_self_constraints.ce:61:30
+60 │ 
+61 │ Limited: trait req Bounded + copy
+                                  ╘══╛ Redundant 'copy'
+                                     | Required by 'Bounded'
+
+Hint at trait_self_constraints.ce:63:23
+62 │ 
+63 │ indirect[T: Limited + copy + noref]: fun -> i32 => 0
+                           ╘══╛ Redundant 'copy'
+                              | Required by 'Limited'
+
 [compilation failed]

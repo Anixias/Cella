@@ -241,6 +241,23 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private void ReportRedundantKeywords()
+	{
+		foreach (var (node, parameter, bounds, errorOwner) in _constrainedParameters)
+		{
+			using var frame = Own(errorOwner);
+			foreach (var keyword in node.Keywords)
+			{
+				if (bounds.OfType<TraitType>().FirstOrDefault(trait =>
+					    _typePool.GetSelfConstraints(trait, parameter).Contains(keyword.Type)) is { } requirer)
+					Diagnostics.Add(new(DiagnosticSeverity.Hint, keyword.SourceLocation, $"Redundant '{keyword.Text}'")
+					{
+						Hints = [$"Required by '{requirer.Name}'"]
+					});
+			}
+		}
+	}
+	
 	private void ReportRequirementCycles(IEnumerable<FileNode> files)
 	{
 		var cyclic = files
