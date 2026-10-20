@@ -1,6 +1,5 @@
 package com.anixias.cella.run
 
-import com.anixias.cella.CellaFileType
 import com.anixias.cella.CellaIcons
 import com.anixias.cella.server.CellaGlobal
 import com.anixias.cella.server.CellaServer
@@ -59,13 +58,11 @@ import com.jetbrains.cidr.execution.TrivialRunParameters
 import com.jetbrains.cidr.execution.debugger.CidrDebugProcess
 import com.jetbrains.cidr.execution.debugger.CidrDebuggerLanguageSupport
 import com.jetbrains.cidr.execution.debugger.CidrEvaluator
-import com.jetbrains.cidr.execution.debugger.CidrLocalDebugProcess
 import com.jetbrains.cidr.execution.debugger.CidrStackFrame
 import com.jetbrains.cidr.execution.debugger.backend.DebuggerDriver
 import com.jetbrains.cidr.execution.debugger.backend.LLValue
 import com.jetbrains.cidr.execution.debugger.backend.lldb.LLDBDriver
 import com.jetbrains.cidr.execution.debugger.backend.lldb.LLDBDriverConfiguration
-import com.jetbrains.cidr.execution.debugger.breakpoints.CidrLineBreakpointFileTypesProvider
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrDebuggerTypesHelper
 import com.jetbrains.cidr.execution.debugger.evaluation.CidrEvaluatedValue
 import java.io.File
@@ -257,17 +254,13 @@ class CellaDebugRunner : GenericProgramRunner<RunnerSettings>() {
 		val consoleBuilder = TextConsoleBuilderFactory.getInstance().createBuilder(environment.project)
 		return XDebuggerManager.getInstance(environment.project).startSession(environment, object : XDebugProcessStarter() {
 			override fun start(session: XDebugSession): XDebugProcess {
-				val process = CidrLocalDebugProcess(parameters, session, consoleBuilder)
+				val process = CellaDebugProcess(parameters, session, consoleBuilder)
 				ProcessTerminatedListener.attach(process.processHandler, environment.project)
 				process.start()
 				return process
 			}
 		}).runContentDescriptor
 	}
-}
-
-class CellaBreakpointFileTypes : CidrLineBreakpointFileTypesProvider {
-	override fun getFileTypes() = setOf(CellaFileType)
 }
 
 class CellaDebuggerLanguageSupport : CidrDebuggerLanguageSupport() {
