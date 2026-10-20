@@ -1588,4 +1588,44 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 14, 10)).Keys.Order());
 		Assert.Equal(0, await ShutDownAsync());
 	}
+	
+	[Fact]
+	public async Task CompletesTraitNames()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      Additive: pub trait
+		                      {
+		                      }
+		                      
+		                      Point: rec IMPL
+		                      {
+		                      }
+		                      
+		                      Number: pub trait req copy + REQ
+		                      {
+		                      	minValue: const Self
+		                      }
+		                      
+		                      main: fun -> i32 => 0
+		                      
+		                      """;
+		
+		await InitializeAsync();
+		await SetTextAsync(source.Replace("IMPL", "").Replace("REQ", "Add"));
+		var required = ItemsOf(await AskAsync("textDocument/completion", 10, 32));
+		Assert.Contains("Additive", required.Keys);
+		Assert.DoesNotContain("Point", required.Keys);
+		Assert.DoesNotContain("main", required.Keys);
+		
+		await SetTextAsync(source.Replace("IMPL", "").Replace("REQ", ""));
+		Assert.Contains("Additive", ItemsOf(await AskAsync("textDocument/completion", 10, 29)).Keys);
+		
+		await SetTextAsync(source.Replace("IMPL", "impl Ad").Replace("REQ", "Additive"));
+		var implemented = ItemsOf(await AskAsync("textDocument/completion", 6, 18));
+		Assert.Contains("Additive", implemented.Keys);
+		Assert.DoesNotContain("Point", implemented.Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
 }

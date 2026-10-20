@@ -301,6 +301,7 @@ public readonly struct ResolutionContext
 		switch (node)
 		{
 			case IdentifierTypeNode identifier:
+				ProbeTrait(identifier.Token);
 				symbol = Resolve(identifier.Token);
 				break;
 			
@@ -315,6 +316,9 @@ public readonly struct ResolutionContext
 				ImmutableArray<Token> parts = [..generic.Qualifiers, generic.Identifier];
 				text = string.Join('.', parts.Select(static part => part.Text));
 				location = GetSpan(parts);
+				if (generic.Qualifiers.IsEmpty)
+					ProbeTrait(generic.Identifier);
+				
 				symbol = generic.Qualifiers.IsEmpty ? Resolve(generic.Identifier) : ResolveQualifiedName(parts);
 				if (symbol is null && !generic.Qualifiers.IsEmpty)
 					return null;
@@ -661,6 +665,15 @@ public readonly struct ResolutionContext
 				.Where(static symbol => symbol is TypeSymbol and not TypeParameterSymbol { IsValue: true }
 					or TraitSymbol
 					or ModulePathSymbol)
+				.Select(static symbol => new CompletionCandidate(symbol)), null);
+	}
+	
+	private void ProbeTrait(Token name)
+	{
+		if (Probe?.Covers(name) == true)
+			Probe.Capture(CompletionPlace.Trait, GetAllSymbols().Distinct()
+				.Where(static symbol =>
+					symbol is TraitSymbol or TypeParameterSymbol { IsTrait: true } or ModulePathSymbol)
 				.Select(static symbol => new CompletionCandidate(symbol)), null);
 	}
 	

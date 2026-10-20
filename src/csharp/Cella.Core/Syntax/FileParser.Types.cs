@@ -63,7 +63,7 @@ public sealed partial class FileParser
 		if (!IsOnSameLine(index) || !Match(ref index, _traitListKeywords, TokenType.KeywordImpl))
 			return traits;
 		
-		return ParseTraitNames(ref index, traits) ? traits : null;
+		return ParseTraitNames(ref index, traits) || Peek(index, TokenType.OpOpenBrace) ? traits : null;
 	}
 	
 	private bool ParseTraitNames(ref int index, List<ITypeNode> traits)
@@ -101,7 +101,8 @@ public sealed partial class FileParser
 		var constructors = new List<ConstructorConstraintNode>();
 		if (IsOnSameLine(index) && Match(ref index, _traitListKeywords, TokenType.KeywordReq))
 		{
-			if (!ParseConstraints(ref index, keywords, traits, constructors, true))
+			if (!ParseConstraints(ref index, keywords, traits, constructors, true) &&
+			    !Peek(index, TokenType.OpOpenBrace))
 				return null;
 			
 			if (IsOnSameLine(index) && (Peek(index, TokenType.OpComma) || Peek(index, TokenType.Identifier)))
@@ -142,7 +143,7 @@ public sealed partial class FileParser
 				return null;
 			}
 			
-			if (!ParseTraitNames(ref index, traits))
+			if (!ParseTraitNames(ref index, traits) && !Peek(index, TokenType.OpOpenBrace))
 				return null;
 		}
 		

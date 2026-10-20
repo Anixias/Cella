@@ -7,7 +7,8 @@ public enum CompletionPlace
 {
 	Name,
 	Member,
-	Type
+	Type,
+	Trait
 }
 
 public enum CompletionSite

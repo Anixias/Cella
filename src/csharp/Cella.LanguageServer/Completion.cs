@@ -72,7 +72,7 @@ public static class Completion
 				.Distinct(),
 			(CompletionPlace.Name, _) => _expressionKeywords,
 			(CompletionPlace.Type, _) => _typeKeywords,
-			(CompletionPlace.Member, _) => [],
+			(CompletionPlace.Member or CompletionPlace.Trait, _) => [],
 			(_, CompletionSite.Declaration) => _declarationKeywords,
 			(_, CompletionSite.TopLevel) => _topLevelKeywords,
 			_ => []

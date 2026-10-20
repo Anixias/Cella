@@ -15,6 +15,8 @@ Trailing: trait req Eq +
 
 main: fun -> i32 => 0
 
+constrained[T: Trailing + Empty]: fun(imm value: T) -> i32 => 0
+
 Ord: trait impl Eq
 {
 	<: op(a: Self, b: Self) -> bool

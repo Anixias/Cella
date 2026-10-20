@@ -21,3 +21,5 @@ Other: rec impl
 }
 
 main: fun -> i32 => 0
+
+takesOther: fun(imm value: Other) -> i32 => 0

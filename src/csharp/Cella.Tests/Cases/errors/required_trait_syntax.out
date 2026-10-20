@@ -18,9 +18,9 @@ Error at required_trait_syntax.ce:13:1
 13 │ {
      ^ Expected a constraint
 
-Error at required_trait_syntax.ce:18:12
-17 │ 
-18 │ Ord: trait impl Eq
+Error at required_trait_syntax.ce:20:12
+19 │ 
+20 │ Ord: trait impl Eq
                 ╘══╛ Expected 'req' or '{'
 
 [compilation failed]
