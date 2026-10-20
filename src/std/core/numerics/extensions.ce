@@ -1,11 +1,120 @@
 ﻿mod core.numerics
 
-Number: trait req copy
+Additive: pub trait req copy
 {
-	maxValue: const Self
+	+: op(left: Self, right: Self) -> Self
+	+%: op(left: Self, right: Self) -> Self
+	-: op(left: Self, right: Self) -> Self
+	-%: op(left: Self, right: Self) -> Self
 }
 
-i32: impl Number
+Multiplicative: pub trait req copy
 {
-	maxValue: const i32 = 0x7FFFFFFF
+	*: op(left: Self, right: Self) -> Self
+	/: op(left: Self, right: Self) -> Self
+	%: op(left: Self, right: Self) -> Self
+}
+
+Number: pub trait req Additive + Multiplicative
+{
+	minValue: const Self
+	maxValue: const Self
+	zero: const Self
+	one: const Self
+}
+
+i8: impl Number + Additive + Multiplicative
+{
+	minValue: const i8 = -0x80
+	maxValue: const i8 =  0x7F
+	zero: const i8 = 0
+	one: const i8 = 1
+}
+
+u8: impl Number + Additive + Multiplicative
+{
+	minValue: const u8 = 0
+	maxValue: const u8 = 0xFF
+	zero: const u8 = 0
+	one: const u8 = 1
+}
+
+i16: impl Number + Additive + Multiplicative
+{
+	minValue: const i16 = -0x8000
+	maxValue: const i16 =  0x7FFF
+	zero: const i16 = 0
+	one: const i16 = 1
+}
+
+u16: impl Number + Additive + Multiplicative
+{
+	minValue: const u16 = 0
+	maxValue: const u16 = 0xFFFF
+	zero: const u16 = 0
+	one: const u16 = 1
+}
+
+i32: impl Number + Additive + Multiplicative
+{
+	minValue: const i32 = -0x80000000
+	maxValue: const i32 =  0x7FFFFFFF
+	zero: const i32 = 0
+	one: const i32 = 1
+}
+
+u32: impl Number + Additive + Multiplicative
+{
+	minValue: const u32 = 0
+	maxValue: const u32 = 0xFFFFFFFF
+	zero: const u32 = 0
+	one: const u32 = 1
+}
+
+i64: impl Number + Additive + Multiplicative
+{
+	minValue: const i64 = -0x80000000_00000000
+	maxValue: const i64 =  0x7FFFFFFF_FFFFFFFF
+	zero: const i64 = 0
+	one: const i64 = 1
+}
+
+u64: impl Number + Additive + Multiplicative
+{
+	minValue: const u64 = 0
+	maxValue: const u64 = 0xFFFFFFFF_FFFFFFFF
+	zero: const u64 = 0
+	one: const u64 = 1
+}
+
+i128: impl Number + Additive + Multiplicative
+{
+	minValue: const i128 = -0x80000000_00000000_00000000_00000000
+	maxValue: const i128 =  0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
+	zero: const i128 = 0
+	one: const i128 = 1
+}
+
+u128: impl Number + Additive + Multiplicative
+{
+	minValue: const u128 = 0
+	maxValue: const u128 = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
+	zero: const u128 = 0
+	one: const u128 = 1
+}
+
+isize: impl Number + Additive + Multiplicative
+{
+	minValue: const isize = -isize.maxValue - 1
+	maxValue: const isize = isize(usize.maxValue >> 1)
+	zero: const isize = 0
+	one: const isize = 1
+}
+
+usize: impl Number + Additive + Multiplicative
+{
+	minValue: const usize = 0
+	maxValue: const usize = ~0
+	zero: const usize = 0
+	one: const usize = 1
 }
