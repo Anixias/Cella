@@ -11,6 +11,7 @@ Additive: pub trait req copy
 Multiplicative: pub trait req copy
 {
 	*: op(left: Self, right: Self) -> Self
+	*%: op(left: Self, right: Self) -> Self
 	/: op(left: Self, right: Self) -> Self
 	%: op(left: Self, right: Self) -> Self
 }

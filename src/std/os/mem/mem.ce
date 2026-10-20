@@ -1,0 +1,42 @@
+﻿mod std.mem
+
+use std.process.panic
+
+ext
+{
+	malloc: fun(size: usize) -> ptr
+	free: fun(data: ptr)
+}
+
+Box[T: noref]: rec
+{
+	data: pvt req ptr[T]
+	
+	new: op(own value: T)
+	{
+		// Can panic for zero-sized T
+		val p = malloc(sizeOf(T))
+		if p == null
+			panic "out of memory"
+		
+		self.data = ptr[T](p)
+		own *self.data = own value
+	}
+	
+	drop: op
+	{
+		drop *self.data
+		free(self.data)
+	}
+	
+	unbox: fun(own self) -> T
+	{
+		val p = own self.data
+		val value = own *p
+		free(p)
+		ret value
+	}
+	
+	*: op(imm self) -> imm[T] => imm *self.data
+	*: op(mut self) -> mut[T] => mut *self.data
+}

@@ -1599,6 +1599,16 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		                                         	}
 		                                         }
 		                                         
+		                                         Counter: rec
+		                                         {
+		                                         	count: i32
+		                                         
+		                                         	drop: op
+		                                         	{
+		                                         		val last = self.count
+		                                         	}
+		                                         }
+		                                         
 		                                         main: fun -> i32 => 0
 		                                         
 		                                         """, Token);
@@ -1609,6 +1619,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Null(await DefinitionAsync(8, 3));
 		Assert.Empty(await UsagesAsync(8, 3, true));
 		Assert.Equal(4, (int)(await DefinitionAsync(8, 8))!["range"]!["start"]!["line"]!);
+		Assert.Null(await DefinitionAsync(18, 14));
+		Assert.Empty(await UsagesAsync(18, 14, true));
+		Assert.Equal(14, (int)(await DefinitionAsync(18, 19))!["range"]!["start"]!["line"]!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

@@ -19,7 +19,7 @@ when windows
 				count = 2147483647
 			
 			write(2, data, u32(count))
-			data = data + count
+			data += count
 			remaining -= count
 		}
 	}
