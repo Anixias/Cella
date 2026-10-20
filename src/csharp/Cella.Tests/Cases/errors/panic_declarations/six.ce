@@ -1,0 +1,8 @@
+mod six
+
+panic: op(location: i32) -> never
+{
+	while true
+	{
+	}
+}

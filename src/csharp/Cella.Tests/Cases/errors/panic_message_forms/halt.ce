@@ -1,0 +1,8 @@
+mod halt
+
+panic: pub op(location: str) -> never
+{
+	while true
+	{
+	}
+}

@@ -284,6 +284,13 @@ public sealed partial class Lowerer
 			ContinueWith(afterBlock);
 		}
 		
+		public Value Visit(ResolvedTrapExpressionNode node)
+		{
+			GetOrMakeBlock().SetTerminator(new UnreachableTerminator(node.Syntax.SourceLocation) { Traps = true });
+			currentBlock = null;
+			return new UndefValue(node.Type);
+		}
+		
 		public Value Visit(ResolvedArrayExpressionNode node) => new ArrayValue((ArrayType)node.Type,
 			LowerOperands(node.Values, static _ => Passing.Consume), node.Syntax.SourceLocation);
 		

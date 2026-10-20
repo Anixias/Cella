@@ -1,0 +1,3 @@
+mod free
+
+stop: fun -> i32 => panic "stop"

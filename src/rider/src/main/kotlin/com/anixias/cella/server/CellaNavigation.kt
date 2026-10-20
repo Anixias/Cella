@@ -59,6 +59,9 @@ private fun isKeywordName(element: PsiElement): Boolean {
 	if (CellaTokenTypes.tokenOf(element.node?.elementType) !in keywordTokens)
 		return false
 	
+	if (element.text == "panic")
+		return true
+	
 	val previous = PsiTreeUtil.prevVisibleLeaf(element)?.node?.elementType
 	val next = PsiTreeUtil.nextVisibleLeaf(element)?.node?.elementType
 	return CellaTokenTypes.tokenOf(previous) == CellaToken.DOT || CellaTokenTypes.tokenOf(next) == CellaToken.COLON

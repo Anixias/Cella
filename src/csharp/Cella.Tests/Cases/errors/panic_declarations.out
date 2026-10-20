@@ -1,12 +1,12 @@
 Error at five.ce:3:1
 2 │ 
 3 │ panic: op(message: str, location: str) -> never
-    ╘═══╛ 'panic' is declared more than once in 'five'
+    ╘═══╛ 'panic' is declared more than once with the same signature
 
 Error at five_again.ce:3:1
 2 │ 
-3 │ panic: op(message: str, location: str, code: i32) -> never
-    ╘═══╛ 'panic' is declared more than once in 'five'
+3 │ panic: op(text: str, at: str) -> never
+    ╘═══╛ 'panic' is declared more than once with the same signature
 
 Error at four.ce:3:11
 2 │ 
@@ -15,8 +15,13 @@ Error at four.ce:3:11
 
 Error at one.ce:3:1
 2 │ 
-3 │ panic: op(message: str) -> never
-    ╘═══╛ 'panic' operators need two parameters
+3 │ panic: op -> never
+    ╘═══╛ 'panic' operators need one or two parameters
+
+Error at six.ce:3:11
+2 │ 
+3 │ panic: op(location: i32) -> never
+              ╘══════╛ 'panic' operators need a 'str' location
 
 Error at three.ce:3:43
 2 │ 

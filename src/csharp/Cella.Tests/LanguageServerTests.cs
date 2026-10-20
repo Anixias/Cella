@@ -1943,13 +1943,50 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(
 		[
 			"0:0:10 property", "1:0:15 property", "2:0:7 property", "2:12:3 namespace", "2:16:7 namespace",
-			"2:24:5 function"
+			"2:24:5 method"
 		], tokens);
 		
 		var parameters = Position(2, 25);
 		parameters["textDocument"]!["uri"] = UriOf(ProjectPath);
 		var hover = (await ReadResponseAsync(await RequestAsync("textDocument/hover", parameters)))["result"];
 		Assert.Equal(Code("panic: op(message: str, location: str) -> never"), (string)hover!["contents"]!["value"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesPanicsLikeOperators()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "halt.ce"),
+			"mod halt\n\npanic: pub op(location: str) -> never\n{\n\twhile true\n\t{\n\t}\n}\n", Token);
+		
+		var tokens = await ClassifyAsync("mod test\n\nuse halt.panic\n\nstop: fun -> i32 => panic\n");
+		Assert.Contains("2:9:5 method", tokens);
+		Assert.Contains("4:20:5 method", tokens);
+		Assert.Equal(Code("panic: op(location: str) -> never"), await HoverAsync(4, 22));
+		
+		var definition = await DefinitionAsync(4, 22);
+		Assert.EndsWith("halt.ce", (string)definition!["uri"]!);
+		Assert.Equal(2, (int)definition["range"]!["start"]!["line"]!);
+		
+		await NotifyAsync("textDocument/didChange", new JsonObject
+		{
+			["textDocument"] = new JsonObject { ["uri"] = SourceUri, ["version"] = 2 },
+			["contentChanges"] = new JsonArray(new JsonObject { ["text"] = "mod test\n\nstop: fun -> i32 => panic\n" })
+		});
+		
+		Assert.Null(await AskAsync("textDocument/hover", 2, 22));
+		Assert.Null(await DefinitionAsync(2, 22));
+		
+		await NotifyAsync("textDocument/didChange", new JsonObject
+		{
+			["textDocument"] = new JsonObject { ["uri"] = SourceUri, ["version"] = 3 },
+			["contentChanges"] = new JsonArray(new JsonObject
+			{
+				["text"] = "mod test\n\nuse halt.panic\n\nstop: fun -> i32 => panic \"x\"\n"
+			})
+		});
+		
+		Assert.Equal(Code("panic: op(location: str) -> never"), await HoverAsync(4, 22));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

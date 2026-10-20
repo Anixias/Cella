@@ -1,0 +1,16 @@
+Error at free.ce:3:27
+2 │ 
+3 │ stop: fun -> i32 => panic "stop"
+                              ╘════╛ 'panic' doesn't accept a message
+
+Error at main.ce:5:27
+4 │ 
+5 │ stop: fun -> i32 => panic "stop"
+                              ╘════╛ 'panic' doesn't accept a message
+
+Error at main.ce:6:37
+5 │ stop: fun -> i32 => panic "stop"
+6 │ qualified: fun -> i32 => halt.panic "halt"
+                                        ╘════╛ 'panic' doesn't accept a message
+
+[compilation failed]

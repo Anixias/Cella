@@ -23,14 +23,9 @@ Error at prefix_operator_line_end.ce:37:2
 37 │ drop
      ╘══╛ Expected an expression
 
-Error at prefix_operator_line_end.ce:44:2
-43 │ {
-44 │     panic
-         ╘═══╛ Expected an expression
-
-Error at prefix_operator_line_end.ce:56:12
-55 │ var box = Box(1)
-56 │ box.limit++
+Error at prefix_operator_line_end.ce:50:12
+49 │ var box = Box(1)
+50 │ box.limit++
                ^ Expected an expression
 
 [compilation failed]

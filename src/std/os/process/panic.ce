@@ -43,6 +43,15 @@ ext
 	fflush: fun(stream: ptr) -> i32
 }
 
+panic: pub op(location: str) -> never
+{
+	fflush(null)
+	writeError("Panic at ")
+	writeError(location)
+	writeError("\n")
+	crash()
+}
+
 panic: pub op(message: str, location: str) -> never
 {
 	fflush(null)

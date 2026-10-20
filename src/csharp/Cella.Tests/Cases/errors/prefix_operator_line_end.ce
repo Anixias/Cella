@@ -39,12 +39,6 @@ dropping: fun -> i32
 	ret 0
 }
 
-panicking: fun -> i32
-{
-	panic
-	ret 0
-}
-
 Box: rec
 {
 	limit: i32

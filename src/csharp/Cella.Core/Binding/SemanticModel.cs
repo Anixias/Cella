@@ -461,6 +461,7 @@ public sealed class SemanticModel
 		AccessExpressionNode access => access.Member,
 		CallExpressionNode call => FindName(call.Target),
 		IndexerExpressionNode indexer => FindName(indexer.Target),
+		PanicExpressionNode panic => panic.Keyword,
 		_ => null
 	};
 	

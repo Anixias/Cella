@@ -167,7 +167,10 @@ public sealed partial class CodeGenerator
 				builder.BuildRetVoid();
 				break;
 			
-			case UnreachableTerminator:
+			case UnreachableTerminator unreachable:
+				if (unreachable.Traps)
+					builder.BuildCall2(TrapType, GetTrapFunction(), []);
+				
 				builder.BuildUnreachable();
 				break;
 			

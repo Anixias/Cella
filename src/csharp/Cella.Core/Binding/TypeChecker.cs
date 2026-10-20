@@ -520,6 +520,7 @@ public sealed class TypeChecker
 		ResolvedReturnExpressionNode or ResolvedBreakExpressionNode or ResolvedContinueExpressionNode => true,
 		ResolvedAtomicExpressionNode => true,
 		ResolvedErasedCallExpressionNode => true,
+		ResolvedTrapExpressionNode => true,
 		_ => false
 	};
 	
@@ -1173,6 +1174,10 @@ public sealed class TypeChecker
 	}
 	
 	public void Visit(ResolvedErasedCallExpressionNode node) => VisitNode(node.Call);
+	
+	public void Visit(ResolvedTrapExpressionNode node)
+	{
+	}
 	
 	public void Visit(ResolvedRecordExpressionNode node)
 	{

@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.LanguageServer;
@@ -90,7 +91,7 @@ public static class SemanticTokens
 		var (source, range) = reference.Location;
 		var text = reference.Location.GetText().ToString();
 		var isOperator = TokenTypeInfo.GetOperator(text) is not null &&
-		                 reference.Symbol is FunctionSymbol or MethodSymbol;
+			reference.Symbol is FunctionSymbol or MethodSymbol || IsPanicOperator(reference.Symbol);
 		
 		if (!isOperator && !IsName(text) && !NamesProjectEntry(reference, text) ||
 		    Classify(reference) is not var (kind, modifiers))
@@ -105,6 +106,9 @@ public static class SemanticTokens
 		
 		return new Classified(reference.Location, kind, modifiers, false);
 	}
+	
+	private static bool IsPanicOperator(Symbol symbol) =>
+		symbol is FunctionSymbol { Syntax: FunctionNode { Identifier.Type: TokenType.KeywordPanic } };
 	
 	private static JsonArray Names(IEnumerable<string> names) =>
 		new([..names.Select(static name => JsonValue.Create(JsonNamingPolicy.CamelCase.ConvertName(name)))]);

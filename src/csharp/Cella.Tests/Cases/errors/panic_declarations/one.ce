@@ -1,6 +1,6 @@
 mod one
 
-panic: op(message: str) -> never
+panic: op -> never
 {
 	while true
 	{

@@ -364,6 +364,7 @@ public sealed class UndefinedTerminator : IBlockTerminator
 public sealed class UnreachableTerminator(SourceLocation sourceLocation) : IBlockTerminator
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public bool Traps { get; init; }
 }
 
 public sealed class ReturnTerminator : IBlockTerminator

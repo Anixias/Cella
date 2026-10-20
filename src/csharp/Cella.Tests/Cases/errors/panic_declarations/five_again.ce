@@ -1,6 +1,6 @@
 mod five
 
-panic: op(message: str, location: str, code: i32) -> never
+panic: op(text: str, at: str) -> never
 {
 	while true
 	{

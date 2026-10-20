@@ -1,7 +1,7 @@
-Error at main.ce:3:24
+Error at main.ce:3:30
 2 │ 
 3 │ missing: fun -> i32 => panic "nothing here"
-                           ╘═══╛ Symbol 'panic' not found in this scope
+                                 ╘════════════╛ 'panic' doesn't accept a message
 
 Error at other.ce:15:29
 14 │ 

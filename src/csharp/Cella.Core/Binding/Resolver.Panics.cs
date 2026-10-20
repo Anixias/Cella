@@ -28,38 +28,81 @@ public sealed partial class Resolver
 					CurrentTargetType);
 		}
 		else
-		{
 			symbol = context.Resolve(PanicName);
-			if (symbol is null)
-				return Error(node, ReportUndefinedSymbol(new VarExpressionNode(node.Keyword), PanicName),
-					CurrentTargetType);
+		
+		var functions = GetFunctions(symbol);
+		if (symbol is not null && functions.Length == 0)
+			return ReportAmbiguousPanic(node);
+		
+		if (node.Message is not { } written)
+		{
+			if (GetPanicForm(functions, false) is not [_, ..] forms)
+				return new ResolvedTrapExpressionNode(node);
+			
+			if (ResolvePanicCall(forms, [CreatePanicLocation(node)], node, out var isAmbiguous) is { } located)
+				return located;
+			
+			return RecordFailedPanic(node, forms, isAmbiguous
+				? ReportAmbiguousPanic(node)
+				: new ResolvedInvalidExpressionNode(node, CurrentTargetType));
 		}
 		
-		if (symbol is not FunctionSymbol target)
-			return Error(node, new Diagnostic(DiagnosticSeverity.Error, node.Keyword.SourceLocation,
-				$"'{PanicName}' is ambiguous"), CurrentTargetType);
+		if (GetPanicForm(functions, true) is not [_, ..] messageForms)
+		{
+			VisitNode(written, null);
+			return RecordFailedPanic(node, functions, Error(node, new Diagnostic(DiagnosticSeverity.Error,
+				written.SourceLocation, $"'{PanicName}' doesn't accept a message"), CurrentTargetType));
+		}
 		
-		var message = VisitNode(node.Message, null);
+		var message = VisitNode(written, null);
 		if (IsInvalid(message))
-			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			return RecordFailedPanic(node, messageForms, new ResolvedInvalidExpressionNode(node, CurrentTargetType));
 		
-		var location = new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString,
-			node.Keyword.SourceLocation.DescribeStart(), node);
+		if (ResolvePanicCall(messageForms, [message, CreatePanicLocation(node)], node, out var ambiguous) is { } call)
+			return call;
 		
-		return (IResolvedExpressionNode?)ResolvePanicCall(target, [message, location], node) ?? Error(node,
-			new Diagnostic(DiagnosticSeverity.Error, node.Message.SourceLocation,
-				$"'{PanicName}' doesn't accept '{message.Type.Name}'"), CurrentTargetType);
+		return RecordFailedPanic(node, messageForms, ambiguous
+			? ReportAmbiguousPanic(node)
+			: Error(node, new Diagnostic(DiagnosticSeverity.Error, written.SourceLocation,
+				$"'{PanicName}' doesn't accept '{message.Type.Name}'"), CurrentTargetType));
 	}
 	
-	private ResolvedFunctionCallExpressionNode? ResolvePanicCall(FunctionSymbol target, IResolvedExpressionNode[] args,
-		IExpressionNode syntax)
+	private ResolvedInvalidExpressionNode RecordFailedPanic(PanicExpressionNode node, FunctionSymbol[] forms,
+		ResolvedInvalidExpressionNode result)
 	{
-		var failures = new List<Diagnostic>();
-		var candidate = Specialize(new FunctionCallable(GetFunctionInfo(target)), PanicName, args, null,
-			syntax.SourceLocation, failures);
+		if (RecordName is { } record)
+		{
+			foreach (var form in forms)
+				record(node.Keyword, form);
+		}
 		
-		if (candidate is null || ResolveCallable([candidate], args, MaterializationMode.Overload) is not
-			    { HasResult: true } resolutions)
+		return result;
+	}
+	
+	private ResolvedInvalidExpressionNode ReportAmbiguousPanic(PanicExpressionNode node) => Error(node,
+		new Diagnostic(DiagnosticSeverity.Error, node.Keyword.SourceLocation, $"'{PanicName}' is ambiguous"),
+		CurrentTargetType);
+	
+	private static ResolvedLiteralExpressionNode CreatePanicLocation(PanicExpressionNode node) =>
+		new(NativeSymbols.UntypedString, node.Keyword.SourceLocation.DescribeStart(), node);
+	
+	private static FunctionSymbol[] GetPanicForm(FunctionSymbol[] functions, bool takesMessage) =>
+	[
+		..functions.Where(function => function.Parameters.Length == (takesMessage ? 2 : 1))
+	];
+	
+	private ResolvedFunctionCallExpressionNode? ResolvePanicCall(IEnumerable<FunctionSymbol> targets,
+		IResolvedExpressionNode[] args, IExpressionNode syntax, out bool isAmbiguous)
+	{
+		var candidates = targets
+			.Select(target => Specialize(new FunctionCallable(GetFunctionInfo(target)), PanicName, args, null,
+				syntax.SourceLocation, []))
+			.OfType<ICallable>()
+			.ToArray();
+		
+		var resolutions = ResolveCallable(candidates, args, MaterializationMode.Overload);
+		isAmbiguous = resolutions.IsAmbiguous;
+		if (!resolutions.HasResult || isAmbiguous)
 			return null;
 		
 		var info = ((FunctionCallable)resolutions[0].Callable).Info;
@@ -69,28 +112,20 @@ public sealed partial class Resolver
 	
 	private void ReportPanicDeclaration(FunctionNode node, FunctionInfo info)
 	{
-		var module = CurrentResolutionContext.File.Module;
-		if (module.Files.Sum(static file => file.Symbols.GetValueOrDefault(PanicName)?.Count ?? 0) > 1)
-		{
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
-				$"'{PanicName}' is declared more than once in '{module.Name}'"));
-			
-			return;
-		}
-		
 		var signature = info.Signature;
 		if (signature.ParameterTypes.Any(static type => type is InvalidType) || signature.ReturnType is InvalidType)
 			return;
 		
 		var problem = node switch
 		{
-			{ Parameters.Length: not 2 } => (node.Identifier.SourceLocation, "'panic' operators need two parameters"),
-			_ when signature.ParameterTypes[1] != NativeSymbols.Str =>
-				(node.Parameters[1].SourceLocation, "'panic' operators need a 'str' location"),
+			{ Parameters.Length: not (1 or 2) } =>
+				(node.Identifier.SourceLocation, "'panic' operators need one or two parameters"),
+			_ when signature.ParameterTypes[^1] != NativeSymbols.Str =>
+				(node.Parameters[^1].SourceLocation, "'panic' operators need a 'str' location"),
 			_ when signature.ReturnType is not NeverType =>
 				(node.ReturnType?.SourceLocation ?? node.Identifier.SourceLocation,
 					"'panic' operators must return 'never'"),
-			_ when !AcceptsStrings(info) =>
+			{ Parameters.Length: 2 } when !AcceptsStrings(info) =>
 				(node.Parameters[0].SourceLocation, "'panic' operators need a message that accepts 'str'"),
 			_ => ((SourceLocation, string)?)null
 		};
@@ -99,36 +134,50 @@ public sealed partial class Resolver
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
 	}
 	
-	private bool AcceptsStrings(FunctionInfo info)
+	private bool AcceptsStrings(FunctionInfo info) =>
+		FindPanicTarget([info.Symbol], true, info.Symbol.Definition, out _) is not null;
+	
+	private FunctionSymbol? FindPanicTarget(FunctionSymbol[] functions, bool takesMessage, SourceLocation location,
+		out bool isAmbiguous)
 	{
-		var syntax = new VarExpressionNode(new Token(TokenType.Identifier, info.Symbol.Definition, PanicName));
-		IResolvedExpressionNode[] args =
-		[
-			new ResolvedVarExpressionNode(new LocalVariableSymbol(syntax.Identifier, NativeSymbols.Str, false),
-				NativeSymbols.Str, syntax),
-			new ResolvedVarExpressionNode(new LocalVariableSymbol(syntax.Identifier, NativeSymbols.Str, false),
-				NativeSymbols.Str, syntax)
-		];
+		var syntax = new VarExpressionNode(new Token(TokenType.Identifier, location, PanicName));
+		var argument = new ResolvedVarExpressionNode(
+			new LocalVariableSymbol(syntax.Identifier, NativeSymbols.Str, false), NativeSymbols.Str, syntax);
 		
 		var checkpoint = OpenCheckpoint();
-		var call = ResolvePanicCall(info.Symbol, args, syntax);
+		var call = ResolvePanicCall(GetPanicForm(functions, takesMessage),
+			takesMessage ? [argument, argument] : [argument],
+			syntax, out isAmbiguous);
+		
 		Rollback(checkpoint);
-		return call is not null;
+		return call?.Function.Symbol;
 	}
 	
 	private readonly HashSet<ImportExpression> _ambiguousPanicImports = [];
 	
 	private void RecordPanicTarget(FileSymbol file, FileNode node)
 	{
-		switch (CurrentResolutionContext.Resolve(PanicName))
+		var symbol = CurrentResolutionContext.Resolve(PanicName);
+		var functions = GetFunctions(symbol);
+		if (symbol is not null && functions.Length == 0)
 		{
-			case FunctionSymbol target:
+			ReportAmbiguousPanic(node);
+			return;
+		}
+		
+		foreach (var takesMessage in (bool[])[true, false])
+		{
+			if (FindPanicTarget(functions, takesMessage, node.SourceLocation, out var isAmbiguous) is { } target)
+			{
 				_signatures.AddPanicTarget(file.FullPath, target);
-				break;
+				return;
+			}
 			
-			case AmbiguousSymbol:
+			if (isAmbiguous)
+			{
 				ReportAmbiguousPanic(node);
-				break;
+				return;
+			}
 		}
 	}
 	
@@ -208,13 +257,12 @@ public sealed partial class Resolver
 		
 		var info = new FunctionInfo(mangledName, symbol, signature, scope, null, context.File);
 		var syntax = new VarExpressionNode(message);
-		IResolvedExpressionNode[] args =
-		[
-			new ResolvedVarExpressionNode(parameters[0], NativeSymbols.Str, syntax),
-			new ResolvedVarExpressionNode(parameters[1], NativeSymbols.Str, new VarExpressionNode(place))
-		];
+		var located = new ResolvedVarExpressionNode(parameters[1], NativeSymbols.Str, new VarExpressionNode(place));
+		IResolvedExpressionNode[] args = target.Parameters.Length == 2
+			? [new ResolvedVarExpressionNode(parameters[0], NativeSymbols.Str, syntax), located]
+			: [located];
 		
-		if (ResolvePanicCall(target, args, syntax) is not { } call)
+		if (ResolvePanicCall([target], args, syntax, out _) is not { } call)
 			return null;
 		
 		_signatures.AddLambda(info);

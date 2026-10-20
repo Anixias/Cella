@@ -1,0 +1,9 @@
+mod test
+
+use halt.panic
+
+stop: fun -> i32 => panic "stop"
+qualified: fun -> i32 => halt.panic "halt"
+bare: fun -> i32 => halt.panic
+
+main: fun -> i32 => 0

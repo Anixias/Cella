@@ -936,31 +936,32 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	}
 	
 	private PanicExpressionNode ParsePanic(ref int index, Token keyword, IExpressionNode? qualifier) =>
-		new(keyword, qualifier,
-			AtEnd(index) || IsNextNewline(index)
-				? throw Expected(index - 1, "an expression")
-				: ParseExpression(ref index));
+		new(keyword, qualifier, ParseOptionalOperand(ref index));
 	
-	private IExpressionNode ParseJump(ref int index, Token keyword)
+	private IExpressionNode? ParseOptionalOperand(ref int index)
 	{
+		if (AtEnd(index))
+			return null;
+		
 		var operandIndex = index;
 		var operand = IsNextNewline(index) || !CanStartExpression(index)
 			? null
 			: TryParse(index, ParseExpression, out operandIndex);
 		
 		if (operand is null
-			    ? !IsNextNewline(index) && CanStartExpression(index) && !StartsArm(index)
-			    : !Peek(operandIndex, TokenType.OpFatArrow))
-		{
-			operandIndex = index;
-			operand = ParseExpression(ref operandIndex);
-			index = operandIndex;
-		}
-		else
-		{
-			operand = null;
-		}
+			    ? IsNextNewline(index) || !CanStartExpression(index) || StartsArm(index)
+			    : Peek(operandIndex, TokenType.OpFatArrow))
+			return null;
 		
+		operandIndex = index;
+		operand = ParseExpression(ref operandIndex);
+		index = operandIndex;
+		return operand;
+	}
+	
+	private IExpressionNode ParseJump(ref int index, Token keyword)
+	{
+		var operand = ParseOptionalOperand(ref index);
 		var (source, range) = keyword.SourceLocation;
 		if (operand is not null)
 			range = range.Join(operand.SourceLocation.Range);
