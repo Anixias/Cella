@@ -53,3 +53,22 @@ panic: pub op(message: str, location: str) -> never
 	writeError("\n")
 	crash()
 }
+
+// Hovering maxValue should show the computed value (and maybe the raw expression too?)
+maxValue: const i32 = 3 * 9
+/*i32: pub impl
+{
+	maxValue: const i32 = 3 
+}*/
+
+// Constants aren't highlighting?
+// This fails!!
+Number: trait
+{
+	maxValue: const Self
+}
+
+i32: impl Number
+{
+	maxValue: const i32 = 0x7FFFFFFF
+}

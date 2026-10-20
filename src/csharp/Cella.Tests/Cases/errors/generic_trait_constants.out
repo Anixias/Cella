@@ -1,0 +1,6 @@
+Error at generic_trait_constants.ce:18:25
+17 │ 
+18 │ both: fun -> i64 => i32.unit
+                             ╘══╛ Reference to 'unit' is ambiguous
+
+[compilation failed]

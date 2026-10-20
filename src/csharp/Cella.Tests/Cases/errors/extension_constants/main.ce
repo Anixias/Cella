@@ -1,0 +1,10 @@
+mod test
+
+use limits
+use bounds
+
+hidden: fun -> i32 => i32.secret
+
+ambiguous: fun -> i64 => i64.shared
+
+main: fun -> i32 => 0

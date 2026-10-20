@@ -67,9 +67,12 @@ public sealed partial class SignatureCollector
 			conformance.ConstantWitnesses[requirement] = candidate;
 		}
 		
-		if (!TypePool.ContainsTypeParameters(self))
-			foreach (var requirement in conformance.ConstantWitnesses.Keys)
-				EvaluateTraitConstant(self, requirement);
+		if (TypePool.ContainsTypeParameters(self))
+			return;
+		
+		var traitType = _typePool.GetConformanceTrait(conformance, self);
+		foreach (var requirement in conformance.ConstantWitnesses.Keys)
+			EvaluateTypeConstant(new(self, traitType, requirement));
 	}
 	
 	private static GlobalSymbol? FindConstantCandidate(Conformance conformance, string name) =>

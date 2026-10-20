@@ -75,16 +75,10 @@ public sealed class ValueParameterValue(TypeParameterSymbol parameter, TypeSymbo
 	public TypeParameterSymbol Parameter { get; } = parameter;
 }
 
-public sealed class TraitConstantValue
-(
-	TypeSymbol owner,
-	GlobalSymbol constant,
-	TypeSymbol type,
-	SourceLocation sourceLocation
-) : Value(type, false, sourceLocation)
+public sealed class TypeConstantValue(TypeConstantUse use, TypeSymbol type, SourceLocation sourceLocation)
+	: Value(type, false, sourceLocation)
 {
-	public TypeSymbol Owner { get; } = owner;
-	public GlobalSymbol Constant { get; } = constant;
+	public TypeConstantUse Use { get; } = use;
 }
 
 public sealed class AlignOfValue(TypeSymbol target, SourceLocation sourceLocation)

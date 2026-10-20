@@ -246,8 +246,8 @@ public sealed partial class Lowerer
 		public Value Visit(ResolvedValueParameterExpressionNode node) =>
 			new ValueParameterValue(node.Parameter, node.Type, node.Syntax.SourceLocation);
 		
-		public Value Visit(ResolvedTraitConstantExpressionNode node) =>
-			new TraitConstantValue(node.Owner, node.Constant, node.Type, node.Syntax.SourceLocation);
+		public Value Visit(ResolvedTypeConstantExpressionNode node) =>
+			new TypeConstantValue(node.Use, node.Type, node.Syntax.SourceLocation);
 		
 		public Value Visit(ResolvedAlignOfExpressionNode node) =>
 			new AlignOfValue(node.Target, node.Syntax.SourceLocation);

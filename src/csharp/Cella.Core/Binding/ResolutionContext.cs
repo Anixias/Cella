@@ -793,9 +793,12 @@ public readonly struct ResolutionContext
 	{
 		if (expression is AccessExpressionNode { Target: VarExpressionNode target } projected &&
 		    Resolve(target.Identifier) is TypeParameterSymbol { IsValue: false, IsTrait: false } owner &&
-		    TypePool.GetBounds(owner).Select(bound => bound.Trait.GetConstant(projected.Member.Text))
-			    .OfType<GlobalSymbol>().Distinct().ToList() is [var constant])
-			return TypePool.GetConstantProjection(owner, constant);
+		    TypePool.GetBounds(owner)
+			    .Select(bound => bound.Trait.GetConstant(projected.Member.Text) is { } constant
+				    ? new TypeConstantUse(owner, bound, constant)
+				    : null)
+			    .OfType<TypeConstantUse>().Distinct().ToList() is [var use])
+			return TypePool.GetConstantProjection(use);
 		
 		var named = expression is VarExpressionNode or AccessExpressionNode ? FindNamed(expression) : null;
 		return named switch

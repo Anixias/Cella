@@ -1,0 +1,9 @@
+mod shapes
+
+Pair[A, B]: rec
+{
+	first: A
+	second: B
+
+	kind: const i32 = 1
+}

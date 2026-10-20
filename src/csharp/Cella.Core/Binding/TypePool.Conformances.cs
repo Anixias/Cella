@@ -68,38 +68,43 @@ public sealed partial class TypePool
 		}
 	}
 	
-	public TypeParameterSymbol GetConstantProjection(TypeSymbol owner, GlobalSymbol constant)
+	public TypeSymbol GetTypeConstantType(TypeConstantUse use)
 	{
-		if (_constantProjections.TryGetValue((owner, constant), out var existing))
+		return GlobalTypeOf?.Invoke(use.Constant) is { } declared
+			? Substitute(declared, GetTypeConstantMap(use))
+			: NativeSymbols.Invalid;
+	}
+	
+	public TypeParameterSymbol GetConstantProjection(TypeConstantUse use)
+	{
+		if (_constantProjections.TryGetValue(use, out var existing))
 			return existing;
 		
-		var type = GlobalTypeOf?.Invoke(constant) is { } declared && constant.Trait is { } trait
-			? Substitute(declared, new Dictionary<TypeParameterSymbol, TypeSymbol> { [trait.Self] = owner })
-			: NativeSymbols.Invalid;
-		
-		var projection = new TypeParameterSymbol($"{owner.Name}.{constant.Name}", [])
+		var projection = new TypeParameterSymbol($"{use.Owner.Name}.{use.Constant.Name}", [])
 		{
 			IsValue = true,
-			ValueType = type,
-			ConstantOwner = owner,
-			Constant = constant
+			ValueType = GetTypeConstantType(use),
+			ConstantOwner = use.Owner,
+			ConstantTrait = use.Trait,
+			Constant = use.Constant
 		};
 		
-		_constantProjections[(owner, constant)] = projection;
+		_constantProjections[use] = projection;
 		return projection;
 	}
 	
 	public TypeSymbol SubstituteParameter(TypeParameterSymbol parameter,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
 	{
-		if (parameter is not { ConstantOwner: { } owner, Constant: { } constant })
+		if (parameter is not { ConstantOwner: { } owner, ConstantTrait: var trait, Constant: { } constant })
 			return map.GetValueOrDefault(parameter, parameter);
 		
-		var substituted = Substitute(owner, map);
+		var use = new TypeConstantUse(owner, trait, constant);
+		var substituted = Substitute(use, map);
 		if (ContainsTypeParameters(substituted))
-			return substituted == owner ? parameter : GetConstantProjection(substituted, constant);
+			return substituted == use ? parameter : GetConstantProjection(substituted);
 		
-		return TraitConstantValue?.Invoke(substituted, constant) is Constants.IntegerConstant { Value: var value }
+		return TypeConstantValue?.Invoke(substituted) is Constants.IntegerConstant { Value: var value }
 			? GetValueArgument(value)
 			: NativeSymbols.Invalid;
 	}

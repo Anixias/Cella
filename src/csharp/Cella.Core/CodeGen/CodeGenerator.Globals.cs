@@ -3,7 +3,6 @@ using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
-using Cella.Diagnostics;
 using LLVMSharp.Interop;
 
 namespace Cella.Core.CodeGen;

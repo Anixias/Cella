@@ -14,7 +14,7 @@ public sealed partial class TypePool
 		snapshot.SaveValue(() => TypeCompleter, value => TypeCompleter = value);
 		snapshot.SaveValue(() => TraitCompleter, value => TraitCompleter = value);
 		snapshot.SaveValue(() => IntegerFits, value => IntegerFits = value);
-		snapshot.SaveValue(() => TraitConstantValue, value => TraitConstantValue = value);
+		snapshot.SaveValue(() => TypeConstantValue, value => TypeConstantValue = value);
 		snapshot.SaveValue(() => GlobalTypeOf, value => GlobalTypeOf = value);
 		snapshot.SaveValue(() => FoldParametric, value => FoldParametric = value);
 		snapshot.SaveValue(() => FindParametricFault, value => FindParametricFault = value);
@@ -71,7 +71,7 @@ public sealed partial class TypePool
 		snapshot.Save(_requiredTraits);
 		snapshot.Save(_memberBlocks);
 		snapshot.SaveNested(_atomicRequirements);
-		snapshot.SaveNested(_traitConstantUses);
+		snapshot.SaveNested(_typeConstantUses);
 		return snapshot;
 	}
 }

@@ -193,7 +193,7 @@ public sealed partial class Builder
 			
 			resolver.ReportInfiniteInstantiations();
 			resolver.ReportAtomicInstances();
-			resolver.ReportTraitConstantInstances();
+			resolver.ReportTypeConstantInstances();
 		}
 		
 		containment.AddDeclarations(resolvedFiles);

@@ -467,20 +467,6 @@ public sealed partial class FileParser
 		};
 	}
 	
-	private int? FindClosingBracket(int index)
-	{
-		var depth = 0;
-		for (var i = index; i < Tokens.Length && !AtEnd(i); i++)
-		{
-			if (Peek(i, TokenType.OpOpenBracket))
-				depth++;
-			else if (Peek(i, TokenType.OpCloseBracket) && --depth == 0)
-				return i;
-		}
-		
-		return null;
-	}
-	
 	private void RejectExternalBody(ref int index)
 	{
 		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpFatArrow) && !Peek(index, TokenType.OpOpenBrace))

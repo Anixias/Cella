@@ -192,7 +192,7 @@ public sealed class PassSkipper(LoopFollower follower, MovePaths paths, ShapeLay
 		public BigInteger Step { get; private set; }
 		public BigInteger Count { get; private set; }
 		
-		public BigInteger GetElement(BigInteger pass, BigInteger offset) => Start + Step * pass + offset;
+		public BigInteger GetElement(BigInteger passNumber, BigInteger offset) => Start + Step * passNumber + offset;
 		
 		public (BigInteger Low, BigInteger High) GetRange(BigInteger offset, BigInteger firstPass, BigInteger passes)
 		{

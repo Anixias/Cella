@@ -233,7 +233,7 @@ public sealed partial class CodeGenerator
 		NotRunValue => LLVMValueRef.CreateConstInt(_context.Int1Type, 0),
 		AlignOfValue v => EmitAlignOf(v),
 		ValueParameterValue v => EmitValueParameter(v),
-		TraitConstantValue v => EmitTraitConstant(v),
+		TypeConstantValue v => EmitTypeConstant(v),
 		NewValue v => EmitNew(v, builder),
 		FStrValue v => EmitFStr(v, builder),
 		FStrPartValue v => EmitFStrPart(v, builder),

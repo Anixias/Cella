@@ -259,8 +259,8 @@ public static class LoweredModulePrinter
 					sb.Append(v.Parameter.Name);
 					break;
 				
-				case TraitConstantValue v:
-					sb.Append(v.Owner.Name).Append('.').Append(v.Constant.Name);
+				case TypeConstantValue v:
+					sb.Append(v.Use.Owner.Name).Append('.').Append(v.Use.Constant.Name);
 					break;
 				
 				case AlignOfValue v:

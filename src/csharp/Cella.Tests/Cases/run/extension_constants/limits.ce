@@ -1,0 +1,29 @@
+mod limits
+
+use shapes.Pair
+
+i32: impl
+{
+	maxValue: const i32 = 0x7FFFFFFF
+	minValue: const i32 = -maxValue - 1
+	span: fun -> i64 => i64(maxValue) - i64(minValue)
+}
+
+u8: impl
+{
+	maxValue: const u8 = 0xFF
+}
+
+[T]: impl
+{
+	size: const usize = sizeOf(T)
+	doubleSize: const usize = size * 2
+	sizeOfValue: fun(imm self) -> usize => size
+}
+
+Pair[A, B]: impl
+{
+	parts: const usize = 2
+	kind: const i32 = 2
+	bytes: const usize = sizeOf(A) + sizeOf(B)
+}

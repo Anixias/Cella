@@ -101,7 +101,7 @@ public sealed partial class SignatureCollector
 					break;
 				
 				case GlobalNode { IsConstant: true } when symbol is GlobalSymbol { Trait: not null } or
-					GlobalSymbol { Impl.Node.Traits.IsEmpty: false }:
+					GlobalSymbol { Impl.Node.Traits.IsEmpty: false } or GlobalSymbol { Impl.IsExtension: true }:
 					Complete(symbol);
 					break;
 				

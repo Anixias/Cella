@@ -237,12 +237,12 @@ public sealed class OperatorRegistry
 		.Where(operation => operation.Owner == owner);
 }
 
-public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
+public abstract class OperationImpl(TokenType op, TypeSymbol result, params ImmutableArray<TypeSymbol> parameters)
 	: ICallable
 {
 	public TokenType Op { get; } = op;
 	public TypeSymbol ReturnType { get; } = result;
-	public ImmutableArray<TypeSymbol> ParameterTypes { get; } = parameters.ToImmutableArray();
+	public ImmutableArray<TypeSymbol> ParameterTypes { get; } = parameters;
 	public TypeSymbol Owner { get; init; } = parameters.FirstOrDefault() ?? result;
 	public TypeSymbol? AnchorType { get; init; }
 	
@@ -254,7 +254,7 @@ public abstract class OperationImpl(TokenType op, TypeSymbol result, params IEnu
 		                                                                         argument.Type is UntypedType);
 }
 
-public sealed class NativeImpl(TokenType op, TypeSymbol result, params IEnumerable<TypeSymbol> parameters)
+public sealed class NativeImpl(TokenType op, TypeSymbol result, params ImmutableArray<TypeSymbol> parameters)
 	: OperationImpl(op, result, parameters);
 
 public sealed class PointerOffsetImpl

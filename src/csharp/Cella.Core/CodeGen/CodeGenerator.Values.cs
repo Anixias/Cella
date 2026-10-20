@@ -78,10 +78,11 @@ public sealed unsafe partial class CodeGenerator
 		? EmitIntegerConstant(new IntegerConstant(v.Type, value.Value))
 		: throw new InvalidOperationException($"Value parameter '{v.Parameter.Name}' has no value");
 	
-	private LLVMValueRef EmitTraitConstant(TraitConstantValue v) =>
-		_typePool.TraitConstantValue?.Invoke(Substitute(v.Owner), v.Constant) is { } constant and not InvalidConstant
+	private LLVMValueRef EmitTypeConstant(TypeConstantValue v) =>
+		_typePool.TypeConstantValue?.Invoke(_typePool.Substitute(v.Use, substitution)) is { } constant and
+			not InvalidConstant
 			? EmitStaticConstant(constant)
-			: throw new InvalidOperationException($"Trait constant '{v.Constant.Name}' has no value");
+			: throw new InvalidOperationException($"Trait constant '{v.Use.Constant.Name}' has no value");
 	
 	private LLVMValueRef EmitAlignOf(AlignOfValue v)
 	{

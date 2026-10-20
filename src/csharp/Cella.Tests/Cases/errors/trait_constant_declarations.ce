@@ -27,7 +27,7 @@ Small: rec impl Integer
 
 u32: impl
 {
-	limit: const u32 = 7
+	limit: val u32 = 7
 }
 
 main: fun -> i32 => 0

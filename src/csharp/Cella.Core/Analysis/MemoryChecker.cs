@@ -1,6 +1,5 @@
 ﻿using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
-using Cella.Core.Binding.Operations;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;

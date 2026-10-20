@@ -93,6 +93,10 @@ public sealed partial class SignatureCollector
 					function.Visibility = Visibility.FromKeyword(functionNode.Visibility);
 					break;
 				
+				case GlobalSymbol global when member is GlobalNode globalNode:
+					global.Visibility = Visibility.FromKeyword(globalNode.Visibility);
+					break;
+				
 				case PropertySymbol property when member is PropertyNode propertyNode:
 					var keyword = propertyNode.Visibility;
 					property.Visibility = Visibility.FromKeyword(keyword);
@@ -310,6 +314,16 @@ public sealed partial class SignatureCollector
 			using var frame = Own(member.Function);
 			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(member.Function),
 				$"'{target}.{member.Name}' is declared more than once with the same signature"));
+		}
+		
+		var constants = blocks.SelectMany(static impl => impl.Constants).ToList();
+		foreach (var constant in constants.Where(constant =>
+			         constants.Any(other => other.Impl != constant.Impl && other.Name == constant.Name)))
+		{
+			var target = DiagnosticReporter.DescribeType(GetImplTarget(constant.Impl!).OriginalDefinition);
+			using var frame = Own(constant);
+			Diagnostics.Add(new(DiagnosticSeverity.Error, constant.Syntax.Identifier.SourceLocation,
+				$"'{target}.{constant.Name}' is declared more than once"));
 		}
 	}
 	

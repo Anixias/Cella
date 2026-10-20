@@ -324,9 +324,9 @@ public sealed partial class TypePool
 	public bool ExceedsStaticStorage(TypeSymbol type, uint pointerBits) => !ContainsTypeParameters(type) &&
 	                                                                       SizeTable.TryGetSize(type) is { } size &&
 	                                                                       (size.CountBits(pointerBits) + 7) / 8 >=
-	                                                                       MaxStaticStorageBytes;
+	                                                                       _maxStaticStorageBytes;
 	
-	private static readonly BigInteger MaxStaticStorageBytes = BigInteger.One << 31;
+	private static readonly BigInteger _maxStaticStorageBytes = BigInteger.One << 31;
 	
 	public TypeSymbol GetLengthArgument(ArrayType array) =>
 		array.LengthParameter ?? (TypeSymbol)GetValueArgument(array.Length);

@@ -147,7 +147,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 			case ResolvedValueParameterExpressionNode:
 				return new(isArithmetic, $"'{text}' is a value parameter");
 			
-			case ResolvedTraitConstantExpressionNode { Owner: TypeParameterSymbol owner }:
+			case ResolvedTypeConstantExpressionNode { Owner: TypeParameterSymbol owner }:
 				return new(isArithmetic, $"'{text}' depends on '{owner.Name}'");
 		}
 		

@@ -1,0 +1,31 @@
+Error at limits.ce:5:2
+4 │ {
+5 │     maxValue: const i32 = 0x7FFFFFFF
+        ╘══════╛ 'i32.maxValue' is declared more than once
+
+Error at limits.ce:7:2
+6 │ secret: pvt const i32 = 3
+7 │ counter: val i32 = 0
+    ╘═════╛ Cannot declare static fields in impl blocks
+
+Error at limits.ce:12:2
+11 │ {
+12 │     maxValue: const i32 = 1
+         ╘══════╛ 'i32.maxValue' is declared more than once
+
+Error at main.ce:6:27
+5 │ 
+6 │ hidden: fun -> i32 => i32.secret
+                              ╘════╛ 'secret' is private to its file
+
+Error at main.ce:8:30
+7 │ 
+8 │ ambiguous: fun -> i64 => i64.shared
+                                 ╘════╛ Reference to 'shared' is ambiguous
+
+Error at plain.ce:3:31
+2 │ 
+3 │ unimported: fun -> i32 => i32.maxValue
+                                  ╘══════╛ Type 'i32' has no member 'maxValue'
+
+[compilation failed]

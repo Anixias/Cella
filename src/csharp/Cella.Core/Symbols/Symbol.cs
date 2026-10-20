@@ -173,6 +173,7 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool IsSelf { get; init; }
 	public Token? Definition { get; init; }
 	public TypeSymbol? ConstantOwner { get; init; }
+	public TraitType? ConstantTrait { get; init; }
 	public GlobalSymbol? Constant { get; init; }
 	public string? Owner { get; init; }
 	public TypeSymbol? ValueType { get; internal set; }
@@ -651,7 +652,7 @@ public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 	public GlobalNode Syntax { get; } = syntax;
 	public bool IsMutable => Syntax.IsMutable;
 	public bool IsConstant => Syntax.IsConstant;
-	public Visibility Visibility { get; } = visibility;
+	public Visibility Visibility { get; internal set; } = visibility;
 	
 	public Visibility WriteVisibility { get; } =
 		syntax.WriteVisibility is { } write ? Visibility.FromKeyword(write) : visibility;

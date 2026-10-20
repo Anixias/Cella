@@ -1,0 +1,18 @@
+mod limits
+
+i32: impl
+{
+	maxValue: const i32 = 0x7FFFFFFF
+	secret: pvt const i32 = 3
+	counter: val i32 = 0
+}
+
+i32: impl
+{
+	maxValue: const i32 = 1
+}
+
+i64: impl
+{
+	shared: const i64 = 1
+}

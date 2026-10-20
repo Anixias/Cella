@@ -74,8 +74,7 @@ public sealed partial class SignatureCollector
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
 	private readonly HashSet<GlobalSymbol> _witnessConstants = [];
 	
-	private readonly List<(TypeSymbol Type, GlobalSymbol Constant, GlobalSymbol Witness)>
-		_traitConstantsInProgress = [];
+	private readonly List<(TypeConstantUse Use, GlobalSymbol Witness)> _typeConstantsInProgress = [];
 	
 	private readonly List<(ConstraintCheck Check, ErrorContainment.Owner Owner)> _deferredChecks = [];
 	
@@ -122,7 +121,7 @@ public sealed partial class SignatureCollector
 		
 		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
 		typePool.FoldParametric = Evaluator.EvaluateInstance;
-		typePool.TraitConstantValue = EvaluateTraitConstant;
+		typePool.TypeConstantValue = EvaluateTypeConstant;
 		typePool.GlobalTypeOf = GetGlobalType;
 		typePool.FindParametricFault = Evaluator.FindInstanceFault;
 		typePool.IntegerFits = Evaluator.Fits;
@@ -331,18 +330,15 @@ public sealed partial class SignatureCollector
 		return type;
 	}
 	
-	public Constant? EvaluateTraitConstant(TypeSymbol type, GlobalSymbol requirement)
+	public Constant? EvaluateTypeConstant(TypeConstantUse use)
 	{
-		if (TypePool.ContainsTypeParameters(type) || requirement.Trait is not { } trait ||
-		    _typePool.FindConformances(type).FirstOrDefault(conformance => conformance.Trait == trait) is not
-			    { } conformance ||
-		    FindConstantWitness(conformance, requirement) is not { } witness)
+		if (TypePool.ContainsTypeParameters(use) || FindTypeConstantSource(use) is not var (declared, map))
 			return null;
 		
-		var index = _traitConstantsInProgress.FindIndex(entry => entry.Type == type && entry.Constant == requirement);
+		var index = _typeConstantsInProgress.FindIndex(entry => entry.Use == use);
 		if (index >= 0)
 		{
-			foreach (var (_, _, member) in _traitConstantsInProgress.Skip(index))
+			foreach (var (_, member) in _typeConstantsInProgress.Skip(index))
 				if (_cyclic.Add(member))
 					Diagnostics.Add(new(DiagnosticSeverity.Error, member.Syntax.Identifier.SourceLocation,
 						$"'{member.Name}' depends on its own value"));
@@ -350,17 +346,9 @@ public sealed partial class SignatureCollector
 			return InvalidConstant.Instance;
 		}
 		
-		_traitConstantsInProgress.Add((type, requirement, witness));
+		_typeConstantsInProgress.Add((use, declared));
 		try
 		{
-			var declared = witness.Trait is null && witness.Impl is null
-				? type.GetStaticField(witness.Name) ?? witness
-				: witness;
-			
-			var map = witness.Impl is not null
-				? _typePool.GetConformanceMap(conformance, type)
-				: CreateTraitMap(conformance, type);
-			
 			return GetGlobalInfo(declared)?.Value switch
 			{
 				ParametricConstant parametric => Evaluator.EvaluateInstance(parametric.Value, map),
@@ -369,8 +357,28 @@ public sealed partial class SignatureCollector
 		}
 		finally
 		{
-			_traitConstantsInProgress.RemoveAt(_traitConstantsInProgress.Count - 1);
+			_typeConstantsInProgress.RemoveAt(_typeConstantsInProgress.Count - 1);
 		}
+	}
+	
+	private (GlobalSymbol Declared, Dictionary<TypeParameterSymbol, TypeSymbol> Map)? FindTypeConstantSource(
+		TypeConstantUse use)
+	{
+		var (type, trait, constant) = use;
+		if (trait is null)
+			return (constant, _typePool.GetTypeConstantMap(use));
+		
+		if (_typePool.FindConformance(type, trait) is not { } conformance ||
+		    FindConstantWitness(conformance, constant) is not { } witness)
+			return null;
+		
+		var declared = witness.Trait is null && witness.Impl is null
+			? type.GetStaticField(witness.Name) ?? witness
+			: witness;
+		
+		return (declared, witness.Impl is not null
+			? _typePool.GetConformanceMap(conformance, type)
+			: _typePool.GetTypeConstantMap(use));
 	}
 	
 	private static GlobalSymbol? FindConstantWitness(Conformance conformance, GlobalSymbol requirement) =>

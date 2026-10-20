@@ -195,11 +195,16 @@ public sealed partial class Resolver
 				return new ResolvedVarExpressionNode(v, v.Type, node);
 			
 			case GlobalSymbol { Trait: { } trait } constant:
-				return ResolveTraitConstant(node, trait.Self, constant);
+				return ResolveTypeConstant(node,
+					new(trait.Self, _typePool.GetTraitType(trait, [..trait.TypeParameters]), constant));
 			
 			case GlobalSymbol { Impl: { } impl } constant when CurrentResolutionContext.ContainingType is { } target &&
-			                                                   FindRequirement(impl, constant.Name) is { } requirement:
-				return ResolveTraitConstant(node, target, requirement);
+			                                                   FindRequirement(impl, target, constant.Name) is { } use:
+				return ResolveTypeConstant(node, use);
+			
+			case GlobalSymbol { Impl.IsExtension: true } constant when
+				CurrentResolutionContext.ContainingType is { } target:
+				return ResolveTypeConstant(node, new(target, null, constant));
 			
 			case GlobalSymbol g:
 				return new ResolvedGlobalExpressionNode(g, _signatures.GetGlobalType(g), node);

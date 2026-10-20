@@ -183,34 +183,42 @@ public sealed partial class Resolver
 		return owned.Length == 0 ? null : ResolveCall(node, $"{type.Name}.{op.Text}", owned, null);
 	}
 	
-	private GlobalSymbol? FindRequirement(ImplSymbol impl, string name) => _typePool.Conformances
+	private TypeConstantUse? FindRequirement(ImplSymbol impl, TypeSymbol target, string name) => _typePool
+		.Conformances
 		.Where(conformance => conformance.Impl == impl)
-		.Select(conformance => conformance.Trait.GetConstant(name))
-		.FirstOrDefault(static constant => constant is not null);
+		.Select(conformance => conformance.Trait.GetConstant(name) is { } constant
+			? new TypeConstantUse(target, _typePool.GetTraitType(conformance.Trait, conformance.Arguments), constant)
+			: null)
+		.FirstOrDefault(static use => use is not null);
 	
-	private IResolvedExpressionNode ResolveTraitConstant(IExpressionNode node, TypeSymbol owner,
-		GlobalSymbol requirement)
+	private IResolvedExpressionNode ResolveTypeConstant(IExpressionNode node, TypeConstantUse use)
 	{
-		var map = new Dictionary<TypeParameterSymbol, TypeSymbol> { [requirement.Trait!.Self] = owner };
-		var type = _typePool.Substitute(_signatures.GetGlobalType(requirement), map);
-		if (TypePool.ContainsTypeParameters(owner) && FindGenericCaller(CurrentResolutionContext) is { } caller)
-			AddTraitConstantUse(caller, new(owner, requirement));
+		if (TypePool.ContainsTypeParameters(use) && FindGenericCaller(CurrentResolutionContext) is { } caller)
+			AddTypeConstantUse(caller, use);
 		
-		return new ResolvedTraitConstantExpressionNode(owner, requirement, type, node);
+		return new ResolvedTypeConstantExpressionNode(use, _typePool.GetTypeConstantType(use), node);
 	}
 	
-	private GlobalSymbol[] FindTraitConstants(TypeSymbol type, string name) => type is TypeParameterSymbol parameter
-		?
-		[
-			.._typePool.GetBounds(parameter).Select(bound => bound.Trait.GetConstant(name)).OfType<GlobalSymbol>()
-				.Distinct()
-		]
-		:
-		[
-			..GetVisibleConformances(type).Select(conformance => conformance.Trait.GetConstant(name))
-				.OfType<GlobalSymbol>()
-				.Distinct()
-		];
+	private TypeConstantUse[] FindTypeConstants(TypeSymbol type, string name) =>
+		[..GetTypeConstants(type).Where(use => use.Constant.Name == name)];
+	
+	private IEnumerable<TypeConstantUse> GetTypeConstants(TypeSymbol type)
+	{
+		var traits = type is TypeParameterSymbol parameter
+			? _typePool.GetBounds(parameter)
+			: GetVisibleConformances(type).Select(conformance => _typePool.GetConformanceTrait(conformance, type));
+		
+		return traits
+			.SelectMany(trait => trait.Trait.Constants.Select(constant => new TypeConstantUse(type, trait, constant)))
+			.Distinct()
+			.Concat(GetExtensionConstants(type)
+				.Where(constant => IsVisibleExtensionMember(constant.Impl!, constant.Visibility))
+				.Select(constant => new TypeConstantUse(type, null, constant)));
+	}
+	
+	private IEnumerable<GlobalSymbol> GetExtensionConstants(TypeSymbol type) => GetActiveMemberBlocks(type)
+		.Where(static impl => impl.IsExtension)
+		.SelectMany(static impl => impl.Constants);
 	
 	private IResolvedExpressionNode VisitStaticMember(AccessExpressionNode node, TypeSymbol type)
 	{
@@ -218,9 +226,9 @@ public sealed partial class Resolver
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		if (type.GetStaticField(node.Member.Text) is null &&
-		    FindTraitConstants(type, node.Member.Text) is [_, ..] constants)
-			return constants is [var requirement]
-				? ResolveTraitConstant(node, type, requirement)
+		    FindTypeConstants(type, node.Member.Text) is [_, ..] constants)
+			return constants is [var use]
+				? ResolveTypeConstant(node, use)
 				: Error(node, $"Reference to '{node.Member.Text}' is ambiguous", CurrentTargetType,
 					node.Member.SourceLocation);
 		
@@ -231,6 +239,11 @@ public sealed partial class Resolver
 					: ResolveSymbolValue(node, field)
 				: Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, field.Name, field.Visibility,
 					true), CurrentTargetType);
+		
+		if (GetExtensionConstants(type).FirstOrDefault(constant => constant.Name == node.Member.Text) is { } hidden)
+			return Error(node,
+				ReportHidden(node.Member.SourceLocation, hidden.Name, hidden.Visibility, null, hidden.Impl),
+				CurrentTargetType);
 		
 		if (GetPropertyMember(type, node.Member.Text) is { } property)
 			return IsAmbiguousProperty(type, node.Member.Text)

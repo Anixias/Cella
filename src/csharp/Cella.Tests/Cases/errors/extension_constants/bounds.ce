@@ -1,0 +1,6 @@
+mod bounds
+
+i64: impl
+{
+	shared: const i64 = 2
+}

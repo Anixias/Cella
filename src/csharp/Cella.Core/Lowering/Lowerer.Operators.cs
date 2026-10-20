@@ -3,7 +3,6 @@ using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
-using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using static Cella.Core.Binding.Operations.OperationMapping;
 
@@ -381,7 +380,7 @@ public sealed partial class Lowerer
 		private bool IsStable(Value value) => value switch
 		{
 			ConstantValue or ZeroValue or DefaultValue or UndefValue or FunctionReferenceValue or SizeOfValue
-				or AlignOfValue or ValueParameterValue or TraitConstantValue => true,
+				or AlignOfValue or ValueParameterValue or TypeConstantValue => true,
 			VariableValue { Variable.Symbol: LocalVariableSymbol symbol } =>
 				!symbol.IsMutable && !symbol.IsDeferred || _temporaries.Contains(symbol),
 			VariableValue { Variable.Symbol: ParameterSymbol { Mode: ParameterMode.Mut } } => true,

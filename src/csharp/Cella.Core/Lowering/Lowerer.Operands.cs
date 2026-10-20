@@ -167,7 +167,7 @@ public sealed partial class Lowerer
 			ResolvedLiteralExpressionNode or ResolvedVarExpressionNode or ResolvedGlobalExpressionNode
 				or ResolvedFunctionReferenceExpressionNode or ResolvedUndefExpressionNode
 				or ResolvedSizeOfExpressionNode or ResolvedAlignOfExpressionNode
-				or ResolvedValueParameterExpressionNode or ResolvedTraitConstantExpressionNode => false,
+				or ResolvedValueParameterExpressionNode or ResolvedTypeConstantExpressionNode => false,
 			ResolvedConversionExpressionNode n => MayEmit(n.Source),
 			ResolvedAccessExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target),
 			ResolvedIndexerExpressionNode n => IsMaterialized(n.Target) || MayEmit(n.Target) || MayEmit(n.Index) ||

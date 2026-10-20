@@ -233,7 +233,7 @@ public sealed class SemanticModel
 				Add(FindName(n.Syntax), n.Symbol, DescribeVariable(n.Symbol, n.Type));
 				break;
 			
-			case ResolvedTraitConstantExpressionNode n:
+			case ResolvedTypeConstantExpressionNode n:
 				Add(FindName(n.Syntax), n.Constant, DescribeVariable(n.Constant, n.Type));
 				break;
 			

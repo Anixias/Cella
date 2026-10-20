@@ -20,7 +20,7 @@ Error at trait_constant_declarations.ce:25:2
 
 Error at trait_constant_declarations.ce:30:2
 29 │ {
-30 │     limit: const u32 = 7
+30 │     limit: val u32 = 7
          ╘═══╛ Cannot declare static fields in impl blocks
 
 [compilation failed]

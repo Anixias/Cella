@@ -93,7 +93,7 @@ public sealed partial class SignatureCollector
 	private void ReportDefaultConstructor(RecordSymbol type, IEnumerable<IDeclarationNode> members)
 	{
 		if (members.OfType<ConstructorNode>().FirstOrDefault(static c => c.Default is not null) is not
-		    { Default: { } keyword })
+		    { Default: { } keyword } constructor)
 			return;
 		
 		var missing = _typePool.GetMembers(type)
@@ -103,9 +103,8 @@ public sealed partial class SignatureCollector
 			.ToList();
 		
 		if (missing.Count > 0)
-			ReportOn(members.OfType<ConstructorNode>().First(static c => c.Default is not null),
-				new(DiagnosticSeverity.Error, keyword.SourceLocation,
-					"Cannot use 'default' when fields have no default") { Hints = [..missing] });
+			ReportOn(constructor, new(DiagnosticSeverity.Error, keyword.SourceLocation,
+				"Cannot use 'default' when fields have no default") { Hints = [..missing] });
 	}
 	
 	private void CompletePlainEnum(EnumSymbol enumType, ResolutionContext context,

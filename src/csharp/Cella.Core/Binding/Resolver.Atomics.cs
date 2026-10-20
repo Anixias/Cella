@@ -26,10 +26,10 @@ public sealed partial class Resolver
 		Journal(() => _genericUses.RemoveAt(_genericUses.Count - 1));
 	}
 	
-	private void AddTraitConstantUse(FunctionSymbol owner, TraitConstantUse use)
+	private void AddTypeConstantUse(FunctionSymbol owner, TypeConstantUse use)
 	{
-		if (_typePool.AddTraitConstantUse(owner, use))
-			Journal(() => _typePool.RemoveTraitConstantUse(owner, use));
+		if (_typePool.AddTypeConstantUse(owner, use))
+			Journal(() => _typePool.RemoveTypeConstantUse(owner, use));
 	}
 	
 	private void AddAtomicRequirement(FunctionSymbol owner, AtomicRequirement requirement)
@@ -76,9 +76,9 @@ public sealed partial class Resolver
 		}
 	}
 	
-	public void ReportTraitConstantInstances()
+	public void ReportTypeConstantInstances()
 	{
-		var concrete = new HashSet<TraitConstantUse>();
+		var concrete = new HashSet<TypeConstantUse>();
 		bool changed;
 		do
 		{
@@ -86,19 +86,19 @@ public sealed partial class Resolver
 			foreach (var use in _genericUses)
 			{
 				var map = TypePool.CreateMap(use.Callee.TypeParameters, use.TypeArguments);
-				foreach (var constant in _typePool.GetTraitConstantUses(use.Callee).ToList())
+				foreach (var constant in _typePool.GetTypeConstantUses(use.Callee).ToList())
 				{
-					var instance = constant with { Owner = _typePool.Substitute(constant.Owner, map) };
-					if (!TypePool.ContainsTypeParameters(instance.Owner))
+					var instance = _typePool.Substitute(constant, map);
+					if (!TypePool.ContainsTypeParameters(instance))
 						concrete.Add(instance);
 					else if (use.Caller is { } caller)
-						changed |= _typePool.AddTraitConstantUse(caller, instance);
+						changed |= _typePool.AddTypeConstantUse(caller, instance);
 				}
 			}
 		} while (changed);
 		
 		foreach (var use in concrete)
-			_typePool.TraitConstantValue?.Invoke(use.Owner, use.Constant);
+			_typePool.TypeConstantValue?.Invoke(use);
 	}
 	
 	private static TypeSymbol? FindArgument(GenericUse use, AtomicRequirement requirement)

@@ -1,0 +1,54 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bounded[T: copy]: trait
+{
+	minValue: const T
+	maxValue: const T
+}
+
+i32: impl Bounded[i32]
+{
+	minValue: const i32 = -0x80000000
+	maxValue: const i32 = 0x7FFFFFFF
+}
+
+u8: impl Bounded[u8]
+{
+	minValue: const u8 = 0
+	maxValue: const u8 = 0xFF
+}
+
+Scale[T: copy]: trait
+{
+	unit: const T
+	alias: const T = unit
+}
+
+i32: impl Scale[i64]
+{
+	unit: const i64 = 5000000000
+}
+
+i32: impl Scale[u8]
+{
+	unit: const u8 = 3
+}
+
+largest[T: copy + Bounded[T]]: fun -> T => T.maxValue
+
+wide[T: Scale[i64]]: fun -> i64 => T.alias
+
+narrow[T: Scale[u8]]: fun -> u8 => T.alias
+
+main: fun -> i32
+{
+	printf("%d %d %u %u\n", i32.minValue, i32.maxValue, u8.minValue, u8.maxValue)
+	printf("%d %u\n", largest[i32](), largest[u8]())
+	printf("%lld %u\n", wide[i32](), narrow[i32]())
+	ret 0
+}

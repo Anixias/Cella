@@ -1,0 +1,24 @@
+mod test
+
+use limits
+use shapes.Pair
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+sizes[T]: fun -> usize => T.size + T.doubleSize
+
+pairBytes[A, B]: fun -> usize => Pair[A, B].bytes
+
+top: const i32 = i32.maxValue
+
+main: fun -> i32
+{
+	val x: i64 = 7
+	printf("%d %d %u %d %lld\n", i32.maxValue, i32.minValue, u8.maxValue, top, i32.span())
+	printf("%zu %zu %zu %zu\n", i64.size, u8.doubleSize, x.sizeOfValue(), sizes[u16]())
+	printf("%zu %zu %zu %d\n", Pair[i32, u8].parts, Pair[i64, i32].bytes, pairBytes[u8, u16](), Pair[u8, u8].kind)
+	ret 0
+}

@@ -1160,7 +1160,7 @@ public sealed class TypeChecker
 	{
 	}
 	
-	public void Visit(ResolvedTraitConstantExpressionNode node)
+	public void Visit(ResolvedTypeConstantExpressionNode node)
 	{
 	}
 	

@@ -15,12 +15,14 @@ public sealed partial class Resolver
 		if (Probe is null)
 			return;
 		
-		var candidates = CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate);
 		if (Probe.Covers(name))
-			Probe.Capture(CompletionPlace.Name, candidates, expectedType);
+			Probe.Capture(CompletionPlace.Name, GetNameCandidates(), expectedType);
 		
-		Probe.CaptureCall(name, candidates);
+		Probe.CaptureCall(name, GetNameCandidates());
 	}
+	
+	private IEnumerable<CompletionCandidate> GetNameCandidates() =>
+		CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate);
 	
 	private void ProbeMember(AccessExpressionNode node, Func<IEnumerable<CompletionCandidate>> candidates)
 	{
@@ -114,6 +116,10 @@ public sealed partial class Resolver
 			foreach (var field in named.StaticFields.Where(CurrentResolutionContext.IsVisible))
 				yield return ToCandidate(field);
 		}
+		
+		foreach (var use in GetTypeConstants(type).Where(use => type.GetStaticField(use.Constant.Name) is null)
+			         .DistinctBy(static use => use.Constant.Name))
+			yield return ToCandidate(use.Constant);
 		
 		foreach (var name in GetMemberNames(type))
 		{
