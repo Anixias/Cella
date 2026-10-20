@@ -1,6 +1,6 @@
 OutputType = "StaticLibrary"
 StandardLibrary = "None"
-Prelude = ["std.panic"]
+Prelude = ["std.process.panic"]
 
 [[ProjectReferences]]
 Path = '../core/core.celp'
