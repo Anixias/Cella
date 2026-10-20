@@ -38,6 +38,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.util.PsiTreeUtil
 import org.eclipse.lsp4j.DefinitionParams
 import org.eclipse.lsp4j.HoverParams
 import org.eclipse.lsp4j.Position
@@ -52,7 +53,22 @@ private val namedTokens = setOf(
 
 private val hoverTokens = setOf(CellaToken.IDENTIFIER, CellaToken.BUILTIN_TYPE, CellaToken.OPERATOR)
 
-internal fun isNamed(element: PsiElement) = CellaTokenTypes.tokenOf(element.node?.elementType) in namedTokens
+private val keywordTokens = setOf(CellaToken.CONTROL_KEYWORD, CellaToken.VALUE_KEYWORD, CellaToken.OPERATOR_KEYWORD)
+
+private fun isKeywordName(element: PsiElement): Boolean {
+	if (CellaTokenTypes.tokenOf(element.node?.elementType) !in keywordTokens)
+		return false
+	
+	val previous = PsiTreeUtil.prevVisibleLeaf(element)?.node?.elementType
+	val next = PsiTreeUtil.nextVisibleLeaf(element)?.node?.elementType
+	return CellaTokenTypes.tokenOf(previous) == CellaToken.DOT || CellaTokenTypes.tokenOf(next) == CellaToken.COLON
+}
+
+private fun isHoverable(element: PsiElement) =
+	CellaTokenTypes.tokenOf(element.node?.elementType) in hoverTokens || isKeywordName(element)
+
+internal fun isNamed(element: PsiElement) =
+	CellaTokenTypes.tokenOf(element.node?.elementType) in namedTokens || isKeywordName(element)
 
 internal fun isProjectString(element: PsiElement) =
 	element.language == CelpLanguage && CelpTokenTypes.tokenOf(element.node?.elementType) == CelpToken.STRING
@@ -119,14 +135,14 @@ internal fun definitionAt(project: Project, file: VirtualFile, document: Documen
 
 class CellaHoverAnnotator : Annotator {
 	override fun annotate(element: PsiElement, holder: AnnotationHolder) {
-		if (CellaTokenTypes.tokenOf(element.node?.elementType) in hoverTokens)
+		if (isHoverable(element))
 			holder.newSilentAnnotation(HighlightInfoType.SYMBOL_TYPE_SEVERITY).create()
 	}
 }
 
 class CellaTargetElementEvaluator : TargetElementEvaluatorEx2(), TargetElementEvaluatorEx {
 	override fun isIdentifierPart(file: PsiFile, text: CharSequence, offset: Int) =
-		CellaTokenTypes.tokenOf(file.findElementAt(offset)?.node?.elementType) in hoverTokens
+		file.findElementAt(offset)?.let(::isHoverable) == true
 }
 
 class CellaDocumentationTargetProvider : DocumentationTargetProvider {

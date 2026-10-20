@@ -1626,6 +1626,78 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task NamesFunctionsOfCallsWithWrongArguments()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      single: fun(a: i32) -> i32 => a
+		                      
+		                      pair: fun(a: i32) -> i32 => a
+		                      pair: fun(a: bool) -> i32 => 0
+		                      
+		                      Point: rec
+		                      {
+		                      	x: i32
+		                      
+		                      	scale: fun(imm self, by: i32) -> i32 => self.x * by
+		                      }
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	val p = Point(1)
+		                      	val a = single(true)
+		                      	val b = pair(2.5)
+		                      	val c = p.scale(true)
+		                      	ret 0
+		                      }
+		                      
+		                      """;
+		
+		var tokens = await ClassifyAsync(source);
+		Assert.Contains("17:9:6 function", tokens);
+		Assert.Contains("18:9:4 function", tokens);
+		Assert.Contains("19:11:5 method", tokens);
+		Assert.Equal(Code("single: fun(a: i32) -> i32"), await HoverAsync(17, 10));
+		Assert.Equal(Code("pair: fun(a: i32) -> i32\npair: fun(a: bool) -> i32"), await HoverAsync(18, 10));
+		Assert.Equal(2, (int)(await DefinitionAsync(17, 10))!["range"]!["start"]!["line"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task HoversProjectImportsAndKeywordNames()
+	{
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"StaticLibrary\"\nStandardLibrary = \"None\"\n" +
+			"Prelude = [\"std.process.panic\"]\nImports = [\"std.process.code\"]\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "panic.ce"),
+			"mod std.process\n\npanic: pub op(message: str, location: str) -> never\n{\n\tloop\n\t{\n\t}\n}\n\n" +
+			"code: pub fun -> i32 => 3\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "other.ce"),
+			"mod test.other\n\nuse std.process.panic\n", Token);
+		
+		await File.WriteAllTextAsync(SourcePath,
+			"mod test\n\nfail: pub fun -> i32 => code()\n", Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("code: fun -> i32"), await HoverAsync(2, 25));
+		
+		var parameters = Position(2, 18);
+		parameters["textDocument"]!["uri"] = UriOf(Path.Combine(_directory, "other.ce"));
+		var hover = (await ReadResponseAsync(await RequestAsync("textDocument/hover", parameters)))["result"];
+		Assert.Equal(Code("panic: op(message: str, location: str) -> never"), (string)hover!["contents"]!["value"]!);
+		
+		var definition = (await ReadResponseAsync(await RequestAsync("textDocument/definition",
+			(JsonObject)parameters.DeepClone())))["result"]![0]!;
+		
+		Assert.EndsWith("panic.ce", (string)definition["uri"]!);
+		Assert.Equal(2, (int)definition["range"]!["start"]!["line"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ClassifiesOperatorOperandsAsParameters()
 	{
 		var tokens = await ClassifyAsync("""

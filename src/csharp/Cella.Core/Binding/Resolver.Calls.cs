@@ -116,6 +116,31 @@ public sealed partial class Resolver
 	private IResolvedExpressionNode ResolveCall(CallExpressionNode node, string functionName, ICallable[] candidates,
 		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null, ICallable[]? hidden = null)
 	{
+		var result = ResolveCandidates(node, functionName, candidates, receiver, typeArguments, hidden);
+		if (result is ResolvedInvalidExpressionNode && RecordName is { } record &&
+		    FindCallName(node.Target) is { } name)
+		{
+			foreach (var function in candidates.Select(GetInfo).OfType<FunctionInfo>()
+				         .Select(static info => info.Symbol)
+				         .Distinct())
+				record(name, function);
+		}
+		
+		return result;
+	}
+	
+	private static Token? FindCallName(IExpressionNode target) => target switch
+	{
+		VarExpressionNode variable => variable.Identifier,
+		AccessExpressionNode access => access.Member,
+		IndexerExpressionNode indexer => FindCallName(indexer.Target),
+		_ => null
+	};
+	
+	private IResolvedExpressionNode ResolveCandidates(CallExpressionNode node, string functionName,
+		ICallable[] candidates, IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments,
+		ICallable[]? hidden)
+	{
 		var location = (node.Target is IndexerExpressionNode indexer ? indexer.Target : node.Target).SourceLocation;
 		if (RejectSpread(node, candidates) is { } rejected)
 			return rejected;

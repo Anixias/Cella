@@ -20,6 +20,7 @@ public sealed partial class SignatureCollector
 		var explicitImports = new List<(Symbol Symbol, Token Name, string Module)>();
 		var activated = new List<ModuleSymbol>();
 		var prelude = new HashSet<Symbol>();
+		var projectImported = new HashSet<Symbol>();
 		var projectNames = new HashSet<Token>();
 		
 		void Add(ImportExpression import, ModulePathSymbol module, Action<Diagnostic> report, bool isProject)
@@ -31,7 +32,10 @@ public sealed partial class SignatureCollector
 			activated.AddRange(collected.OfType<ModulePathSymbol>().SelectMany(Modules.GetModules));
 			if (import.IsPrelude)
 				prelude.UnionWith(collected);
-			else if (import.Import is TokenImport or ListImport)
+			else if (isProject)
+				projectImported.UnionWith(collected);
+			
+			if (!import.IsPrelude && import.Import is TokenImport or ListImport)
 			{
 				explicitImports.AddRange(
 					named.Select(entry => (entry.Symbol, entry.Name!.Value, import.ModuleName.Text)));
@@ -56,17 +60,17 @@ public sealed partial class SignatureCollector
 				Add(import, module, Diagnostics.Add, false);
 		}
 		
-		foreach (var name in explicitImports.Where(entry => prelude.Contains(entry.Symbol))
+		foreach (var name in explicitImports
+			         .Where(entry => prelude.Contains(entry.Symbol) ||
+			                         projectImported.Contains(entry.Symbol) && !projectNames.Contains(entry.Name))
 			         .Select(static entry => entry.Name)
 			         .Distinct()
 			         .Where(name => isFirstFile || !projectNames.Contains(name)))
 			Diagnostics.Add(new(DiagnosticSeverity.Hint, name.SourceLocation, "Redundant import"));
 		
 		_explicitImports.Add((explicitImports, context));
-		ReportRepeatedImports([
-			..ProjectImports.Where(static import => !import.IsPrelude),
-			..node.Imports.Where(static import => !import.HasSyntaxErrors)
-		]);
+		ReportRepeatedImports(ProjectImports.Where(static import => !import.IsPrelude));
+		ReportRepeatedImports(node.Imports.Where(static import => !import.HasSyntaxErrors));
 		
 		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated);
 	}

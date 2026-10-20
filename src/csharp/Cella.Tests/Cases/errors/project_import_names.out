@@ -1,17 +1,12 @@
-Error at main.ce:3:9
+Hint at main.ce:3:9
 2 │ 
 3 │ use lib.greet
-            ╘═══╛ 'greet' is imported more than once
+            ╘═══╛ Redundant import
 
 Error at test.celp:5:7
 4 │ Imports = [
 5 │     "lib.nothere",
              ╘═════╛ Module 'lib' has no member 'nothere'
-
-Error at test.celp:6:7
-5 │ "lib.nothere",
-6 │ "lib.greet",
-         ╘═══╛ 'greet' is imported more than once
 
 Error at test.celp:7:3
 6 │ "lib.greet",
