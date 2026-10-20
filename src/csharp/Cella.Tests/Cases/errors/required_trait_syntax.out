@@ -11,12 +11,12 @@ Error at required_trait_syntax.ce:5:18
 Error at required_trait_syntax.ce:9:1
 8 │ Empty: trait req
 9 │ {
-    ^ Expected a trait
+    ^ Expected a constraint
 
 Error at required_trait_syntax.ce:13:1
 12 │ Trailing: trait req Eq +
 13 │ {
-     ^ Expected a trait
+     ^ Expected a constraint
 
 Error at required_trait_syntax.ce:18:12
 17 │ 

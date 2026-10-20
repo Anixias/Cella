@@ -1,0 +1,87 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bounded: trait req copy
+{
+	minValue: const Self
+	maxValue: const Self
+
+	span: fun(self) -> Self
+}
+
+Limited: trait req Bounded
+
+i32: impl Bounded
+{
+	minValue: const i32 = -0x80000000
+	maxValue: const i32 = 0x7FFFFFFF
+
+	span: fun(self) -> i32 => self
+}
+
+u8: impl Bounded
+{
+	minValue: const u8 = 0
+	maxValue: const u8 = 0xFF
+
+	span: fun(self) -> u8 => self
+}
+
+u8: impl Limited
+
+Built: trait req new(i32)
+
+Meters: rec impl Built
+{
+	value: i32
+
+	new: op(value: i32)
+	{
+		self.value = value * 100
+	}
+}
+
+Named: trait
+{
+	name: fun(imm self) -> i32
+}
+
+Wrapper[U: trait]: trait req U
+
+i32: impl Named
+{
+	name: fun(imm self) -> i32 => self * 2
+}
+
+i32: impl Wrapper[Named]
+
+largest[T: Bounded]: fun -> T => T.maxValue
+
+kept[T: Bounded]: fun(value: T) -> T
+{
+	val first = value
+	val second = value
+	ret second.span()
+}
+
+limited[T: Limited]: fun(value: T) -> T
+{
+	val copy = value
+	ret copy
+}
+
+build[T: Built]: fun -> T => T(7)
+
+named[T: Wrapper[Named]]: fun(imm value: T) -> i32 => value.name()
+
+main: fun -> i32
+{
+	printf("%d %u\n", largest[i32](), largest[u8]())
+	printf("%d %u\n", kept[i32](12), limited[u8](34))
+	printf("%d %d\n", build[Meters]().value, named[i32](imm 21))
+	ret 0
+}

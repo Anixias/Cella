@@ -69,40 +69,47 @@ public sealed partial class SignatureCollector
 	private void RegisterBounds(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> parameters,
 		ResolutionContext context, Symbol? owner = null)
 	{
-		var deferring = context with { DeferConstraintCheck = DeferAlways };
 		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
 		{
 			if (nodes[i].ValueType is { } valueType)
 				parameters[i].ValueType = ResolveValueType(valueType, context);
 			
 			ReportConstraintConflicts(nodes[i]);
-			var bounds = nodes[i].Traits.Select(deferring.ResolveTraitReference).ToList();
-			ReportRepeatedTraits(nodes[i].Traits, bounds);
-			if (owner is not null)
-				for (var j = 0; j < bounds.Count; j++)
-					if (bounds[j] is { } bound)
-						ReportHiddenType(nodes[i].Traits[j], bound, GetOwnerVisibility(owner, context), owner.Name);
-			
-			_boundLists.Add((nodes[i].Traits, bounds, parameters[i], CurrentOwner));
-			ImmutableArray<TraitType> traits = [..bounds.OfType<TraitType>().Distinct()];
-			ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
-			ImmutableArray<FunctionType> functions = [..bounds.OfType<FunctionType>().Distinct()];
+			var traits = RegisterConstraintList(nodes[i], parameters[i], context, owner);
 			if (!traits.IsEmpty)
 				_typePool.SetBounds(parameters[i], traits);
-			
-			if (functions.Length > 1)
-				foreach (var node in nodes[i].Traits.Where((_, j) => bounds[j] is FunctionType))
-					Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
-						"Cannot require more than one function type"));
-			else if (!functions.IsEmpty)
-				_typePool.SetFunctionBounds(parameters[i], functions);
-			
-			if (!traitParameters.IsEmpty)
-				_typePool.SetParameterBounds(parameters[i], traitParameters);
-			
-			if (!nodes[i].Constructors.IsEmpty)
-				_pendingConstructorBounds.Add((nodes[i], parameters[i], context, owner, CurrentOwner));
 		}
+	}
+	
+	private ImmutableArray<TraitType> RegisterConstraintList(TypeParameterNode node, TypeParameterSymbol parameter,
+		ResolutionContext context, Symbol? owner)
+	{
+		var deferring = context with { DeferConstraintCheck = DeferAlways };
+		var bounds = node.Traits.Select(deferring.ResolveTraitReference).ToList();
+		ReportRepeatedTraits(node.Traits, bounds);
+		if (owner is not null)
+			for (var j = 0; j < bounds.Count; j++)
+				if (bounds[j] is { } bound)
+					ReportHiddenType(node.Traits[j], bound, GetOwnerVisibility(owner, context), owner.Name);
+		
+		_boundLists.Add((node.Traits, bounds, parameter, CurrentOwner));
+		_constrainedParameters.Add(parameter);
+		ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
+		ImmutableArray<FunctionType> functions = [..bounds.OfType<FunctionType>().Distinct()];
+		if (functions.Length > 1)
+			foreach (var functionNode in node.Traits.Where((_, j) => bounds[j] is FunctionType))
+				Diagnostics.Add(new(DiagnosticSeverity.Error, functionNode.SourceLocation,
+					"Cannot require more than one function type"));
+		else if (!functions.IsEmpty)
+			_typePool.SetFunctionBounds(parameter, functions);
+		
+		if (!traitParameters.IsEmpty)
+			_typePool.SetParameterBounds(parameter, traitParameters);
+		
+		if (!node.Constructors.IsEmpty)
+			_pendingConstructorBounds.Add((node, parameter, context, owner, CurrentOwner));
+		
+		return [..bounds.OfType<TraitType>().Distinct()];
 	}
 	
 	private TypeSymbol ResolveValueType(ITypeNode node, ResolutionContext context)
@@ -117,17 +124,12 @@ public sealed partial class SignatureCollector
 	
 	private void RegisterRequiredTraits(TraitSymbol trait, TraitNode node, ResolutionContext context)
 	{
-		var deferring = context with { DeferConstraintCheck = DeferAlways };
-		var required = node.RequiredTraits.Select(deferring.ResolveTrait).ToList();
-		ReportRepeatedTraits(node.RequiredTraits, required);
-		_boundLists.Add((node.RequiredTraits, [..required], trait.Self, CurrentOwner));
-		for (var i = 0; i < required.Count; i++)
-		{
-			if (required[i] is { } requiredTrait)
-				ReportHiddenType(node.RequiredTraits[i], requiredTrait, trait.Visibility, trait.Name);
-		}
+		var requirements = node.Requirements;
+		foreach (var keyword in requirements.Keywords.Where(static keyword => keyword.Type == TokenType.KeywordTrait))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation, "Cannot use 'trait' in 'req'"));
 		
-		_typePool.SetRequiredTraits(trait, [..required.OfType<TraitType>().Distinct()]);
+		ReportKeywordConflicts(requirements.Keywords);
+		_typePool.SetRequiredTraits(trait, RegisterConstraintList(requirements, trait.Self, context, trait));
 	}
 	
 	private void ReportRepeatedTraits(ImmutableArray<ITypeNode> nodes, IReadOnlyList<TypeSymbol?> traits)
@@ -192,6 +194,14 @@ public sealed partial class SignatureCollector
 					node.Modifiers.First(static modifier => modifier.Type == TokenType.KeywordReq).SourceLocation,
 					"Redundant 'req'"));
 		}
+	}
+	
+	private void InheritSelfConstraints()
+	{
+		foreach (var parameter in _constrainedParameters)
+			_typePool.InheritSelfConstraints(parameter);
+		
+		_typePool.ResetFacts();
 	}
 	
 	private void ReportRequirementCycles(IEnumerable<FileNode> files)
@@ -342,6 +352,11 @@ public sealed partial class SignatureCollector
 			return;
 		}
 		
+		ReportKeywordConflicts(keywords);
+	}
+	
+	private void ReportKeywordConflicts(ImmutableArray<Token> keywords)
+	{
 		foreach (var repeated in keywords.GroupBy(static keyword => keyword.Type)
 			         .Where(static group => group.Count() > 1))
 		{

@@ -23,11 +23,7 @@ public sealed partial class TypePool
 	public Dictionary<TypeParameterSymbol, TypeSymbol> GetTypeConstantMap(TypeConstantUse use)
 	{
 		if (use.Trait is { } trait)
-		{
-			var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
-			map[trait.Trait.Self] = use.Owner;
-			return map;
-		}
+			return CreateTraitMap(trait, use.Owner);
 		
 		return use.Constant.Impl is { } impl ? GetMemberBlockMap(impl, use.Owner) : [];
 	}

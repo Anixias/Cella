@@ -92,6 +92,9 @@ public sealed partial class SignatureCollector
 				ReportConformance(conformance.Location,
 					$"'{DiagnosticReporter.DescribeType(self)}' needs '{required.Name}'");
 		}
+		
+		if (_typePool.FindSelfViolation(trait, self) is { } violation)
+			Diagnostics.Add(violation.At(conformance.Location));
 	}
 	
 	private void ReportOverlaps(List<Conformance> conformances)

@@ -12,7 +12,7 @@ public sealed partial class FileParser
 		// When this is called, the identifier and rec keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
-		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
+		if (ParseTraitList(ref index) is not { } traits)
 			return null;
 		
 		if (MissesBody(index))
@@ -57,10 +57,10 @@ public sealed partial class FileParser
 		return new QualifiedTypeNode(new(source, range.Join(parts[^1].SourceLocation.Range)), parts);
 	}
 	
-	private List<ITypeNode>? ParseTraitList(ref int index, TokenType keyword)
+	private List<ITypeNode>? ParseTraitList(ref int index)
 	{
 		var traits = new List<ITypeNode>();
-		if (!IsOnSameLine(index) || !Match(ref index, _traitListKeywords, keyword))
+		if (!IsOnSameLine(index) || !Match(ref index, _traitListKeywords, TokenType.KeywordImpl))
 			return traits;
 		
 		return ParseTraitNames(ref index, traits) ? traits : null;
@@ -96,8 +96,20 @@ public sealed partial class FileParser
 			return null;
 		}
 		
-		if (ParseTraitList(ref index, TokenType.KeywordReq) is not { } requiredTraits)
-			return null;
+		var keywords = new List<Token>();
+		var traits = new List<ITypeNode>();
+		var constructors = new List<ConstructorConstraintNode>();
+		if (IsOnSameLine(index) && Match(ref index, _traitListKeywords, TokenType.KeywordReq))
+		{
+			if (!ParseConstraints(ref index, keywords, traits, constructors, true))
+				return null;
+			
+			if (IsOnSameLine(index) && (Peek(index, TokenType.OpComma) || Peek(index, TokenType.Identifier)))
+			{
+				ReportExpected(index, "'+'");
+				return null;
+			}
+		}
 		
 		var members = new List<IDeclarationNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
@@ -114,7 +126,7 @@ public sealed partial class FileParser
 		{
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
-			RequiredTraits = [..requiredTraits]
+			Requirements = new(identifier, keywords, traits, constructors)
 		};
 	}
 	
@@ -244,7 +256,7 @@ public sealed partial class FileParser
 			}
 		}
 		
-		if (ParseTraitList(ref index, TokenType.KeywordImpl) is not { } traits)
+		if (ParseTraitList(ref index) is not { } traits)
 			return null;
 		
 		if (MissesBody(index))

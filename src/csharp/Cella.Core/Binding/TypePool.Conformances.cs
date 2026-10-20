@@ -166,14 +166,16 @@ public sealed partial class TypePool
 	
 	public IEnumerable<TraitType> GetRequiredTraits(TraitType trait, TypeSymbol self)
 	{
-		var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
-		map[trait.Trait.Self] = self;
-		return GetRequiredTraits(trait.Trait).Select(required => SubstituteTrait(required, map));
+		var map = CreateTraitMap(trait, self);
+		return GetRequiredTraits(trait.Trait)
+			.Select(required => SubstituteTrait(required, map))
+			.Concat(GetParameterBounds(trait.Trait.Self).Select(bound => map.GetValueOrDefault(bound))
+				.OfType<TraitType>());
 	}
 	
 	private ImmutableArray<TraitType> AddRequiredTraits(ImmutableArray<TraitType> traits, TypeSymbol self)
 	{
-		if (traits.All(trait => GetRequiredTraits(trait.Trait).IsEmpty))
+		if (traits.All(trait => GetRequiredTraits(trait.Trait).IsEmpty && GetParameterBounds(trait.Trait.Self).IsEmpty))
 			return traits;
 		
 		var result = new OrderedSet<TraitType>();

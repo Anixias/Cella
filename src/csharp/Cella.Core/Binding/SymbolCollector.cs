@@ -21,15 +21,17 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
 		ImmutableArray<TypeParameterNode> parameters, string owner) => parameters
-		.Select(parameter => new TypeParameterSymbol(parameter.Identifier.Text, parameter.Keywords.Concat(
-			parameter.Constructors.Where(static constructor => constructor.Types.IsEmpty)
-				.Select(static constructor => constructor.Keyword)))
+		.Select(parameter => new TypeParameterSymbol(parameter.Identifier.Text, GetConstraintKeywords(parameter))
 		{
 			IsValue = parameter.ValueType is not null,
 			Owner = owner,
 			Definition = parameter.Identifier
 		})
 		.ToImmutableArray();
+	
+	private static IEnumerable<Token> GetConstraintKeywords(TypeParameterNode parameter) => parameter.Keywords.Concat(
+		parameter.Constructors.Where(static constructor => constructor.Types.IsEmpty)
+			.Select(static constructor => constructor.Keyword));
 	
 	private static string GetImplOwner(ITypeNode target) => target switch
 	{
@@ -333,7 +335,9 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(TraitNode node)
 	{
-		var self = new TypeParameterSymbol("Self", []) { IsSelf = true };
+		var self = new TypeParameterSymbol("Self", GetConstraintKeywords(node.Requirements)
+			.Where(static keyword => keyword.Type != TokenType.KeywordTrait)) { IsSelf = true };
+		
 		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));

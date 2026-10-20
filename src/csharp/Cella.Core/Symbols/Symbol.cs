@@ -177,8 +177,13 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public GlobalSymbol? Constant { get; init; }
 	public string? Owner { get; init; }
 	public TypeSymbol? ValueType { get; internal set; }
+	public ImmutableArray<TokenType> InheritedConstraints { get; internal set; } = [];
 	
-	private bool Has(TokenType keyword) => _keywords.Any(token => token.Type == keyword);
+	public IEnumerable<TokenType> DeclaredConstraints => _keywords.Select(static token => token.Type);
+	
+	public bool Declares(TokenType keyword) => _keywords.Any(token => token.Type == keyword);
+	
+	private bool Has(TokenType keyword) => Declares(keyword) || InheritedConstraints.Contains(keyword);
 }
 
 public sealed class InvalidType : TypeSymbol

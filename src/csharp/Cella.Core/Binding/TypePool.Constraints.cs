@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Symbols;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
@@ -26,34 +27,10 @@ public sealed partial class TypePool
 	private (string Requirement, string Hint)? FindUnmetRequirement(TypeParameterSymbol parameter,
 		TypeSymbol argument, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
 	{
+		if (FindUnmetKeyword(parameter, argument, map) is { } unmet)
+			return unmet;
+		
 		var name = argument.Name;
-		if (parameter.IsAtomic && !IsAtomic(argument))
-			return ("atomic", $"'{name}' can't be accessed atomically");
-		
-		if (parameter.IsExt && !IsExtCompatible(argument))
-			return ("ext", $"'{name}' can't be used in 'ext' signatures");
-		
-		if (parameter.IsNoref && HoldsBorrows(argument))
-			return ("noref", HoldsBorrows(argument, false) ? $"'{name}' holds borrows" : $"'{name}' may hold borrows");
-		
-		if (parameter.HasNull && !HasNull(argument))
-			return ("null", $"'{name}' has no null");
-		
-		if (parameter.IsCopy && !IsCopy(argument))
-			return ("copy", $"'{name}' can't be copied");
-		
-		if (parameter.HasDrop && !HasDestructor(argument))
-			return ("drop", $"'{name}' has no destructor");
-		
-		if (parameter.HasNew && !HasNew(argument))
-			return ("new", $"'{name}' has no constructor without parameters");
-		
-		if (parameter.HasDefault && !HasDefault(argument))
-			return ("default", $"'{name}' has no default");
-		
-		if (FindMissingConstructor(parameter, argument, map) is var (missing, hint))
-			return (DescribeConstructorConstraint(missing), hint ?? $"'{name}' has no constructor taking '{missing}'");
-		
 		if (FindUnmetTrait(parameter, argument, map) is { } trait)
 			return (trait.Name, $"'{name}' doesn't implement '{trait.Name}'");
 		
@@ -62,6 +39,52 @@ public sealed partial class TypePool
 		
 		return FindUnmetFunction(parameter, argument, map) is { } function
 			? (function.Name, $"'{name}' doesn't implement '{function.Name}'")
+			: null;
+	}
+	
+	private (string Requirement, string Hint)? FindUnmetKeyword(TypeParameterSymbol parameter, TypeSymbol argument,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? map)
+	{
+		var name = argument.Name;
+		if (parameter.Declares(TokenType.KeywordAtomic) && !IsAtomic(argument))
+			return ("atomic", $"'{name}' can't be accessed atomically");
+		
+		if (parameter.Declares(TokenType.KeywordExt) && !IsExtCompatible(argument))
+			return ("ext", $"'{name}' can't be used in 'ext' signatures");
+		
+		if (parameter.Declares(TokenType.KeywordNoref) && HoldsBorrows(argument))
+			return ("noref", HoldsBorrows(argument, false) ? $"'{name}' holds borrows" : $"'{name}' may hold borrows");
+		
+		if (parameter.Declares(TokenType.KeywordNull) && !HasNull(argument))
+			return ("null", $"'{name}' has no null");
+		
+		if (parameter.Declares(TokenType.KeywordCopy) && !IsCopy(argument))
+			return ("copy", $"'{name}' can't be copied");
+		
+		if (parameter.Declares(TokenType.KeywordDrop) && !HasDestructor(argument))
+			return ("drop", $"'{name}' has no destructor");
+		
+		if (parameter.Declares(TokenType.KeywordNew) && !HasNew(argument))
+			return ("new", $"'{name}' has no constructor without parameters");
+		
+		if (parameter.Declares(TokenType.KeywordDefault) && !HasDefault(argument))
+			return ("default", $"'{name}' has no default");
+		
+		return FindMissingConstructor(parameter, argument, map) is var (missing, hint)
+			? (DescribeConstructorConstraint(missing), hint ?? $"'{name}' has no constructor taking '{missing}'")
+			: null;
+	}
+	
+	public DiagnosticText? FindSelfViolation(TraitType trait, TypeSymbol target)
+	{
+		var map = CreateMap(trait.Trait.TypeParameters, trait.Arguments);
+		var self = trait.Trait.Self;
+		var unmet = FindUnmetKeyword(self, target, map);
+		if (unmet is null && FindUnmetFunction(self, target, map) is { } function)
+			unmet = (function.Name, $"'{target.Name}' doesn't implement '{function.Name}'");
+		
+		return unmet is var (requirement, hint)
+			? new DiagnosticText($"'{trait.Name}' requires 'Self: {requirement}'", hint)
 			: null;
 	}
 	

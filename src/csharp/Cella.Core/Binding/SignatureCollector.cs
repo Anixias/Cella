@@ -84,6 +84,8 @@ public sealed partial class SignatureCollector
 	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol, ErrorContainment.Owner)>
 		_boundLists = [];
 	
+	private readonly List<TypeParameterSymbol> _constrainedParameters = [];
+	
 	private readonly List<(FieldNode, TypeSymbol)> _requiredFields = [];
 	private readonly List<(GlobalSymbol Global, ITypeNode Node, TypeSymbol Type)> _variables = [];
 	private readonly List<(TypeSymbol Type, ITypeNode Node, ErrorContainment.Owner Owner)> _variadicTypes = [];
@@ -143,12 +145,15 @@ public sealed partial class SignatureCollector
 			RegisterConstraints(file);
 		
 		ReportRequirementCycles(files);
+		InheritSelfConstraints();
 		
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);
 		
 		ReportRedundantBounds();
 		RegisterConstructorBounds();
+		foreach (var parameter in _constrainedParameters)
+			_typePool.InheritSelfConstructors(parameter);
 		
 		foreach (var file in files)
 		{

@@ -1,0 +1,49 @@
+mod test
+
+Bounded: trait req copy
+{
+	maxValue: const Self
+}
+
+Plain: trait
+{
+	maxValue: const Self
+}
+
+Callback: trait req fun[i32 -> i32]
+
+Built: trait req new(i32)
+
+Kinded: trait req trait
+
+Twice: trait req copy + copy
+
+Mixed: trait req copy + drop
+
+Handle: rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Handle: impl Bounded
+
+[T]: impl Bounded
+{
+	maxValue: const T = T.maxValue
+}
+
+i32: impl Callback
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Point: impl Built
+
+main: fun -> i32 => 0

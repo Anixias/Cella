@@ -1,0 +1,65 @@
+Error at trait_self_constraints.ce:10:18
+ 9 │ {
+10 │     maxValue: const Self
+                         ╘══╛ Cannot store values with destructors in constants
+
+Error at trait_self_constraints.ce:17:19
+16 │ 
+17 │ Kinded: trait req trait
+                       ╘═══╛ Cannot use 'trait' in 'req'
+
+Error at trait_self_constraints.ce:19:18
+18 │ 
+19 │ Twice: trait req copy + copy
+                      ╘══╛ 'copy' is required more than once
+
+Error at trait_self_constraints.ce:19:25
+18 │ 
+19 │ Twice: trait req copy + copy
+                             ╘══╛ 'copy' is required more than once
+
+Error at trait_self_constraints.ce:21:18
+20 │ 
+21 │ Mixed: trait req copy + drop
+                      ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at trait_self_constraints.ce:21:25
+20 │ 
+21 │ Mixed: trait req copy + drop
+                             ╘══╛ Cannot combine 'copy' and 'drop'
+
+Error at trait_self_constraints.ce:32:14
+31 │ 
+32 │ Handle: impl Bounded
+                  ╘═════╛ 'Handle' needs 'Bounded.maxValue'
+
+Error at trait_self_constraints.ce:32:14
+31 │ 
+32 │ Handle: impl Bounded
+                  ╘═════╛ 'Bounded' requires 'Self: copy'
+                        | 'Handle' can't be copied
+
+Error at trait_self_constraints.ce:34:11
+33 │ 
+34 │ [T]: impl Bounded
+               ╘═════╛ 'Bounded' requires 'Self: copy'
+                     | 'T' can't be copied
+
+Error at trait_self_constraints.ce:36:18
+35 │ {
+36 │     maxValue: const T = T.maxValue
+                         ^ Cannot store values with destructors in constants
+
+Error at trait_self_constraints.ce:39:11
+38 │ 
+39 │ i32: impl Callback
+               ╘══════╛ 'Callback' requires 'Self: fun[i32 -> i32]'
+                      | 'i32' doesn't implement 'fun[i32 -> i32]'
+
+Error at trait_self_constraints.ce:47:13
+46 │ 
+47 │ Point: impl Built
+                 ╘═══╛ 'Built' requires 'Self: new(i32)'
+                     | 'Point' has no constructor taking 'i32'
+
+[compilation failed]

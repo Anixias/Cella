@@ -34,47 +34,8 @@ public sealed partial class FileParser
 				if ((valueType = ParseConstraintType(ref index)) is null)
 					return null;
 			}
-			else if (hasConstraints)
-			{
-				do
-				{
-					if (Match(ref index, out var newKeyword, TokenType.KeywordNew))
-					{
-						if (ParseConstructorConstraint(ref index, newKeyword) is not { } constructor)
-							return null;
-						
-						constructors.Add(constructor);
-					}
-					else if (!StartsExternalFunctionType(index) &&
-					         (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
-					          Match(ref index, out keyword, TokenType.KeywordNull) ||
-					          Match(ref index, out keyword, TokenType.KeywordAtomic)))
-					{
-						keywords.Add(keyword);
-						if (keyword.Type == TokenType.KeywordDrop && Peek(index, TokenType.OpOpenParen) &&
-						    Peek(index + 1, TokenType.OpCloseParen))
-						{
-							index += 2;
-							ReportEmptyParentheses(index - 2, index);
-						}
-					}
-					else if (Peek(index, TokenType.KeywordDyn))
-					{
-						Report(Tokens[index], "Cannot use 'dyn' types as constraints");
-						return null;
-					}
-					else if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
-					         !Peek(index, TokenType.KeywordRef))
-					{
-						ReportExpected(index, "a constraint");
-						return null;
-					}
-					else if (ParseConstraintType(ref index) is { } trait)
-						traits.Add(trait);
-					else
-						return null;
-				} while (Match(ref index, TokenType.OpPlus));
-			}
+			else if (hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false))
+				return null;
 			
 			parameters.Add(new(name, keywords, traits, constructors) { ValueType = valueType });
 		} while (MatchSeparator(ref index, TokenType.OpCloseBracket));
@@ -84,6 +45,51 @@ public sealed partial class FileParser
 		
 		ReportExpected(index, "',' or ']'", openBracket);
 		return null;
+	}
+	
+	private bool ParseConstraints(ref int index, List<Token> keywords, List<ITypeNode> traits,
+		List<ConstructorConstraintNode> constructors, bool isOnOneLine)
+	{
+		do
+		{
+			if (Match(ref index, out var newKeyword, TokenType.KeywordNew))
+			{
+				if (ParseConstructorConstraint(ref index, newKeyword) is not { } constructor)
+					return false;
+				
+				constructors.Add(constructor);
+			}
+			else if (!StartsExternalFunctionType(index) &&
+			         (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
+			          Match(ref index, out keyword, TokenType.KeywordNull) ||
+			          Match(ref index, out keyword, TokenType.KeywordAtomic)))
+			{
+				keywords.Add(keyword);
+				if (keyword.Type == TokenType.KeywordDrop && Peek(index, TokenType.OpOpenParen) &&
+				    Peek(index + 1, TokenType.OpCloseParen))
+				{
+					index += 2;
+					ReportEmptyParentheses(index - 2, index);
+				}
+			}
+			else if (Peek(index, TokenType.KeywordDyn))
+			{
+				Report(Tokens[index], "Cannot use 'dyn' types as constraints");
+				return false;
+			}
+			else if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordFun) &&
+			         !Peek(index, TokenType.KeywordRef))
+			{
+				ReportExpected(index, "a constraint");
+				return false;
+			}
+			else if (ParseConstraintType(ref index) is { } trait)
+				traits.Add(trait);
+			else
+				return false;
+		} while (isOnOneLine ? MatchOnLine(ref index, TokenType.OpPlus) : Match(ref index, TokenType.OpPlus));
+		
+		return true;
 	}
 	
 	private ConstructorConstraintNode? ParseConstructorConstraint(ref int index, Token keyword)
