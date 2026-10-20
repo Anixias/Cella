@@ -4,6 +4,7 @@ import com.anixias.cella.CellaIcons
 import com.anixias.cella.run.CellaProjects
 import com.intellij.icons.AllIcons
 import com.intellij.ide.projectView.PresentationData
+import com.intellij.ide.projectView.ProjectView
 import com.intellij.ide.util.treeView.AbstractTreeNode
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -23,29 +24,34 @@ class CellaSolutionExplorerCustomization(project: Project) : SolutionExplorerCus
 	override fun modifyChildren(
 		entity: ProjectModelEntity,
 		settings: SolutionExplorerViewSettings,
+		children: MutableList<AbstractTreeNode<*>>) =
+		wrapProjects(children.mapNotNull { fileOf(it)?.parent }.distinct().singleOrNull(), settings, children)
+
+	override fun modifyChildren(
+		file: VirtualFile,
+		settings: SolutionExplorerViewSettings,
+		children: MutableList<AbstractTreeNode<*>>) = wrapProjects(file.takeIf { it.isDirectory }, settings, children)
+
+	private fun wrapProjects(
+		folder: VirtualFile?,
+		settings: SolutionExplorerViewSettings,
 		children: MutableList<AbstractTreeNode<*>>) {
-		val files = children.filterIsInstance<SolutionExplorerFileNode>()
-		val folder = files.mapNotNull { it.virtualFile.parent }.distinct().singleOrNull()
 		val projects = folder?.let(CellaProjects::projectFilesIn).orEmpty()
 		if (projects.isEmpty()) {
 			replaceProjectFolders(settings, children)
 			return
 		}
 
-		val index = children.indexOf(files.first())
+		val files = children.filter { fileOf(it)?.parent == folder }
+		val index = files.firstOrNull()?.let(children::indexOf) ?: children.size
 		children.removeAll(files.toSet())
 		children.addAll(index.coerceAtMost(children.size), projects.map { CellaProjectNode(project, it, settings) })
 	}
 
-	override fun modifyChildren(
-		file: VirtualFile,
-		settings: SolutionExplorerViewSettings,
-		children: MutableList<AbstractTreeNode<*>>) = replaceProjectFolders(settings, children)
-
 	private fun replaceProjectFolders(settings: SolutionExplorerViewSettings, children: MutableList<AbstractTreeNode<*>>) {
 		val iterator = children.listIterator()
 		while (iterator.hasNext()) {
-			val folder = (iterator.next() as? SolutionExplorerFileNode)?.virtualFile?.takeIf { it.isDirectory } ?: continue
+			val folder = fileOf(iterator.next())?.takeIf { it.isDirectory } ?: continue
 			val projects = CellaProjects.projectFilesIn(folder)
 			if (projects.isEmpty())
 				continue
@@ -55,12 +61,18 @@ class CellaSolutionExplorerCustomization(project: Project) : SolutionExplorerCus
 				iterator.add(CellaProjectNode(project, celp, settings))
 		}
 	}
+
+	private fun fileOf(node: AbstractTreeNode<*>): VirtualFile? = when (node) {
+		is CellaProjectNode, is CellaReferencesNode, is CellaReferenceNode -> null
+		is SolutionViewNode<*> -> node.virtualFile?.takeIf { it.isValid }
+		else -> null
+	}
 }
 
 class CellaProjectNode(project: Project, celp: VirtualFile, private val settings: SolutionExplorerViewSettings) :
 	SolutionViewNode<VirtualFile>(project, celp) {
 	companion object {
-		private val buildFolders = setOf("bin", "obj")
+		private val hiddenFolders = setOf("bin", "obj", ".idea")
 	}
 
 	val celp: VirtualFile get() = value
@@ -77,7 +89,7 @@ class CellaProjectNode(project: Project, celp: VirtualFile, private val settings
 		val showAll = settings.isShowAllFiles(myProject)
 		val (folders, files) = folder.getChildrenForSolutionView().partition { it.isDirectory }
 		for (child in folders.sortedBy { it.name.lowercase() }) {
-			if (!showAll && child.name in buildFolders)
+			if (!showAll && child.name in hiddenFolders)
 				continue
 
 			val projects = CellaProjects.projectFilesIn(child)
@@ -147,7 +159,13 @@ class CellaReferenceNode(project: Project, val reference: CellaReference) :
 	override fun canNavigateToSource() = false
 
 	override fun navigate(requestFocus: Boolean) {
-		val folder = CellaProjectModel.get(myProject).virtualFile(reference.target.parent) ?: return
-		myProject.navigateToSolutionView(folder, requestFocus)
+		val model = CellaProjectModel.get(myProject)
+		val explorer = CellaExplorer.tryGetInstance(myProject)
+		if (explorer != null && ProjectView.getInstance(myProject).currentViewId == CellaExplorer.ID) {
+			explorer.select(null, model.virtualFile(reference.target) ?: return, requestFocus)
+			return
+		}
+
+		myProject.navigateToSolutionView(model.virtualFile(reference.target.parent) ?: return, requestFocus)
 	}
 }

@@ -13,6 +13,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.util.Alarm
 import com.jetbrains.rider.projectView.isDirectorySolution
@@ -67,6 +68,7 @@ class CellaProjectModel(private val project: Project) : Disposable {
 	}
 
 	private val alarm = Alarm(Alarm.ThreadToUse.POOLED_THREAD, this)
+	private val explorerAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
 
 	@Volatile
 	private var loaded = false
@@ -80,8 +82,16 @@ class CellaProjectModel(private val project: Project) : Disposable {
 			override fun after(events: List<VFileEvent>) {
 				if (events.any { it.path.endsWith(".celp", ignoreCase = true) })
 					refresh()
+
+				if (events.any { it !is VFileContentChangeEvent })
+					updateExplorer()
 			}
 		})
+	}
+
+	private fun updateExplorer() {
+		explorerAlarm.cancelAllRequests()
+		explorerAlarm.addRequest({ CellaExplorer.tryGetInstance(project)?.updateFromRoot(true) }, 300)
 	}
 
 	fun find(celp: Path): CellaProjectInfo? {
@@ -108,6 +118,7 @@ class CellaProjectModel(private val project: Project) : Disposable {
 	private fun update() {
 		attachOutsideReferences()
 		SolutionExplorerViewPane.tryGetInstance(project)?.updateFromRoot(true)
+		CellaExplorer.tryGetInstance(project)?.updateFromRoot(true)
 	}
 
 	private fun attachOutsideReferences() {

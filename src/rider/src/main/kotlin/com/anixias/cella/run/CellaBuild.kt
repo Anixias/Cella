@@ -47,6 +47,7 @@ object CellaBuild {
 
 	fun findCella(): String? = CellaSettings.instance.state.cellaPath?.takeIf { File(it).isFile }
 		?: PathEnvironmentVariableUtil.findInPath("cella")?.path
+		?: PathEnvironmentVariableUtil.findInPath("cella.exe")?.path
 
 	fun lastOutput(celp: Path, entry: String?): Path? = outputs[celp to entry]?.takeIf { Files.isRegularFile(it) }
 

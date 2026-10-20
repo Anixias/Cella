@@ -28,11 +28,10 @@ import javax.swing.SwingUtilities
 object CellaSelection {
 	fun nodes(event: AnActionEvent): List<AbstractTreeNode<*>> {
 		val project = event.project ?: return emptyList()
-		val pane = SolutionExplorerViewPane.tryGetInstance(project) ?: return emptyList()
 		val component = event.getData(PlatformCoreDataKeys.CONTEXT_COMPONENT) ?: return emptyList()
-		val tree = pane.tree ?: return emptyList()
-		if (component !== tree && !SwingUtilities.isDescendingFrom(component, tree))
-			return emptyList()
+		val pane = listOfNotNull(CellaExplorer.tryGetInstance(project), SolutionExplorerViewPane.tryGetInstance(project))
+			.firstOrNull { pane -> pane.tree?.let { component === it || SwingUtilities.isDescendingFrom(component, it) } == true }
+			?: return emptyList()
 
 		return pane.getSelectedNodes()
 	}

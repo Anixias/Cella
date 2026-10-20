@@ -69,7 +69,10 @@
 		<stepsBeforeRunProvider implementation="com.anixias.cella.run.CellaBuildTaskProvider"/>
 
 		<solutionExplorerCustomization implementation="com.anixias.cella.projects.CellaSolutionExplorerCustomization"/>
+		<projectViewPane implementation="com.anixias.cella.projects.CellaExplorer" id="CellaExplorer"
+		                 order="first, before SolutionExplorer"/>
 		<newProjectWizard.generator implementation="com.anixias.cella.projects.CellaProjectWizard"/>
+		<projectOpenProcessor implementation="com.anixias.cella.projects.CellaProjectOpenProcessor" order="first"/>
 	</extensions>
 	
 	<actions>

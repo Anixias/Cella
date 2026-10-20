@@ -22,8 +22,9 @@ import org.eclipse.lsp4j.SemanticTokensParams
 import org.eclipse.lsp4j.TextDocumentIdentifier
 
 class CellaSemanticHighlighter(private val project: Project, private val server: CellaServer) {
+	private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.semantic.highlighters")
+
 	companion object {
-		private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.semantic.highlighters")
 		private val runnablesKey = Key.create<List<RunnableFunction>>("cella.runnables")
 		
 		fun runnableAt(document: Document, range: TextRange) = document.getUserData(runnablesKey)
