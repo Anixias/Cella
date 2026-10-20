@@ -63,7 +63,6 @@
 		<typedHandler implementation="com.anixias.cella.server.CellaTypedHandler"/>
 		
 		<configurationType implementation="com.anixias.cella.run.CellaConfigurationType"/>
-		<xdebugger.breakpointType implementation="com.anixias.cella.run.CellaLineBreakpointType"/>
 		<programRunner implementation="com.anixias.cella.run.CellaDebugRunner"/>
 		<runConfigurationProducer implementation="com.anixias.cella.run.CellaRunConfigurationProducer"/>
 		<runLineMarkerContributor language="Cella" implementationClass="com.anixias.cella.run.CellaRunLineMarker"/>
@@ -106,6 +105,7 @@
 	</actions>
 	
 	<extensions defaultExtensionNs="cidr.debugger">
+		<lineBreakpointFileTypesProvider implementation="com.anixias.cella.run.CellaBreakpointFileTypes"/>
 		<languageSupport language="Cella" implementationClass="com.anixias.cella.run.CellaDebuggerLanguageSupport"/>
 		<valueRendererFactory implementation="com.anixias.cella.run.CellaValueRendererFactory" order="first"/>
 	</extensions>

@@ -453,45 +453,6 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
-	public async Task ListsBreakableLines()
-	{
-		await File.WriteAllTextAsync(SourcePath, """
-		                                         mod test
-		                                         
-		                                         Point: rec
-		                                         {
-		                                         	x: i32
-		                                         }
-		                                         
-		                                         twice: fun(n: i32) -> i32 => n * 2
-		                                         
-		                                         main: fun -> i32
-		                                         {
-		                                         	// first
-		                                         	val p = Point(1)
-		                                         
-		                                         	var total = 0
-		                                         	for i in 0..3
-		                                         	{
-		                                         		total += i
-		                                         	}
-		                                         
-		                                         	ret total +
-		                                         		twice(p.x)
-		                                         }
-		                                         
-		                                         """, Token);
-		
-		await InitializeAsync();
-		var id = await RequestAsync("cella/breakableLines",
-			new JsonObject { ["textDocument"] = new JsonObject { ["uri"] = SourceUri } });
-		
-		var lines = ((JsonArray)(await ReadResponseAsync(id))["result"]!).Select(static line => (int)line!);
-		Assert.Equal([7, 12, 14, 15, 17, 20, 22], lines);
-		Assert.Equal(0, await ShutDownAsync());
-	}
-	
-	[Fact]
 	public async Task ListsRunnableFunctions()
 	{
 		await InitializeAsync();

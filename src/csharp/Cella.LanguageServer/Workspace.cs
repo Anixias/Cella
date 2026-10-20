@@ -173,23 +173,6 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		return (references, FindFile(projects, path)?.Syntax is FileNode file ? file.ContextualKeywords : []);
 	}
 	
-	public async Task<IReadOnlyList<int>> GetBreakableLinesAsync(string uri)
-	{
-		var path = Protocol.ToPath(uri);
-		var projects = (await GetCheckedProjectsAsync(path)).Projects;
-		var statements = ModelsOf(path, projects)
-			.Select(model => model.GetStatements(path))
-			.FirstOrDefault(static statements => statements.Count > 0) ?? [];
-		
-		return
-		[
-			..statements
-				.Select(static statement => Protocol.ToLineCharacter(statement.Source, statement.Range.Start).Line)
-				.Distinct()
-				.Order()
-		];
-	}
-	
 	public async Task<IReadOnlyList<(FunctionInfo Function, SourceLocation Name, bool IsMain)>> GetRunnablesAsync(
 		string uri)
 	{

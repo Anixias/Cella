@@ -26,9 +26,6 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 
 	companion object {
 		private val runnablesKey = Key.create<List<RunnableFunction>>("cella.runnables")
-		private val breakableLinesKey = Key.create<Set<Int>>("cella.breakableLines")
-		
-		fun breakableLines(document: Document) = document.getUserData(breakableLinesKey)
 		
 		fun runnableAt(document: Document, range: TextRange) = document.getUserData(runnablesKey)
 			?.firstOrNull { it.start == range.startOffset && it.end == range.endOffset }
@@ -80,15 +77,6 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		
 		document.putUserData(highlightersKey, added)
 		requestRunnables(document, uri, version)
-		requestBreakableLines(document, uri, version)
-	}
-	
-	private fun requestBreakableLines(document: Document, uri: String, version: Int) {
-		server.request { it.breakableLines(DocumentSymbolParams(TextDocumentIdentifier(uri))) }
-			.thenAccept { lines ->
-				if (lines != null && server.versionOf(uri) == version)
-					document.putUserData(breakableLinesKey, lines.toSet())
-			}
 	}
 	
 	private fun requestRunnables(document: Document, uri: String, version: Int) {

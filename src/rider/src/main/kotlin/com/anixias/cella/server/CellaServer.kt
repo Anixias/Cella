@@ -459,9 +459,6 @@ interface CellaLanguageServer : LanguageServer {
 	@JsonRequest("cella/runnables")
 	fun runnables(params: DocumentSymbolParams): CompletableFuture<List<CellaRunnable>>
 	
-	@JsonRequest("cella/breakableLines")
-	fun breakableLines(params: DocumentSymbolParams): CompletableFuture<List<Int>>
-	
 	@JsonRequest("cella/visibleGlobals")
 	fun visibleGlobals(params: TextDocumentPositionParams): CompletableFuture<List<CellaGlobal>>
 	

@@ -33,7 +33,6 @@ public sealed class SemanticModel
 	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
 	private readonly List<SourceLocation> _inactiveCalls = [];
-	private readonly Dictionary<string, List<SourceLocation>> _statements = new(_pathComparer);
 	
 	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
 		new(ReferenceEqualityComparer.Instance);
@@ -115,9 +114,6 @@ public sealed class SemanticModel
 		_references.Values.SelectMany(static references => references);
 	
 	public IReadOnlyList<SourceLocation> InactiveCalls => _inactiveCalls;
-	
-	public IReadOnlyList<SourceLocation> GetStatements(string path) =>
-		_statements.TryGetValue(path, out var statements) ? statements : [];
 	
 	public static SourceLocation? FindDeclaration(Symbol symbol)
 	{
@@ -237,7 +233,6 @@ public sealed class SemanticModel
 		if (node is IResolvedExpressionNode { Syntax: var syntax } && FindAccess(syntax) is { } accessed)
 			_accesses[accessed.Target] = accessed;
 		
-		AddStatement(node);
 		switch (node)
 		{
 			case ResolvedVarExpressionNode n:
@@ -390,27 +385,6 @@ public sealed class SemanticModel
 				
 				break;
 		}
-	}
-	
-	private void AddStatement(object node)
-	{
-		var location = node switch
-		{
-			ResolvedFunctionNode { Body: IResolvedStatementNode { Syntax: BlockStatementNode block } } =>
-				new SourceLocation(block.SourceLocation.Source,
-					new TextRange(block.SourceLocation.Range.End - 1, block.SourceLocation.Range.End)),
-			ResolvedFunctionNode { Body: IResolvedExpressionNode body } => body.Syntax.SourceLocation,
-			IResolvedStatementNode { Syntax: not BlockStatementNode and var syntax } => syntax.SourceLocation,
-			_ => (SourceLocation?)null
-		};
-		
-		if (location is not { Source.FilePath: { Length: > 0 } path, Range.IsValid: true } statement)
-			return;
-		
-		if (!_statements.TryGetValue(path, out var statements))
-			_statements[path] = statements = [];
-		
-		statements.Add(statement);
 	}
 	
 	private void AddGlobal(GlobalSymbol global, GlobalInfo? info)

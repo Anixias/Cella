@@ -147,9 +147,6 @@ public sealed class Server
 		"textDocument/completion" => () => CompleteAsync(parameters),
 		"textDocument/signatureHelp" => () => HelpSignatureAsync(parameters),
 		"cella/visibleGlobals" => () => FindVisibleGlobalsAsync(parameters),
-		"cella/breakableLines" => async () => new JsonArray([
-			..(await _workspace.GetBreakableLinesAsync(GetUri(parameters))).Select(static line => (JsonNode)line)
-		]),
 		"cella/valueAt" => () => FindValueAsync(parameters),
 		"cella/runnables" => async () => new JsonArray([
 			..(await _workspace.GetRunnablesAsync(GetUri(parameters))).Select(JsonNode (runnable) => new JsonObject
