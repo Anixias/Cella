@@ -1,0 +1,13 @@
+Error at main.ce:5:18
+4 │ {
+5 │     val limit = i32.maxValue
+                        ╘══════╛ 'maxValue' is private to its project
+                               | Declared in 'Number'
+
+Error at main.ce:7:12
+6 │ val count: i32 = 3
+7 │ ret count.doubled()
+              ╘═════╛ 'doubled' is private to its project
+                    | Declared in 'Number'
+
+[compilation failed]

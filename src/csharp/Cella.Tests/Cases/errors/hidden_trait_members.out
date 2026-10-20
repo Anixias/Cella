@@ -2,10 +2,12 @@ Error at main.ce:6:12
 5 │ val p = game.Point(3)
 6 │ val a = p.go()
               ╘╛ 'go' is private to its module
+               | Declared in 'Secret'
 
 Error at main.ce:7:12
 6 │ val a = p.go()
 7 │ val b = p.spot()
               ╘══╛ 'spot' is private to its file
+                 | Declared in 'Hidden'
 
 [compilation failed]

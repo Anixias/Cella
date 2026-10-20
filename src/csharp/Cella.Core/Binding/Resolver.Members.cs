@@ -631,9 +631,11 @@ public sealed partial class Resolver
 	private DiagnosticText? DescribeHiddenTraitMember(TypeSymbol type, string name) => _typePool.FindConformances(type)
 		.Select(static conformance => conformance.Trait)
 		.Where(trait => !CurrentResolutionContext.IsVisible(trait) &&
-		                (trait.GetFunctions(name).Any() || trait.GetProperty(name) is not null))
-		.Select(trait =>
-			$"'{name}' is private to its {DiagnosticReporter.DescribeScope(ModuleIndex.GetVisibility(trait), false)}")
+		                (trait.GetFunctions(name).Any() || trait.GetProperty(name) is not null ||
+		                 trait.GetConstant(name) is not null))
+		.Select(trait => new DiagnosticText(
+			$"'{name}' is private to its {DiagnosticReporter.DescribeScope(ModuleIndex.GetVisibility(trait), false)}",
+			$"Declared in '{trait.Name}'"))
 		.FirstOrDefault();
 	
 	private IEnumerable<string> GetMemberNames(TypeSymbol type) =>

@@ -1,0 +1,8 @@
+mod test
+
+main: fun -> i32
+{
+	val limit = i32.maxValue
+	val count: i32 = 3
+	ret count.doubled()
+}

@@ -1,0 +1,13 @@
+mod lib
+
+Number: trait req copy
+{
+	maxValue: const Self
+	doubled: fun(self) -> Self
+}
+
+i32: impl Number
+{
+	maxValue: const i32 = 0x7FFFFFFF
+	doubled: fun(self) -> i32 => self * 2
+}
