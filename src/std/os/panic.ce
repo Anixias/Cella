@@ -1,5 +1,4 @@
 mod std
-use core.numerics
 
 when windows
 {
@@ -53,9 +52,4 @@ panic: pub op(message: str, location: str) -> never
 	writeError(message)
 	writeError("\n")
 	crash()
-}
-
-f: fun
-{
-	var z = i32.maxValue
 }
