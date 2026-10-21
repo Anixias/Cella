@@ -49,6 +49,7 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		AttributesDescriptor("Variables//Constant", CellaColors.CONSTANT),
 		AttributesDescriptor("Variables//Global var", CellaColors.GLOBAL_VARIABLE),
 		AttributesDescriptor("Members//Field", CellaColors.FIELD),
+		AttributesDescriptor("Members//Property", CellaColors.PROPERTY),
 		AttributesDescriptor("Members//Enum case", CellaColors.ENUM_CASE)
 	)
 	
@@ -67,6 +68,7 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		"constant" to CellaColors.CONSTANT,
 		"global" to CellaColors.GLOBAL_VARIABLE,
 		"field" to CellaColors.FIELD,
+		"property" to CellaColors.PROPERTY,
 		"case" to CellaColors.ENUM_CASE,
 		"declaration" to CellaColors.DECLARATION_KEYWORD,
 		"modifier" to CellaColors.MODIFIER_KEYWORD,
@@ -97,6 +99,8 @@ class CellaColorSettingsPage : ColorSettingsPage {
 			<field>x</field>: i32
 
 			<method>length</method>: fun(imm self) -> f64 => 1.5e3
+
+			<property>doubled</property>: get(imm self) -> i32 => self.<field>x</field> * 2
 		}
 
 		<ref>View</ref>: ref <declaration>rec</declaration>

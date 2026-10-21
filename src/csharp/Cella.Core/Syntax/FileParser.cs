@@ -92,6 +92,10 @@ public sealed partial class FileParser
 	
 	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
 	
+	private static readonly HashSet<string> _declarationBlockWords = ["ext", "pub", "pvt", "mod", "when"];
+	
+	private static readonly HashSet<string> _declarationModifierWords = ["pub", "pvt", "mod", "ref", "own", "ext"];
+	
 	private readonly HashSet<IStatementNode> _brokenStatements = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _brokenDeclarations = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _declarationsWithErrors = new(ReferenceEqualityComparer.Instance);
@@ -102,7 +106,7 @@ public sealed partial class FileParser
 	private int attributedErrors;
 	private int droppedMembers;
 	private readonly List<Token> _droppedNames = [];
-	private readonly HashSet<TextRange> _inactiveRanges = [];
+	private readonly List<TextRange> _inactiveRanges = [];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
 		tokenTypes.ToDictionary(static t => t.Representation);
@@ -200,7 +204,7 @@ public sealed partial class FileParser
 	
 	private void ReportLexicalErrors(int start, int end)
 	{
-		for (var i = start; i < end && i < Tokens.Length; i++)
+		for (var i = start; i < end && i < Tokens.Length - (IsBounded ? 1 : 0); i++)
 		{
 			if (_lexicalReported[i])
 				continue;
@@ -349,7 +353,7 @@ public sealed partial class FileParser
 			    StartsTopLevelDeclaration(index))
 				Report(Tokens[index], "Expected a new line before the next declaration");
 			
-			if (ParseTopLevelDeclaration(ref index, declarations, null))
+			if (ParseTopLevelWithCuts(ref index, declarations, null))
 			{
 				errorsAfterDeclaration = Diagnostics.ErrorCount;
 				moduleNameAllowed = false;
@@ -388,6 +392,7 @@ public sealed partial class FileParser
 			InactiveCode =
 			[
 				.._inactiveRanges
+					.Distinct()
 					.OrderBy(static range => range.Start)
 					.Select(range => new SourceLocation(source, range))
 			],

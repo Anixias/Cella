@@ -55,7 +55,8 @@ object CellaColors {
 	val CONSTANT = key("CONSTANT", Rider.CONSTANT)
 	val GLOBAL_VARIABLE = key("GLOBAL_VARIABLE", Rider.STATIC_FIELD)
 	val FIELD = key("FIELD", Rider.FIELD)
-	val ENUM_CASE = key("ENUM_CASE", Rider.STATIC_FIELD)
+	val PROPERTY = key("PROPERTY", Rider.PROPERTY)
+	val ENUM_CASE = key("ENUM_CASE", Rider.CONSTANT)
 	val MODULE = key("MODULE", Rider.NAMESPACE)
 	
 	private fun key(name: String, fallback: TextAttributesKey) = createTextAttributesKey("CELLA_$name", fallback)

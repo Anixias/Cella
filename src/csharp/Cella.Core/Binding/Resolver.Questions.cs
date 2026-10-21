@@ -130,6 +130,7 @@ public sealed partial class Resolver
 			return isSound;
 		
 		_questionBodies[function] = true;
+		using var frame = Own(function);
 		var info = _signatures.GetFunctionInfo(function);
 		var previous = Diagnostics.Redirect(null);
 		var errors = Diagnostics.ErrorCount;
@@ -153,6 +154,20 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode ResolveInlineReturn(ReturnExpressionNode node, InlineReturn inline)
 	{
+		if (inline.Caller is null && node.Value is { } guessed &&
+		    CurrentResolutionContext.ContainingType is EnumSymbol owner)
+		{
+			var guess = OpenCheckpoint();
+			var resolvedGuess = VisitNode(guessed, owner);
+			if (!guess.HasErrors)
+			{
+				Rollback(guess);
+				return new ResolvedReturnExpressionNode(resolvedGuess, node) { HasUnknownTarget = true };
+			}
+			
+			Rollback(guess);
+		}
+		
 		var checkpoint = OpenCheckpoint();
 		if (inline.Caller is not { } caller)
 		{

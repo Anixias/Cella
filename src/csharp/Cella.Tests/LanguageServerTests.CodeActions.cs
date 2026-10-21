@@ -317,7 +317,8 @@ public sealed partial class LanguageServerTests
 	[InlineData("mod test\n\nBuffer: rec\n{\n\tsize: usize\n\n\tlength: get(self) -> usize => self.size\n\n" +
 	            "\tcount: prop usize\n\t{\n\t\tget(self) => self.size\n\t\tset(mut self, value) => self.size = value\n\t}\n}\n\n" +
 	            "main: fun -> i32\n{\n\tvar buffer = Buffer(3)\n\tbuffer.count = 4\n\tret i32(buffer.length + buffer.count)\n}\n",
-		"6:1:6 property declaration|8:1:5 property declaration|18:8:5 property|19:16:6 property|19:32:5 property")]
+		"6:1:6 property declaration accessor|8:1:5 property declaration accessor|18:8:5 property accessor|" +
+		"19:16:6 property accessor|19:32:5 property accessor")]
 	[InlineData("mod test\n\ncheck: fun(start: i32, finish: i32)\n{\n\tif start > finish\n}\n",
 		"4:4:5 parameter|4:12:6 parameter")]
 	[InlineData("mod test\n\ncheck: fun(start: i32, finish: i32)\n{\n\twhile start > finish\n\tval x =\n}\n",
@@ -329,6 +330,31 @@ public sealed partial class LanguageServerTests
 	            "\tfirst: fun(self) -> usize => self.length\n}\n",
 		"6:1:5 method declaration|8:1:5 method declaration")]
 	[InlineData("mod test\n\nslice:\n\nhelper: fun(start: i32) -> i32 => start\n", "4:0:6 function declaration")]
+	[InlineData("mod test.\n\nhelper: fun(start: i32) -> i32 => start\n",
+		"2:0:6 function declaration|2:12:5 parameter declaration")]
+	[InlineData("mod test\n\nPoint: rec\n{\n\tx: i32\n\n\tsum: fun(self) -> i32 => self.\n\n" +
+	            "\tdouble: fun(self) -> i32 => self.x * 2\n}\n",
+		"8:1:6 method declaration|8:34:1 property")]
+	[InlineData("mod test\n\nfirst: fun -> i32 => second().\n\nsecond: fun -> i32 => 1\n",
+		"2:21:6 function|4:0:6 function declaration")]
+	[InlineData("mod test\n\nmain: fun -> i32\n{\n\tvar count = 1\n\tval\n\tcount = 2\n\tret count\n}\n",
+		"6:1:5 variable|7:5:5 variable")]
+	[InlineData("mod test\n\nshow: fun(a: i32, b: i32) => a\n\nmain: fun -> i32\n{\n\tval a = 1\n" +
+	            "\tshow(\"\n\tshow(a, a)\n\tret 0\n}\n",
+		"8:1:4 function|8:6:1 variable readonly")]
+	[InlineData("mod test\n\nColor: enum\n{\n\tred\n\tgreen\n}\n\npick: fun(c: Color) -> i32\n{\n\tmatch c\n" +
+	            "\t{\n\t\tred\n\t\tgreen => ret 2\n\t}\n\tret 0\n}\n",
+		"10:7:1 parameter|13:2:5 enumMember")]
+	[InlineData("mod test\n\nShape: enum\n{\n\tdot\n\tcircle(radius: f64)\n}\n\n" +
+	            "size: fun(s: Shape) -> f64 => match s\n{\n\tdot => 0.0\n\tcircle(val r) => r\n}\n",
+		"5:8:6 property declaration|10:1:3 enumMember|11:1:6 enumMember")]
+	[InlineData("mod test\n\nBuffer: rec\n{\n\tsize: usize\n}.\n\nhelper: fun(b: Buffer) -> usize => b.size\n",
+		"2:0:6 struct declaration|7:37:4 property")]
+	[InlineData("mod test\n\nmain: fun -> i32 +\n{\n\tval count = 1\n\tret count\n}\n",
+		"4:5:5 variable declaration readonly|5:5:5 variable readonly")]
+	[InlineData("mod test\n\nOrd: trait req copy\n{\n\tcompare\n\t<: op(imm left: Self, imm right: Self) -> bool\n" +
+	            "\t[]: op(self, index: usize) -> bool\n}\n",
+		"5:11:4 parameter declaration|6:14:5 parameter declaration")]
 	[InlineData("mod test\n\nShape: enum\n{\n\tcircle\n}\n\nmatching: fun(shape: Shape)\n{\n\tmatch shape\n}\n",
 		"9:7:5 parameter")]
 	public async Task ClassifiesNamesInUnfinishedCode(string source, string expected)

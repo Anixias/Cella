@@ -26,6 +26,8 @@ public sealed class ResolvedIsExpressionNode
 public sealed class ResolvedPattern(EnumCaseSymbol? enumCase, IEnumerable<LocalVariableSymbol?> bindings)
 {
 	public EnumCaseSymbol? Case { get; } = enumCase;
+	public EnumSymbol? EnumType { get; init; }
+	public PatternNode? Syntax { get; init; }
 	public TypeSymbol? TestedType { get; init; }
 	public LocalVariableSymbol? TypeBinding { get; init; }
 	public TypeSymbol? Record { get; init; }

@@ -1,4 +1,5 @@
-﻿using Cella.Core.Text;
+﻿using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 
 namespace Cella.Core.Syntax;
 
@@ -230,7 +231,7 @@ public sealed partial class FileParser
 			if (IsOnSameLine(i))
 				continue;
 			
-			if (braces <= bracesAtError && StartsDeclarationInBody(i) ||
+			if (braces <= bracesAtError && (StartsDeclarationInBody(i) || StartsMemberDeclaration(i)) ||
 			    braces == 0 && brackets <= 0 && Tokens[i].Type != TokenType.OpOpenBrace &&
 			    !ExpressionParser.ContinuesExpression(Tokens[i].Type))
 			{
@@ -266,4 +267,190 @@ public sealed partial class FileParser
 	}
 	
 	private void ReportUnclosed(Token openBrace) => Report(openBrace, "Expected '}' to close this '{'");
+	
+	private readonly record struct ParseState
+	(
+		int Index,
+		int Diagnostics,
+		int Keywords,
+		int Attributed,
+		int Dropped,
+		int DroppedNames,
+		int Parsed,
+		int Inactive
+	);
+	
+	private delegate bool CutTest(int index, bool isOutside, int groups);
+	
+	private ParseState SaveState(int index) => new(index, Diagnostics.Mark, KeywordMark, attributedErrors,
+		droppedMembers, _droppedNames.Count, _parsedDeclarations.Count, _inactiveRanges.Count);
+	
+	private bool HasErrorsSince(ParseState state) => Diagnostics.HasErrorsSince(state.Diagnostics);
+	
+	private bool HasLexicalErrors(int start, int end)
+	{
+		for (var i = start; i < end && !AtEnd(i); i++)
+		{
+			if (Tokens[i].Error is not null)
+				return true;
+		}
+		
+		return false;
+	}
+	
+	private void RestoreState(ParseState state, int end)
+	{
+		Diagnostics.Rollback(state.Diagnostics);
+		RewindKeywords(state.Keywords);
+		attributedErrors = state.Attributed;
+		droppedMembers = state.Dropped;
+		_droppedNames.RemoveRange(state.DroppedNames, _droppedNames.Count - state.DroppedNames);
+		_parsedDeclarations.RemoveRange(state.Parsed, _parsedDeclarations.Count - state.Parsed);
+		_inactiveRanges.RemoveRange(state.Inactive, _inactiveRanges.Count - state.Inactive);
+		var offset = Tokens[state.Index].SourceLocation.Range.Start;
+		_brokenStatements.RemoveWhere(statement => statement.SourceLocation.Range.Start >= offset);
+		_brokenDeclarations.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
+		_declarationsWithErrors.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
+		var cleared = Math.Min(end + 1, _lexicalReported.Length) - state.Index;
+		if (cleared > 0)
+			Array.Clear(_lexicalReported, state.Index, cleared);
+	}
+	
+	private int? FindCut(int start, int end, bool includesEnd, CutTest test)
+	{
+		var candidates = new List<(int Index, bool IsOutside, int Groups)>();
+		var open = new Stack<(List<(int, bool, int)> Lines, bool HoldsCode)>();
+		var groups = 0;
+		for (var i = start + 1; i <= end && i <= Tokens.Length; i++)
+		{
+			switch (Tokens[i - 1].Type)
+			{
+				case TokenType.OpOpenBrace:
+					open.Push(([], !OpensDeclarations(i - 1)));
+					break;
+				
+				case TokenType.OpCloseBrace when open.Count == 0:
+					return FirstCut(candidates, test);
+				
+				case TokenType.OpCloseBrace:
+					open.Pop();
+					break;
+				
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+					groups++;
+					break;
+				
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket:
+					groups--;
+					break;
+			}
+			
+			if ((i < end || includesEnd && i == end) && !AtEnd(i) && StartsLine(i))
+				(open.TryPeek(out var inner) ? inner.Lines : candidates).Add((i, open.Count == 0, groups));
+		}
+		
+		candidates.AddRange(open.Where(static inner => inner.HoldsCode).SelectMany(static inner => inner.Lines));
+		return FirstCut(candidates, test);
+	}
+	
+	private bool OpensDeclarations(int brace)
+	{
+		var header = StartsLine(brace) ? brace - 1 : brace;
+		while (header > 0 && !StartsLine(header))
+			header--;
+		
+		if (_declarationBlockWords.Contains(Tokens[header].Text))
+			return true;
+		
+		var colon = header + 1;
+		if (Peek(colon, TokenType.OpOpenBracket))
+		{
+			var depth = 0;
+			for (; colon < brace; colon++)
+			{
+				if (Peek(colon, TokenType.OpOpenBracket))
+					depth++;
+				else if (Peek(colon, TokenType.OpCloseBracket) && --depth == 0)
+					break;
+			}
+			
+			colon++;
+		}
+		
+		if (!Peek(colon, TokenType.OpColon))
+			return false;
+		
+		var kind = colon + 1;
+		while (kind < brace && _declarationModifierWords.Contains(Tokens[kind].Text))
+			kind++;
+		
+		return kind < brace && _nestedKinds.Contains(Tokens[kind].Text);
+	}
+	
+	private static int? FirstCut(List<(int Index, bool IsOutside, int Groups)> candidates, CutTest test) =>
+		candidates.OrderBy(static candidate => candidate.Index)
+			.Where(candidate => test(candidate.Index, candidate.IsOutside, candidate.Groups))
+			.Select(static candidate => (int?)candidate.Index)
+			.FirstOrDefault();
+	
+	private bool StartsDeclarationCut(int index, bool isOutside, int groups) =>
+		StartsMemberDeclaration(index) || StartsDeclarationInBody(index) ||
+		isOutside && groups <= 0 && StartsDeclarationOnLine(index);
+	
+	private bool StartsStatementCut(int index)
+	{
+		if (Tokens[index].Type is TokenType.OpOpenBrace or TokenType.KeywordElse ||
+		    ExpressionParser.ContinuesExpression(Tokens[index].Type))
+			return false;
+		
+		var state = SaveState(index);
+		var end = index;
+		bool parsed;
+		try
+		{
+			parsed = ParseStatement(ref end) is not null && !HasErrorsSince(state) &&
+			         (!IsOnSameLine(end) || Peek(end, TokenType.OpCloseBrace));
+		}
+		catch (ParseException)
+		{
+			parsed = false;
+		}
+		
+		RestoreState(state, end);
+		return parsed;
+	}
+	
+	private int? FindDeclarationCut(int start, int end, ParseState state, bool parsed, bool allowsComma)
+	{
+		var trails = parsed && IsOnSameLine(end) && !Peek(end, TokenType.OpCloseBrace) &&
+		             !(allowsComma && Peek(end, TokenType.OpComma));
+		
+		return HasErrorsSince(state) || trails || HasLexicalErrors(start, end)
+			? FindCut(start, end, !parsed, StartsDeclarationCut)
+			: null;
+	}
+	
+	private bool ParseTopLevelWithCuts(ref int index, List<IDeclarationNode> declarations, Token? block,
+		bool insideBraces = false)
+	{
+		var start = index;
+		var count = declarations.Count;
+		var state = SaveState(index);
+		var parsed = ParseTopLevelDeclaration(ref index, declarations, block, insideBraces);
+		if (FindDeclarationCut(start, index, state, parsed, false) is not { } cut)
+			return parsed;
+		
+		RestoreState(state, index);
+		declarations.RemoveRange(count, declarations.Count - count);
+		index = start;
+		var tokens = Bound(cut);
+		try
+		{
+			return ParseTopLevelDeclaration(ref index, declarations, block, insideBraces);
+		}
+		finally
+		{
+			Unbind(tokens);
+		}
+	}
 }

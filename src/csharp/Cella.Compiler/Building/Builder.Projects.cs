@@ -19,7 +19,7 @@ public sealed partial class Builder
 		List<(Token Name, Symbol Symbol)> names, TypePool typePool, SignatureCollector signatures)
 	{
 		var model = new SemanticModel(files, names, typePool.NeedsDrop, signatures.FindFunctionInfo,
-			signatures.GetGlobalInfo, signatures.DescribeTypeConstant);
+			signatures.GetGlobalInfo, signatures.DescribeTypeConstant, typePool.GetCaseValue);
 		
 		return new(() => model);
 	}

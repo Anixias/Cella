@@ -32,7 +32,7 @@ public sealed partial class FileParser
 				continue;
 			}
 			
-			if (ParseTopLevelDeclaration(ref index, declarations, block, true))
+			if (ParseTopLevelWithCuts(ref index, declarations, block, true))
 				continue;
 			
 			RecoverTopLevel(ref index, true);

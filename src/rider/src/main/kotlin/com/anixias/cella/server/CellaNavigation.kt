@@ -20,6 +20,7 @@ import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.colors.TextAttributesKey
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.event.EditorMouseListener
 import com.intellij.openapi.editor.event.EditorMouseMotionListener
@@ -40,9 +41,10 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.util.PsiTreeUtil
 import org.eclipse.lsp4j.DefinitionParams
-import org.eclipse.lsp4j.HoverParams
 import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.SemanticTokensLegend
 import org.eclipse.lsp4j.TextDocumentIdentifier
+import org.eclipse.lsp4j.TextDocumentPositionParams
 import java.net.URI
 import java.nio.file.Path
 
@@ -188,28 +190,45 @@ class CellaDocumentationTarget(private val element: PsiElement, private val insi
 		} ?: return null
 		
 		val server = CellaServer.get(project)
-		val hover = server.await(server.request {
-			it.textDocumentService.hover(HoverParams(TextDocumentIdentifier(uri), position))
+		val description = server.await(server.request {
+			it.describe(TextDocumentPositionParams(TextDocumentIdentifier(uri), position))
 		}) ?: return null
 		
-		val code = hover.contents?.right?.value ?: return null
-		return DocumentationMarkup.DEFINITION_START + highlightSignature(code) + DocumentationMarkup.DEFINITION_END
+		val names = semanticColors(description, server.legend)
+		return DocumentationMarkup.DEFINITION_START + highlightSignature(description.text, names) +
+			DocumentationMarkup.DEFINITION_END
 	}
 	
-	private fun highlightSignature(code: String): String {
+	private fun semanticColors(description: CellaDescription, legend: SemanticTokensLegend?): Map<Int, TextAttributesKey> {
+		val colors = mutableMapOf<Int, TextAttributesKey>()
+		val tokens = description.tokens
+		for (index in 0 until tokens.size - 3 step 4) {
+			val start = tokens[index]
+			val type = legend?.tokenTypes?.getOrNull(tokens[index + 2]) ?: continue
+			val modifiers = legend.tokenModifiers.filterIndexed { bit, _ -> tokens[index + 3] and (1 shl bit) != 0 }.toSet()
+			val text = description.text.substring(start, (start + tokens[index + 1]).coerceAtMost(description.text.length))
+			CellaSemanticHighlighter.colorOf(type, modifiers, text)?.let { colors[start] = it }
+		}
+		
+		return colors
+	}
+	
+	private fun highlightSignature(code: String, names: Map<Int, TextAttributesKey>): String {
 		val scanner = CellaScanner()
 		scanner.start(code, 0, code.length, CellaScanner.NORMAL)
 		val tokens = mutableListOf<Pair<CellaToken, String>>()
+		val starts = mutableListOf<Int>()
 		while (true) {
 			val type = scanner.tokenType ?: break
 			tokens += type to code.substring(scanner.tokenStart, scanner.tokenEnd)
+			starts += scanner.tokenStart
 			scanner.advance()
 		}
 		
 		val html = StringBuilder()
 		for ((index, token) in tokens.withIndex()) {
 			val (type, text) = token
-			val key = if (type == CellaToken.IDENTIFIER && namesKind(tokens, index))
+			val key = names[starts[index]] ?: if (type == CellaToken.IDENTIFIER && namesKind(tokens, index))
 				CellaScanner.keywordCategory(text)?.let(CellaHighlighter::colorOf)
 			else
 				CellaHighlighter.colorOf(type)

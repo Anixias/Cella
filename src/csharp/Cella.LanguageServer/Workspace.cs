@@ -151,7 +151,11 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		RequestCheck();
 	}
 	
-	public async Task<SymbolReference?> FindAsync(string uri, int line, int character, CancellationToken ct)
+	public async Task<SymbolReference?> FindAsync(string uri, int line, int character, CancellationToken ct) =>
+		(await FindInModelAsync(uri, line, character, ct))?.Reference;
+	
+	public async Task<(SymbolReference Reference, SemanticModel Model)?> FindInModelAsync(string uri, int line,
+		int character, CancellationToken ct)
 	{
 		var path = Protocol.ToPath(uri);
 		var (projects, text) = await GetCheckedProjectsAsync(path, ct);
@@ -160,9 +164,13 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			return null;
 		
 		var offset = Protocol.ToOffset(text, line, character);
-		return ModelsOf(path, projects)
-			.Select(model => model.Find(path, offset))
-			.FirstOrDefault(static reference => reference is not null);
+		foreach (var model in ModelsOf(path, projects))
+		{
+			if (model.Find(path, offset) is { } reference)
+				return (reference, model);
+		}
+		
+		return null;
 	}
 	
 	public async Task<(IReadOnlyList<SymbolReference> References, ImmutableArray<Token> Keywords)> GetTokensAsync(

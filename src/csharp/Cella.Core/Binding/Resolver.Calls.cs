@@ -607,7 +607,7 @@ public sealed partial class Resolver
 	{
 		var types = expected.ToList();
 		if (node is VarExpressionNode name)
-			ProbeName(name.Identifier, hint ?? (types.Distinct().ToList() is [var only] ? only : null));
+			ProbeName(name.Identifier, hint ?? (types.Distinct().ToList() is [var only] ? only : null), types);
 		
 		return VisitCaseName(node, types) ?? ReportMisspelledCase(node, types) ??
 			(hint is null ? VisitArgument(node) : VisitHinted(node, hint));

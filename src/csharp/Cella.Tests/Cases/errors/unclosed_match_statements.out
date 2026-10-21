@@ -4,11 +4,10 @@ Error at unclosed_match_statements.ce:17:3
      ╘═══╛ Expected '}'
          | To match the '{' on line 14
 
-Error at unclosed_match_statements.ce:28:2
-27 │     b => ret 2
-28 │ ret 3
-     ╘═╛ Expected '}'
-       | To match the '{' on line 25
+Error at unclosed_match_statements.ce:25:2
+24 │ match t
+25 │ {
+     ^ Expected '}' to close this '{'
 
 Error at unclosed_match_statements.ce:31:21
 30 │ 

@@ -18,7 +18,10 @@ public sealed partial class FileParser
 		if (MissesBody(index))
 		{
 			ReportMissing(index, "'{'");
-			return null;
+			if (!IsOnSameLine(index))
+				return null;
+			
+			SkipToLineEnd(ref index);
 		}
 		
 		var members = new List<IDeclarationNode>();
@@ -37,6 +40,12 @@ public sealed partial class FileParser
 			IsUnion = isUnion,
 			IsOwn = isOwn
 		};
+	}
+	
+	private void SkipToLineEnd(ref int index)
+	{
+		while (IsOnSameLine(index) && !Peek(index, TokenType.OpOpenBrace))
+			index++;
 	}
 	
 	private bool MissesBody(int index) =>
@@ -113,6 +122,12 @@ public sealed partial class FileParser
 				ReportExpected(index, "'+'");
 				return null;
 			}
+		}
+		
+		if (IsOnSameLine(index) && !Peek(index, TokenType.OpOpenBrace))
+		{
+			ReportExpected(index, "'{'");
+			SkipToLineEnd(ref index);
 		}
 		
 		var members = new List<IDeclarationNode>();
@@ -223,16 +238,23 @@ public sealed partial class FileParser
 			}
 			
 			var start = index;
+			var state = SaveState(index);
 			var window = OpenErrorWindow(index);
-			IDeclarationNode? member;
-			try
+			var member = TryParseMember(ref index, block);
+			var cut = FindDeclarationCut(start, index, state, member is not null, true);
+			if (cut is not null)
 			{
-				member = ParseMember(ref index, block);
-			}
-			catch (ParseException e) when (!e.IsNesting)
-			{
-				AddParseError(e);
-				member = null;
+				RestoreState(state, index);
+				index = start;
+				var tokens = Bound(cut.Value);
+				try
+				{
+					member = TryParseMember(ref index, block);
+				}
+				finally
+				{
+					Unbind(tokens);
+				}
 			}
 			
 			RecordSyntaxErrors(member, window, index);
@@ -242,11 +264,29 @@ public sealed partial class FileParser
 				continue;
 			}
 			
-			if (ResyncMember(ref index, start))
+			if (cut is not null)
+			{
+				droppedMembers++;
+				index = cut.Value;
+			}
+			else if (ResyncMember(ref index, start))
 				return false;
 		}
 		
 		return true;
+	}
+	
+	private IDeclarationNode? TryParseMember(ref int index, Token? block)
+	{
+		try
+		{
+			return ParseMember(ref index, block);
+		}
+		catch (ParseException e) when (!e.IsNesting)
+		{
+			AddParseError(e);
+			return null;
+		}
 	}
 	
 	private EnumNode? ParseEnum(ref int index, Token identifier, DeclarationModifiers modifiers, bool isExternal,
@@ -283,7 +323,10 @@ public sealed partial class FileParser
 		if (MissesBody(index))
 		{
 			ReportMissing(index, "'{'");
-			return null;
+			if (!IsOnSameLine(index))
+				return null;
+			
+			SkipToLineEnd(ref index);
 		}
 		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))

@@ -471,6 +471,14 @@ public sealed partial class FileParser
 		else
 			origin = null;
 		
+		if (IsOnSameLine(index) && !Peek(index, TokenType.OpOpenBrace) && !Peek(index, TokenType.Identifier))
+		{
+			ReportExpected(index, "'{'");
+			SkipToLineEnd(ref index);
+			if (!Peek(index, TokenType.OpOpenBrace))
+				return null;
+		}
+		
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			return ParseExternalDeclaration(ref index, origin, block) is { } single ? [single] : null;
 		

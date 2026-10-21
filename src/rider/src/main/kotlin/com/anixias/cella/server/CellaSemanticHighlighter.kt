@@ -31,6 +31,37 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		
 		fun runnableAt(document: Document, range: TextRange) = document.getUserData(runnablesKey)
 			?.firstOrNull { it.start == range.startOffset && it.end == range.endOffset }
+		
+		fun colorOf(type: String, modifiers: Set<String>, text: String): TextAttributesKey? = when (type) {
+			"struct" -> when {
+				"drop" in modifiers -> CellaColors.DROP_TYPE
+				"ref" in modifiers -> CellaColors.REF_RECORD
+				else -> CellaColors.RECORD
+			}
+			
+			"enum" -> CellaColors.ENUM
+			"interface" -> CellaColors.TRAIT
+			"typeParameter" -> CellaColors.TYPE_PARAMETER
+			"type" -> CellaColors.TYPE
+			"function" -> CellaColors.FUNCTION
+			"method" -> CellaColors.METHOD
+			"parameter" -> CellaColors.PARAMETER
+			"variable" -> when {
+				"static" in modifiers && "readonly" in modifiers -> CellaColors.CONSTANT
+				"static" in modifiers -> CellaColors.GLOBAL_VARIABLE
+				"readonly" in modifiers -> CellaColors.LOCAL_VALUE
+				else -> CellaColors.LOCAL_VARIABLE
+			}
+			
+			"property" -> if ("accessor" in modifiers) CellaColors.PROPERTY else CellaColors.FIELD
+			"enumMember" -> CellaColors.ENUM_CASE
+			"namespace" -> CellaColors.MODULE
+			"keyword" -> when {
+				"defaultLibrary" in modifiers -> CellaColors.BUILTIN_TYPE
+				else -> CellaScanner.keywordCategory(text)?.let(CellaHighlighter::colorOf)
+			}
+			else -> null
+		}
 	}
 	
 	fun request(document: Document, uri: String, version: Int) {
@@ -116,36 +147,4 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 	}
 	
 	data class RunnableFunction(val start: Int, val end: Int, val name: String, val isMain: Boolean)
-	
-
-	private fun colorOf(type: String, modifiers: Set<String>, text: String): TextAttributesKey? = when (type) {
-		"struct" -> when {
-			"drop" in modifiers -> CellaColors.DROP_TYPE
-			"ref" in modifiers -> CellaColors.REF_RECORD
-			else -> CellaColors.RECORD
-		}
-		
-		"enum" -> CellaColors.ENUM
-		"interface" -> CellaColors.TRAIT
-		"typeParameter" -> CellaColors.TYPE_PARAMETER
-		"type" -> CellaColors.TYPE
-		"function" -> CellaColors.FUNCTION
-		"method" -> CellaColors.METHOD
-		"parameter" -> CellaColors.PARAMETER
-		"variable" -> when {
-			"static" in modifiers && "readonly" in modifiers -> CellaColors.CONSTANT
-			"static" in modifiers -> CellaColors.GLOBAL_VARIABLE
-			"readonly" in modifiers -> CellaColors.LOCAL_VALUE
-			else -> CellaColors.LOCAL_VARIABLE
-		}
-		
-		"property" -> CellaColors.FIELD
-		"enumMember" -> CellaColors.ENUM_CASE
-		"namespace" -> CellaColors.MODULE
-		"keyword" -> when {
-			"defaultLibrary" in modifiers -> CellaColors.BUILTIN_TYPE
-			else -> CellaScanner.keywordCategory(text)?.let(CellaHighlighter::colorOf)
-		}
-		else -> null
-	}
 }

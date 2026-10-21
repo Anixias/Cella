@@ -9,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.jetbrains.rider.projectView.views.SolutionViewNode
 import com.jetbrains.rider.projectView.views.SolutionViewPaneBase
 import com.jetbrains.rider.projectView.views.SolutionViewRootNodeBase
 import com.jetbrains.rider.projectView.views.getChildrenForSolutionView
@@ -76,11 +77,13 @@ class CellaExplorer(project: Project) : SolutionViewPaneBase(project, CellaExplo
 class CellaExplorerRootNode(project: Project) : SolutionViewRootNodeBase(project) {
 	override fun createComparator(): Comparator<AbstractTreeNode<*>> {
 		val nodes = super.createComparator()
-		return Comparator { left, right ->
-			val leftFirst = left is CellaReferencesNode
-			val rightFirst = right is CellaReferencesNode
-			if (leftFirst != rightFirst) (if (leftFirst) -1 else 1) else nodes.compare(left, right)
-		}
+		return compareBy<AbstractTreeNode<*>> { rankOf(it) }.then(nodes)
+	}
+
+	private fun rankOf(node: AbstractTreeNode<*>) = when {
+		node is CellaReferencesNode -> 0
+		node is CellaProjectNode || node is SolutionViewNode<*> && node.virtualFile?.isDirectory == true -> 1
+		else -> 2
 	}
 
 	override fun calculateChildren(): MutableList<AbstractTreeNode<*>> {

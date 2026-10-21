@@ -168,7 +168,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	
 	private bool IsNextNewline(int next)
 	{
-		if (bracketDepth > 0 || AtEnd(next - 1) || AtEnd(next))
+		if (bracketDepth > 0 || AtEnd(next - 1) || next >= Tokens.Length)
 			return false;
 		
 		return Tokens[next - 1].Line != Tokens[next].Line;
@@ -898,8 +898,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 				ParseWhenArms(ref index, when, arms);
 			else if (AtEnd(index) || TokenSets.StatementKeywords.Contains(Tokens[index].Type))
 				throw Expected(index, "'}'", openBrace);
-			else
+			else if (!CanRecover)
 				arms.Add(WithDepth(ref index, 0, ParseMatchArm));
+			else
+			{
+				var armStart = index;
+				try
+				{
+					arms.Add(WithDepth(ref index, 0, ParseMatchArm));
+				}
+				catch (ParseException e) when (!e.IsNesting)
+				{
+					Recover(e.Diagnostic);
+					index = FindNextArm(armStart);
+					continue;
+				}
+			}
 			
 			SeparateArms(ref index);
 		}

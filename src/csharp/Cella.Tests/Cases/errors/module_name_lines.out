@@ -11,4 +11,9 @@ Error at number.ce:1:10
 1 │ mod test.5
              ^ Expected a name after '.'
 
+Hint at number.ce:3:1
+2 │ 
+3 │ first: fun -> i32 => 0
+    ╘═══╛ 'first' is never used
+
 [compilation failed]

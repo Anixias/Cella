@@ -419,7 +419,7 @@ public sealed partial class SignatureCollector
 			(parameter.SourceLocation, "Cannot take parameters in '?' operators with 'self'"),
 		{ ReturnType: null } => (node.Identifier.SourceLocation, "'?' operators need a return type"),
 		{ Body: not ExpressionStatementNode } =>
-			(node.Identifier.SourceLocation, "'?' operators need '=' and a value"),
+			(node.Identifier.SourceLocation, "'?' operators must have an expression body"),
 		_ => null
 	};
 	

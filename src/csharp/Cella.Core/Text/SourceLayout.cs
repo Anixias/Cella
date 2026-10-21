@@ -13,6 +13,14 @@ public static class SourceLayout
 		return "\n";
 	}
 	
+	public static int FindLineEnd(this ISource source, int position)
+	{
+		while (position < source.Length && source[position] is not ('\r' or '\n'))
+			position++;
+		
+		return position;
+	}
+	
 	public static int FindLineStart(this ISource source, int position)
 	{
 		while (position > 0 && source[position - 1] != '\n')

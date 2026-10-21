@@ -41,7 +41,8 @@ public sealed partial class FileParser
 			};
 		}
 		
-		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
+		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace) &&
+		    !SkipToBody(ref index, out openBraceToken, "'=>' or '{'"))
 		{
 			if (!allowsMissingBodies)
 			{
@@ -73,6 +74,19 @@ public sealed partial class FileParser
 			TypeParameters = [..typeParameters],
 			When = when
 		};
+	}
+	
+	private bool SkipToBody(ref int index, out Token openBrace, string expected)
+	{
+		openBrace = default;
+		var skipped = index;
+		SkipToLineEnd(ref skipped);
+		if (skipped == index || !Match(ref skipped, out openBrace, TokenType.OpOpenBrace))
+			return false;
+		
+		ReportExpected(index, expected);
+		index = skipped;
+		return true;
 	}
 	
 	private bool EndsDeclaration(int index) => !IsOnSameLine(index) || Peek(index, TokenType.OpCloseBrace);

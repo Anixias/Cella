@@ -35,7 +35,7 @@ public sealed partial class FileParser
 			if (isOnSameLine)
 				ResyncTopLevel(ref index);
 			
-			return null;
+			break;
 		}
 		
 		return new(parts.ToImmutableArray());

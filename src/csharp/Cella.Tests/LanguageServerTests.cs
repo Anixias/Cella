@@ -669,7 +669,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		Assert.Contains("4:26:2 parameter declaration", tokens);
 		Assert.Contains("7:41:4 function", tokens);
 		Assert.Contains("7:46:8 parameter", tokens);
-		Assert.Contains("7:55:4 property", tokens);
+		Assert.Contains("7:55:4 property accessor", tokens);
 		Assert.Contains("7:61:8 parameter", tokens);
 		Assert.Contains("12:22:6 parameter declaration", tokens);
 		Assert.Contains("12:45:1 property", tokens);
@@ -2148,6 +2148,104 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 			.Replace("ARM", "Color.gr"));
 		
 		Assert.Equal(["green", "red"], ItemsOf(await AskAsync("textDocument/completion", 14, 10)).Keys.Order());
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesBareCasesForEnumTargets()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      Color: enum
+		                      {
+		                      	red
+		                      	green
+		                      }
+		                      
+		                      paint: fun(c: Color) -> i32 => 0
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	val c: Color = TARGET
+		                      	ret paint(ARGUMENT)
+		                      }
+		                      
+		                      """;
+		
+		await InitializeAsync();
+		await SetTextAsync(source.Replace("TARGET", "gr").Replace("ARGUMENT", "c"));
+		var items = ItemsOf(await AskAsync("textDocument/completion", 12, 18));
+		Assert.Equal("Color.green", (string)items["green"]["detail"]!);
+		Assert.StartsWith("0", (string)items["green"]["sortText"]!);
+		
+		await SetTextAsync(source.Replace("TARGET", "Color.red").Replace("ARGUMENT", "r"));
+		Assert.Contains("red", ItemsOf(await AskAsync("textDocument/completion", 13, 12)).Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task DescribesPropertyTypesInCompletion()
+	{
+		await InitializeAsync();
+		await SetTextAsync("""
+		                   mod test
+		                   
+		                   Buffer: rec
+		                   {
+		                   	size: usize
+		                   	
+		                   	length: get(self) -> usize => self.size
+		                   }
+		                   
+		                   main: fun -> i32
+		                   {
+		                   	val buffer = Buffer(3)
+		                   	ret i32(buffer.le)
+		                   }
+		                   
+		                   """);
+		
+		var items = ItemsOf(await AskAsync("textDocument/completion", 12, 18));
+		Assert.Equal(": prop usize", (string)items["length"]["labelDetails"]!["detail"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task DescribesEnumCases()
+	{
+		var legend = (await InitializeAsync())["semanticTokensProvider"]!["legend"]!;
+		var types = ((JsonArray)legend["tokenTypes"]!).Select(static type => (string)type!).ToArray();
+		await OpenSourceAsync("""
+		                      mod test
+		                      
+		                      Shape: enum
+		                      {
+		                      	dot
+		                      	circle(radius: f64) = 4
+		                      }
+		                      
+		                      Flags: enum
+		                      {
+		                      	none
+		                      	low = 1 + 1
+		                      }
+		                      
+		                      main: fun -> i32 => 0
+		                      
+		                      """);
+		
+		Assert.Equal(Code("Shape.dot = 0"), await HoverAsync(4, 1));
+		Assert.Equal(Code("Shape.circle(radius: f64) = 4"), await HoverAsync(5, 1));
+		Assert.Equal(Code("Flags.low = 1 + 1\n= 2"), await HoverAsync(11, 1));
+		Assert.Equal(Code("radius: f64"), await HoverAsync(5, 8));
+		
+		var described = (await AskAsync("cella/describe", 5, 1))!;
+		Assert.Equal("Shape.circle(radius: f64) = 4", (string)described["text"]!);
+		Assert.Equal(["0:5 enum", "6:6 enumMember", "13:6 property"],
+			((JsonArray)described["tokens"]!).Select(static value => (int)value!).Chunk(4)
+			.Select(token => $"{token[0]}:{token[1]} {types[token[2]]}"));
+		
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

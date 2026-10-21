@@ -8,7 +8,9 @@ namespace Cella.Core.Syntax;
 public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? contextualKeywords = null)
 	: IParser<T>
 {
-	protected readonly ImmutableArray<Token> Tokens = tokens;
+	private readonly int _tokenCount = tokens.Length;
+	
+	protected ImmutableArray<Token> Tokens { get; private set; } = tokens;
 	protected readonly List<Token> ContextualKeywords = contextualKeywords ?? [];
 	
 	public abstract T? Parse(ref int index);
@@ -25,12 +27,36 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 	
 	protected static string DescribeReservedWord(Token token) => $"'{token.Text}' is a keyword";
 	
-	protected bool StartsMemberDeclaration(int index) =>
-		index > 0 && !AtEnd(index + 2) && Tokens[index].Line != Tokens[index - 1].Line &&
-		Tokens[index].Text is [var first, ..] && (char.IsLetter(first) || first == '_') &&
-		Peek(index + 1, TokenType.OpColon) && Tokens[index + 2].Line == Tokens[index].Line &&
-		TokenSets.MemberKinds.Contains(Tokens[index + 2].Text) &&
-		!(Tokens[index + 2].Type == TokenType.KeywordFun && Peek(index + 3, TokenType.OpOpenBracket));
+	protected bool IsBounded => Tokens.Length < _tokenCount;
+	
+	protected ImmutableArray<Token> Bound(int limit)
+	{
+		var tokens = Tokens;
+		var cut = tokens[limit].SourceLocation;
+		Tokens =
+		[
+			..tokens.AsSpan(0, limit), Token.EndOfFile(cut.Source, cut.Range.Start) with { SourceLocation = cut }
+		];
+		
+		return tokens;
+	}
+	
+	protected void Unbind(ImmutableArray<Token> tokens) => Tokens = tokens;
+	
+	protected bool StartsMemberDeclaration(int index)
+	{
+		if (index <= 0 || AtEnd(index) || Tokens[index].Line == Tokens[index - 1].Line)
+			return false;
+		
+		var colon = Peek(index, TokenType.OpOpenBracket) && Peek(index + 1, TokenType.OpCloseBracket)
+			? index + 2
+			: index + 1;
+		
+		var kind = colon + 1;
+		return Peek(colon, TokenType.OpColon) && !AtEnd(kind) && Tokens[kind].Line == Tokens[index].Line &&
+		       TokenSets.MemberKinds.Contains(Tokens[kind].Text) &&
+		       !(Tokens[kind].Type == TokenType.KeywordFun && Peek(kind + 1, TokenType.OpOpenBracket));
+	}
 	
 	protected void EnsureStack(int index)
 	{
@@ -77,7 +103,31 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 				$"Expected ',' or a new line before the next {item}"));
 	}
 	
-	protected bool StartsLine(int index) => index > 0 && !AtEnd(index) && Tokens[index - 1].Line != Tokens[index].Line;
+	protected int FindNextArm(int start)
+	{
+		var braces = 0;
+		for (var i = start + 1; !AtEnd(i); i++)
+		{
+			switch (Tokens[i - 1].Type)
+			{
+				case TokenType.OpOpenBrace:
+					braces++;
+					break;
+				
+				case TokenType.OpCloseBrace:
+					braces--;
+					break;
+			}
+			
+			if (braces <= 0 && (Peek(i, TokenType.OpCloseBrace) || StartsLine(i)))
+				return i;
+		}
+		
+		return Tokens.Length - 1;
+	}
+	
+	protected bool StartsLine(int index) =>
+		index > 0 && index < Tokens.Length && Tokens[index - 1].Line != Tokens[index].Line;
 	
 	protected virtual void ReportSeparatorError(Diagnostic diagnostic) => throw new ParseException(diagnostic);
 	

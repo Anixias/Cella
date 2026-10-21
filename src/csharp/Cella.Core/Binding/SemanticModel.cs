@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Immutable;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -33,8 +34,10 @@ public sealed class SemanticModel
 	private readonly Func<FunctionSymbol, FunctionInfo?>? _functions;
 	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
+	private readonly Func<EnumSymbol, EnumCaseSymbol, BigInteger>? _caseValues;
 	private readonly List<SourceLocation> _inactiveCalls = [];
 	private readonly Lazy<Dictionary<string, Dictionary<TextRange, List<SymbolReference>>>> _usages;
+	private readonly Lazy<Dictionary<string, SymbolReference>> _types;
 	
 	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
 		new(ReferenceEqualityComparer.Instance);
@@ -42,13 +45,16 @@ public sealed class SemanticModel
 	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names,
 		Func<TypeSymbol, bool>? needsDrop = null, Func<FunctionSymbol, FunctionInfo?>? functions = null,
 		Func<GlobalSymbol, GlobalInfo?>? globals = null,
-		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null)
+		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null,
+		Func<EnumSymbol, EnumCaseSymbol, BigInteger>? caseValues = null)
 	{
 		_needsDrop = needsDrop;
 		_functions = functions;
 		_globals = globals;
 		_typeConstants = typeConstants;
+		_caseValues = caseValues;
 		_usages = new(IndexUsages);
+		_types = new(IndexTypes);
 		foreach (var file in files)
 			Walk(file);
 		
@@ -124,6 +130,20 @@ public sealed class SemanticModel
 		byRange.TryGetValue(declaration.Range, out var usages)
 			? usages
 			: [];
+	
+	public SymbolReference? FindType(string name) => _types.Value.GetValueOrDefault(name);
+	
+	private Dictionary<string, SymbolReference> IndexTypes()
+	{
+		var types = new Dictionary<string, SymbolReference>();
+		foreach (var reference in GetReferences())
+		{
+			if (reference.Symbol is NamedTypeSymbol or TraitSymbol or TraitType or TypeParameterSymbol)
+				types.TryAdd(reference.Location.GetText().ToString(), reference);
+		}
+		
+		return types;
+	}
 	
 	private Dictionary<string, Dictionary<TextRange, List<SymbolReference>>> IndexUsages()
 	{
@@ -362,6 +382,7 @@ public sealed class SemanticModel
 				foreach (var binding in pattern.Bindings.Append(pattern.TypeBinding).OfType<LocalVariableSymbol>())
 					AddLocal(binding);
 				
+				AddPatternNames(pattern);
 				break;
 			
 			case ResolvedFunctionNode { Syntax: FunctionNode } n:
@@ -386,7 +407,7 @@ public sealed class SemanticModel
 				foreach (var field in n.Symbol.Members.OfType<FieldSymbol>())
 				{
 					if (field.Node is { } fieldNode)
-						Add(fieldNode.Identifier, field, $"{field.Name}: {fieldNode.Type.SourceLocation.GetText()}");
+						Add(fieldNode.Identifier, field, DescribeField(field));
 				}
 				
 				AddProperties(n.Symbol.Properties);
@@ -396,7 +417,14 @@ public sealed class SemanticModel
 				AddType(n.Symbol, n.Symbol.Node.Identifier);
 				AddTypeParameters(n.Symbol.Node.TypeParameters, n.Symbol.TypeParameters);
 				foreach (var enumCase in n.Symbol.Cases)
+				{
 					Add(enumCase.Node.Identifier, enumCase, DescribeCase(n.Symbol, enumCase));
+					foreach (var field in enumCase.Fields)
+					{
+						if (field.Node is { } fieldNode)
+							Add(fieldNode.Identifier, field, DescribeField(field));
+					}
+				}
 				
 				AddProperties(n.Symbol.Properties);
 				break;
@@ -433,6 +461,22 @@ public sealed class SemanticModel
 				AddProperties(n.Symbol.Properties);
 				
 				break;
+		}
+	}
+	
+	private void AddPatternNames(ResolvedPattern pattern)
+	{
+		if (pattern.Syntax is not { } syntax)
+			return;
+		
+		if (pattern is { Case: { } enumCase, EnumType: { } enumType })
+			Add(syntax.CaseName, enumCase, DescribeCase(enumType, enumCase));
+		
+		foreach (var element in syntax.Elements)
+		{
+			if (element.Field is { } name && pattern.Fields.FirstOrDefault(field => field.Name == name.Text) is
+				    { } field)
+				Add(name, field, DescribeField(field));
 		}
 	}
 	
@@ -544,7 +588,7 @@ public sealed class SemanticModel
 	{
 		{ Function: { } function } => DescribeFunction(function),
 		{ Symbol: LocalVariableSymbol local } => DescribeVariable(local, local.Type),
-		{ Symbol: EnumCaseSymbol enumCase, Type: { } owner } => DescribeCase(owner, enumCase),
+		{ Symbol: EnumCaseSymbol enumCase, Type: { } owner } => DescribeCaseName(owner, enumCase),
 		{ Symbol: TypeSymbol type } => DescribeType(type),
 		{ Symbol: ModulePathSymbol module } => $"mod {module.Path}",
 		{ Symbol: FunctionSymbol function } => function.DeclaredName + DescribeTail(candidate),
@@ -559,6 +603,7 @@ public sealed class SemanticModel
 		{ Symbol: GlobalSymbol global } =>
 			$": {global.Syntax.Keyword.Text} {global.Syntax.Type.SourceLocation.GetText()}",
 		{ Symbol: FieldSymbol { Node: { } node } } => $": {node.Type.SourceLocation.GetText()}",
+		{ Symbol: PropertySymbol, Type: { } type } => $": prop {TypeName(type)}",
 		{ Symbol: PropertySymbol } => ": prop",
 		{ Symbol: MethodSymbol or FunctionSymbol } => ": fun",
 		{ Symbol: TraitSymbol } => ": trait",
@@ -601,11 +646,7 @@ public sealed class SemanticModel
 	
 	private static string DescribeConstant(string head, IExpressionNode? initializer, Constant? value)
 	{
-		var expression = initializer is null
-			? null
-			: string.Join(' ', initializer.SourceLocation.GetText().ToString().Split('\n')
-				.Select(static line => line.Trim())
-				.Where(static line => line.Length > 0));
+		var expression = initializer is null ? null : SingleLine(initializer.SourceLocation);
 		
 		var text = expression is null ? head : $"{head} = {expression}";
 		return value is not null && ConstantText.Describe(value) is { } shown && shown != expression
@@ -619,8 +660,43 @@ public sealed class SemanticModel
 		_ => $"{member.Name}: {TypeName(type)}"
 	};
 	
-	private static string DescribeCase(TypeSymbol type, EnumCaseSymbol enumCase) =>
+	private static string DescribeCaseName(TypeSymbol type, EnumCaseSymbol enumCase) =>
 		$"{TypeName(type.OriginalDefinition)}.{enumCase.Name}";
+	
+	private string DescribeCase(TypeSymbol type, EnumCaseSymbol enumCase)
+	{
+		var node = enumCase.Node;
+		var head = DescribeCaseName(type, enumCase) + (node.Payload.IsEmpty
+			? ""
+			: $"({string.Join(", ", node.Payload.Select(static field => DescribeField(field.Identifier, field)))})");
+		
+		if ((type as EnumSymbol ?? type.OriginalDefinition as EnumSymbol) is not { } enumType)
+			return head;
+		
+		if (enumType.IsMatch)
+			return node.Else is not null ? $"{head} = else"
+				: node.Values.IsEmpty ? head
+				: $"{head} = {string.Join(", ", node.Values.Select(static value => SingleLine(value.SourceLocation)))}";
+		
+		if (_caseValues?.Invoke(enumType, enumCase) is not { } value)
+			return head;
+		
+		var shown = value.ToString();
+		return node.Value is { } expression && SingleLine(expression.SourceLocation) is var written && written != shown
+			? $"{head} = {written}\n= {shown}"
+			: $"{head} = {shown}";
+	}
+	
+	private static string DescribeField(FieldSymbol field) =>
+		field.Node is { } node ? DescribeField(node.Identifier, node) : field.Name;
+	
+	private static string DescribeField(Token name, FieldNode node) =>
+		SingleLine(node.Type.SourceLocation) is { Length: > 0 } type ? $"{name.Text}: {type}" : name.Text;
+	
+	private static string SingleLine(SourceLocation location) =>
+		string.Join(' ', location.GetText().ToString().Split('\n')
+			.Select(static line => line.Trim())
+			.Where(static line => line.Length > 0));
 	
 	private static string DescribeFunction(FunctionInfo info) => DescribeSignature(info, false).Label;
 	

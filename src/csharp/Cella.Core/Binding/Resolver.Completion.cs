@@ -10,17 +10,25 @@ public sealed partial class Resolver
 	
 	private void ProbeName(Token name) => ProbeName(name, CurrentTargetType);
 	
-	private void ProbeName(Token name, TypeSymbol? expectedType)
+	private void ProbeName(Token name, TypeSymbol? expectedType, IEnumerable<TypeSymbol>? caseTypes = null)
 	{
 		if (Probe is null)
 			return;
 		
 		if (Probe.Covers(name))
-			Probe.Capture(CompletionPlace.Name, GetNameCandidates(), expectedType,
-				CurrentResolutionContext.File.Syntax, GetImportableCandidates());
+			Probe.Capture(CompletionPlace.Name,
+				GetTargetCaseCandidates(caseTypes ?? (expectedType is null ? [] : [expectedType]))
+					.Concat(GetNameCandidates()), expectedType, CurrentResolutionContext.File.Syntax,
+				GetImportableCandidates());
 		
 		Probe.CaptureCall(name, GetNameCandidates());
 	}
+	
+	private static IEnumerable<CompletionCandidate> GetTargetCaseCandidates(IEnumerable<TypeSymbol> types) => types
+		.OfType<EnumSymbol>()
+		.Distinct()
+		.SelectMany(static enumType =>
+			enumType.Cases.Select(enumCase => new CompletionCandidate(enumCase, Type: enumType)));
 	
 	private IEnumerable<CompletionCandidate> GetNameCandidates() =>
 		CurrentResolutionContext.GetAllSymbols().Distinct().Select(ToCandidate);
@@ -48,7 +56,7 @@ public sealed partial class Resolver
 		
 		var (source, range) = node.SourceLocation;
 		var start = node.OpenParen.SourceLocation.Range.End;
-		var end = node.CloseParen?.SourceLocation.Range.Start ?? range.End;
+		var end = node.CloseParen?.SourceLocation.Range.Start ?? source.FindLineEnd(range.End);
 		Probe.EnterCall(callee, new(source, new TextRange(start, end)),
 			node.Arguments.Select(static argument => argument.SourceLocation));
 	}
@@ -101,7 +109,7 @@ public sealed partial class Resolver
 				
 				if ((GetPropertyMember(owner, name) ?? _typePool.ResolveMember(owner, name) as PropertySymbol) is
 				    { } property && CanAccess(owner, property))
-					yield return new(property);
+					yield return new(property, Type: GetCandidatePropertyType(property, owner));
 				
 				foreach (var method in FindFunctions(owner, name)
 					         .Where(method => method.HasReceiver && CanAccess(owner, method.Function)))
@@ -109,6 +117,10 @@ public sealed partial class Resolver
 			}
 		}
 	}
+	
+	private TypeSymbol? GetCandidatePropertyType(PropertySymbol property, TypeSymbol owner) =>
+		GetPropertyType(property, owner) is not InvalidType and var type ? type :
+		_typePool.TryGetTypeOfMember(property, out var stored) ? stored : null;
 	
 	private IEnumerable<CompletionCandidate> GetStaticCandidates(TypeSymbol type)
 	{

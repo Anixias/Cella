@@ -44,7 +44,7 @@ public sealed partial class FileParser
 		RejectReservedNames(typeParameters);
 		if (!Match(ref index, TokenType.OpColon))
 		{
-			Report(Tokens[index], $"Expected ':' after '{identifier.Text}'");
+			Report(IsOnSameLine(index) ? Tokens[index] : identifier, $"Expected ':' after '{identifier.Text}'");
 			return null;
 		}
 		

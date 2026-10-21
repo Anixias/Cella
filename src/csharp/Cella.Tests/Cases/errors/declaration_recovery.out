@@ -37,10 +37,15 @@ Error at declaration_recovery.ce:27:8
             ^ Expected ',' or ')'
             | To match the '(' on line 26
 
-Error at declaration_recovery.ce:30:7
+Error at declaration_recovery.ce:29:13
+28 │ {
+29 │     val x = (7 +
+                    ^ Expected an expression
+
+Error at declaration_recovery.ce:30:2
 29 │ val x = (7 +
 30 │ outer: while true
-          ^ Expected ')'
-          | To match the '(' on line 29
+     ╘═══╛ Expected ')'
+         | To match the '(' on line 29
 
 [compilation failed]

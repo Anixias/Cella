@@ -54,6 +54,7 @@ public sealed partial class FileParser
 			var errorsBefore = Diagnostics.ErrorCount;
 			var attributedBefore = attributedErrors;
 			IStatementNode? statement = null;
+			int? cut = null;
 			if (Match(ref index, TokenType.KeywordWhen))
 			{
 				if (ParseWhen(ref index, (ref i, branch, isActive) =>
@@ -62,19 +63,43 @@ public sealed partial class FileParser
 			}
 			else
 			{
-				try
+				var state = SaveState(index);
+				statement = TryParseStatement(ref index);
+				var broken = statement is null || HasLexicalErrors(start, index) ||
+				             Diagnostics.ErrorCount - errorsBefore > attributedErrors - attributedBefore;
+				
+				var skipped = index;
+				if (statement is null)
+					ResyncStatement(ref skipped, start);
+				
+				cut = broken
+					? FindCut(start, Math.Max(index, skipped), statement is null, (i, _, _) => StartsStatementCut(i))
+					: null;
+				
+				if (cut is not null)
 				{
-					statement = ParseStatement(ref index);
-				}
-				catch (ParseException e) when (!e.IsNesting || blockDepth == 1)
-				{
-					AddParseError(e);
+					RestoreState(state, index);
+					index = start;
+					var tokens = Bound(cut.Value);
+					try
+					{
+						statement = TryParseStatement(ref index);
+					}
+					finally
+					{
+						Unbind(tokens);
+					}
 				}
 			}
 			
 			if (statement is null)
 			{
-				var resynced = ResyncStatement(ref index, start);
+				var resynced = false;
+				if (cut is not null)
+					index = cut.Value;
+				else
+					resynced = ResyncStatement(ref index, start);
+				
 				ReportLexicalErrors(start, index);
 				AddBrokenStatement(statements, start, Math.Max(index - 1, start));
 				attributedErrors = attributedBefore + (Diagnostics.ErrorCount - errorsBefore);
@@ -94,6 +119,19 @@ public sealed partial class FileParser
 		}
 		
 		return true;
+	}
+	
+	private IStatementNode? TryParseStatement(ref int index)
+	{
+		try
+		{
+			return ParseStatement(ref index);
+		}
+		catch (ParseException e) when (!e.IsNesting || blockDepth == 1)
+		{
+			AddParseError(e);
+			return null;
+		}
 	}
 	
 	private void AddBrokenStatement(List<IStatementNode> statements, int start, int end)
@@ -447,8 +485,23 @@ public sealed partial class FileParser
 				return null;
 			}
 			
-			if (ParseMatchArm(ref index) is not { } arm)
-				return null;
+			var armStart = index;
+			MatchArmNode? arm;
+			try
+			{
+				arm = ParseMatchArm(ref index);
+			}
+			catch (ParseException e) when (!e.IsNesting)
+			{
+				AddParseError(e);
+				arm = null;
+			}
+			
+			if (arm is null)
+			{
+				index = FindNextArm(armStart);
+				continue;
+			}
 			
 			arms.Add(arm);
 			SeparateArms(ref index);
@@ -469,8 +522,14 @@ public sealed partial class FileParser
 		
 		if (!Match(ref index, TokenType.OpFatArrow))
 		{
-			ReportExpected(index, "'=>'");
-			return null;
+			ReportMissing(index, "'=>'");
+			if (IsOnSameLine(index) && !Peek(index, TokenType.OpCloseBrace))
+				return null;
+			
+			var (source, range) = Tokens[index - 1].SourceLocation;
+			var missing = new BrokenStatementNode(new(source, new(range.End, range.End)), null, false);
+			_brokenStatements.Add(missing);
+			return new(patterns, guard, location, missing);
 		}
 		
 		return ParseStatement(ref index) is { } body ? new(patterns, guard, location, body) : null;
@@ -479,6 +538,12 @@ public sealed partial class FileParser
 	private VarStatementNode? ParseVarStatement(ref int index, Token keyword)
 	{
 		// keyword already consumed when this function is called
+		
+		if (!IsOnSameLine(index))
+		{
+			Report(keyword, $"Expected a name after '{keyword.Text}'");
+			return null;
+		}
 		
 		if (!Match(ref index, out var identifier, TokenType.Identifier))
 		{
@@ -489,9 +554,22 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		var isMutable = keyword.Type == TokenType.KeywordVar;
+		var (source, range) = keyword.SourceLocation;
+		var isConstant = keyword.Type == TokenType.KeywordConst;
 		ITypeNode? type = null;
-		if (Match(ref index, TokenType.OpColon))
+		if (Match(ref index, out var colon, TokenType.OpColon))
 		{
+			if (!IsOnSameLine(index))
+			{
+				Report(colon, "Expected a type after ':'");
+				return new(new(source, range), identifier, null, null, isMutable)
+				{
+					IsConstant = isConstant,
+					Keyword = keyword
+				};
+			}
+			
 			if (StartsMemberType(index + 1) &&
 			    Match(ref index, out var visibility, _memberContextualKeywords, _visibilityKeywords))
 				Report(visibility, $"Cannot use '{visibility.Text}' on local variables");
@@ -499,11 +577,6 @@ public sealed partial class FileParser
 			type = ParseType(ref index);
 		}
 		
-		var isMutable = keyword.Type == TokenType.KeywordVar;
-		
-		var (source, range) = keyword.SourceLocation;
-		
-		var isConstant = keyword.Type == TokenType.KeywordConst;
 		if (!MatchOnLine(ref index, TokenType.OpEqual))
 			return new(new(source, range), identifier, type, null, isMutable)
 			{

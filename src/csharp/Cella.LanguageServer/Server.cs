@@ -164,6 +164,7 @@ public sealed class Server
 				return SemanticTokens.Encode(references, keywords);
 			},
 			"textDocument/hover" => ct => HoverAsync(parameters, ct),
+			"cella/describe" => ct => DescribeAsync(parameters, ct),
 			"textDocument/definition" => ct => FindDefinitionAsync(parameters, ct),
 			"textDocument/references" => ct => FindReferencesAsync(parameters, ct),
 			"textDocument/completion" => ct => CompleteAsync(parameters, ct),
@@ -197,6 +198,12 @@ public sealed class Server
 				},
 				["range"] = Protocol.ToRange(hovered.Location)
 			}
+			: null;
+	
+	private async Task<JsonNode?> DescribeAsync(JsonObject? parameters, CancellationToken ct) =>
+		await _workspace.FindInModelAsync(GetUri(parameters), (int)parameters!["position"]!["line"]!,
+			(int)parameters["position"]!["character"]!, ct) is var (reference, model)
+			? SemanticTokens.EncodeDescription(reference, model)
 			: null;
 	
 	private async Task<JsonNode?> FindDefinitionAsync(JsonObject? parameters, CancellationToken ct) =>

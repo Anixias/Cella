@@ -9,6 +9,7 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	public int ErrorCount { get; private set; }
 	
 	private readonly SortedList<LineColumnKey, List<Diagnostic>> _diagnostics = [];
+	private readonly List<(LineColumnKey Key, Diagnostic Diagnostic)> _added = [];
 	private List<Diagnostic>? redirect;
 	
 	public IDiagnosticGate? Gate { get; set; }
@@ -43,10 +44,41 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 		Gate?.Record(diagnostic);
 		var key = new LineColumnKey(diagnostic.Line, diagnostic.Column);
 		_diagnostics.GetOrAdd(key).Add(diagnostic);
+		_added.Add((key, diagnostic));
 		Count++;
 		
 		if (diagnostic.Severity == DiagnosticSeverity.Error)
 			ErrorCount++;
+	}
+	
+	public int Mark => redirect?.Count ?? _added.Count;
+	
+	public bool HasErrorsSince(int mark) => redirect is { } target
+		? target.Skip(mark).Any(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+		: _added.Skip(mark).Any(static added => added.Diagnostic.Severity == DiagnosticSeverity.Error);
+	
+	public void Rollback(int mark)
+	{
+		if (redirect is { } target)
+		{
+			target.RemoveRange(mark, target.Count - mark);
+			return;
+		}
+		
+		for (var i = _added.Count - 1; i >= mark; i--)
+		{
+			var (key, diagnostic) = _added[i];
+			var bucket = _diagnostics[key];
+			bucket.RemoveAt(bucket.Count - 1);
+			if (bucket.Count == 0)
+				_diagnostics.Remove(key);
+			
+			Count--;
+			if (diagnostic.Severity == DiagnosticSeverity.Error)
+				ErrorCount--;
+		}
+		
+		_added.RemoveRange(mark, _added.Count - mark);
 	}
 	
 	public void AddRange(params IEnumerable<Diagnostic> diagnostics)

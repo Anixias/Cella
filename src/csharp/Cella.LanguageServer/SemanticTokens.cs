@@ -36,7 +36,8 @@ public static class SemanticTokens
 		Static = 4,
 		Drop = 8,
 		Ref = 16,
-		DefaultLibrary = 32
+		DefaultLibrary = 32,
+		Accessor = 64
 	}
 	
 	private readonly record struct Classified(SourceLocation Location, Kind Kind, Modifiers Modifiers, bool IsKeyword);
@@ -86,6 +87,55 @@ public static class SemanticTokens
 			new Classified(new SourceLocation(source, range), Kind.Property, Modifiers.None, false)));
 	}
 	
+	public static JsonObject EncodeDescription(SymbolReference reference, SemanticModel model)
+	{
+		var text = reference.Description;
+		var tokens = new FilteredScanner(new StringSource(text, string.Empty)).ToList();
+		var names = new HashSet<string> { reference.Location.GetText().ToString(), NameOf(reference.Symbol) };
+		var isModule = text.StartsWith("mod ", StringComparison.Ordinal);
+		var data = new JsonArray();
+		var groups = 0;
+		for (var i = 0; i < tokens.Count; i++)
+		{
+			var token = tokens[i];
+			groups += token.Type switch
+			{
+				TokenType.OpOpenParen or TokenType.OpOpenBracket => 1,
+				TokenType.OpCloseParen or TokenType.OpCloseBracket => -1,
+				_ => 0
+			};
+			
+			if (token.Type != TokenType.Identifier)
+				continue;
+			
+			var namesParameter = groups > 0 && i + 1 < tokens.Count && tokens[i + 1].Type == TokenType.OpColon;
+			(Kind, Modifiers)? classified = isModule ? (Kind.Namespace, Modifiers.None)
+				: namesParameter && reference.Symbol is EnumCaseSymbol ? (Kind.Property, Modifiers.Readonly)
+				: namesParameter ? (Kind.Parameter, Modifiers.None)
+				: names.Contains(token.Text) && groups == 0 ? Classify(reference)
+				: model.FindType(token.Text) is { } type ? Classify(type)
+				: null;
+			
+			if (classified is not var (kind, modifiers))
+				continue;
+			
+			var range = token.SourceLocation.Range;
+			data.Add(range.Start);
+			data.Add(range.Length);
+			data.Add((int)kind);
+			data.Add((int)modifiers);
+		}
+		
+		return new JsonObject { ["text"] = text, ["tokens"] = data };
+	}
+	
+	private static string NameOf(Symbol symbol) => symbol switch
+	{
+		FunctionSymbol function => function.DeclaredName,
+		MethodSymbol method => method.Function.DeclaredName,
+		_ => symbol.Name
+	};
+	
 	private static Classified? Describe(SymbolReference reference)
 	{
 		var (source, range) = reference.Location;
@@ -134,7 +184,8 @@ public static class SemanticTokens
 		GlobalSymbol { IsMutable: true } => (Kind.Variable, Modifiers.Static),
 		GlobalSymbol => (Kind.Variable, Modifiers.Static | Modifiers.Readonly),
 		ParameterSymbol => (Kind.Parameter, Modifiers.None),
-		FieldSymbol { IsMutable: true } or PropertySymbol => (Kind.Property, Modifiers.None),
+		PropertySymbol => (Kind.Property, Modifiers.Accessor),
+		FieldSymbol { IsMutable: true } => (Kind.Property, Modifiers.None),
 		FieldSymbol => (Kind.Property, Modifiers.Readonly),
 		EnumCaseSymbol => (Kind.EnumMember, Modifiers.None),
 		TraitSymbol or TraitType => (Kind.Interface, Modifiers.None),

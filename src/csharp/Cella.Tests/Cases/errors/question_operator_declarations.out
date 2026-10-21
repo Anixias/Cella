@@ -11,7 +11,7 @@ Error at question_operator_declarations.ce:14:18
 Error at question_operator_declarations.ce:21:2
 20 │ 
 21 │ ?: op(own self) -> i32
-     ^ '?' operators need '=' and a value
+     ^ '?' operators must have an expression body
 
 Error at question_operator_declarations.ce:31:2
 30 │ 

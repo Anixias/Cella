@@ -446,6 +446,11 @@ class CellaRunnable {
 	var main = false
 }
 
+class CellaDescription {
+	var text = ""
+	var tokens: List<Int> = emptyList()
+}
+
 class CellaGlobal {
 	var name = ""
 	var debugName = ""
@@ -462,6 +467,9 @@ interface CellaLanguageServer : LanguageServer {
 	
 	@JsonRequest("cella/runnables")
 	fun runnables(params: DocumentSymbolParams): CompletableFuture<List<CellaRunnable>>
+
+	@JsonRequest("cella/describe")
+	fun describe(params: TextDocumentPositionParams): CompletableFuture<CellaDescription?>
 	
 	@JsonRequest("cella/visibleGlobals")
 	fun visibleGlobals(params: TextDocumentPositionParams): CompletableFuture<List<CellaGlobal>>

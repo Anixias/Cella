@@ -128,7 +128,9 @@ public sealed partial class Resolver
 				return null;
 		}
 		
-		var resolved = new ResolvedPattern(enumCase, bindings) { Elements = [..elements] };
+		var resolved = new ResolvedPattern(enumCase, bindings)
+			{ Elements = [..elements], EnumType = enumType, Syntax = pattern };
+		
 		ReportRepeatedBindings(resolved.AllBindings);
 		if (enumType.IsMatch)
 		{
@@ -433,7 +435,7 @@ public sealed partial class Resolver
 			return null;
 		
 		var resolved = new ResolvedPattern(null, bindings)
-			{ Record = type, Fields = [..fields], Elements = [..elements] };
+			{ Record = type, Fields = [..fields], Elements = [..elements], Syntax = syntax };
 		
 		ReportRepeatedBindings(resolved.AllBindings);
 		return resolved;
@@ -517,7 +519,8 @@ public sealed partial class Resolver
 				TypeBinding = binding,
 				Record = type,
 				Fields = fields.Fields,
-				Elements = fields.Elements
+				Elements = fields.Elements,
+				Syntax = pattern
 			}
 			: null;
 	}
