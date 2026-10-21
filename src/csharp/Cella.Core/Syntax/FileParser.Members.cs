@@ -253,8 +253,12 @@ public sealed partial class FileParser
 		var resultType = isGetter ? returnType ?? propertyType : null;
 		RejectWhen(ref index, isGetter ? "getters" : "setters");
 		IStatementNode? body;
+		Token? arrow = null;
 		if (MatchOnLine(ref index, TokenType.OpFatArrow))
+		{
+			arrow = Tokens[index - 1];
 			body = ParseExpressionBody(ref index, resultType is null);
+		}
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
 		else
@@ -278,7 +282,8 @@ public sealed partial class FileParser
 			: new(keyword, modifiers, receiver, parameters, resultType, body, false)
 			{
 				Extent = Span(keyword, Tokens[index - 1]),
-				Visibility = visibility
+				Visibility = visibility,
+				BodyArrow = arrow
 			};
 	}
 	

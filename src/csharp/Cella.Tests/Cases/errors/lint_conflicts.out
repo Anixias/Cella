@@ -1,0 +1,2 @@
+<case>\test.celp: 'Lints.UnreachableCode' is set more than once, by [When."debug"] and [When."debug || release"]
+[compilation failed]

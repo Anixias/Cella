@@ -1,1 +1,6 @@
+Hint at union_char_trap.ce:13:6
+12 │ u.raw = 4294967295
+13 │ val c = u.letter
+         ^ 'c' is never used
+
 [exit code 0]

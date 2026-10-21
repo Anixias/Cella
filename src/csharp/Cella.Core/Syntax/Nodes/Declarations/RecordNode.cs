@@ -19,6 +19,8 @@ public sealed class RecordNode
 	public bool IsOwn { get; init; }
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
+	public SourceLocation? Body { get; init; }
+	public Token? LastHeaderToken { get; init; }
 	public ImmutableArray<ITypeNode> Traits { get; init; } = [];
 	public bool IsUnion { get; init; }
 }

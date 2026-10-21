@@ -12,10 +12,12 @@ public enum DiagnosticSeverity
 
 public sealed record Diagnostic
 {
-	public DiagnosticSeverity Severity { get; }
+	public DiagnosticSeverity Severity { get; private init; }
 	public SourceLocation SourceLocation { get; }
 	public string Message { get; }
-	public ImmutableArray<string> Hints { get; init; } = ImmutableArray<string>.Empty; // TODO Suggested fixes for IDE?
+	public ImmutableArray<string> Hints { get; init; } = ImmutableArray<string>.Empty;
+	public ImmutableArray<DiagnosticFix> Fixes { get; init; } = [];
+	public string? Lint { get; init; }
 	public SourceLocation? UnnecessaryLocation { get; init; }
 	public int Line { get; }
 	public int Column { get; }
@@ -35,6 +37,8 @@ public sealed record Diagnostic
 		
 		(Line, Column) = sourceLocation.GetLineColumn();
 	}
+	
+	public Diagnostic WithSeverity(DiagnosticSeverity severity) => this with { Severity = severity };
 	
 	public override string ToString() => Message;
 }

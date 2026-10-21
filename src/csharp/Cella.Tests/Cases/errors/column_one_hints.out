@@ -1,3 +1,8 @@
+Hint at column_one_hints.ce:18:7
+17 │ {
+18 │     val id = self.text.id
+             ╘╛ 'id' is never used
+
 Error at column_one_hints.ce:29:1
 28 │     ret 0
 29 │ }

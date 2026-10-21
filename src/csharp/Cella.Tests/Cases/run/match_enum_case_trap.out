@@ -3,6 +3,11 @@ Hint at match_enum_case_trap.ce:12:6
 12 │     var n: u8 = 2
              ^ 'n' is never changed
 
+Hint at match_enum_case_trap.ce:13:6
+12 │ var n: u8 = 2
+13 │ val p: Parity = odd(n)
+         ^ 'p' is never used
+
 [stderr]
 Panic at match_enum_case_trap.ce:13:18: 'Parity.odd' can't hold this value
 [exit code 101]

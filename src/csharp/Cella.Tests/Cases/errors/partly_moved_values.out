@@ -1,3 +1,8 @@
+Hint at partly_moved_values.ce:25:6
+24 │ val left = own pair.left
+25 │ val total = show(imm pair) + pair.right.id + left.id
+         ╘═══╛ 'total' is never used
+
 Error at partly_moved_values.ce:25:23
 24 │ val left = own pair.left
 25 │ val total = show(imm pair) + pair.right.id + left.id

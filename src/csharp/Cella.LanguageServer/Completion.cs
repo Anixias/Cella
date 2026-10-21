@@ -1,7 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
-using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.LanguageServer;
@@ -283,82 +282,19 @@ public static class Completion
 		if (probe.File is not { } file)
 			return null;
 		
-		var imports = file.Imports
-			.Where(static candidate => !candidate.IsPrelude && candidate.SourceLocation.Range.IsValid)
-			.ToList();
-		
-		var merged = imports
-			.Where(candidate => !candidate.HasSyntaxErrors && candidate.ModuleName.Text == import.Module)
-			.OrderBy(static candidate => candidate.Import is ListImport ? 0 : 1)
-			.FirstOrDefault(static candidate => candidate.Import is TokenImport or ListImport);
-		
-		switch (merged.Import)
-		{
-			case ListImport { Tokens: [.., var last] } list:
-				var following = list.Tokens.FirstOrDefault(name => CompareNames(import.Name, name.Text) < 0);
-				return following.Text is null
-					? Insert(last.SourceLocation.Range.End, $", {import.Name}")
-					: Insert(following.SourceLocation.Range.Start, $"{import.Name}, ");
-			
-			case TokenImport { Token: var single }:
-				string[] names = [single.Text, import.Name];
-				Array.Sort(names, CompareNames);
-				return Edit(single.SourceLocation.Range, $"[{string.Join(", ", names)}]");
-		}
-		
-		var newline = text.Contains("\r\n") ? "\r\n" : "\n";
-		var line = $"use {import.Module}.{import.Name}";
-		string[] path = [..import.Module.Split('.'), import.Name];
-		var next = imports.FirstOrDefault(candidate => ComparePaths(path, PathOf(candidate)) < 0);
-		if (next.Import is not null)
-			return Insert(next.SourceLocation.Range.Start, line + newline);
-		
-		if (imports.Count > 0)
-			return Insert(imports.Max(static candidate => candidate.SourceLocation.Range.End), newline + line);
-		
-		return Insert((file.ImportCondition ?? file.ModuleName.SourceLocation).Range.End, newline + newline + line);
-		
-		JsonObject Insert(int offset, string newText) => Edit(new TextRange(offset, offset), newText);
-		
-		JsonObject Edit(TextRange range, string newText) => new()
+		var edit = ImportEdits.Create(file, import.Module, import.Name);
+		return new JsonObject
 		{
 			["range"] = new JsonObject
 			{
-				["start"] = ToPosition(text, ToOriginal(range.Start)),
-				["end"] = ToPosition(text, ToOriginal(range.End))
+				["start"] = ToPosition(text, ToOriginal(edit.Location.Range.Start)),
+				["end"] = ToPosition(text, ToOriginal(edit.Location.Range.End))
 			},
-			["newText"] = newText
+			["newText"] = edit.NewText
 		};
 		
 		int ToOriginal(int offset) => offset >= probe.Offset + inserted ? offset - inserted : offset;
 	}
-	
-	private static string[] PathOf(ImportExpression import) =>
-	[
-		..import.ModuleName.Parts.Select(static part => part.Text),
-		import.Import switch
-		{
-			TokenImport single => single.Token.Text,
-			ListImport { Tokens: [var first, ..] } => first.Text,
-			_ => "*"
-		}
-	];
-	
-	private static int ComparePaths(string[] left, string[] right)
-	{
-		for (var i = 0; i < Math.Min(left.Length, right.Length); i++)
-		{
-			if (CompareNames(left[i], right[i]) is not 0 and var result)
-				return result;
-		}
-		
-		return left.Length.CompareTo(right.Length);
-	}
-	
-	private static int CompareNames(string left, string right) =>
-		StringComparer.OrdinalIgnoreCase.Compare(left, right) is not 0 and var result
-			? result
-			: string.CompareOrdinal(left, right);
 	
 	private static JsonObject ToPosition(string text, int offset)
 	{

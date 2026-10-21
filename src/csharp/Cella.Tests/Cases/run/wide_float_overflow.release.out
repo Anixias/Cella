@@ -3,4 +3,9 @@ Hint at wide_float_overflow.ce:5:6
 5 │     var x = 1.0e40
             ^ 'x' is never changed
 
+Hint at wide_float_overflow.ce:6:6
+5 │ var x = 1.0e40
+6 │ val v = i128(x)
+        ^ 'v' is never used
+
 [exit code 0]

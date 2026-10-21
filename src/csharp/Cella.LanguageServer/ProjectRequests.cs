@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Cella.Compiler.Projects;
+using Cella.Diagnostics;
 
 namespace Cella.LanguageServer;
 
@@ -51,11 +52,21 @@ public static class ProjectRequests
 				new JsonArray([..ProjectSchema.Settings.Select(JsonNode (setting) => Describe(setting, name))]),
 			["values"] = DescribeValues(document, _topLevel),
 			["flags"] = DescribeFlags(document),
+			["lints"] = new JsonArray([
+				..Lints.All.Select(JsonNode (lint) => new JsonObject
+				{
+					["name"] = lint.Name,
+					["label"] = lint.Label,
+					["default"] = lint.Default.ToString()
+				})
+			]),
+			["lintLevels"] = DescribeLints(document, _topLevel),
 			["conditions"] = new JsonArray([
 				..document.Conditions.Select(JsonNode (condition) => new JsonObject
 				{
 					["condition"] = condition,
-					["values"] = DescribeValues(document, ConditionTable(condition))
+					["values"] = DescribeValues(document, ConditionTable(condition)),
+					["lintLevels"] = DescribeLints(document, ConditionTable(condition))
 				})
 			]),
 			["references"] = DescribeReferences(path, document)
@@ -79,7 +90,7 @@ public static class ProjectRequests
 		if ((string?)edit["setting"] is { } name)
 		{
 			var setting = ProjectSchema.Find(name);
-			if (setting is null or { Kind: SettingKind.Flags or SettingKind.References } ||
+			if (setting is null or { Kind: SettingKind.Flags or SettingKind.Lints or SettingKind.References } ||
 			    condition is not null && !setting.IsConditional)
 				throw new CelpEditException($"Can't set '{name}' here");
 			
@@ -94,6 +105,20 @@ public static class ProjectRequests
 			return edit["value"] is { } value
 				? document.Set(flags, flag, value.GetValue<bool>())
 				: document.Remove(flags, flag);
+		}
+		
+		if ((string?)edit["lint"] is { } lint)
+		{
+			if (Lints.Find(lint) is null)
+				throw new CelpEditException($"Unknown lint '{lint}'");
+			
+			var lints = table.Add(new CelpKey(nameof(CellaProject.Lints)));
+			if ((string?)edit["value"] is not { } level)
+				return document.Remove(lints, lint);
+			
+			return Enum.TryParse<LintLevel>(level, out var parsed)
+				? document.Set(lints, lint, parsed.ToString())
+				: throw new CelpEditException($"'{level}' is not a valid '{lint}'");
 		}
 		
 		if ((string?)edit["removeCondition"] is { } removed)
@@ -170,7 +195,7 @@ public static class ProjectRequests
 	{
 		var values = new JsonObject();
 		foreach (var setting in ProjectSchema.Settings.Where(static setting =>
-			         setting.Kind is not (SettingKind.Flags or SettingKind.References)))
+			         setting.Kind is not (SettingKind.Flags or SettingKind.Lints or SettingKind.References)))
 		{
 			var value = document.GetValue(table.Add(new CelpKey(setting.Name)));
 			values[setting.Name] = value switch
@@ -188,6 +213,19 @@ public static class ProjectRequests
 		}
 		
 		return values;
+	}
+	
+	private static JsonObject DescribeLints(CelpDocument document, ImmutableArray<CelpKey> table)
+	{
+		var lints = table.Add(new CelpKey(nameof(CellaProject.Lints)));
+		var levels = new JsonObject();
+		foreach (var lint in document.GetKeys(lints))
+		{
+			if (document.GetValue(lints.Add(new CelpKey(lint))) is string level)
+				levels[lint] = level;
+		}
+		
+		return levels;
 	}
 	
 	private static JsonObject DescribeFlags(CelpDocument document)

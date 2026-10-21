@@ -1,0 +1,59 @@
+﻿mod std
+
+Span[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+	
+	isEmpty: get(self) -> bool => self.length == 0
+	
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+	}
+	
+	// TODO Accept ranges like v[a..b]
+	slice: fun(self, start: usize, end: usize) -> Span[T]
+	{
+		if start > end || end > self.length
+			panic "index out of bounds"
+		
+		ret Span[T](self.data + start, end - start)
+	}
+	
+	as: op(self) -> View[T] => View[T](self.data, self.length)
+	as[count: const usize]: op(mut values: array[T, count]) -> Span[T] => Span[T](@values, count)
+	
+	[]: op(self, index: usize) -> mut[T]
+	{
+		if index >= self.length
+			panic "index out of bounds"
+		
+		ret mut self.data[index]
+	}
+	
+	in: op(self) -> SpanCursor[T] => SpanCursor[T](self.data, self.length)
+}
+
+SpanCursor[T]: ref rec
+{
+	data: pvt ptr[T]
+	length: pvt usize
+	position: pvt usize
+	
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position += 1
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> mut[T] => mut self.data[self.position - 1]
+}

@@ -1,0 +1,8 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+
+[When.debug.Lints]
+UnreachableCode = "Off"
+
+[When."debug || release".Lints]
+UnreachableCode = "Hint"

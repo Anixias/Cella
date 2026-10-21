@@ -1,3 +1,8 @@
+Hint at trait_self_constraints.ce:94:6
+93 │ {
+94 │     val first = value
+             ╘═══╛ 'first' is never used
+
 2147483647 255
 12 34
 700 42

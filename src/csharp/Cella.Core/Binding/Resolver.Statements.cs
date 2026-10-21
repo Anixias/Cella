@@ -226,7 +226,7 @@ public sealed partial class Resolver
 		else if (type is null && initializer is ResolvedBorrowExpressionNode { IsImplicit: false } borrow &&
 		         borrow.Syntax is BorrowExpressionNode { IsMutable: false } syntax &&
 		         BorrowsWhenDeclared(borrow.Place))
-			Diagnostics.Add(new(DiagnosticSeverity.Hint, syntax.Keyword.SourceLocation, "Redundant 'imm'"));
+			Diagnostics.Add(DiagnosticFix.Redundant(syntax.Keyword.SourceLocation));
 		
 		if (type is null && initializer is null)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,

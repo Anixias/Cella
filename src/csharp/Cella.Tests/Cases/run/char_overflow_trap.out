@@ -1,3 +1,8 @@
+Hint at char_overflow_trap.ce:7:6
+6 │ {
+7 │     val c = step(char(1114111), 1)
+            ^ 'c' is never used
+
 [stderr]
 Panic at char_overflow_trap.ce:3:39: char overflow
 [exit code 101]

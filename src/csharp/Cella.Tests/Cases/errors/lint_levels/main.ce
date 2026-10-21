@@ -1,0 +1,19 @@
+mod test
+
+half: fun(x: f64) -> i32 => match x
+{
+	0.5 => 1
+	else => 0
+}
+
+early: fun -> i32
+{
+	ret 1
+	ret 2
+}
+
+main: fun() -> i32
+{
+	var count = 3
+	ret half(0.5) + count + early()
+}

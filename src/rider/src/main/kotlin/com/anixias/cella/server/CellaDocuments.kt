@@ -1,20 +1,22 @@
 package com.anixias.cella.server
 
-import com.intellij.lang.annotation.AnnotationHolder
-import com.intellij.lang.annotation.ExternalAnnotator
-import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.openapi.editor.Document
-import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.colors.CodeInsightColors
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.event.EditorFactoryEvent
 import com.intellij.openapi.editor.event.EditorFactoryListener
+import com.intellij.openapi.editor.ex.MarkupModelEx
+import com.intellij.openapi.editor.impl.DocumentMarkupModel
+import com.intellij.openapi.editor.markup.HighlighterLayer
+import com.intellij.openapi.editor.markup.HighlighterTargetArea
+import com.intellij.openapi.editor.markup.RangeHighlighter
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
-import com.intellij.openapi.util.TextRange
-import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.psi.PsiFile
 import org.eclipse.lsp4j.Diagnostic
 import org.eclipse.lsp4j.DiagnosticSeverity
 import org.eclipse.lsp4j.DiagnosticTag
@@ -59,41 +61,44 @@ class CellaEditorListener : EditorFactoryListener {
 	}
 }
 
-class CellaAnnotator : ExternalAnnotator<CellaAnnotator.Info, CellaAnnotator.Info>() {
-	class Info(val document: Document, val diagnostics: List<Diagnostic>)
+class CellaDiagnosticsPainter(private val project: Project) {
+	private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.diagnostics.highlighters")
 	
-	override fun collectInformation(file: PsiFile, editor: Editor, hasErrors: Boolean): Info? {
-		val virtualFile = file.virtualFile ?: return null
-		return Info(editor.document, CellaServer.get(file.project).diagnosticsFor(virtualFile))
+	fun paint(document: Document, diagnostics: List<Diagnostic>) {
+		val markup = DocumentMarkupModel.forDocument(document, project, true) as MarkupModelEx
+		document.getUserData(highlightersKey)?.forEach { if (it.isValid) markup.removeHighlighter(it) }
+		document.putUserData(highlightersKey, diagnostics.map { paint(markup, document, it) })
 	}
 	
-	override fun doAnnotate(collectedInfo: Info?) = collectedInfo
-	
-	override fun apply(file: PsiFile, info: Info?, holder: AnnotationHolder) {
-		val document = info?.document ?: return
-		for (diagnostic in info.diagnostics) {
-			val start = offsetOf(document, diagnostic.range.start)
-			val end = offsetOf(document, diagnostic.range.end).coerceAtLeast(start)
-			if (diagnostic.tags?.contains(DiagnosticTag.Unnecessary) == true) {
-				holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
-					.range(TextRange(start, end))
-					.highlightType(ProblemHighlightType.LIKE_UNUSED_SYMBOL)
-					.create()
-				
-				continue
-			}
-			
-			val severity = when (diagnostic.severity) {
-				DiagnosticSeverity.Error -> HighlightSeverity.ERROR
-				DiagnosticSeverity.Warning -> HighlightSeverity.WARNING
-				else -> HighlightSeverity.WEAK_WARNING
-			}
-			
-			val builder = holder.newAnnotation(severity, diagnostic.message)
-			if (start == end && (end >= document.textLength || document.charsSequence[end] == '\n'))
-				builder.range(TextRange(start, end)).afterEndOfLine().create()
-			else
-				builder.range(TextRange(start, if (start == end) end + 1 else end)).create()
+	private fun paint(markup: MarkupModelEx, document: Document, diagnostic: Diagnostic): RangeHighlighter {
+		val start = offsetOf(document, diagnostic.range.start)
+		var end = offsetOf(document, diagnostic.range.end).coerceAtLeast(start)
+		if (diagnostic.tags?.contains(DiagnosticTag.Unnecessary) == true)
+			return markup.addRangeHighlighter(CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES, start, end,
+				HighlighterLayer.WARNING - 1, HighlighterTargetArea.EXACT_RANGE)
+		
+		val (type, key, layer) = when (diagnostic.severity) {
+			DiagnosticSeverity.Error -> Triple(HighlightInfoType.ERROR, CodeInsightColors.ERRORS_ATTRIBUTES,
+				HighlighterLayer.ERROR)
+			DiagnosticSeverity.Warning -> Triple(HighlightInfoType.WARNING, CodeInsightColors.WARNINGS_ATTRIBUTES,
+				HighlighterLayer.WARNING)
+			else -> Triple(HighlightInfoType.WEAK_WARNING, CodeInsightColors.WEAK_WARNING_ATTRIBUTES,
+				HighlighterLayer.WARNING)
+		}
+		
+		val isAfterEndOfLine = start == end && (end >= document.textLength || document.charsSequence[end] == '\n')
+		if (start == end && !isAfterEndOfLine)
+			end++
+		
+		val info = HighlightInfo.newHighlightInfo(type).range(start, end).descriptionAndTooltip(diagnostic.message)
+			.createUnconditionally()
+		
+		return markup.addRangeHighlighterAndChangeAttributes(key, start, end, layer, HighlighterTargetArea.EXACT_RANGE,
+			false) { highlighter ->
+			highlighter.isAfterEndOfLine = isAfterEndOfLine
+			highlighter.errorStripeTooltip = info
+			highlighter.isThinErrorStripeMark = type == HighlightInfoType.WEAK_WARNING
+			info.highlighter = highlighter
 		}
 	}
 	

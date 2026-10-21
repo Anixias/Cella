@@ -22,5 +22,30 @@
 		["(", ")"],
 		["\"", "\""],
 		["'", "'"]
+	],
+	"onEnterRules": [
+		{
+			"previousLineText": "(=>|->|&&|\\|\\||\\.\\.=?|(?<!\\.)[-+*/%&|^<>=!~:,@]|\\b(is|in|as))\\s*(//.*)?$",
+			"beforeText": "(=>|->|&&|\\|\\||\\.\\.=?|(?<!\\.)[-+*/%&|^<>=!~:,@]|\\b(is|in|as))\\s*(//.*)?$",
+			"action": { "indent": "none" }
+		},
+		{
+			"beforeText": "(=>|->|&&|\\|\\||\\.\\.=?|(?<!\\.)[-+*/%&|^<>=!~:,@]|\\b(is|in|as))\\s*(//.*)?$",
+			"action": { "indent": "indent" }
+		},
+		{
+			"previousLineText": "(=>|->|&&|\\|\\||\\.\\.=?|(?<!\\.)[-+*/%&|^<>=!~:,@]|\\b(is|in|as))\\s*(//.*)?$",
+			"beforeText": "^\\s*[^\\s{].*$",
+			"action": { "indent": "outdent" }
+		},
+		{
+			"beforeText": "^\\s*(((else\\s+)?if|while|for)\\b(?!\\s*:)|else\\s*$|loop\\s*$|do\\s*$|\\w+:\\s*(while|for|loop|do)\\b)[^{}]*$",
+			"action": { "indent": "indent" }
+		},
+		{
+			"previousLineText": "^\\s*(((else\\s+)?if|while|for)\\b(?!\\s*:)|else\\s*$|loop\\s*$|do\\s*$|\\w+:\\s*(while|for|loop|do)\\b)[^{}]*$",
+			"beforeText": "^\\s*[^\\s{}].*$",
+			"action": { "indent": "outdent" }
+		}
 	]
 }

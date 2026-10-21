@@ -18,4 +18,9 @@ Error at parenthesized_atomics.ce:26:24
 26 │ atomic *p == 1 == 2 = 3
                            ^ Cannot convert type 'integer literal' to 'bool'
 
+Hint at parenthesized_atomics.ce:33:6
+32 │ atomic *p = 4
+33 │ val swapped = atomic *p == 4 = 6
+         ╘═════╛ 'swapped' is never used
+
 [compilation failed]

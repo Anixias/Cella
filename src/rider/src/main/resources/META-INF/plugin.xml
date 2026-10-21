@@ -36,7 +36,8 @@
 		<spellchecker.support language="CellaProject"
 		                      implementationClass="com.anixias.cella.editor.CelpSpellcheckingStrategy"/>
 		<lineIndentProvider implementation="com.anixias.cella.editor.CellaLineIndentProvider"/>
-		<langCodeStyleSettingsProvider implementation="com.anixias.cella.editor.CellaCodeStyleSettingsProvider"/>
+		<typedHandler implementation="com.anixias.cella.editor.CellaBraceIndentHandler"/>
+<langCodeStyleSettingsProvider implementation="com.anixias.cella.editor.CellaCodeStyleSettingsProvider"/>
 		<spellchecker.bundledDictionaryProvider implementation="com.anixias.cella.editor.CellaDictionaryProvider"/>
 		
 		<applicationConfigurable parentId="language" instance="com.anixias.cella.server.CellaConfigurable"
@@ -61,6 +62,8 @@
 		<codeInsight.parameterInfo language="Cella"
 		                           implementationClass="com.anixias.cella.server.CellaParameterInfoHandler"/>
 		<typedHandler implementation="com.anixias.cella.server.CellaTypedHandler"/>
+		<intentionMenuContributor implementation="com.anixias.cella.server.CellaIntentionMenuContributor"/>
+		<renameHandler implementation="com.anixias.cella.server.CellaRenameHandler"/>
 		
 		<configurationType implementation="com.anixias.cella.run.CellaConfigurationType"/>
 		<programRunner implementation="com.anixias.cella.run.CellaDebugRunner"/>

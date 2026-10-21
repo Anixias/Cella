@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Text;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
@@ -118,7 +119,9 @@ public sealed partial class SignatureCollector
 			using var frame = Own(conformance.Owner);
 			Diagnostics.Add(new(DiagnosticSeverity.Hint, conformance.Location, $"Redundant '{trait.Name}'")
 			{
-				Hints = [$"Required by '{requirer.Name}'"]
+				Hints = [$"Required by '{requirer.Name}'"],
+				Fixes = DiagnosticFix.RemoveRedundantBound(conformance.Location) is { } fix ? [fix] : [],
+				Lint = Lints.Redundant
 			});
 		}
 	}
@@ -232,7 +235,7 @@ public sealed partial class SignatureCollector
 		
 		var reported = new HashSet<FunctionSymbol>();
 		var narrowChecked = new HashSet<object>();
-		var missing = new HashSet<string>();
+		var missing = new List<(string Name, FunctionSymbol Requirement)>();
 		foreach (var (name, requirement, info, allCandidates, matches) in requirements)
 		{
 			var candidates = allCandidates.Where(candidate => !witnesses.Contains(candidate.Function)).ToList();
@@ -300,13 +303,20 @@ public sealed partial class SignatureCollector
 					break;
 				
 				default:
-					if (missing.Add(name))
-						ReportConformance(conformance.Location, DescribeMissingRequirement(conformance, trait, self,
-							name, requirement));
+					if (missing.All(entry => entry.Name != name))
+						missing.Add((name, requirement));
 					
 					break;
 			}
 		}
+		
+		var fix = ImplementMembers(conformance, self, missing.Select(static entry => entry.Requirement));
+		foreach (var (name, requirement) in missing)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+				DescribeMissingRequirement(conformance, trait, self, name, requirement))
+			{
+				Fixes = fix is null ? [] : [fix]
+			});
 		
 		MatchConstructors(conformance, trait, traitMap, self);
 	}
@@ -331,6 +341,106 @@ public sealed partial class SignatureCollector
 		FunctionNode { Visibility: { } keyword } => keyword,
 		ConstructorNode { Visibility: { } keyword } => keyword,
 		_ => function.Property?.Node?.Visibility
+	};
+	
+	private static DiagnosticFix? ImplementMembers(Conformance conformance, TypeSymbol self,
+		IEnumerable<FunctionSymbol> requirements)
+	{
+		var (body, lastHeaderToken) = conformance switch
+		{
+			{ IsImplied: true } => (null, null),
+			{ Impl: { } impl } => (impl.Node.Body, impl.Node.LastHeaderToken),
+			{ Target: NamedTypeSymbol { Definition: RecordSymbol record } } =>
+				(record.Node.Body, record.Node.LastHeaderToken),
+			_ => default((SourceLocation?, Token?))
+		};
+		
+		var members = requirements
+			.Select(static requirement => requirement.Syntax)
+			.OfType<FunctionNode>()
+			.Where(static function => function is { Body: null } && function.SourceLocation.Source.FilePath.Length > 0)
+			.ToList();
+		
+		if (members.Count == 0 || lastHeaderToken is not { } header)
+			return null;
+		
+		var source = header.SourceLocation.Source;
+		var newline = source.FindNewline();
+		var selfName = DiagnosticReporter.DescribeType(self);
+		if (body is not { } braces)
+		{
+			var indent = source.FindIndent(header.SourceLocation.Range.Start);
+			var text = string.Concat(members.Select((member, i) =>
+				(i > 0 ? newline + newline : "") + indent + "\t" + DescribeMember(member, selfName, indent + "\t")));
+			
+			var at = header.SourceLocation.Range.End;
+			return DiagnosticFix.Replace("Implement missing members", new(source, new(at, at)),
+				$"{newline}{indent}{{{newline}{text}{newline}{indent}}}");
+		}
+		
+		var close = braces.Range.End - 1;
+		var lineStart = close;
+		while (lineStart > 0 && source[lineStart - 1] is ' ' or '\t')
+			lineStart--;
+		
+		var closeIndent = source.GetText(new(lineStart, close)).ToString();
+		var memberIndent = closeIndent + "\t";
+		var isEmpty = source.GetText(new(braces.Range.Start + 1, close)).ToString().Trim().Length == 0;
+		var added = string.Join(newline + newline,
+			members.Select(member => memberIndent + DescribeMember(member, selfName, memberIndent)));
+		
+		if (lineStart > 0 && source[lineStart - 1] == '\n')
+			return DiagnosticFix.Replace("Implement missing members", new(source, new(lineStart, lineStart)),
+				(isEmpty ? "" : newline) + added + newline);
+		
+		return DiagnosticFix.Replace("Implement missing members", new(source, new(close, close)),
+			newline + added + newline + closeIndent);
+	}
+	
+	private static string DescribeMember(FunctionNode function, string selfName, string indent)
+	{
+		var (source, range) = function.Extent;
+		var start = function.Identifier.SourceLocation.Range.Start;
+		var text = new StringBuilder();
+		var position = start;
+		var selfTypes = function.Parameters.Select(static parameter => parameter.Type)
+			.Append(function.ReturnType)
+			.OfType<ITypeNode>()
+			.SelectMany(FindSelfTypes)
+			.OrderBy(static location => location.Range.Start);
+		
+		foreach (var location in selfTypes)
+		{
+			text.Append(source.GetText(new(position, location.Range.Start))).Append(selfName);
+			position = location.Range.End;
+		}
+		
+		text.Append(source.GetText(new(position, range.End)));
+		var oldIndent = source.FindIndent(start);
+		var lines = text.ToString().TrimEnd().Split('\n');
+		for (var i = 1; i < lines.Length; i++)
+		{
+			if (lines[i].StartsWith(oldIndent, StringComparison.Ordinal))
+				lines[i] = indent + lines[i][oldIndent.Length..];
+		}
+		
+		return string.Join('\n', lines) + " => panic";
+	}
+	
+	private static IEnumerable<SourceLocation> FindSelfTypes(ITypeNode type) => type switch
+	{
+		IdentifierTypeNode { Token.Text: "Self" } self => [self.SourceLocation],
+		GenericTypeNode generic => generic.Arguments.SelectMany(static argument => argument switch
+		{
+			IdentifierArgumentNode { Identifier.Text: "Self" } self => [self.SourceLocation],
+			TypeArgumentNode typeArgument => FindSelfTypes(typeArgument.Type),
+			_ => []
+		}),
+		BorrowTypeNode borrow => FindSelfTypes(borrow.Target),
+		DynTypeNode dyn => FindSelfTypes(dyn.Trait),
+		FunctionTypeNode function => function.ParameterTypes.Append(function.ReturnType).OfType<ITypeNode>()
+			.SelectMany(FindSelfTypes),
+		_ => []
 	};
 	
 	private void ReportConformance(SourceLocation location, string message) =>

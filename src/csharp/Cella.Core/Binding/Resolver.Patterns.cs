@@ -278,7 +278,10 @@ public sealed partial class Resolver
 		
 		if (syntax.Kind != PatternKind.Range && subjectType is FloatType or UntypedFloatType &&
 		    syntax.Operator?.Type is null or TokenType.OpBangEqual)
-			Diagnostics.Add(new(DiagnosticSeverity.Warning, location, "Float patterns compare exactly"));
+			Diagnostics.Add(new(DiagnosticSeverity.Warning, location, "Float patterns compare exactly")
+			{
+				Lint = Lints.FloatPattern
+			});
 		
 		var (constant, spans) = FindPatternConstants(syntax, resolved, subjectType);
 		return new ResolvedPattern(null, []) { Subject = subject, Test = resolved, Constant = constant, Spans = spans };
@@ -524,8 +527,7 @@ public sealed partial class Resolver
 		if (token.Text == "_")
 		{
 			if (mode is { } discarded)
-				Diagnostics.Add(new(DiagnosticSeverity.Hint, discarded.SourceLocation,
-					$"Redundant '{discarded.Text}'"));
+				Diagnostics.Add(DiagnosticFix.Redundant(discarded.SourceLocation));
 			
 			return null;
 		}
@@ -540,7 +542,7 @@ public sealed partial class Resolver
 			Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
 				"Cannot move mutably borrowed payloads"));
 		else if (modeType == TokenType.KeywordOwn && !ownsValue && isCopy)
-			Diagnostics.Add(new(DiagnosticSeverity.Hint, mode!.Value.SourceLocation, "Redundant 'own'"));
+			Diagnostics.Add(DiagnosticFix.Redundant(mode!.Value.SourceLocation));
 		
 		var isMutBinding = !ownsValue && !copies && (isMut || modeType == TokenType.KeywordMut);
 		var isBorrowBinding = !ownsValue && !copies && (isMutBinding || !isCopy);

@@ -3,6 +3,11 @@ Error at variadic_temporaries.ce:31:7
 31 │ take(name)
           ╘══╛ Cannot move 'Name' values implicitly
 
+Hint at variadic_temporaries.ce:32:6
+31 │ take(name)
+32 │ val kept = first(1, 2)
+         ╘══╛ 'kept' is never used
+
 Error at variadic_temporaries.ce:32:19
 31 │ take(name)
 32 │ val kept = first(1, 2)

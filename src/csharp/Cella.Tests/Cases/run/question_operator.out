@@ -1,3 +1,13 @@
+Hint at question_operator.ce:116:6
+115 │ val x = a?
+116 │ val y = b?
+          ^ 'y' is never used
+
+Hint at question_operator.ce:149:6
+148 │ val a = pair(1, 2)
+149 │ val b = pair(3, -4)
+          ^ 'b' is never used
+
 ok 6
 err -1
 err -5

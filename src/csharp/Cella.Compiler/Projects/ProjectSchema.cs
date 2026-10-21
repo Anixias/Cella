@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Cella.Compiler.Linking;
+using Cella.Diagnostics;
 
 namespace Cella.Compiler.Projects;
 
@@ -11,6 +12,7 @@ public enum SettingKind
 	Version,
 	TextList,
 	Flags,
+	Lints,
 	References
 }
 
@@ -39,6 +41,10 @@ public static class ProjectSchema
 		new(nameof(CellaProject.DebugInfo), "Debug info", SettingKind.Boolean, true, "On"),
 		new(nameof(CellaProject.Referenceable), "Referenceable", SettingKind.Boolean, true, "Off"),
 		new(nameof(CellaProject.Flags), "Flags", SettingKind.Flags, false, null),
+		new(nameof(CellaProject.Lints), "Lints", SettingKind.Lints, true, null)
+		{
+			Choices = [..Enum.GetNames<LintLevel>()]
+		},
 		new(nameof(CellaProject.Imports), "Imports", SettingKind.TextList, false, null),
 		new(nameof(CellaProject.Prelude), "Prelude", SettingKind.TextList, false, null),
 		new(nameof(CellaProject.ProjectReferences), "Project references", SettingKind.References, true, null)

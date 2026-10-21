@@ -16,8 +16,10 @@ public static class DiagnosticReporter
 			? startsSentence ? "This lambda" : "this lambda"
 			: $"'{function.Name}'";
 	
+	public const string RemoveUnreachableTitle = "Remove unreachable code";
+	
 	public static Diagnostic ReportUnreachableCode(SourceLocation location) =>
-		new(DiagnosticSeverity.Warning, location, "Unreachable code");
+		new(DiagnosticSeverity.Warning, location, "Unreachable code") { Lint = Lints.UnreachableCode };
 	
 	public static Diagnostic ReportBinaryOpMismatch(OperatorRegistry registry, IResolvedExpressionNode left, Token op,
 		IResolvedExpressionNode right, SourceLocation location)
@@ -102,9 +104,9 @@ public static class DiagnosticReporter
 	}
 	
 	public static Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string missingName,
-		IEnumerable<string> availableNames) =>
+		IEnumerable<string> availableNames, SourceLocation? nameLocation = null) =>
 		ReportUndefined(node.SourceLocation, $"Symbol '{missingName}' not found in this scope", missingName,
-			availableNames);
+			availableNames, nameLocation);
 	
 	public static Diagnostic ReportUndefinedType(SourceLocation location, string missingName,
 		IEnumerable<string> availableNames) =>
@@ -175,13 +177,29 @@ public static class DiagnosticReporter
 			new Diagnostic(DiagnosticSeverity.Error, identifier.SourceLocation, describe(sameName.Key))));
 	
 	private static Diagnostic ReportUndefined(SourceLocation location, string message, string missingName,
-		IEnumerable<string> availableNames) =>
-		new(DiagnosticSeverity.Error, location, message)
-		{
-			Hints = FindSuggestion(missingName, availableNames) is { } hint ? [hint] : []
-		};
+		IEnumerable<string> availableNames, SourceLocation? nameLocation = null) =>
+		WithSuggestion(new(DiagnosticSeverity.Error, location, message), FindBestMatch(missingName, availableNames),
+			nameLocation);
 	
-	public static string? FindSuggestion(string missingName, IEnumerable<string> availableNames)
+	public static Diagnostic
+		WithSuggestion(Diagnostic diagnostic, string? match, SourceLocation? nameLocation = null) =>
+		match is null
+			? diagnostic
+			: diagnostic with
+			{
+				Hints = [..diagnostic.Hints, DescribeSuggestion(match)],
+				Fixes = [..diagnostic.Fixes, SuggestionFix(nameLocation ?? diagnostic.SourceLocation, match)]
+			};
+	
+	public static DiagnosticFix SuggestionFix(SourceLocation location, string match) =>
+		DiagnosticFix.Replace($"Change to '{match}'", location, match);
+	
+	public static string DescribeSuggestion(string match) => $"Did you mean '{match}'?";
+	
+	public static string? FindSuggestion(string missingName, IEnumerable<string> availableNames) =>
+		FindBestMatch(missingName, availableNames) is { } match ? DescribeSuggestion(match) : null;
+	
+	public static string? FindBestMatch(string missingName, IEnumerable<string> availableNames)
 	{
 		string? bestMatch = null;
 		var bestDistance = int.MaxValue;
@@ -212,7 +230,7 @@ public static class DiagnosticReporter
 			}
 		}
 		
-		return bestMatch is null ? null : $"Did you mean '{bestMatch}'?";
+		return bestMatch;
 	}
 	
 	private static bool HasExactBinary(OperatorRegistry registry, TypeSymbol left, TokenType op,

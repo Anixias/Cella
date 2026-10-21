@@ -1,0 +1,13 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+
+[Lints]
+NeverChanged = "Error"
+UnreachableCode = "Off"
+Redundant = "Warning"
+
+[When.debug.Lints]
+FloatPattern = "Hint"
+
+[When.release.Lints]
+FloatPattern = "Error"

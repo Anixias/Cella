@@ -1,0 +1,4 @@
+<case>\test.celp: Unknown lint 'NeverChange' in [Lints]
+<case>\test.celp: 'Loud' is not a valid 'Redundant' in [Lints]
+<case>\test.celp: 'FloatPattern' in [Lints] must be a string
+[compilation failed]

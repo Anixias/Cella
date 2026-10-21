@@ -421,7 +421,10 @@ public sealed partial class Resolver
 				Diagnostics.Add(ReportUndefinedSymbol(variable, variable.Identifier.Text));
 				return false;
 			
-			case VarExpressionNode:
+			case VarExpressionNode variable:
+				if (context.Resolve(variable.Identifier.Text) is LocalVariableSymbol local)
+					MarkUsed(local);
+				
 				return true;
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:

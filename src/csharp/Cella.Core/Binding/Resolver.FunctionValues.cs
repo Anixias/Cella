@@ -182,6 +182,9 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode ResolveSymbolValue(IExpressionNode node, Symbol symbol)
 	{
+		if (symbol is LocalVariableSymbol used)
+			MarkUsed(used);
+		
 		switch (symbol)
 		{
 			case LocalVariableSymbol { IsBorrowBinding: true, Type: PointerType } binding:

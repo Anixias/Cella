@@ -3,4 +3,14 @@ Error at trait_constant_instance_cycle.ce:15:2
 15 │     bits: const u32 = Box[T].bits + 1
          ╘══╛ 'bits' depends on its own value
 
+Hint at trait_constant_instance_cycle.ce:32:6
+31 │ val h = Holder[Box[i32]](1)
+32 │ val a = h.get()
+         ^ 'a' is never used
+
+Hint at trait_constant_instance_cycle.ce:33:6
+32 │ val a = h.get()
+33 │ val b = outer[Box[u8]]()
+         ^ 'b' is never used
+
 [compilation failed]

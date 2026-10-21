@@ -17,5 +17,7 @@ public sealed class ImplNode
 	public ImmutableArray<ITypeNode> Traits { get; } = traits.ToImmutableArray();
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
+	public SourceLocation? Body { get; init; }
+	public Token? LastHeaderToken { get; init; }
 	public bool IsBlanket { get; init; }
 }

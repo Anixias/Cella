@@ -66,7 +66,11 @@ public sealed partial class SignatureCollector
 			         .Select(static entry => entry.Name)
 			         .Distinct()
 			         .Where(name => isFirstFile || !projectNames.Contains(name)))
-			Diagnostics.Add(new(DiagnosticSeverity.Hint, name.SourceLocation, "Redundant import"));
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, name.SourceLocation, "Redundant import")
+			{
+				Fixes = [RemoveImport(node.Imports, name)],
+				Lint = Lints.RedundantImport
+			});
 		
 		_explicitImports.Add((explicitImports, context));
 		ReportRepeatedImports(ProjectImports.Where(static import => !import.IsPrelude));
@@ -172,6 +176,36 @@ public sealed partial class SignatureCollector
 					Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
 						$"'{token.Text}' is imported more than once"));
 			}
+		}
+	}
+	
+	private static DiagnosticFix RemoveImport(IEnumerable<ImportExpression> imports, Token name)
+	{
+		const string title = "Remove redundant import";
+		var import = imports.First(import => import.Import switch
+		{
+			TokenImport single => single.Token == name,
+			ListImport list => list.Tokens.Contains(name),
+			_ => false
+		});
+		
+		switch (import.Import)
+		{
+			case ListImport { Tokens: [var first, var second] }:
+				var (source, range) = first.SourceLocation;
+				var open = range.Start;
+				while (open > 0 && source[open - 1] != '[')
+					open--;
+				
+				var kept = first == name ? second : first;
+				return DiagnosticFix.Replace(title,
+					new(source, new(open - 1, import.SourceLocation.Range.End)), kept.Text);
+			
+			case ListImport { Tokens.Length: > 2 }:
+				return DiagnosticFix.RemoveListItem(title, name.SourceLocation, ',');
+			
+			default:
+				return DiagnosticFix.Remove(title, import.SourceLocation);
 		}
 	}
 	

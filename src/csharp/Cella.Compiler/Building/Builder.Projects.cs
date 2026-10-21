@@ -209,7 +209,7 @@ public sealed partial class Builder
 		// Phase 4: Type checking
 		{
 			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool, signatureCollector.Modules,
-				containment);
+				containment, resolver.UsedLocals);
 			
 			diagnostics.Add(typeChecker.Diagnostics);
 			foreach (var resolvedAst in resolvedFiles)
@@ -257,7 +257,13 @@ public sealed partial class Builder
 					output.WriteLine(LoweredModulePrinter.Print(module));
 			}
 			
-			diagnostics = [new(diagnostics.SelectMany(static list => list))];
+			var lintLevels = project.Project.LintLevels;
+			diagnostics =
+			[
+				new(diagnostics.SelectMany(static list => list)
+					.Select(diagnostic => Lints.Apply(diagnostic, lintLevels))
+					.OfType<Diagnostic>())
+			];
 			
 			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
 			{

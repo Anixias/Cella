@@ -24,7 +24,9 @@ public sealed partial class Resolver
 				if (symbol is not null)
 					break;
 				
-				return Error(node, ReportUndefinedSymbol(node, varExpr.Identifier.Text), CurrentTargetType);
+				return Error(node,
+					ReportUndefinedSymbol(node, varExpr.Identifier.Text, varExpr.Identifier.SourceLocation),
+					CurrentTargetType);
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
 				ProbeMember(access, () => GetModuleCandidates(module));

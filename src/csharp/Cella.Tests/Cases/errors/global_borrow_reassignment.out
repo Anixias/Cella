@@ -3,11 +3,21 @@ Hint at global_borrow_reassignment.ce:22:13
 22 │     val view = imm current
                     ╘═╛ Redundant 'imm'
 
+Hint at global_borrow_reassignment.ce:24:6
+23 │ current = Buffer(5)
+24 │ val moduleId = view.id
+         ╘══════╛ 'moduleId' is never used
+
 Error at global_borrow_reassignment.ce:24:17
 23 │ current = Buffer(5)
 24 │ val moduleId = view.id
                     ╘══╛ Cannot use borrows of reassigned values
                        | Reassigned on line 23
+
+Hint at global_borrow_reassignment.ce:28:6
+27 │ current = Buffer(6)
+28 │ val implicitId = implicit.id
+         ╘════════╛ 'implicitId' is never used
 
 Error at global_borrow_reassignment.ce:28:19
 27 │ current = Buffer(6)
@@ -20,11 +30,21 @@ Hint at global_borrow_reassignment.ce:30:15
 30 │ val cached = imm Cache.kept
                   ╘═╛ Redundant 'imm'
 
+Hint at global_borrow_reassignment.ce:32:6
+31 │ Cache.kept = Buffer(7)
+32 │ val cachedId = cached.id
+         ╘══════╛ 'cachedId' is never used
+
 Error at global_borrow_reassignment.ce:32:17
 31 │ Cache.kept = Buffer(7)
 32 │ val cachedId = cached.id
                     ╘════╛ Cannot use borrows of reassigned values
                          | Reassigned on line 31
+
+Hint at global_borrow_reassignment.ce:36:6
+35 │ items[0] = Buffer(8)
+36 │ val firstId = first.id
+         ╘═════╛ 'firstId' is never used
 
 Error at global_borrow_reassignment.ce:36:16
 35 │ items[0] = Buffer(8)

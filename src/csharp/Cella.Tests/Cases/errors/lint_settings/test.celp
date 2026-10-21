@@ -1,0 +1,13 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+
+[Lints]
+NeverChange = "Off"
+Redundant = "Loud"
+FloatPattern = 1
+
+[When.debug.Lints]
+UnreachableCode = "Off"
+
+[When."debug || release".Lints]
+UnreachableCode = "Hint"

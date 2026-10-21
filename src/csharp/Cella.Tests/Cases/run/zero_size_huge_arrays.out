@@ -1,1 +1,6 @@
+Hint at zero_size_huge_arrays.ce:7:6
+6 │ {
+7 │     var a: array[Empty, 18446744073709551615]
+            ^ 'a' is never used
+
 [exit code 0]

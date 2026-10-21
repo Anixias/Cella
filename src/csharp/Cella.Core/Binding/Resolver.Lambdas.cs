@@ -27,7 +27,11 @@ public sealed partial class Resolver
 			static name => $"Parameter '{name}' is declared more than once"));
 		
 		if (node.EmptyParentheses is { } parentheses)
-			Diagnostics.Add(new(DiagnosticSeverity.Hint, parentheses, "Redundant '()'"));
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, parentheses, "Redundant '()'")
+			{
+				Lint = Lints.Redundant,
+				Fixes = [DiagnosticFix.RemoveExactly("Remove redundant '()'", parentheses)]
+			});
 		
 		var modes = new ParameterMode[node.Parameters.Length];
 		var types = new TypeSymbol[node.Parameters.Length];
@@ -115,7 +119,7 @@ public sealed partial class Resolver
 		if (frame.Captures.Count == 0)
 		{
 			if (node.Own is { } own && !frame.RejectsCaptures)
-				Diagnostics.Add(new(DiagnosticSeverity.Hint, own.SourceLocation, "Redundant 'own'"));
+				Diagnostics.Add(DiagnosticFix.Redundant(own.SourceLocation));
 			
 			return CreateLambdaGroup(info, node);
 		}

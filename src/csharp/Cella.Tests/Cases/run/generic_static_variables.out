@@ -1,2 +1,17 @@
+Hint at generic_static_variables.ce:28:6
+27 │ {
+28 │     val a = Counter[i32](1)
+             ^ 'a' is never used
+
+Hint at generic_static_variables.ce:29:6
+28 │ val a = Counter[i32](1)
+29 │ val b = Counter[i32](2)
+         ^ 'b' is never used
+
+Hint at generic_static_variables.ce:30:6
+29 │ val b = Counter[i32](2)
+30 │ val c = Counter[f64](1.5)
+         ^ 'c' is never used
+
 2 1
 [exit code 0]

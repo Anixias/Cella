@@ -159,7 +159,9 @@ public sealed partial class SignatureCollector
 				if (requirer is not null)
 					Diagnostics.Add(new(DiagnosticSeverity.Hint, nodes[i].SourceLocation, $"Redundant '{bound.Name}'")
 					{
-						Hints = [$"Required by '{requirer.Name}'"]
+						Hints = [$"Required by '{requirer.Name}'"],
+						Fixes = DiagnosticFix.RemoveRedundantBound(nodes[i].SourceLocation) is { } fix ? [fix] : [],
+						Lint = Lints.Redundant
 					});
 			}
 		}
@@ -190,9 +192,8 @@ public sealed partial class SignatureCollector
 		{
 			using var frame = Own(node);
 			if (!_typePool.HasDefaultPart(type))
-				Diagnostics.Add(new(DiagnosticSeverity.Hint,
-					node.Modifiers.First(static modifier => modifier.Type == TokenType.KeywordReq).SourceLocation,
-					"Redundant 'req'"));
+				Diagnostics.Add(DiagnosticFix.Redundant(node.Modifiers
+					.First(static modifier => modifier.Type == TokenType.KeywordReq).SourceLocation));
 		}
 	}
 	
@@ -252,7 +253,9 @@ public sealed partial class SignatureCollector
 					    _typePool.GetSelfConstraints(trait, parameter).Contains(keyword.Type)) is { } requirer)
 					Diagnostics.Add(new(DiagnosticSeverity.Hint, keyword.SourceLocation, $"Redundant '{keyword.Text}'")
 					{
-						Hints = [$"Required by '{requirer.Name}'"]
+						Hints = [$"Required by '{requirer.Name}'"],
+						Fixes = DiagnosticFix.RemoveRedundantBound(keyword.SourceLocation) is { } fix ? [fix] : [],
+						Lint = Lints.Redundant
 					});
 			}
 		}

@@ -1,3 +1,8 @@
+Hint at char_conversion_trap.ce:7:6
+6 │ {
+7 │     val c = make(55296)
+            ^ 'c' is never used
+
 [stderr]
 Panic at char_conversion_trap.ce:3:30: conversion overflow
 [exit code 101]

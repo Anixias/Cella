@@ -1,3 +1,8 @@
+Hint at deferred_val_closures.ce:6:6
+5 │ val x: i32
+6 │ val f = fun { x = 1 }
+        ^ 'f' is never used
+
 Error at deferred_val_closures.ce:6:16
 5 │ val x: i32
 6 │ val f = fun { x = 1 }

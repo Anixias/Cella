@@ -80,7 +80,7 @@ public static class Protocol
 			? diagnostic.Message
 			: $"{diagnostic.Message}\n{string.Join("\n", diagnostic.Hints)}";
 		
-		return new JsonObject
+		var converted = new JsonObject
 		{
 			["range"] = new JsonObject
 			{
@@ -91,6 +91,11 @@ public static class Protocol
 			["source"] = "cella",
 			["message"] = message
 		};
+		
+		if (diagnostic.Lint is { } lint)
+			converted["code"] = lint;
+		
+		return converted;
 	}
 	
 	public static JsonObject ToLsp(ProjectDiagnostic diagnostic, string? text)

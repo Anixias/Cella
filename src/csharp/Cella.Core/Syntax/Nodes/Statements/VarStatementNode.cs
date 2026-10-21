@@ -12,6 +12,7 @@ public sealed class VarStatementNode
 ) : IStatementNode
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public Token? Keyword { get; init; }
 	public Token Identifier { get; } = identifier;
 	public ITypeNode? Type { get; } = type;
 	public IExpressionNode? ExpressionNode { get; } = expressionNode;

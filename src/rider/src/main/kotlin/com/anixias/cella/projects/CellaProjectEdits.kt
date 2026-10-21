@@ -26,12 +26,16 @@ data class SettingSchema(
 	val default: String?,
 	val choices: List<String>)
 
+data class LintSchema(val name: String, val label: String, val default: String)
+
 class ProjectSettingsData(
 	val name: String,
 	val errors: List<String>,
 	val settings: List<SettingSchema>,
 	val values: Map<String?, Map<String, Any>>,
 	val flags: Map<String, Boolean>,
+	val lints: List<LintSchema>,
+	val lintLevels: Map<String?, Map<String, String>>,
 	val references: List<CellaReference>)
 
 class LoadedProject(
@@ -178,10 +182,18 @@ object CellaProjectEdits {
 		}.orEmpty()
 
 		val values = linkedMapOf<String?, Map<String, Any>>(null to parseValues(result.getAsJsonObject("values")))
+		val lintLevels = linkedMapOf<String?, Map<String, String>>(null to parseLevels(result.getAsJsonObject("lintLevels")))
 		result.getAsJsonArray("conditions")?.forEach { element ->
 			val entry = element as? JsonObject ?: return@forEach
-			values[entry.text("condition") ?: return@forEach] = parseValues(entry.getAsJsonObject("values"))
+			val condition = entry.text("condition") ?: return@forEach
+			values[condition] = parseValues(entry.getAsJsonObject("values"))
+			lintLevels[condition] = parseLevels(entry.getAsJsonObject("lintLevels"))
 		}
+		
+		val lints = result.getAsJsonArray("lints")?.mapNotNull { element ->
+			val entry = element as? JsonObject ?: return@mapNotNull null
+			LintSchema(entry.text("name") ?: return@mapNotNull null, entry.text("label") ?: "", entry.text("default") ?: "")
+		}.orEmpty()
 
 		val flags = result.getAsJsonObject("flags")?.entrySet()
 			?.filter { it.value.isJsonPrimitive }
@@ -197,8 +209,13 @@ object CellaProjectEdits {
 
 		return ProjectSettingsData(result.text("name") ?: "",
 			result.getAsJsonArray("errors")?.mapNotNull { it.takeIf { it.isJsonPrimitive }?.asString }.orEmpty(),
-			settings, values, flags, references)
+			settings, values, flags, lints, lintLevels, references)
 	}
+	
+	private fun parseLevels(levels: JsonObject?): Map<String, String> = levels?.entrySet()
+		?.filter { it.value.isJsonPrimitive }
+		?.associate { it.key to it.value.asString }
+		.orEmpty()
 
 	private fun parseValues(values: JsonObject?): Map<String, Any> = values?.entrySet()?.mapNotNull { (key, value) ->
 		when {

@@ -5,7 +5,6 @@ import com.anixias.cella.CelpFileType
 import com.anixias.cella.run.CellaRunConfiguration
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunManagerListener
 import com.intellij.execution.RunnerAndConfigurationSettings
@@ -14,7 +13,6 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.runReadActionBlocking
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
@@ -29,7 +27,6 @@ import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileCreateEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
-import com.intellij.psi.PsiManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.io.File
 import java.net.URI
@@ -103,12 +100,12 @@ class CellaServer(private val project: Project) : Disposable {
 	
 	private val sender = AppExecutorUtil.createBoundedApplicationPoolExecutor("Cella language server", 1)
 	private val documents = ConcurrentHashMap<String, Pair<Document, Int>>()
-	private val diagnostics = ConcurrentHashMap<String, List<Diagnostic>>()
 	private var connection: Connection? = null
 	private var hasReportedProblem = false
 	private var configuration: JsonObject? = null
 	
 	val highlighter = CellaSemanticHighlighter(project, this)
+	private val painter = CellaDiagnosticsPainter(project)
 	
 	init {
 		project.messageBus.connect(this).subscribe(RunManagerListener.TOPIC, object : RunManagerListener {
@@ -151,7 +148,6 @@ class CellaServer(private val project: Project) : Disposable {
 				continue
 			
 			documents.remove(uri)
-			diagnostics.remove(keyOf(uri))
 			sender.execute {
 				connection?.server?.textDocumentService?.didClose(DidCloseTextDocumentParams(TextDocumentIdentifier(uri)))
 			}
@@ -290,9 +286,7 @@ class CellaServer(private val project: Project) : Disposable {
 			connection?.takeIf { it.process.isAlive }?.server?.configuration(active)
 		}
 	}
-	
-	fun diagnosticsFor(file: VirtualFile): List<Diagnostic> = diagnostics[keyOf(uriOf(file))].orEmpty()
-	
+
 	fun position(document: Document, offset: Int): Position {
 		val line = document.getLineNumber(offset)
 		return Position(line, offset - document.getLineStartOffset(line))
@@ -404,14 +398,12 @@ class CellaServer(private val project: Project) : Disposable {
 		return launcher?.let { listOf(it, "lsp") }
 	}
 	
-	private fun refreshAnnotations(uri: String) {
+	private fun paintDiagnostics(uri: String, version: Int?, published: List<Diagnostic>) {
 		val key = keyOf(uri)
 		ApplicationManager.getApplication().invokeLater({
-			val entry = documents.entries.firstOrNull { keyOf(it.key) == key }?.value ?: return@invokeLater
-			val file = FileDocumentManager.getInstance().getFile(entry.first) ?: return@invokeLater
-			val psi = runReadActionBlocking { PsiManager.getInstance(project).findFile(file) }
-			if (psi != null)
-				DaemonCodeAnalyzer.getInstance(project).restart(psi, "Cella diagnostics")
+			val (document, current) = documents.entries.firstOrNull { keyOf(it.key) == key }?.value ?: return@invokeLater
+			if (version == null || version == current)
+				painter.paint(document, published)
 		}, project.disposed)
 	}
 	
@@ -420,9 +412,8 @@ class CellaServer(private val project: Project) : Disposable {
 		}
 		
 		override fun publishDiagnostics(params: PublishDiagnosticsParams) {
-			diagnostics[keyOf(params.uri)] = params.diagnostics
 			CellaProblems.get(project).publish(params.uri, params.diagnostics)
-			refreshAnnotations(params.uri)
+			paintDiagnostics(params.uri, params.version, params.diagnostics)
 		}
 		
 		override fun showMessage(params: MessageParams) {

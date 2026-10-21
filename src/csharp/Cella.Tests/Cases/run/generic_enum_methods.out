@@ -1,3 +1,8 @@
+Hint at generic_enum_methods.ce:87:6
+86 │ s.put(2)
+87 │ val t = Slot[i64].make(3)
+         ^ 't' is never used
+
 1 42 0
 4 -1 8
 2 1 1

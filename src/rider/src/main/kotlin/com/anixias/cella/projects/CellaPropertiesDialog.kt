@@ -16,11 +16,14 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.FormBuilder
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.Component
 import java.awt.FlowLayout
+import javax.swing.DefaultCellEditor
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.JTable
 import javax.swing.table.DefaultTableModel
 
 class CellaPropertiesDialog(private val project: Project, private val loaded: LoadedProject) : DialogWrapper(project) {
@@ -92,7 +95,7 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 	}
 
 	private val settings = loaded.settings
-	private val schema = settings.settings.filter { it.kind != "flags" && it.kind != "references" }
+	private val schema = settings.settings.filter { it.kind !in setOf("flags", "lints", "references") }
 	private val grouped = setOf("OutputType", "AssemblyName", "CellaVersion", "StandardLibrary", "Referenceable",
 		"BoundsChecks", "OverflowChecks", "DebugInfo", "SystemLinkPreference", "Imports", "Prelude")
 	private val values = linkedMapOf<String?, MutableMap<String, Any>>()
@@ -109,6 +112,14 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 	}
 
 	private val flagsTable = JBTable(flagsModel)
+	private val levelChoices = settings.settings.firstOrNull { it.kind == "lints" }?.choices.orEmpty().toTypedArray()
+	private val lintLevels = linkedMapOf<String?, MutableMap<String, String>>()
+	private val levelBox = ComboBox<String>()
+	private val lintsModel = object : DefaultTableModel(arrayOf<Any>("Lint", "Level"), 0) {
+		override fun isCellEditable(row: Int, column: Int) = column == 1
+	}
+	
+	private val lintsTable = JBTable(lintsModel)
 	private var current: String? = null
 	private var isSwitching = false
 
@@ -123,6 +134,20 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 
 		for ((name, value) in settings.flags)
 			flagsModel.addRow(arrayOf<Any>(name, value))
+		
+		for ((condition, levels) in settings.lintLevels)
+			lintLevels[condition] = levels.toMutableMap()
+		
+		for (lint in settings.lints)
+			lintsModel.addRow(arrayOf<Any>(lint.label, ""))
+		
+		lintsTable.columnModel.getColumn(1).cellEditor = object : DefaultCellEditor(levelBox) {
+			override fun getTableCellEditorComponent(table: JTable, value: Any?, isSelected: Boolean, row: Int,
+				column: Int): Component {
+				levelBox.model = DefaultComboBoxModel(arrayOf(inheritedLevel(settings.lints[row])) + levelChoices)
+				return super.getTableCellEditorComponent(table, value, isSelected, row, column)
+			}
+		}
 
 		for (setting in schema)
 			editors[setting.name] = when (setting.kind) {
@@ -158,6 +183,7 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 			.disableUpDownActions()
 			.createPanel())
 
+		tabs.addTab("Lints", JBScrollPane(lintsTable))
 		tabs.addTab("Imports", page(listOf("Imports", "Prelude")))
 		tabs.addTab("References", referencesEditor.component)
 
@@ -225,6 +251,7 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 		save()
 		removedConditions.remove(condition)
 		values.getOrPut(condition) { mutableMapOf() }
+		lintLevels.getOrPut(condition) { mutableMapOf() }
 		references.putIfAbsent(condition, emptyList())
 		current = condition
 		rebuildScopes(Scope.Condition(condition))
@@ -252,6 +279,23 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 		}
 
 		references[current] = referencesEditor.read()
+		lintsTable.cellEditor?.stopCellEditing()
+		val levels = lintLevels.getOrPut(current) { mutableMapOf() }
+		for ((row, lint) in settings.lints.withIndex()) {
+			val level = lintsModel.getValueAt(row, 1) as? String
+			if (level in levelChoices)
+				levels[lint.name] = level!!
+			else
+				levels.remove(lint.name)
+		}
+	}
+	
+	private fun inheritedLevel(lint: LintSchema) = if (current == null) "Default (${lint.default})" else
+		"Inherited (${lintLevels[null]?.get(lint.name) ?: lint.default})"
+	
+	private fun showLints() {
+		for ((row, lint) in settings.lints.withIndex())
+			lintsModel.setValueAt(lintLevels[current]?.get(lint.name) ?: inheritedLevel(lint), row, 1)
 	}
 
 	private fun showScope() {
@@ -270,6 +314,7 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 
 		removeCondition.isEnabled = condition != null
 		flagsTable.isEnabled = condition == null
+		showLints()
 		referencesEditor.show(references[condition].orEmpty(), true)
 	}
 
@@ -326,6 +371,21 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 				CellaProjectEdits.referenceEdits(settings.references, chosen, condition).forEach(edits::add)
 		}
 
+		for ((condition, levels) in lintLevels) {
+			if (condition != null && condition in removedConditions)
+				continue
+			
+			val before = settings.lintLevels[condition].orEmpty()
+			for (lint in settings.lints) {
+				val after = levels[lint.name]
+				if (after != before[lint.name])
+					edits.add(CellaProjectEdits.edit(condition) {
+						addProperty("lint", lint.name)
+						after?.let { addProperty("value", it) }
+					})
+			}
+		}
+		
 		for (condition in removedConditions.filter { it in settings.values.keys })
 			edits.add(CellaProjectEdits.edit(null) { addProperty("removeCondition", condition) })
 

@@ -1,12 +1,42 @@
+Hint at main.ce:312:6
+311 │ {
+312 │     val color = Color.green
+              ╘═══╛ 'color' is never used
+
+Hint at main.ce:313:6
+312 │ val color = Color.green
+313 │ val shape = Shape.circle(2.5)
+          ╘═══╛ 'shape' is never used
+
+Hint at main.ce:314:6
+313 │ val shape = Shape.circle(2.5)
+314 │ val code = Code.fail
+          ╘══╛ 'code' is never used
+
+Hint at main.ce:315:6
+314 │ val code = Code.fail
+315 │ val letter = 'x'
+          ╘════╛ 'letter' is never used
+
+Hint at main.ce:316:6
+315 │ val letter = 'x'
+316 │ val flag = true
+          ╘══╛ 'flag' is never used
+
 Hint at main.ce:317:6
 316 │ val flag = true
 317 │ var bits = Bits()
-          ╘══╛ 'bits' is never changed
+          ╘══╛ 'bits' is never used
 
 Hint at main.ce:318:6
 317 │ var bits = Bits()
 318 │ var node = Node(7, null)
-          ╘══╛ 'node' is never changed
+          ╘══╛ 'node' is never used
+
+Hint at main.ce:319:6
+318 │ var node = Node(7, null)
+319 │ val text = "hello"
+          ╘══╛ 'text' is never used
 
 main
   local color: test.Color {red, green, blue}

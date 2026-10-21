@@ -456,11 +456,19 @@ public sealed partial class FileParser
 		
 		var isConstant = keyword.Type == TokenType.KeywordConst;
 		if (!MatchOnLine(ref index, TokenType.OpEqual))
-			return new(new(source, range), identifier, type, null, isMutable) { IsConstant = isConstant };
+			return new(new(source, range), identifier, type, null, isMutable)
+			{
+				IsConstant = isConstant,
+				Keyword = keyword
+			};
 		
 		var initializer = ParseExpression(ref index);
 		range = range.Join(initializer.SourceLocation.Range);
-		return new(new(source, range), identifier, type, initializer, isMutable) { IsConstant = isConstant };
+		return new(new(source, range), identifier, type, initializer, isMutable)
+		{
+			IsConstant = isConstant,
+			Keyword = keyword
+		};
 	}
 	
 	private IExpressionNode ParseExpression(ref int index) => CreateExpressionParser().Parse(ref index);

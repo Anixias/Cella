@@ -75,17 +75,32 @@ Hint at borrow_sources.ce:136:6
 136 │ var tally = Tally(mut count, 5)
           ╘═══╛ 'tally' is never changed
 
+Hint at borrow_sources.ce:137:6
+136 │ var tally = Tally(mut count, 5)
+137 │ val moved = own count
+          ╘═══╛ 'moved' is never used
+
 Error at borrow_sources.ce:139:2
 138 │ printf("%d\n", tally.step)
 139 │ tally.count += 1
       ╘═════════╛ Cannot use borrows of moved values
                 | Moved on line 137
 
+Hint at borrow_sources.ce:146:6
+145 │ val total = mut kills(mut stats)
+146 │ val moved = own stats
+          ╘═══╛ 'moved' is never used
+
 Error at borrow_sources.ce:147:2
 146 │ val moved = own stats
 147 │ total += 1
       ╘═══╛ Cannot use borrows of moved values
           | Moved on line 146
+
+Hint at borrow_sources.ce:154:6
+153 │ val scope = Scope(mut depth)
+154 │ val moved = own depth
+          ╘═══╛ 'moved' is never used
 
 Error at borrow_sources.ce:155:1
 154 │     val moved = own depth
@@ -114,6 +129,11 @@ Hint at borrow_sources.ce:169:6
 169 │ var tally = Tally(mut count, 2)
           ╘═══╛ 'tally' is never changed
 
+Hint at borrow_sources.ce:173:6
+172 │ val moved = own buffer
+173 │ val gone = own count
+          ╘══╛ 'gone' is never used
+
 Error at borrow_sources.ce:174:20
 173 │ val gone = own count
 174 │ printf("%d %d\n", inner, counter)
@@ -125,6 +145,11 @@ Error at borrow_sources.ce:174:27
 174 │ printf("%d %d\n", inner, counter)
                                ╘═════╛ Cannot use borrows of moved values
                                      | Moved on line 173
+
+Hint at borrow_sources.ce:184:6
+183 │ target = Tally(mut y, 1)
+184 │ val moved = own y
+          ╘═══╛ 'moved' is never used
 
 Error at borrow_sources.ce:185:17
 184 │ val moved = own y

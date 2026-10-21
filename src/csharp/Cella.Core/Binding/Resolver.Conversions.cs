@@ -397,7 +397,7 @@ public sealed partial class Resolver
 	{
 		if (CurrentResolutionContext.ContainingFunction?.Symbol == info.Symbol && PassesOwnParameter(source, info))
 			Diagnostics.Add(new(DiagnosticSeverity.Warning, syntax.SourceLocation,
-				$"Conversion '{info.Symbol.DeclaredName}' calls itself"));
+				$"Conversion '{info.Symbol.DeclaredName}' calls itself") { Lint = Lints.SelfConversion });
 		
 		TrackFunctionUse(info, syntax);
 		if (info.Symbol.Kind == FunctionKind.Free)

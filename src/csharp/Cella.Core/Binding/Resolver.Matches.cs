@@ -143,7 +143,7 @@ public sealed partial class Resolver
 		
 		ReportUnreachableElse(value.Type, summaries, unguarded);
 		if (!summaries.Any(static arm => arm.IsElse || arm.IsFailed) && !IsInvalid(value))
-			ReportUncovered(node.Keyword, value.Type, unguarded);
+			ReportUncovered(node, value.Type, unguarded);
 		
 		var arms = values
 			.Select(value => value is ResolvedCaseNameExpressionNode caseName && HasCase(hint, caseName.Name.Text)
@@ -280,12 +280,14 @@ public sealed partial class Resolver
 		    !arms.Any(static arm => arm.IsFailed) && !IsInvalid(type) && _coverage.Covers(type, patterns))
 			Diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(last.Location) with
 			{
-				UnnecessaryLocation = last.Location
+				UnnecessaryLocation = last.Location,
+				Fixes = [DiagnosticFix.RemoveListItem(DiagnosticReporter.RemoveUnreachableTitle, last.Location, ',')]
 			});
 	}
 	
-	private void ReportUncovered(Token keyword, TypeSymbol type, List<ResolvedPattern> patterns)
+	private void ReportUncovered(MatchExpressionNode node, TypeSymbol type, List<ResolvedPattern> patterns)
 	{
+		var keyword = node.Keyword;
 		if (type is not EnumSymbol { IsExternal: false } enumType)
 		{
 			if (!_coverage.Covers(type, patterns))
@@ -301,6 +303,30 @@ public sealed partial class Resolver
 		
 		var names = DiagnosticReporter.JoinNames([..missing.Select(static enumCase => enumCase.Name)]);
 		Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
-			$"This match doesn't handle every case of '{enumType.Name}': {names}"));
+			$"This match doesn't handle every case of '{enumType.Name}': {names}")
+		{
+			Fixes = AddMissingArms(node, missing) is { } fix ? [fix] : []
+		});
+	}
+	
+	private static DiagnosticFix? AddMissingArms(MatchExpressionNode node, IEnumerable<EnumCaseSymbol> missing)
+	{
+		if (node.Arms is not [.., var last])
+			return null;
+		
+		var source = node.SourceLocation.Source;
+		var end = Math.Max(last.SourceLocation.Range.End, last.Value?.SourceLocation.Range.End ?? 0);
+		var arms = missing.Select(static enumCase => enumCase.Fields.IsEmpty
+			? $"{enumCase.Name} => panic"
+			: $"{enumCase.Name}({string.Join(", ", enumCase.Fields.Select(static _ => "_"))}) => panic");
+		
+		var isOneLine = source.GetLineColumn(end).Line == source.GetLineColumn(node.SourceLocation.Range.End - 1).Line;
+		var indent = source.FindIndent(last.SourceLocation.Range.Start);
+		var newline = source.FindNewline();
+		var text = isOneLine
+			? string.Concat(arms.Select(static arm => $", {arm}"))
+			: string.Concat(arms.Select(arm => $"{newline}{indent}{arm}"));
+		
+		return DiagnosticFix.Replace("Add missing cases", new(source, new(end, end)), text);
 	}
 }

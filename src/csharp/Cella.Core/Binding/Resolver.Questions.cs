@@ -112,6 +112,7 @@ public sealed partial class Resolver
 			Containment = current.Containment,
 			EvaluateConstant = current.EvaluateConstant,
 			FindValueParameterUse = current.FindValueParameterUse,
+			MarkUsed = current.MarkUsed,
 			GenericTypes = current.GenericTypes,
 			RecordUndo = current.RecordUndo,
 			TrackInstance = current.TrackInstance,

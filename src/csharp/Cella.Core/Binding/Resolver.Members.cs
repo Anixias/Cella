@@ -573,11 +573,13 @@ public sealed partial class Resolver
 		_ => DiagnosticReporter.ReportHidden(location, name, visibility, true)
 	};
 	
-	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name) =>
+	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name, SourceLocation? nameLocation = null) =>
 		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
 		ReportHiddenStatic(name, node.SourceLocation) ??
 		ReportMisplacedName(node.SourceLocation, name) ??
-		DiagnosticReporter.ReportUndefinedSymbol(node, name, GetVisibleSymbolNames().Concat(_literalKeywords));
+		CurrentResolutionContext.WithImportFixes(DiagnosticReporter.ReportUndefinedSymbol(node, name,
+				GetVisibleSymbolNames().Concat(_literalKeywords), nameLocation), name,
+			static symbol => symbol is FunctionSymbol or GlobalSymbol or NamedTypeSymbol);
 	
 	private Diagnostic? ReportMisplacedName(SourceLocation location, string name)
 	{
@@ -625,8 +627,11 @@ public sealed partial class Resolver
 	
 	private DiagnosticText DescribeAbsentMember(TypeSymbol type, string name) =>
 		_typePool.FindBlockViolation(type, name) ?? DescribeHiddenTraitMember(type, name) ??
-		new DiagnosticText($"Type '{type.Name}' has no member '{name}'",
-			DiagnosticReporter.FindSuggestion(name, GetMemberNames(type)));
+		DescribeSuggested($"Type '{type.Name}' has no member '{name}'",
+			DiagnosticReporter.FindBestMatch(name, GetMemberNames(type)));
+	
+	private static DiagnosticText DescribeSuggested(string message, string? match) =>
+		new(message, match is null ? null : DiagnosticReporter.DescribeSuggestion(match), match);
 	
 	private DiagnosticText? DescribeHiddenTraitMember(TypeSymbol type, string name) => _typePool.FindConformances(type)
 		.Select(static conformance => conformance.Trait)

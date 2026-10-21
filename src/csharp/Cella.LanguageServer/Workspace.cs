@@ -7,6 +7,7 @@ using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.CodeGen;
+using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 using Cella.Diagnostics;
@@ -33,7 +34,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private sealed record Checker(Builder Builder, CollectedOutput Output, BuildOptions Options);
 	
 	private readonly Lock _lock = new();
-	private readonly Dictionary<string, (string Uri, string Text)> _documents = new(Protocol.PathComparer);
+	
+	private readonly Dictionary<string, (string Uri, string Text, int? Version)>
+		_documents = new(Protocol.PathComparer);
+	
 	private readonly List<string> _roots = [];
 	private readonly Dictionary<string, Checker> _checkers = new(Protocol.PathComparer);
 	private readonly Dictionary<string, HashSet<string>> _published = new(Protocol.PathComparer);
@@ -75,11 +79,11 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		RequestCheck();
 	}
 	
-	public void Open(string uri, string text)
+	public void Open(string uri, string text, int? version)
 	{
 		var path = Protocol.ToPath(uri);
 		lock (_lock)
-			_documents[path] = (uri, text);
+			_documents[path] = (uri, text, version);
 		
 		if (!IsInRoot(path) && FindProjectDirectory(path) is { } directory)
 			AddRoot(directory);
@@ -87,10 +91,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		RequestCheck();
 	}
 	
-	public void Change(string uri, string text)
+	public void Change(string uri, string text, int? version)
 	{
 		lock (_lock)
-			_documents[Protocol.ToPath(uri)] = (uri, text);
+			_documents[Protocol.ToPath(uri)] = (uri, text, version);
 		
 		RequestCheck();
 	}
@@ -173,6 +177,19 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		return (references, FindFile(projects, path)?.Syntax is FileNode file ? file.ContextualKeywords : []);
 	}
 	
+	public async Task<(IReadOnlyList<Diagnostic> Diagnostics, ResolvedFileNode? File, string? Text)> GetFileAsync(
+		string uri, CancellationToken ct)
+	{
+		var path = Protocol.ToPath(uri);
+		var (projects, text) = await GetCheckedProjectsAsync(path, ct);
+		var diagnostics = projects
+			.SelectMany(static project => project.Diagnostics)
+			.Where(diagnostic => Protocol.PathComparer.Equals(diagnostic.SourceLocation.Source.FilePath, path))
+			.ToList();
+		
+		return (diagnostics, FindFile(projects, path), text);
+	}
+	
 	public async Task<IReadOnlyList<(FunctionInfo Function, SourceLocation Name, bool IsMain)>> GetRunnablesAsync(
 		string uri, CancellationToken ct)
 	{
@@ -222,6 +239,22 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			return (projects, text);
 		}
 	}
+	
+	public async Task<SymbolReference?> FindRenameableAsync(string uri, int line, int character,
+		CancellationToken ct)
+	{
+		if (await FindAsync(uri, line, character, ct) is not { Declaration: { } declaration } reference ||
+		    reference.Symbol is ModulePathSymbol || !IsName(reference.Location.GetText().ToString()) ||
+		    !IsInRoot(declaration.Source.FilePath))
+			return null;
+		
+		return reference;
+	}
+	
+	public static bool IsName(string text) =>
+		text.Length > 0 && (char.IsLetter(text[0]) || text[0] == '_') &&
+		text.All(static c => char.IsLetterOrDigit(c) || c == '_') &&
+		TokenTypeInfo.GetKeyword(text) is not { IsContextual: false };
 	
 	public async Task<IReadOnlyList<SourceLocation>> FindUsagesAsync(string uri, int line, int character,
 		bool includeDeclaration, CancellationToken ct)
@@ -351,15 +384,15 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	{
 		string[] roots;
 		Dictionary<string, string> unsaved;
-		Dictionary<string, string> uris;
+		Dictionary<string, (string Uri, int? Version)> opened;
 		lock (_lock)
 		{
 			roots = [.._roots];
 			unsaved = _documents.ToDictionary(static pair => pair.Key, static pair => pair.Value.Text,
 				Protocol.PathComparer);
 			
-			uris = _documents.ToDictionary(static pair => pair.Key, static pair => pair.Value.Uri,
-				Protocol.PathComparer);
+			opened = _documents.ToDictionary(static pair => pair.Key,
+				static pair => (pair.Value.Uri, pair.Value.Version), Protocol.PathComparer);
 		}
 		
 		foreach (var root in roots)
@@ -370,7 +403,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			lock (_lock)
 				_results[root] = result;
 			
-			await PublishAsync(root, result, uris);
+			await PublishAsync(root, result, opened);
 		}
 		
 		TaskCompletionSource completed;
@@ -472,7 +505,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		return File.Exists(path) ? File.ReadAllText(path) : null;
 	}
 	
-	private async Task PublishAsync(string root, BuildResult result, IReadOnlyDictionary<string, string> uris)
+	private async Task PublishAsync(string root, BuildResult result,
+		IReadOnlyDictionary<string, (string Uri, int? Version)> opened)
 	{
 		var byFile = new Dictionary<string, JsonArray>(Protocol.PathComparer);
 		foreach (var problem in result.ProjectDiagnostics)
@@ -500,10 +534,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		
 		var current = new HashSet<string>(byFile.Keys, Protocol.PathComparer);
 		foreach (var (path, diagnostics) in byFile)
-			await PublishAsync(path, diagnostics, uris);
+			await PublishAsync(path, diagnostics, opened);
 		
 		foreach (var path in _published.GetValueOrDefault(root, []).Where(path => !current.Contains(path)))
-			await PublishAsync(path, [], uris);
+			await PublishAsync(path, [], opened);
 		
 		_published[root] = current;
 		
@@ -516,12 +550,19 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		}
 	}
 	
-	private Task PublishAsync(string path, JsonArray diagnostics, IReadOnlyDictionary<string, string> uris) =>
-		notify(Protocol.Notification("textDocument/publishDiagnostics", new JsonObject
+	private Task PublishAsync(string path, JsonArray diagnostics,
+		IReadOnlyDictionary<string, (string Uri, int? Version)> opened)
+	{
+		var parameters = new JsonObject { ["uri"] = Protocol.ToUri(path), ["diagnostics"] = diagnostics };
+		if (opened.TryGetValue(path, out var document))
 		{
-			["uri"] = uris.GetValueOrDefault(path) ?? Protocol.ToUri(path),
-			["diagnostics"] = diagnostics
-		}));
+			parameters["uri"] = document.Uri;
+			if (document.Version is { } version)
+				parameters["version"] = version;
+		}
+		
+		return notify(Protocol.Notification("textDocument/publishDiagnostics", parameters));
+	}
 	
 	private Task LogAsync(int type, string message) =>
 		notify(Protocol.Notification("window/logMessage", new JsonObject { ["type"] = type, ["message"] = message }));

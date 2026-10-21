@@ -42,7 +42,9 @@ public sealed partial class FileParser
 			declarations.Add(new ImplNode(impl.Target, impl.Keyword, impl.Traits, impl.Members)
 			{
 				TypeParameters = impl.TypeParameters,
-				IsBlanket = true
+				IsBlanket = true,
+				Body = impl.Body,
+				LastHeaderToken = impl.LastHeaderToken
 			});
 		
 		return true;

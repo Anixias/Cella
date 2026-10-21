@@ -1,0 +1,16 @@
+Hint at main.ce:5:2
+4 │ {
+5 │     0.5 => 1
+        ╘═╛ Float patterns compare exactly
+
+Warning at main.ce:15:10
+14 │ 
+15 │ main: fun() -> i32
+              ╘╛ Redundant '()'
+
+Error at main.ce:17:6
+16 │ {
+17 │     var count = 3
+             ╘═══╛ 'count' is never changed
+
+[compilation failed]

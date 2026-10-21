@@ -8,6 +8,16 @@ namespace Cella.Core.Binding;
 
 public sealed partial class Resolver
 {
+	public HashSet<LocalVariableSymbol> UsedLocals { get; } = [];
+	
+	private void MarkUsed(LocalVariableSymbol local)
+	{
+		while (local.Captured is LocalVariableSymbol captured)
+			local = captured;
+		
+		UsedLocals.Add(local);
+	}
+	
 	private void TrackFunctionUse(FunctionInfo info, IExpressionNode syntax)
 	{
 		if ((!_signatures.IsLocal(info.Symbol) || info.File?.Module != CurrentResolutionContext.File.Module) &&

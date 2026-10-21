@@ -3,6 +3,7 @@ using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 using CsToml;
 using CsToml.Error;
 using CsToml.Values;
@@ -29,6 +30,8 @@ public sealed partial class CellaProject
 	public static bool IsSettingPath(IReadOnlyList<string> path) => path switch
 	{
 		[var name] => _settingNames.Contains(name),
+		[nameof(Lints), var lint] => Diagnostics.Lints.Find(lint) is not null,
+		[nameof(When), _, nameof(Lints), var lint] => Diagnostics.Lints.Find(lint) is not null,
 		[nameof(ProjectReferences), var name] => IsReferenceSetting(name),
 		[nameof(When), _, nameof(ProjectReferences), var name] => IsReferenceSetting(name),
 		[nameof(When), _, var name] => _whenSettingNames.Contains(name),
@@ -72,12 +75,20 @@ public sealed partial class CellaProject
 	public Dictionary<string, bool>? Flags { get; init; }
 	
 	[TomlValueOnSerialized]
+	public Dictionary<string, string>? Lints { get; init; }
+	
+	[TomlValueOnSerialized]
 	public List<string>? Imports { get; init; }
 	
 	[TomlValueOnSerialized]
 	public List<string>? Prelude { get; init; }
 	
 	public Dictionary<string, ProjectSettings> When { get; } = [];
+	
+	public IReadOnlyDictionary<string, LintLevel> LintLevels => (Lints ?? [])
+		.Where(static entry => Diagnostics.Lints.Find(entry.Key) is not null &&
+		                       Enum.TryParse<LintLevel>(entry.Value, out _))
+		.ToDictionary(static entry => entry.Key, static entry => Enum.Parse<LintLevel>(entry.Value));
 	
 	public ImmutableArray<CelpEntry> ImportEntries { get; private set; } = [];
 	
@@ -199,6 +210,10 @@ public sealed partial class CellaProject
 					CheckFlags(value, condition, path, errors);
 					break;
 				
+				case nameof(Lints):
+					CheckLints(value, condition, path, errors);
+					break;
+				
 				case nameof(Imports) or nameof(Prelude) when !IsStringList(value):
 					errors.Add(ProjectDiagnostic.In(path, $"'{name}' must be a list of strings"));
 					break;
@@ -270,6 +285,28 @@ public sealed partial class CellaProject
 		{
 			if (setting.ValueType != TomlValueType.Boolean)
 				errors.Add(ProjectDiagnostic.In(path, $"'{flag}' in {table} must be true or false"));
+		}
+	}
+	
+	private static void CheckLints(TomlDocumentNode value, string? condition, string path,
+		List<ProjectDiagnostic> errors)
+	{
+		var table = condition is null ? "[Lints]" : $"[When.\"{condition}\".Lints]";
+		if (!value.HasNodeOnly)
+		{
+			errors.Add(ProjectDiagnostic.In(path, $"{table} must be a table"));
+			return;
+		}
+		
+		foreach (var (key, setting) in value)
+		{
+			var lint = key.ToString()!;
+			if (Diagnostics.Lints.Find(lint) is null)
+				errors.Add(ProjectDiagnostic.In(path, $"Unknown lint '{lint}' in {table}"));
+			else if (setting.ValueType != TomlValueType.String)
+				errors.Add(ProjectDiagnostic.In(path, $"'{lint}' in {table} must be a string"));
+			else if (!Enum.GetNames<LintLevel>().Contains(setting.GetString()))
+				errors.Add(ProjectDiagnostic.In(path, $"'{setting.GetString()}' is not a valid '{lint}' in {table}"));
 		}
 	}
 	
@@ -374,10 +411,26 @@ public sealed partial class CellaProject
 				..matching.SelectMany(static entry => entry.Settings.ProjectReferences ?? [])
 			],
 			Flags = Flags,
+			Lints = MergeLints(path, matching, errors),
 			Imports = Imports,
 			Prelude = Prelude,
 			ImportEntries = ImportEntries
 		};
+	}
+	
+	private Dictionary<string, string> MergeLints(string path,
+		List<(string Condition, ProjectSettings Settings)> matching, List<ProjectDiagnostic> errors)
+	{
+		var merged = new Dictionary<string, string>(Lints ?? []);
+		foreach (var lint in matching.SelectMany(static entry => entry.Settings.Lints?.Keys.AsEnumerable() ?? [])
+			         .Distinct())
+		{
+			if (Override(path, matching, settings => settings.Lints?.GetValueOrDefault(lint),
+				    $"{nameof(Lints)}.{lint}", errors) is { } level)
+				merged[lint] = level;
+		}
+		
+		return merged;
 	}
 	
 	private static T? Override<T>(string path, List<(string Condition, ProjectSettings Settings)> matching,
@@ -444,6 +497,9 @@ public sealed partial class ProjectSettings
 	
 	[TomlValueOnSerialized]
 	public Dictionary<string, bool>? Flags { get; init; }
+	
+	[TomlValueOnSerialized]
+	public Dictionary<string, string>? Lints { get; init; }
 }
 
 [TomlSerializedObject]

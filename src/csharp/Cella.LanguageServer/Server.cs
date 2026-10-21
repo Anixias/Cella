@@ -3,6 +3,8 @@ using System.Text.Json.Nodes;
 using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.LanguageServer;
 
@@ -11,6 +13,7 @@ public sealed class Server
 	private const int MethodNotFound = -32601;
 	private const int InternalError = -32603;
 	private const int RequestCancelled = -32800;
+	private const int RequestFailed = -32803;
 	private const int FullSync = 1;
 	
 	private readonly MessageConnection _connection;
@@ -100,12 +103,16 @@ public sealed class Server
 				return (true, Capabilities());
 			
 			case "textDocument/didOpen":
-				_workspace.Open(GetUri(parameters), (string)parameters!["textDocument"]!["text"]!);
+				_workspace.Open(GetUri(parameters), (string)parameters!["textDocument"]!["text"]!,
+					(int?)parameters["textDocument"]!["version"]);
+				
 				return (true, null);
 			
 			case "textDocument/didChange":
 				var changes = (JsonArray)parameters!["contentChanges"]!;
-				_workspace.Change(GetUri(parameters), (string)changes[^1]!["text"]!);
+				_workspace.Change(GetUri(parameters), (string)changes[^1]!["text"]!,
+					(int?)parameters["textDocument"]!["version"]);
+				
 				return (true, null);
 			
 			case "textDocument/didClose":
@@ -161,6 +168,9 @@ public sealed class Server
 			"textDocument/references" => ct => FindReferencesAsync(parameters, ct),
 			"textDocument/completion" => ct => CompleteAsync(parameters, ct),
 			"textDocument/signatureHelp" => ct => HelpSignatureAsync(parameters, ct),
+			"textDocument/codeAction" => ct => FindCodeActionsAsync(parameters, ct),
+			"textDocument/prepareRename" => ct => PrepareRenameAsync(parameters, ct),
+			"textDocument/rename" => ct => RenameAsync(parameters, ct),
 			"cella/visibleGlobals" => ct => FindVisibleGlobalsAsync(parameters, ct),
 			"cella/valueAt" => ct => FindValueAsync(parameters, ct),
 			"cella/runnables" => async ct => new JsonArray([
@@ -266,6 +276,56 @@ public sealed class Server
 		return result;
 	}
 	
+	private async Task<JsonNode?> FindCodeActionsAsync(JsonObject? parameters, CancellationToken ct)
+	{
+		var (diagnostics, file, text) = await _workspace.GetFileAsync(GetUri(parameters), ct);
+		if (text is null)
+			return new JsonArray();
+		
+		var range = parameters!["range"]!;
+		var requested = new TextRange(
+			Protocol.ToOffset(text, (int)range["start"]!["line"]!, (int)range["start"]!["character"]!),
+			Protocol.ToOffset(text, (int)range["end"]!["line"]!, (int)range["end"]!["character"]!));
+		
+		return new JsonArray([
+			..CodeActions.FromDiagnostics(diagnostics, requested, _workspace.UriOf),
+			..file is null
+				? []
+				: Refactorings.Find(file, requested).Select(fix =>
+					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf))
+		]);
+	}
+	
+	private async Task<JsonNode?> PrepareRenameAsync(JsonObject? parameters, CancellationToken ct)
+	{
+		var position = parameters!["position"]!;
+		return await _workspace.FindRenameableAsync(GetUri(parameters), (int)position["line"]!,
+			(int)position["character"]!, ct) is { } reference
+			? new JsonObject
+			{
+				["range"] = Protocol.ToRange(reference.Location),
+				["placeholder"] = reference.Location.GetText().ToString()
+			}
+			: null;
+	}
+	
+	private async Task<JsonNode?> RenameAsync(JsonObject? parameters, CancellationToken ct)
+	{
+		var position = parameters!["position"]!;
+		var (line, character) = ((int)position["line"]!, (int)position["character"]!);
+		var newName = (string)parameters["newName"]!;
+		if (await _workspace.FindRenameableAsync(GetUri(parameters), line, character, ct) is null)
+			throw new RequestFailedException("This can't be renamed");
+		
+		if (!Workspace.IsName(newName))
+			throw new RequestFailedException(TokenTypeInfo.GetKeyword(newName) is not null
+				? $"'{newName}' is a keyword"
+				: $"'{newName}' isn't a valid name");
+		
+		var usages = await _workspace.FindUsagesAsync(GetUri(parameters), line, character, true, ct);
+		return CodeActions.ToWorkspaceEdit(usages.Select(usage => new TextEdit(usage, newName)), _workspace.UriOf);
+	}
+	
 	private async Task<JsonNode?> HelpSignatureAsync(JsonObject? parameters, CancellationToken ct)
 	{
 		var uri = GetUri(parameters);
@@ -290,6 +350,10 @@ public sealed class Server
 		catch (OperationCanceledException)
 		{
 			response = Protocol.ErrorResponse(id, RequestCancelled, "Cancelled");
+		}
+		catch (RequestFailedException exception)
+		{
+			response = Protocol.ErrorResponse(id, RequestFailed, exception.Message);
 		}
 		catch (Exception exception)
 		{
@@ -325,6 +389,11 @@ public sealed class Server
 			["hoverProvider"] = true,
 			["definitionProvider"] = true,
 			["referencesProvider"] = true,
+			["renameProvider"] = new JsonObject { ["prepareProvider"] = true },
+			["codeActionProvider"] = new JsonObject
+			{
+				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite)
+			},
 			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".") },
 			["signatureHelpProvider"] = new JsonObject
 			{

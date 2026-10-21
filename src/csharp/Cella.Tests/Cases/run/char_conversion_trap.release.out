@@ -1,1 +1,6 @@
+Hint at char_conversion_trap.ce:7:6
+6 │ {
+7 │     val c = make(55296)
+            ^ 'c' is never used
+
 [exit code 0]

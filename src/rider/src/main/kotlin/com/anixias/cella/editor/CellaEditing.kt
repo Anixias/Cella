@@ -5,16 +5,19 @@ import com.anixias.cella.lexer.CelpToken
 import com.anixias.cella.lexer.CelpTokenTypes
 import com.anixias.cella.lexer.CellaToken
 import com.anixias.cella.lexer.CellaTokenTypes
+import com.intellij.application.options.CodeStyle
 import com.intellij.codeInsight.editorActions.SimpleTokenSetQuoteHandler
+import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.lang.BracePair
 import com.intellij.lang.Commenter
 import com.intellij.lang.Language
 import com.intellij.lang.PairedBraceMatcher
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.TokenType
-import com.intellij.psi.impl.source.codeStyle.lineIndent.JavaLikeLangLineIndentProvider
-import com.intellij.psi.impl.source.codeStyle.SemanticEditorPosition
+import com.intellij.psi.codeStyle.lineIndent.LineIndentProvider
 import com.intellij.psi.tree.IElementType
 import com.intellij.spellchecker.BundledDictionaryProvider
 import com.intellij.spellchecker.tokenizer.SpellcheckingStrategy
@@ -85,24 +88,40 @@ class CelpSpellcheckingStrategy : SpellcheckingStrategy() {
 		if (CelpTokenTypes.tokenOf(element.node?.elementType) == CelpToken.COMMENT) TEXT_TOKENIZER else EMPTY_TOKENIZER
 }
 
-class CellaLineIndentProvider : JavaLikeLangLineIndentProvider() {
-	override fun mapType(tokenType: IElementType): SemanticEditorPosition.SyntaxElement? = when {
-		tokenType == TokenType.WHITE_SPACE -> JavaLikeElement.Whitespace
-		else -> when (CellaTokenTypes.tokenOf(tokenType)) {
-			CellaToken.LEFT_BRACE -> JavaLikeElement.BlockOpeningBrace
-			CellaToken.RIGHT_BRACE -> JavaLikeElement.BlockClosingBrace
-			CellaToken.LEFT_PAREN -> JavaLikeElement.LeftParenthesis
-			CellaToken.RIGHT_PAREN -> JavaLikeElement.RightParenthesis
-			CellaToken.LEFT_BRACKET -> JavaLikeElement.ArrayOpeningBracket
-			CellaToken.RIGHT_BRACKET -> JavaLikeElement.ArrayClosingBracket
-			CellaToken.COMMA -> JavaLikeElement.Comma
-			CellaToken.LINE_COMMENT -> JavaLikeElement.LineComment
-			CellaToken.BLOCK_COMMENT -> JavaLikeElement.BlockComment
-			else -> null
-		}
-	}
+private fun indentUnit(project: Project, document: Document): String {
+	val options = CodeStyle.getIndentOptions(project, document)
+	return if (options.USE_TAB_CHARACTER) "\t" else " ".repeat(options.INDENT_SIZE)
+}
+
+class CellaLineIndentProvider : LineIndentProvider {
+	override fun getLineIndent(project: Project, editor: Editor, language: Language?, offset: Int) =
+		CellaIndenter.indentAt(editor.document.immutableCharSequence, offset, indentUnit(project, editor.document))
 	
-	override fun isSuitableForLanguage(language: Language) = language.isKindOf(CellaLanguage)
+	override fun isSuitableFor(language: Language?) = language?.isKindOf(CellaLanguage) == true
+}
+
+class CellaBraceIndentHandler : TypedHandlerDelegate() {
+	override fun charTyped(c: Char, project: Project, editor: Editor, file: PsiFile): Result {
+		if (file.language != CellaLanguage || c != '{' && c != '}')
+			return Result.CONTINUE
+		
+		val document = editor.document
+		val text = document.immutableCharSequence
+		val line = document.getLineNumber(editor.caretModel.offset)
+		val lineStart = document.getLineStartOffset(line)
+		var contentStart = lineStart
+		while (text[contentStart] == ' ' || text[contentStart] == '\t')
+			contentStart++
+		
+		if (text[contentStart] != c || contentStart + 1 != editor.caretModel.offset)
+			return Result.CONTINUE
+		
+		val indent = CellaIndenter.indentAt(text, lineStart, indentUnit(project, document)) ?: return Result.CONTINUE
+		if (text.subSequence(lineStart, contentStart).toString() != indent)
+			document.replaceString(lineStart, contentStart, indent)
+		
+		return Result.CONTINUE
+	}
 }
 
 class CellaDictionaryProvider : BundledDictionaryProvider {

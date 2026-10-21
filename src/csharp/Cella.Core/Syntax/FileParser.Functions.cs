@@ -26,12 +26,14 @@ public sealed partial class FileParser
 		
 		if (MatchOnLine(ref index, TokenType.OpFatArrow))
 		{
+			var arrow = Tokens[index - 1];
 			if (ParseExpressionBody(ref index, returnType is null) is not { } statement)
 				return null;
 			
 			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, statement, isExternal)
 			{
 				Extent = Span(identifier, Tokens[index - 1]),
+				BodyArrow = arrow,
 				Visibility = modifiers.Visibility,
 				TypeParameters = [..typeParameters],
 				When = when,
@@ -361,8 +363,12 @@ public sealed partial class FileParser
 			return;
 		
 		var (source, range) = Tokens[start].SourceLocation;
-		Report(new SourceLocation(source, range.Join(Tokens[start + 1].SourceLocation.Range)), "Redundant '()'",
-			DiagnosticSeverity.Hint);
+		var parentheses = new SourceLocation(source, range.Join(Tokens[start + 1].SourceLocation.Range));
+		Diagnostics.Add(new(DiagnosticSeverity.Hint, parentheses, "Redundant '()'")
+		{
+			Lint = Lints.Redundant,
+			Fixes = [DiagnosticFix.RemoveExactly("Remove redundant '()'", parentheses)]
+		});
 	}
 	
 	private (ReceiverNode? Receiver, List<ParameterNode> Parameters, ITypeNode? ReturnType, bool IsVariadic)?

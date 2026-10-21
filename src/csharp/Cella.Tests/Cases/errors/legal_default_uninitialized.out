@@ -1,3 +1,8 @@
+Hint at legal_default_uninitialized.ce:29:6
+28 │ var r: R
+29 │ val f = v.x
+         ^ 'f' is never used
+
 Error at legal_default_uninitialized.ce:29:10
 28 │ var r: R
 29 │ val f = v.x

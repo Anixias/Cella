@@ -22,12 +22,15 @@ public sealed partial class FileParser
 		}
 		
 		var members = new List<IDeclarationNode>();
-		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace) &&
-		    !ParseMembers(ref index, openBrace, null, members))
+		var lastHeaderToken = Tokens[index - 1];
+		var hasBody = Match(ref index, out var openBrace, TokenType.OpOpenBrace);
+		if (hasBody && !ParseMembers(ref index, openBrace, null, members))
 			return null;
 		
 		return new(identifier, modifiers.Tokens, isRef, members)
 		{
+			Body = hasBody ? Span(openBrace, Tokens[index - 1]) : null,
+			LastHeaderToken = lastHeaderToken,
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
 			Traits = [..traits],
@@ -154,14 +157,21 @@ public sealed partial class FileParser
 		var members = new List<IDeclarationNode>();
 		var outerPublic = allowsPublicMembers;
 		allowsPublicMembers = traits.Count == 0;
-		var parsed = !Match(ref index, out var openBrace, TokenType.OpOpenBrace) ||
+		var lastHeaderToken = Tokens[index - 1];
+		var hasBody = Match(ref index, out var openBrace, TokenType.OpOpenBrace);
+		var parsed = !hasBody ||
 		             ParseMembers(ref index, openBrace, traits.Count == 0 ? modifiers.Visibility : null, members);
 		
 		allowsPublicMembers = outerPublic;
 		if (!parsed)
 			return null;
 		
-		return new(target, keyword, traits, members) { TypeParameters = [..typeParameters] };
+		return new(target, keyword, traits, members)
+		{
+			TypeParameters = [..typeParameters],
+			Body = hasBody ? Span(openBrace, Tokens[index - 1]) : null,
+			LastHeaderToken = lastHeaderToken
+		};
 	}
 	
 	private bool ParseMembers(ref int index, Token openBrace, Token? block, List<IDeclarationNode> members)

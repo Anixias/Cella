@@ -42,6 +42,7 @@ public readonly struct ResolutionContext
 	public Func<string, Symbol?>? Capture { get; init; }
 	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
 	public Action<Token, Symbol>? RecordName { get; init; }
+	public Action<LocalVariableSymbol>? MarkUsed { get; init; }
 	public CompletionProbe? Probe { get; init; }
 	public InlineReturn? InlineReturn { get; init; }
 	
@@ -339,15 +340,11 @@ public readonly struct ResolutionContext
 					[..arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			case null:
-				Diagnostics.Add(ReportHidden(text, location) ??
-				                new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope")
-				                {
-					                Hints = DiagnosticReporter.FindSuggestion(text,
-							                GetAllSymbols().OfType<TraitSymbol>().Select(static trait => trait.Name)) is
-						                { } hint
-						                ? [hint]
-						                : []
-				                });
+				Diagnostics.Add(ReportHidden(text, location) ?? WithImportFixes(DiagnosticReporter.WithSuggestion(
+						new(DiagnosticSeverity.Error, location, $"Trait '{text}' not found in this scope"),
+						DiagnosticReporter.FindBestMatch(text,
+							GetAllSymbols().OfType<TraitSymbol>().Select(static trait => trait.Name))), text,
+					static symbol => symbol is TraitSymbol));
 				
 				return null;
 			
@@ -794,9 +791,26 @@ public readonly struct ResolutionContext
 	}
 	
 	private void ReportUndefinedType(Token name) => Diagnostics.Add(ReportHidden(name.Text, name.SourceLocation) ??
-	                                                                DiagnosticReporter.ReportUndefinedType(
-		                                                                name.SourceLocation, name.Text,
-		                                                                GetVisibleTypeNames()));
+	                                                                WithImportFixes(
+		                                                                DiagnosticReporter.ReportUndefinedType(
+			                                                                name.SourceLocation, name.Text,
+			                                                                GetVisibleTypeNames()), name.Text,
+		                                                                static symbol =>
+			                                                                symbol is NamedTypeSymbol or TraitSymbol));
+	
+	public Diagnostic WithImportFixes(Diagnostic diagnostic, string name, Func<Symbol, bool> accepts)
+	{
+		var file = File.Syntax;
+		var fixes = GetImportableSymbols()
+			.Where(entry => entry.Import.Name == name && accepts(entry.Symbol))
+			.Select(static entry => entry.Import.Module)
+			.Distinct()
+			.Order(StringComparer.Ordinal)
+			.Select(module => new DiagnosticFix($"Import '{module}.{name}'", ImportEdits.Create(file, module, name)))
+			.ToList();
+		
+		return fixes.Count == 0 ? diagnostic : diagnostic with { Fixes = [..fixes, ..diagnostic.Fixes] };
+	}
 	
 	private IEnumerable<string> GetVisibleTypeNames() => GetAllSymbols()
 		.OfType<TypeSymbol>()
@@ -860,7 +874,7 @@ public readonly struct ResolutionContext
 		return named switch
 		{
 			TypeParameterSymbol { IsValue: true } value => value,
-			LocalVariableSymbol local when FindParametricArgument(local) is { } argument => argument,
+			LocalVariableSymbol local when UseParametricArgument(local) is { } argument => argument,
 			VariableSymbol => ResolveValueExpression(expression, parameter),
 			null when expression is AccessExpressionNode access && ResolveModule(access.Target) is { } module =>
 				ReportMissingMember(access, module),
@@ -871,6 +885,15 @@ public readonly struct ResolutionContext
 			       TryResolveExpressionAsType(expression) is { } type => CheckTypeExpression(expression, type),
 			_ => ResolveValueExpression(expression, parameter)
 		};
+	}
+	
+	private TypeParameterSymbol? UseParametricArgument(LocalVariableSymbol local)
+	{
+		if (FindParametricArgument(local) is not { } argument)
+			return null;
+		
+		MarkUsed?.Invoke(local);
+		return argument;
 	}
 	
 	private TypeParameterSymbol? FindParametricArgument(LocalVariableSymbol local) =>
@@ -1128,7 +1151,7 @@ public readonly struct ResolutionContext
 			IdentifierArgumentNode argument => Resolve(argument.Identifier) switch
 			{
 				TypeParameterSymbol { IsValue: true } value => value,
-				LocalVariableSymbol local when FindParametricArgument(local) is { } parametric => parametric,
+				LocalVariableSymbol local when UseParametricArgument(local) is { } parametric => parametric,
 				VariableSymbol => ResolveValueExpression(new VarExpressionNode(argument.Identifier), parameter),
 				var symbol => AsTraitArgument(symbol, argument.SourceLocation) ?? ResolveNamedType(argument.Identifier)
 			},

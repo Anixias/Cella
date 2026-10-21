@@ -103,13 +103,14 @@
 		for (const [title, names] of groups) {
 			const extra = title === "Application"
 				? settings.settings.filter(setting => !grouped.has(setting.name) &&
-					setting.kind !== "flags" && setting.kind !== "references").map(setting => setting.name)
+					!["flags", "lints", "references"].includes(setting.kind)).map(setting => setting.name)
 				: [];
 
 			section(title, names.concat(extra));
 		}
 
 		flags();
+		lints();
 		references();
 	}
 
@@ -262,6 +263,33 @@
 		root.append(block);
 	}
 
+	function lints() {
+		const levels = settings.settings.find(setting => setting.kind === "lints")?.choices ?? [];
+		const levelsOf = condition => condition === null
+			? settings.lintLevels
+			: settings.conditions.find(entry => entry.condition === condition)?.lintLevels ?? {};
+		
+		const block = element("section");
+		block.append(element("h2", null, "Lints"));
+		const table = element("div", "rows");
+		for (const lint of settings.lints) {
+			const row = element("div", "row");
+			const select = element("select");
+			const inherited = scope === null ? lint.default : levelsOf(null)[lint.name] ?? lint.default;
+			const current = levelsOf(scope)[lint.name];
+			option(select, "", scope === null ? `Default (${inherited})` : `Inherited (${inherited})`, !current);
+			for (const level of levels)
+				option(select, level, level, current === level);
+			
+			select.onchange = () => post({ lint: lint.name, value: select.value || null });
+			row.append(element("span", "name", lint.label), select);
+			table.append(row);
+		}
+		
+		block.append(table);
+		root.append(block);
+	}
+	
 	function references() {
 		const block = element("section");
 		block.append(element("h2", null, "References"));

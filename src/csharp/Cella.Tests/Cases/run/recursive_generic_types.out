@@ -3,5 +3,20 @@ Hint at recursive_generic_types.ce:51:6
 51 │ var second = Node(2, @first)
          ╘════╛ 'second' is never changed
 
+Hint at recursive_generic_types.ce:52:6
+51 │ var second = Node(2, @first)
+52 │ var x: First[i64]
+         ^ 'x' is never used
+
+Hint at recursive_generic_types.ce:53:6
+52 │ var x: First[i64]
+53 │ var s: Swap[i32, f64]
+         ^ 's' is never used
+
+Hint at recursive_generic_types.ce:56:6
+55 │ val w = b.wrap()
+56 │ val t = Tree[i32].leaf(3)
+         ^ 't' is never used
+
 2 1
 [exit code 0]

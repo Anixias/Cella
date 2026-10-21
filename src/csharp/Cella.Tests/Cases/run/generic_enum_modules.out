@@ -1,2 +1,7 @@
+Hint at main.ce:14:6
+13 │ val b: Option[i32] = Option.none
+14 │ val c = Option[i8].wrap(2)
+         ^ 'c' is never used
+
 4 -1 1 0
 [exit code 0]

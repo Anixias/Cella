@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Cella.Tests;
 
-public sealed class LanguageServerTests : IAsyncDisposable
+public sealed partial class LanguageServerTests : IAsyncDisposable
 {
 	private const string ValidSource = "mod test\n\nmain: fun -> i32 => 0\n";
 	private const string InvalidSource = "mod test\n\nmain: fun -> i32 => true\n";
@@ -1907,9 +1907,9 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"panic: pub op(message: str, location: str) -> never\n{\n\tloop\n\t{\n\t}\n}\n", Token);
 		
 		await File.WriteAllTextAsync(Path.Combine(_directory, "other.ce"),
-			"mod test.other\n\nuse std.process.panic\n", Token);
+			"mod test.other\n\nuse std.process.panic\n\nfail: pub fun -> never => panic\n", Token);
 		
-		await File.WriteAllTextAsync(SourcePath, "mod test\n\nfail: pub fun -> never => panic\n", Token);
+		await File.WriteAllTextAsync(SourcePath, "mod test\n", Token);
 		await InitializeAsync();
 		
 		foreach (var (path, line, character) in new[]
@@ -1926,7 +1926,11 @@ public sealed class LanguageServerTests : IAsyncDisposable
 				definitions.Select(static definition => (int)definition!["range"]!["start"]!["line"]!));
 		}
 		
-		Assert.Single((JsonArray)(await AskAsync("textDocument/definition", 2, 26))!);
+		var expression = Position(4, 26);
+		expression["textDocument"]!["uri"] = UriOf(Path.Combine(_directory, "other.ce"));
+		Assert.Single((JsonArray)(await ReadResponseAsync(await RequestAsync("textDocument/definition", expression)))
+			["result"]!);
+		
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

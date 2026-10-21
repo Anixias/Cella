@@ -194,6 +194,15 @@ public sealed partial class Resolver
 		return diagnostics.Count > 0;
 	}
 	
+	private static Diagnostic ReportImplicitBorrow(IResolvedExpressionNode arg)
+	{
+		var (source, range) = arg.Syntax.SourceLocation;
+		return new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
+		{
+			Fixes = [DiagnosticFix.Replace("Add 'mut'", new(source, new(range.Start, range.Start)), "mut ")]
+		};
+	}
+	
 	private Diagnostic? ReportArgumentMode(ICallable callable, int index, IResolvedExpressionNode arg)
 	{
 		var argument = arg as ResolvedMutArgumentExpressionNode;
@@ -208,7 +217,10 @@ public sealed partial class Resolver
 		    parameterType is not BorrowType && (!hasParameter || callable.GetMode(index) != ParameterMode.Imm))
 			return new(DiagnosticSeverity.Error, immArgument.Keyword.SourceLocation, name is null
 				? "Only an argument to an 'imm' parameter can be marked 'imm'"
-				: $"'{name}' isn't an 'imm' parameter");
+				: $"'{name}' isn't an 'imm' parameter")
+			{
+				Fixes = [DiagnosticFix.Remove("Remove 'imm'", immArgument.Keyword.SourceLocation)]
+			};
 		
 		if (isMut && arg.Syntax is OwnExpressionNode ownArgument)
 			return new(DiagnosticSeverity.Error, ownArgument.Keyword.SourceLocation, name is null
@@ -218,13 +230,13 @@ public sealed partial class Resolver
 		if (argument is null)
 		{
 			if (isMut && !(arg.Type is BorrowType && parameterType is BorrowType))
-				return new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
-					arg is ResolvedAssignmentExpressionNode || TypeChecker.IsLValue(arg)
-						? "Cannot mutably borrow arguments implicitly"
-						: $"Cannot mutably borrow {TypeChecker.DescribeUnstored(arg)}");
+				return arg is ResolvedAssignmentExpressionNode || TypeChecker.IsLValue(arg)
+					? ReportImplicitBorrow(arg)
+					: new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation,
+						$"Cannot mutably borrow {TypeChecker.DescribeUnstored(arg)}");
 			
 			return !isMut && parameterType is not null && NeedsLending(arg, parameterType, callable.GetMode(index))
-				? new(DiagnosticSeverity.Error, arg.Syntax.SourceLocation, "Cannot mutably borrow arguments implicitly")
+				? ReportImplicitBorrow(arg)
 				: null;
 		}
 		
@@ -232,7 +244,10 @@ public sealed partial class Resolver
 		if (!isMut)
 			return new(DiagnosticSeverity.Error, keyword.SourceLocation, name is null
 				? "Only an argument to a 'mut' parameter can be marked 'mut'"
-				: $"'{name}' isn't a 'mut' parameter");
+				: $"'{name}' isn't a 'mut' parameter")
+			{
+				Fixes = [DiagnosticFix.Remove("Remove 'mut'", keyword.SourceLocation)]
+			};
 		
 		if (GetMutTarget(parameterType, callable.GetMode(index)) is not { } declared ||
 		    IsMutPlaceOf(argument.Place, declared))

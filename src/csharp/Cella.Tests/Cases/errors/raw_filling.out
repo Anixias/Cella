@@ -1,13 +1,28 @@
+Hint at raw_filling.ce:42:6
+41 │ val c = own b
+42 │ val p = @b
+         ^ 'p' is never used
+
 Error at raw_filling.ce:42:11
 41 │ val c = own b
 42 │ val p = @b
               ^ Cannot use moved values
               | Moved on line 41
 
+Hint at raw_filling.ce:49:6
+48 │ var r: R
+49 │ val p = @r
+         ^ 'p' is never used
+
 Error at raw_filling.ce:49:11
 48 │ var r: R
 49 │ val p = @r
               ^ Cannot use uninitialized values
+
+Hint at raw_filling.ce:56:6
+55 │ val v: i32
+56 │ val p = @v
+         ^ 'p' is never used
 
 Error at raw_filling.ce:56:11
 55 │ val v: i32

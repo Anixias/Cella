@@ -24,6 +24,11 @@ Error at own_closure_moves.ce:54:44
 54 │ val take = own fun { val moved: Texture = grass }
                                                ╘═══╛ Cannot move captured variables
 
+Hint at own_closure_moves.ce:59:7
+58 │ {
+59 │     val next = own fun { count += value }
+             ╘══╛ 'next' is never used
+
 Error at own_closure_moves.ce:59:24
 58 │ {
 59 │     val next = own fun { count += value }
@@ -34,6 +39,11 @@ Error at own_closure_moves.ce:65:23
 65 │     val hit = own fun { hits += 1 }
                              ╘══╛ Cannot use moved values
                                 | Moved here in an earlier iteration
+
+Hint at own_closure_moves.ce:71:6
+70 │ val first = own fun(x: i32) -> i32 => x + step
+71 │ val second = own first
+         ╘════╛ 'second' is never used
 
 Error at own_closure_moves.ce:72:6
 71 │ val second = own first

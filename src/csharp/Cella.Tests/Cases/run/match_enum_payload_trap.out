@@ -1,3 +1,8 @@
+Hint at match_enum_payload_trap.ce:13:6
+12 │ {
+13 │     val p = wrap(null)
+             ^ 'p' is never used
+
 [stderr]
 Panic at match_enum_payload_trap.ce:9:39: 'Nullable[ptr].some' can't hold this value
 [exit code 101]

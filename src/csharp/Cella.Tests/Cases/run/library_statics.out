@@ -1,2 +1,17 @@
+Hint at lib\lib.ce:17:6
+16 │ {
+17 │     val item = Counted[i32](1)
+             ╘══╛ 'item' is never used
+
+Hint at main.ce:10:6
+ 9 │ {
+10 │     val item = lib.Counted[i32](2)
+             ╘══╛ 'item' is never used
+
+Hint at main.ce:11:6
+10 │ val item = lib.Counted[i32](2)
+11 │ val other = lib.Counted[i8](3)
+         ╘═══╛ 'other' is never used
+
 2 2 1
 [exit code 0]

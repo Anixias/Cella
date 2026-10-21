@@ -18,6 +18,11 @@ Hint at record_pattern_moves.ce:48:6
 48 │     var p = Pair(Name(1), Name(2))
              ^ 'p' is never changed
 
+Hint at record_pattern_moves.ce:54:6
+53 │ 
+54 │ val q = p
+         ^ 'q' is never used
+
 Error at record_pattern_moves.ce:54:10
 53 │ 
 54 │ val q = p

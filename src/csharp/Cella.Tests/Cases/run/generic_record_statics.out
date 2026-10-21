@@ -1,3 +1,18 @@
+Hint at generic_record_statics.ce:35:6
+34 │ {
+35 │     val a = Counted[i32](1)
+             ^ 'a' is never used
+
+Hint at generic_record_statics.ce:36:6
+35 │ val a = Counted[i32](1)
+36 │ val b = Counted[i32](2)
+         ^ 'b' is never used
+
+Hint at generic_record_statics.ce:37:6
+36 │ val b = Counted[i32](2)
+37 │ val c = Counted[i64](3)
+         ^ 'c' is never used
+
 2 1 10 3 9 8
 empty
 [exit code 0]

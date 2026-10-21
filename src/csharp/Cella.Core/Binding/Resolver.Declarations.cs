@@ -45,6 +45,7 @@ public sealed partial class Resolver
 		Containment = Containment,
 		EvaluateConstant = EvaluateConstant,
 		FindValueParameterUse = FindValueParameterUse,
+		MarkUsed = MarkUsed,
 		GenericTypes = [],
 		RecordUndo = Journal,
 		TrackInstance = TrackTypeInstance,

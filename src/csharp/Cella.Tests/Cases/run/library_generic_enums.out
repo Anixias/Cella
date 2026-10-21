@@ -1,2 +1,7 @@
+Hint at lib\lib.ce:53:6
+52 │ {
+53 │     val item = Option[i32].wrap(1)
+             ╘══╛ 'item' is never used
+
 5 1 2 2 0 | drop 7 
 [exit code 0]

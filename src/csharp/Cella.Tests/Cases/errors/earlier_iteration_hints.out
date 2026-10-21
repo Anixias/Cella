@@ -4,11 +4,21 @@ Error at earlier_iteration_hints.ce:19:27
                               ^ Cannot use moved values
                               | Moved on line 19 in an earlier iteration
 
+Hint at earlier_iteration_hints.ce:19:35
+18 │ val a = N(1)
+19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
+                                      ^ 't' is never used
+
 Error at earlier_iteration_hints.ce:19:48
 18 │ val a = N(1)
 19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
                                                    ^ Cannot use moved values
                                                    | Moved here in an earlier iteration
+
+Hint at earlier_iteration_hints.ce:27:7
+26 │ {
+27 │     val r = both(imm a.id,
+             ^ 'r' is never used
 
 Error at earlier_iteration_hints.ce:27:20
 26 │ {
@@ -16,10 +26,20 @@ Error at earlier_iteration_hints.ce:27:20
                           ╘══╛ Cannot use moved values
                              | Moved on line 28
 
+Hint at earlier_iteration_hints.ce:40:8
+39 │ {
+40 │     val t = take(own a)
+             ^ 't' is never used
+
 Error at earlier_iteration_hints.ce:40:21
 39 │ {
 40 │     val t = take(own a)
                           ^ Cannot use moved values
                           | Moved on line 45 in an earlier iteration
+
+Hint at earlier_iteration_hints.ce:45:7
+44 │ show(imm a)
+45 │ val u = take(own a)
+         ^ 'u' is never used
 
 [compilation failed]

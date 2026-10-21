@@ -1,5 +1,6 @@
 ﻿using Cella.Core.Lowering;
 using Cella.Core.Symbols;
+using Cella.Core.Text;
 using Cella.Diagnostics;
 
 namespace Cella.Core.Analysis;
@@ -34,9 +35,11 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 			     following = sibling)
 				end = Math.Max(end, sibling.Location.Range.End);
 			
+			var unnecessary = new SourceLocation(source, new(range.Start, end));
 			diagnostics.Add(DiagnosticReporter.ReportUnreachableCode(new(source, new(range.Start, range.Start))) with
 			{
-				UnnecessaryLocation = new(source, new(range.Start, end))
+				UnnecessaryLocation = unnecessary,
+				Fixes = [DiagnosticFix.Remove(DiagnosticReporter.RemoveUnreachableTitle, unnecessary)]
 			});
 		}
 	}

@@ -1,3 +1,8 @@
+Hint at never_lambda_end.ce:5:6
+4 │ {
+5 │     val stop = fun -> never { }
+            ╘══╛ 'stop' is never used
+
 Error at never_lambda_end.ce:5:13
 4 │ {
 5 │     val stop = fun -> never { }

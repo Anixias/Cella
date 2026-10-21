@@ -31,6 +31,7 @@ public sealed class FunctionNode
 	public ImmutableArray<ParameterNode> Parameters { get; } = parameters.ToImmutableArray();
 	public ITypeNode? ReturnType { get; } = returnType;
 	public IStatementNode? Body { get; } = body;
+	public Token? BodyArrow { get; init; }
 	public bool IsExternal { get; } = isExternal;
 	public Token? ExternalName { get; init; }
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];

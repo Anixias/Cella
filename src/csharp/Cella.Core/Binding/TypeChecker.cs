@@ -15,7 +15,8 @@ public sealed class TypeChecker
 	ConstantEvaluator evaluator,
 	TypePool typePool,
 	ModuleIndex modules,
-	ErrorContainment containment
+	ErrorContainment containment,
+	IReadOnlySet<LocalVariableSymbol> usedLocals
 )
 	: IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
 {
@@ -29,7 +30,10 @@ public sealed class TypeChecker
 	private List<Diagnostic> currentDiagnostics = [];
 	private readonly List<LocalVariableSymbol> _vars = [];
 	private readonly List<(LocalVariableSymbol Local, List<Diagnostic> Diagnostics)> _declaredVars = [];
+	private readonly Dictionary<LocalVariableSymbol, Token> _varKeywords = [];
 	private readonly HashSet<LocalVariableSymbol> _changedVars = [];
+	private readonly List<LocalVariableSymbol> _locals = [];
+	private readonly List<(LocalVariableSymbol Local, List<Diagnostic> Diagnostics)> _declaredLocals = [];
 	private bool sawInvalid;
 	private int continueDepth;
 	private int breakDepth;
@@ -124,6 +128,7 @@ public sealed class TypeChecker
 		var diagnostics = new List<Diagnostic>();
 		var previous = Diagnostics.Redirect(diagnostics);
 		var firstVar = _vars.Count;
+		var firstLocal = _locals.Count;
 		sawInvalid = false;
 		var (outerDeclaration, outerDiagnostics) = (currentDeclaration, currentDiagnostics);
 		(currentDeclaration, currentDiagnostics) = (node, diagnostics);
@@ -132,21 +137,42 @@ public sealed class TypeChecker
 		Diagnostics.Redirect(previous);
 		_declaredVars.AddRange(_vars.Skip(firstVar).Select(local => (local, diagnostics)));
 		_vars.RemoveRange(firstVar, _vars.Count - firstVar);
+		_declaredLocals.AddRange(_locals.Skip(firstLocal).Select(local => (local, diagnostics)));
+		_locals.RemoveRange(firstLocal, _locals.Count - firstLocal);
 		_checked.Add((node, diagnostics, sawInvalid));
 	}
 	
 	private void ReportUnchangedVars()
 	{
-		foreach (var (local, diagnostics) in _declaredVars)
+		foreach (var (local, diagnostics) in _declaredLocals)
 		{
-			if (!_changedVars.Contains(local) &&
+			if (!usedLocals.Contains(local) && !typePool.NeedsDrop(local.Type) &&
 			    diagnostics.All(static diagnostic => diagnostic.Severity != DiagnosticSeverity.Error))
 				diagnostics.Add(new(DiagnosticSeverity.Hint, local.Identifier.SourceLocation,
-					$"'{local.Name}' is never changed"));
+					$"'{local.Name}' is never used")
+				{
+					Lint = Lints.UnusedLocal
+				});
+		}
+		
+		foreach (var (local, diagnostics) in _declaredVars)
+		{
+			if (!_changedVars.Contains(local) && (usedLocals.Contains(local) || typePool.NeedsDrop(local.Type)) &&
+			    diagnostics.All(static diagnostic => diagnostic.Severity != DiagnosticSeverity.Error))
+				diagnostics.Add(new(DiagnosticSeverity.Hint, local.Identifier.SourceLocation,
+					$"'{local.Name}' is never changed")
+				{
+					Fixes = _varKeywords.TryGetValue(local, out var keyword)
+						? [DiagnosticFix.Replace("Change to 'val'", keyword.SourceLocation, "val")]
+						: [],
+					Lint = Lints.NeverChanged
+				});
 		}
 		
 		_declaredVars.Clear();
 		_changedVars.Clear();
+		_varKeywords.Clear();
+		_declaredLocals.Clear();
 	}
 	
 	private void MarkChanged(IResolvedExpressionNode place)
@@ -420,7 +446,7 @@ public sealed class TypeChecker
 		}
 		else if (value is ResolvedOwnExpressionNode { Syntax: OwnExpressionNode syntax } owned &&
 		         IsOwnedLocally(owned.Value))
-			Diagnostics.Add(new(DiagnosticSeverity.Hint, syntax.Keyword.SourceLocation, "Redundant 'own'"));
+			Diagnostics.Add(DiagnosticFix.Redundant(syntax.Keyword.SourceLocation));
 	}
 	
 	private static bool IsOwnedLocally(IResolvedExpressionNode place) => place switch
@@ -434,10 +460,17 @@ public sealed class TypeChecker
 	
 	public void Visit(ResolvedVarStatementNode node)
 	{
+		if (node.Symbol is { IsSynthesized: false, Name: not "_" })
+			_locals.Add(node.Symbol);
+		
 		if (node.Initializer is { } initializer)
 		{
 			if (node.Symbol.IsMutable)
+			{
 				_vars.Add(node.Symbol);
+				if (node.Syntax is VarStatementNode { Keyword: { } keyword })
+					_varKeywords[node.Symbol] = keyword;
+			}
 			
 			// Special case: If undef, don't check (it will throw an error)
 			if (initializer is not ResolvedUndefExpressionNode)

@@ -182,10 +182,9 @@ public sealed partial class FileParser
 		if (flags.TryGetValue(name.Text, out var flag))
 			return flag;
 		
-		Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"Flag '{name.Text}' not found")
-		{
-			Hints = DiagnosticReporter.FindSuggestion(name.Text, flags.Keys) is { } hint ? [hint] : []
-		});
+		Diagnostics.Add(DiagnosticReporter.WithSuggestion(
+			new(DiagnosticSeverity.Error, name.SourceLocation, $"Flag '{name.Text}' not found"),
+			DiagnosticReporter.FindBestMatch(name.Text, flags.Keys)));
 		
 		return false;
 	}
