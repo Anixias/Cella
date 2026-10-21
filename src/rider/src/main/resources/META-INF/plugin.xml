@@ -44,8 +44,6 @@
 		                         id="com.anixias.cella" displayName="Cella"/>
 		<notificationGroup id="Cella" displayType="BALLOON"/>
 		<editorFactoryListener implementation="com.anixias.cella.server.CellaEditorListener"/>
-		<externalAnnotator language="Cella" implementationClass="com.anixias.cella.server.CellaAnnotator"/>
-		<externalAnnotator language="CellaProject" implementationClass="com.anixias.cella.server.CellaAnnotator"/>
 		<platform.backend.documentation.targetProvider
 				implementation="com.anixias.cella.server.CellaDocumentationTargetProvider"/>
 		<gotoDeclarationHandler implementation="com.anixias.cella.server.CellaGotoDeclarationHandler"/>

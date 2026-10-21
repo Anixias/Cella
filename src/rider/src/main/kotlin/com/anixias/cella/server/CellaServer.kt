@@ -118,7 +118,7 @@ class CellaServer(private val project: Project) : Disposable {
 		
 		project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
 			override fun after(events: List<VFileEvent>) {
-				val changes = events.filter { it !is VFileContentChangeEvent && affectsSources(it) }.map {
+				val changes = events.filter { affectsSources(it) && !isOpenContentChange(it) }.map {
 					FileEvent(Path.of(it.path).toUri().toString(), when (it) {
 						is VFileCreateEvent -> FileChangeType.Created
 						is VFileDeleteEvent -> FileChangeType.Deleted
@@ -137,6 +137,9 @@ class CellaServer(private val project: Project) : Disposable {
 			}
 		})
 	}
+	
+	private fun isOpenContentChange(event: VFileEvent) =
+		event is VFileContentChangeEvent && documents.containsKey(uriOf(event.file))
 	
 	private fun affectsSources(event: VFileEvent) = event.file?.isDirectory == true ||
 		event.path.endsWith(".ce", ignoreCase = true) || event.path.endsWith(".celp", ignoreCase = true)

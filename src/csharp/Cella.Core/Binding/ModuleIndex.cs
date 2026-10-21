@@ -12,6 +12,7 @@ public sealed class ModuleIndex
 	private readonly Dictionary<Symbol, FileSymbol> _dependencyFiles = [];
 	private readonly Dictionary<Symbol, ModuleSymbol> _modules = [];
 	private readonly Dictionary<Symbol, string> _assemblies = [];
+	private readonly HashSet<string> _projectFiles = [];
 	
 	public ModuleIndex(string assemblyName, SymbolTable symbolTable, IEnumerable<AssemblySymbol> dependencies,
 		IEnumerable<AssemblySymbol> indirectDependencies, IReadOnlyDictionary<string, string> aliases)
@@ -65,12 +66,17 @@ public sealed class ModuleIndex
 	
 	public ImmutableArray<string> AliasConflicts { get; }
 	
-	private static void MapFiles(SymbolTable symbolTable, Dictionary<Symbol, FileSymbol> files)
+	private void MapFiles(SymbolTable symbolTable, Dictionary<Symbol, FileSymbol> files)
 	{
 		foreach (var file in symbolTable.ModuleSymbols.Values.SelectMany(static module => module.Files))
+		{
+			_projectFiles.Add(file.FullPath);
 			foreach (var symbol in file.Symbols.Values.SelectMany(static symbols => symbols))
 				files[symbol] = file;
+		}
 	}
+	
+	public bool IsReachable(TraitSymbol trait) => _projectFiles.Contains(trait.Node.SourceLocation.Source.FilePath);
 	
 	public ModulePathSymbol Root { get; }
 	

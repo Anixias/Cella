@@ -225,6 +225,8 @@ public readonly struct ResolutionContext
 	
 	public bool IsVisible(Symbol symbol) => Modules?.IsVisible(symbol, File) ?? true;
 	
+	public bool IsReachable(TraitSymbol trait) => Modules?.IsReachable(trait) ?? true;
+	
 	public bool CanAccess(TypeSymbol owner, Visibility visibility) =>
 		Modules?.IsAccessible(owner, visibility, File, ContainingType) ?? true;
 	

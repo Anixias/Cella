@@ -50,7 +50,10 @@ public sealed partial class Builder
 			{
 				_projects.AddRange(cached.Checks);
 				if (cached.Assembly is { } reused)
+				{
 					projectSymbols[project] = reused;
+					succeeded &= reused.Succeeded;
+				}
 				else
 					succeeded = false;
 				
@@ -73,12 +76,15 @@ public sealed partial class Builder
 				var assemblyInfo = await BuildProject(project, dependencies, typePool, dependencyInfo,
 					linkPreferences[project], ct);
 				
-				if (assemblyInfo.Succeeded)
+				if (assemblyInfo.Succeeded || options.ChecksOnly)
 					built = assemblyInfo;
 			}
 			
 			if (built is { } assembly)
+			{
 				projectSymbols[project] = assembly;
+				succeeded &= assembly.Succeeded;
+			}
 			else
 				succeeded = false;
 			

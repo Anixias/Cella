@@ -480,7 +480,8 @@ public sealed partial class Resolver
 		witness == requirement;
 	
 	private IEnumerable<Conformance> GetVisibleConformances(TypeSymbol type) => _typePool.FindConformances(type)
-		.Where(conformance => CurrentResolutionContext.IsVisible(conformance.Trait));
+		.Where(conformance => CurrentResolutionContext.IsVisible(conformance.Trait) &&
+		                      CurrentResolutionContext.IsReachable(conformance.Trait));
 	
 	private IEnumerable<ImplSymbol> GetImpls(IEnumerable<Conformance> conformances, TypeSymbol type) => conformances
 		.Select(static conformance => conformance.Impl)
