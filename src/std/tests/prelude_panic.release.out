@@ -1,12 +1,7 @@
-Hint at lib\std\core\span.ce:17:2
-16 │ // TODO Accept ranges like v[a..b]
-17 │ slice: fun(self, start: usize, end: usize) -> Span[T]
-     ╘═══╛ 'slice' is never used
-
-Hint at lib\std\core\view.ce:17:2
-16 │ // TODO Accept ranges like v[a..b]
-17 │ slice: fun(self, start: usize, end: usize) -> View[T]
-     ╘═══╛ 'slice' is never used
+Hint at lib\std\core\text\str.ce:13:2
+12 │ {
+13 │     refEq: fun(imm left: str, imm right: str) -> bool => left.data == right.data
+         ╘═══╛ 'refEq' is never used
 
 Hint at lib\std\os\mem\mem.ce:30:2
 29 │ 
