@@ -1,6 +1,6 @@
 ﻿mod std
 
-Span[T]: ref rec
+Span[T]: pub ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -36,7 +36,7 @@ Span[T]: ref rec
 	in: op(self) -> SpanCursor[T] => SpanCursor[T](self.data, self.length)
 }
 
-SpanCursor[T]: ref rec
+SpanCursor[T]: pub ref rec
 {
 	data: pvt ptr[T]
 	length: pvt usize

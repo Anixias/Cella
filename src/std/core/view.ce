@@ -1,6 +1,6 @@
 ﻿mod std
 
-View[T]: ref rec
+View[T]: pub ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
@@ -35,7 +35,7 @@ View[T]: ref rec
 	in: op(self) -> ViewCursor[T] => ViewCursor[T](self.data, self.length)
 }
 
-ViewCursor[T]: ref rec
+ViewCursor[T]: pub ref rec
 {
 	data: pvt ptr[T]
 	length: pvt usize

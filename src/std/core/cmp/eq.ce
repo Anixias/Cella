@@ -1,0 +1,7 @@
+﻿mod std.cmp
+
+Eq: pub trait
+{
+	==: op(imm left: Self, imm right: Self) -> bool
+	!=: op(imm left: Self, imm right: Self) -> bool
+}

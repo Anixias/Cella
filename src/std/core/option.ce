@@ -1,0 +1,13 @@
+﻿mod std
+
+Option[T]: pub enum
+{
+	none
+	some(value: T)
+	
+	?: op(own self) -> T => match own self
+	{
+		some(own value) => value
+		none => ret none
+	}
+}

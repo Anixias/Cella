@@ -1,0 +1,27 @@
+﻿mod std.cmp
+
+Ordering: pub enum
+{
+	less = -1
+	equal = 0
+	greater = 1
+}
+
+Ord: pub trait req Eq
+{
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+	{
+		if (left == right)
+			ret equal
+		
+		if (left < right)
+			ret less
+		
+		ret greater
+	}
+	
+	<: op(imm left: Self, imm right: Self) -> bool
+	<=: op(imm left: Self, imm right: Self) -> bool
+	>: op(imm left: Self, imm right: Self) -> bool
+	>=: op(imm left: Self, imm right: Self) -> bool
+}

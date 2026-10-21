@@ -6,7 +6,7 @@ ext
 	free: fun(data: ptr)
 }
 
-Box[T: noref]: rec
+Box[T: noref]: pub rec
 {
 	data: pvt req ptr[T]
 	
