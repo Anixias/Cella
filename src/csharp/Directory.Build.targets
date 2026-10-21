@@ -13,6 +13,7 @@
       <Home ParameterType="System.String" Required="true"/>
       <VersionsFile ParameterType="System.String" Required="true"/>
       <Host ParameterType="System.String" Required="true"/>
+      <BuildHost ParameterType="System.String" Required="true"/>
       <LlvmDirectory ParameterType="System.String" Output="true"/>
       <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true"/>
     </ParameterGroup>
@@ -21,7 +22,15 @@
       <Code Type="Fragment" Language="cs"><![CDATA[
 var versions = File.ReadAllText(VersionsFile);
 var files = new List<ITaskItem>();
-if (FindVersions("llvm").TryGetValue(Host, out var llvm))
+if (!string.IsNullOrEmpty(LlvmDirectory))
+{
+	AddComponent(LlvmDirectory, "");
+}
+else if (Host != BuildHost)
+{
+	Log.LogError($"'{Home}' holds LLVM for '{BuildHost}' only; set CellaLlvmDirectory to an LLVM for '{Host}'");
+}
+else if (FindVersions("llvm").TryGetValue(Host, out var llvm))
 {
 	LlvmDirectory = Path.Combine(Home, "llvm", llvm);
 	AddComponent(LlvmDirectory, "");
@@ -67,7 +76,9 @@ void AddComponent(string directory, string link)
   <Target Name="ResolveCellaComponents" Condition="'$(UsesCellaComponents)' == 'true'">
     <ResolveCellaComponents Home="$(CellaHome)"
                             VersionsFile="$(MSBuildThisFileDirectory)..\..\components.json"
-                            Host="$([MSBuild]::ValueOrDefault('$(RuntimeIdentifier)', '$(NETCoreSdkRuntimeIdentifier)'))">
+                            Host="$([MSBuild]::ValueOrDefault('$(RuntimeIdentifier)', '$(NETCoreSdkRuntimeIdentifier)'))"
+                            BuildHost="$(NETCoreSdkRuntimeIdentifier)"
+                            LlvmDirectory="$(CellaLlvmDirectory)">
       <Output TaskParameter="LlvmDirectory" PropertyName="CellaLlvmDirectory"/>
       <Output TaskParameter="Files" ItemName="CellaComponentFile"/>
     </ResolveCellaComponents>
