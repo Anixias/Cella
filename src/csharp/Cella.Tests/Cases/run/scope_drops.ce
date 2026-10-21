@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Handle: rec
+Handle: own rec
 {
 	id: i32
 
@@ -25,7 +25,7 @@ Handle: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
@@ -38,17 +38,17 @@ Pair: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	owned(buffer: Buffer)
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-give: fun(own buffer: Buffer) -> Buffer => buffer
-sum: fun(own values: array[Buffer, 2]) -> i32 => values[0].id + values[1].id
+give: fun(buffer: Buffer) -> Buffer => buffer
+sum: fun(values: array[Buffer, 2]) -> i32 => values[0].id + values[1].id
 
-unwrap: fun(own effect: Effect) -> i32
+unwrap: fun(effect: Effect) -> i32
 {
 	ret match effect
 	{
@@ -57,7 +57,7 @@ unwrap: fun(own effect: Effect) -> i32
 	}
 }
 
-pick: fun(own fallback: Buffer, which: i32) -> i32
+pick: fun(fallback: Buffer, which: i32) -> i32
 {
 	val a = make(1)
 	if which == 0

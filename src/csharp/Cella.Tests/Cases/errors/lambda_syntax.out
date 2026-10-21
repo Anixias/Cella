@@ -9,9 +9,9 @@ Error at lambda_syntax.ce:10:21
                             ^ Expected ',' or ')'
                             | To match the '(' on line 10
 
-Error at lambda_syntax.ce:15:17
+Error at lambda_syntax.ce:15:14
 14 │ {
 15 │     val c = fun(own) => 1
-                        ^ Expected a parameter name
+                     ╘═╛ 'own' is a keyword
 
 [compilation failed]

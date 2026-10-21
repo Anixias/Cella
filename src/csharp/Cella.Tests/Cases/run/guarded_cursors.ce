@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Name: rec
 	}
 }
 
-Bag: rec
+Bag: own rec
 {
 	items: array[Name, 3]
 	loops: i32
@@ -26,7 +26,7 @@ Bag: rec
 	}
 }
 
-BagCursor: ref rec
+BagCursor: own ref rec
 {
 	loops: mut[i32]
 	items: imm[array[Name, 3]]

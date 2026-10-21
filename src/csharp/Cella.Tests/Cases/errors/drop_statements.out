@@ -30,7 +30,7 @@ Error at drop_statements.ce:31:7
 
 Hint at drop_statements.ce:34:1
 33 │ 
-34 │ local: fun(own value: Noisy)
+34 │ local: fun(value: Noisy)
      ╘═══╛ 'local' is never used
 
 Error at drop_statements.ce:36:7

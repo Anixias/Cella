@@ -73,7 +73,8 @@ public sealed partial class Resolver
 				resultConversion = conversion;
 			}
 			
-			var totalCost = new CallableCost(resultRank, conversionCost, distance, materializationCost, resultCost,
+			var totalCost = new CallableCost(ignoreModes ? 0 : CountModeMismatches(candidate, args), resultRank,
+				conversionCost, distance, materializationCost, resultCost,
 				candidate.IsGeneric ? 1 : 0);
 			
 			options.Add(new(candidate, totalCost, resultConversion, argumentConversions));
@@ -91,6 +92,16 @@ public sealed partial class Resolver
 			_ => ResolutionSet.Ambiguous(winners)
 		};
 	}
+	
+	private static int CountModeMismatches(ICallable candidate, IReadOnlyList<IResolvedExpressionNode> args) =>
+		candidate is FunctionCallable or ReceiverCallable
+			? args.Take(candidate.ParameterTypes.Length).Where((arg, i) => !MatchesMark(candidate.GetMode(i), arg))
+				.Count()
+			: 0;
+	
+	private static bool MatchesMark(ParameterMode mode, IResolvedExpressionNode arg) =>
+		mode == ParameterMode.Mut ||
+		(mode == ParameterMode.Imm) == arg is ResolvedBorrowExpressionNode { IsMutable: false, IsImplicit: false };
 	
 	private List<IResolvedExpressionNode> ApplyArgumentResolution(IReadOnlyList<IResolvedExpressionNode> args,
 		CallableResolution resolution)
@@ -433,7 +444,7 @@ public sealed partial class Resolver
 		if (_conversionTable.FindImplicit(source, target) is { } conversion)
 			return (conversion.Cost, conversion);
 		
-		return FindUserConversion(source, null, ParameterMode.ReadOnly, target) is { } userConversion
+		return FindUserConversion(source, null, ParameterMode.Value, target) is { } userConversion
 			? (userConversion.Cost, userConversion)
 			: (int.MaxValue, null);
 	}

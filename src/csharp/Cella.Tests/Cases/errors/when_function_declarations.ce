@@ -22,14 +22,14 @@ Meter: rec impl Reset
 
 	+: op(a: Meter, b: Meter) -> Meter when debug => Meter(a.n + b.n)
 
-	drain: fun(own self) when debug
+	drain: fun(self) when debug
 	{
 	}
 }
 
 total: fun(value: i32) -> i32 when debug => value
 
-take: fun(own text: str, mut count: i32) when debug
+take: fun(text: str, mut count: i32) when debug
 {
 }
 

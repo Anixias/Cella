@@ -219,7 +219,7 @@ public sealed partial class SignatureCollector
 					candidate.Function, traitMap))
 				.ToList();
 			
-			if (matches.Count == 0)
+			if (matches.Count == 0 && !IsModeOverloaded(entry.Name, entry.Function, info.Signature))
 				matches = candidates
 					.Where(candidate => SignaturesMatch(candidate.Signature, info.Signature, entry.Function,
 						candidate.Function, traitMap, true))
@@ -621,6 +621,13 @@ public sealed partial class SignatureCollector
 			.OfType<FunctionAccessor>()
 			.Select(static accessor => accessor.Function)
 			.Where(function => GetAccessorKind(function) == kind);
+	
+	private bool IsModeOverloaded(string name, FunctionSymbol requirement, FunctionSignature signature) =>
+		requirement.Trait is { } trait && trait.Functions
+			.Where(other => other.Function != requirement && other.Name == name)
+			.Select(other => GetFunctionInfo(other.Function).Signature)
+			.Any(other => HasSameParameters(other, signature) &&
+			              !other.ParameterModes.SequenceEqual(signature.ParameterModes));
 	
 	private bool SignaturesMatch(FunctionSignature candidate, FunctionSignature requirement,
 		FunctionSymbol requirementSymbol, FunctionSymbol candidateSymbol,

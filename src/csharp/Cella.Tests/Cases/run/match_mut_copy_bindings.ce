@@ -22,7 +22,7 @@ main: fun -> i32
 
 	match e
 	{
-		hit(own n) => printf("%d\n", n)
+		hit(val n) => printf("%d\n", n)
 		a => {}
 	}
 

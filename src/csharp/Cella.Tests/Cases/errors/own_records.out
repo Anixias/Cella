@@ -3,29 +3,14 @@ Hint at own_records.ce:25:6
 25 │     var c = Countdown(4)
              ^ 'c' is never changed
 
-Error at own_records.ce:26:11
-25 │ var c = Countdown(4)
-26 │ for x in c
-              ^ Cannot move 'Countdown' values implicitly
-
 Hint at own_records.ce:31:6
 30 │ val other = Countdown(2)
 31 │ val d: Countdown = other
          ^ 'd' is never used
-
-Error at own_records.ce:31:21
-30 │ val other = Countdown(2)
-31 │ val d: Countdown = other
-                        ╘═══╛ Cannot move 'Countdown' values implicitly
 
 Hint at own_records.ce:33:6
 32 │ val t = Ticket.open(1)
 33 │ val u: Ticket = t
          ^ 'u' is never used
 
-Error at own_records.ce:33:18
-32 │ val t = Ticket.open(1)
-33 │ val u: Ticket = t
-                     ^ Cannot move 'Ticket' values implicitly
-
-[compilation failed]
+[exit code 0]

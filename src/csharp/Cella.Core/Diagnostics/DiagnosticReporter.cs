@@ -80,7 +80,7 @@ public static class DiagnosticReporter
 		string? hint = (hasMode, borrow.IsMutable, isExternal) switch
 		{
 			(false, true, _) => $"Did you mean 'mut {parameter}'?",
-			(false, false, false) => $"'{parameter}' is already a read-only borrow",
+			(false, false, false) => $"Did you mean 'imm {parameter}'?",
 			_ => null
 		};
 		
@@ -99,7 +99,7 @@ public static class DiagnosticReporter
 		return new Diagnostic(DiagnosticSeverity.Error, function.SourceLocation,
 			"Cannot use borrow types for parameters")
 		{
-			Hints = hasMode || isExternal ? [] : [$"'{parameter}' is already a read-only borrow"]
+			Hints = hasMode || isExternal ? [] : [$"Did you mean 'imm {parameter}'?"]
 		};
 	}
 	

@@ -21,10 +21,10 @@ Pair[A, B]: rec
 	second: B
 	id: pvt i32
 
-	new: op(own first: A, own second: B, id: i32)
+	new: op(first: A, second: B, id: i32)
 	{
-		self.first = own first
-		self.second = own second
+		self.first = first
+		self.second = second
 		self.id = id
 	}
 
@@ -37,9 +37,9 @@ Wrapper[T: noref]: rec
 {
 	inner: util.Cell[T]
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
-		self.inner = util.Cell[T](own value)
+		self.inner = util.Cell[T](value)
 	}
 
 	hits: fun(imm self) -> i32 => self.inner.hits

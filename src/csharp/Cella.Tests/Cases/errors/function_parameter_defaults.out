@@ -1,11 +1,11 @@
-Error at function_parameter_defaults.ce:3:29
+Error at function_parameter_defaults.ce:3:33
 2 │ 
-3 │ f: fun(g: fun[i32 -> i32] = 5) -> i32 => 0
-                                ^ Cannot convert type 'integer literal' to 'fun[i32 -> i32]'
+3 │ f: fun(imm g: fun[i32 -> i32] = 5) -> i32 => 0
+                                    ^ Cannot convert type 'integer literal' to 'fun[i32 -> i32]'
 
 Error at function_parameter_defaults.ce:5:1
 4 │ 
-5 │ h: fun(x: i32, g: fun[i32, fun[i32 -> i32] -> i32] = h) -> i32 => x
+5 │ h: fun(x: i32, imm g: fun[i32, imm fun[i32 -> i32] -> i32] = h) -> i32 => x
     ^ 'h' depends on its own signature
 
 [compilation failed]

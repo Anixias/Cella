@@ -59,7 +59,7 @@ Hint at closure_escapes.ce:46:23
                           ╘══╛ 'copy' is never used
 
 Error at closure_escapes.ce:54:2
-53 │ consume(own text)
+53 │ consume(text)
 54 │ show()
      ╘══╛ Cannot use borrows of moved values
         | Moved on line 53

@@ -8,13 +8,13 @@ Error at ext_signature_destructors.ce:32:20
 32 │     show: fun(buffer: Buffer) -> i32
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
-Error at ext_signature_destructors.ce:33:24
+Error at ext_signature_destructors.ce:33:20
 32 │ show: fun(buffer: Buffer) -> i32
-33 │ keep: fun(own buffer: Buffer)
-                           ╘════╛ Cannot use types with destructors in 'ext' signatures
+33 │ keep: fun(buffer: Buffer)
+                       ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 Error at ext_signature_destructors.ce:34:24
-33 │ keep: fun(own buffer: Buffer)
+33 │ keep: fun(buffer: Buffer)
 34 │ fill: fun(mut buffer: Buffer)
                            ╘════╛ Cannot use types with destructors in 'ext' signatures
 
@@ -57,7 +57,7 @@ Error at ext_signature_destructors.ce:43:34
 
 Error at ext_signature_destructors.ce:44:40
 43 │ echo: ext fun(buffer: Buffer) -> Buffer => buffer
-44 │ forward: fun(callback: fun[ext fun[own Buffer]]) {}
+44 │ forward: fun(imm callback: fun[ext fun[Buffer]]) {}
                                             ╘════╛ Cannot use types with destructors in 'ext' signatures
 
 [compilation failed]

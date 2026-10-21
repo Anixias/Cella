@@ -11,7 +11,7 @@ Counted[T]: rec
 	count: i32
 
 	<: op(imm a: Counted[T], imm b: Counted[T]) -> bool => a.count < b.count
-	+: op(own a: Counted[T], extra: i32) -> Counted[T] => Counted(own a.value, a.count + extra)
+	+: op(a: Counted[T], extra: i32) -> Counted[T] => Counted(a.value, a.count + extra)
 }
 
 main: fun -> i32

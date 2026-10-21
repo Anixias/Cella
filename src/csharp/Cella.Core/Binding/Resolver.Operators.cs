@@ -98,7 +98,7 @@ public sealed partial class Resolver
 		PointerType { BaseType: { } baseType } => baseType == NativeSymbols.Void
 			? Error(node, "Cannot dereference untyped pointers", CurrentTargetType)
 			: new ResolvedUnaryOpExpressionNode(operand, new NativeImpl(opType, baseType), node),
-		var type when (FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut)) is
+		var type when (FindDereference(type, ParameterMode.Value) ?? FindDereference(type, ParameterMode.Mut)) is
 			{ } dereference => IsAmbiguousOperator(type, dereference)
 				? Error(node, DescribeAmbiguousOperator("*", type), CurrentTargetType)
 				: Decay(CallOperator(operand, dereference, node, PlaceOperator.Dereference)),
@@ -199,6 +199,8 @@ public sealed partial class Resolver
 	private IResolvedExpressionNode ResolveBinaryOperation(IExpressionNode node, Token op, IResolvedExpressionNode left,
 		IResolvedExpressionNode right)
 	{
+		_typePool.CompleteGenericInstance(left.Type);
+		_typePool.CompleteGenericInstance(right.Type);
 		var candidates = _operatorRegistry.GetBinaryCandidates(op.Type);
 		if (AnyInvalid(left, right))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -544,9 +546,9 @@ public sealed partial class Resolver
 		for (var j = 0; j < 2; j++)
 		{
 			var index = link + j;
-			var moves = function?.Signature.GetMode(j) == ParameterMode.Own ||
+			var moves = function?.Signature.GetMode(j) == ParameterMode.Value ||
 			            conversions[j] is FunctionConversion { Function.Signature: var signature } &&
-			            signature.GetMode(0) == ParameterMode.Own;
+			            signature.GetMode(0) == ParameterMode.Value;
 			
 			if (index > 0 && index < operands.Count - 1 && moves && !_typePool.IsCopy(operands[index].Type))
 				return operands[index];
@@ -556,7 +558,7 @@ public sealed partial class Resolver
 	}
 	
 	private static bool IsBorrowedFunctionParameter(IResolvedExpressionNode node) =>
-		node is ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly } } &&
+		node is ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.Imm } } &&
 		node.Type is FunctionType { IsRef: true, IsExternal: false };
 	
 	private bool IsMovedFunctionParameter(IResolvedExpressionNode node, TypeSymbol target) =>

@@ -11,7 +11,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -21,17 +21,17 @@ Token: rec
 	}
 }
 
-Box[T]: rec
+Box[T]: own rec
 {
 	target: pvt req ptr[T]
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		self.target = ptr[T](malloc(sizeOf(T)))
-		own *self.target = own value
+		own *self.target = value
 	}
 
-	unbox: fun(own self) -> T
+	unbox: fun(self) -> T
 	{
 		val target = own self.target
 		val value = own *target

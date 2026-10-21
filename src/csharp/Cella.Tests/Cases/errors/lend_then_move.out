@@ -5,32 +5,32 @@ Hint at lend_then_move.ce:40:6
 
 Error at lend_then_move.ce:41:11
 40 │ var item = Item(1)
-41 │ view(imm item, own item)
+41 │ view(imm item, item)
               ╘══╛ Cannot use moved values
                  | Moved on line 41
 
 Error at lend_then_move.ce:44:13
 43 │ var changed = Item(2)
-44 │ change(mut changed, own changed)
+44 │ change(mut changed, changed)
                 ╘═════╛ Cannot use moved values
                       | Moved on line 44
 
 Error at lend_then_move.ce:47:2
 46 │ var poked = Item(3)
-47 │ poked.poke(own poked)
+47 │ poked.poke(poked)
      ╘═══╛ Cannot use moved values
          | Moved on line 47
 
 Error at lend_then_move.ce:50:12
 49 │ var holder = Holder(Item(4), Item(5))
-50 │ store(mut holder, own holder.other)
+50 │ store(mut holder, holder.other)
                ╘════╛ Cannot use partly moved values
                     | Moved on line 50
 
-Error at lend_then_move.ce:53:20
+Error at lend_then_move.ce:53:6
 52 │ val captured = Item(6)
-53 │ run(fun -> i32 => captured.id, own captured)
-                       ╘══════╛ Cannot use moved values
-                              | Moved on line 53
+53 │ run(fun -> i32 => captured.id, captured)
+         ╘═══════════════════════╛ Cannot use borrows of moved values
+                                 | Moved on line 53
 
 [compilation failed]

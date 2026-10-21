@@ -15,9 +15,9 @@ public sealed partial class SignatureCollector
 				? context.ResolveReturnType(node)
 				: context.ResolveType(node);
 	
-	private TypeSymbol RejectValueDyn(ITypeNode node, TypeSymbol type, ParameterMode mode = ParameterMode.Own)
+	private TypeSymbol RejectValueDyn(ITypeNode node, TypeSymbol type, ParameterMode mode = ParameterMode.Value)
 	{
-		if (type is DynType && mode != ParameterMode.Own || TypePool.FindValueDyn(type) is not { } dyn)
+		if (type is DynType && mode != ParameterMode.Value || TypePool.FindValueDyn(type) is not { } dyn)
 			return type;
 		
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"Cannot use '{dyn.Name}' by value"));

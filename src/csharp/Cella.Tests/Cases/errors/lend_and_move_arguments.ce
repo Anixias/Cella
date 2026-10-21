@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,10 +9,10 @@ Buffer: rec
 	}
 }
 
-take: fun(imm first: Buffer, own second: Buffer) -> i32 => first.id + second.id
+take: fun(imm first: Buffer, second: Buffer) -> i32 => first.id + second.id
 
 main: fun -> i32
 {
 	val b = Buffer(1)
-	ret take(imm b, own b)
+	ret take(imm b, b)
 }

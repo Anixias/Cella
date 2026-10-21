@@ -13,7 +13,7 @@ puts: fun(text: str) -> i32
 	ret 0
 }
 
-Point: rec
+Point: own rec
 {
 	x: i32
 	x: i32

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Text: rec
 	}
 }
 
-Maybe: enum
+Maybe: own enum
 {
 	some(value: Text)
 	none
@@ -52,17 +52,17 @@ Doubled: rec
 	}
 }
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		visit(value)
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-call: fun(f: fun[-> i32]) -> i32 => f()
+call: fun(imm f: fun[-> i32]) -> i32 => f()
 
-generic[T]: fun(f: fun[-> T]) -> T => f()
+generic[T]: fun(imm f: fun[-> T]) -> T => f()
 
 repeat[T: copy + noref]: fun(value: T) -> T => generic(fun => value)
 

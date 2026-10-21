@@ -81,6 +81,7 @@ public sealed partial class TypePool
 		SizeTable = sizeTable;
 		SizeTable.Completer = Complete;
 		ConversionTable.CallableAs = IsCallableAs;
+		ConversionTable.Completer = CompleteGenericInstance;
 		
 		CreateNativeMembers();
 	}
@@ -151,7 +152,7 @@ public sealed partial class TypePool
 			Visibility.Public, null, parameters, FunctionKind.Constructor);
 		
 		var signature = new FunctionSignature([GetPointerType(NativeSymbols.Str), ptrType, lengthType],
-			NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]);
+			NativeSymbols.Void, false, [ParameterMode.Mut, ParameterMode.Value, ParameterMode.Value]);
 		
 		AddConstructor(NativeSymbols.Str, new FunctionInfo("str.new", constructor, signature, null, null, null));
 	}

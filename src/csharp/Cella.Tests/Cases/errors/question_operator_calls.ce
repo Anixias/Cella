@@ -5,10 +5,10 @@ Result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		ok(own value) => value
-		err(own error) => ret Result.err(own error)
+		ok(val value) => value
+		err(val error) => ret Result.err(error)
 	}
 }
 

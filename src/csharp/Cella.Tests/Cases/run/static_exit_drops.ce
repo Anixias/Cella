@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: pub rec
+Buffer: pub own rec
 {
 	id: i32
 

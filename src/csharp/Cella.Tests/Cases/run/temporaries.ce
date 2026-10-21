@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,13 +15,13 @@ Buffer: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	owned(buffer: Buffer)

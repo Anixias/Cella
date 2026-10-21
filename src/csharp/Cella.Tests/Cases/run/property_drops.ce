@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -15,21 +15,21 @@ Token: rec
 	}
 }
 
-Slot: rec
+Slot: own rec
 {
 	held: Token
 
-	new: op(own token: Token)
+	new: op(token: Token)
 	{
-		self.held = own token
+		self.held = token
 	}
 
 	token: prop Token
 	{
 		get(imm self) => Token(self.held.id + 100)
-		set(mut self, own value)
+		set(mut self, value)
 		{
-			self.held = own value
+			self.held = value
 		}
 	}
 

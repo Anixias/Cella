@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,13 +15,13 @@ Buffer: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
 }
 
-Outer: rec
+Outer: own rec
 {
 	first: Buffer
 	second: Buffer
@@ -32,7 +32,7 @@ Outer: rec
 	}
 }
 
-Incomplete: rec
+Incomplete: own rec
 {
 	part: Buffer
 	count: i32
@@ -43,14 +43,14 @@ Incomplete: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 	pair(first: Buffer, second: Buffer)
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	count: i32
@@ -63,7 +63,7 @@ Holder: rec
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 show: fun(imm buffer: Buffer) -> i32 => buffer.id
 effect: fun(id: i32) -> Effect => Effect.pair(make(id), make(id + 1))
 
@@ -79,10 +79,10 @@ moves: fun(flag: bool)
 {
 	printf("-- moves %d\n", flag)
 	val a = make(10)
-	take(own a)
+	take(a)
 	val b = make(11)
 	if flag
-		take(own b)
+		take(b)
 
 	printf("end\n")
 }
@@ -91,7 +91,7 @@ partial: fun
 {
 	printf("-- partial\n")
 	val pair = Pair(make(20), make(21))
-	take(own pair.left)
+	take(pair.left)
 	printf("end\n")
 }
 
@@ -114,7 +114,7 @@ owned: fun
 	printf("-- owned\n")
 	match effect(50)
 	{
-		pair(val first, _) => printf("took %d\n", take(own first))
+		pair(val first, _) => printf("took %d\n", take(first))
 		else => {}
 	}
 
@@ -150,7 +150,7 @@ looped: fun
 	{
 		val b = make(90 + i)
 		if i == 1
-			take(own b)
+			take(b)
 
 		i += 1
 	}

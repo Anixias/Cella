@@ -21,9 +21,12 @@ public static class Mangling
 			: $"{name}:{string.Join('.', signature.ParameterTypes.Select((_, i) => MangleParameter(signature, i, modules)))}";
 	
 	private static string MangleParameter(FunctionSignature signature, int index, ModuleIndex? modules) =>
-		signature.GetMode(index) == ParameterMode.Mut
-			? $"mut {MangleType(signature.GetDeclaredType(index), modules)}"
-			: MangleType(signature.ParameterTypes[index], modules);
+		signature.GetMode(index) switch
+		{
+			ParameterMode.Mut => $"mut {MangleType(signature.GetDeclaredType(index), modules)}",
+			ParameterMode.Imm => $"imm {MangleType(signature.ParameterTypes[index], modules)}",
+			_ => MangleType(signature.ParameterTypes[index], modules)
+		};
 	
 	public static string Mangle(Symbol symbol, ModuleIndex? modules, params IEnumerable<string> qualifierParts) =>
 		new StringBuilder().Append('?').Append(QualifyAssembly(modules?.AssemblyName))
@@ -109,7 +112,6 @@ public static class Mangling
 		var parameters = string.Join(';', function.ParameterTypes.Select((type, i) => function.ParameterModes[i] switch
 		{
 			ParameterMode.Mut => $"mut {MangleType(function.GetDeclaredType(i), modules)}",
-			ParameterMode.Own => $"own {MangleType(type, modules)}",
 			ParameterMode.Imm => $"imm {MangleType(type, modules)}",
 			_ => MangleType(type, modules)
 		}));

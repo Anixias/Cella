@@ -26,7 +26,7 @@ Hint at template_borrows.ce:48:1
 Error at template_borrows.ce:48:45
 47 │ 
 48 │ fromStr: fun(text: str) -> fstr[Display] => text
-                                                 ╘══╛ Cannot return borrows of copied parameters
+                                                 ╘══╛ Cannot return borrows of by-value parameters
 
 Hint at template_borrows.ce:50:1
 49 │ 
@@ -66,7 +66,7 @@ Error at template_borrows.ce:84:8
                  | Dropped on line 87 in an earlier iteration
 
 Error at template_borrows.ce:92:7
-91 │ take(own buffer)
+91 │ take(buffer)
 92 │ show(held)
           ╘══╛ Cannot use borrows of moved values
              | Moved on line 91

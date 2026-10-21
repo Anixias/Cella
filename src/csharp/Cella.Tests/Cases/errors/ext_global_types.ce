@@ -5,7 +5,7 @@ Shape: trait
 	area: fun(imm self) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	data: ptr
 

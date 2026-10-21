@@ -2,7 +2,7 @@ mod test
 
 apply: fun(f: fun(i32) -> i32) -> i32 => 0
 
-pair: fun(f: fun[i32 i32]) => {}
+pair: fun(imm f: fun[i32 i32]) => {}
 
 Holder: rec
 {

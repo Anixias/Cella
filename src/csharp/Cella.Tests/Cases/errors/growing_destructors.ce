@@ -1,6 +1,6 @@
 mod test
 
-Box[T]: rec
+Box[T]: own rec
 {
 	value: T
 
@@ -10,7 +10,7 @@ Box[T]: rec
 	}
 }
 
-Cell[T]: rec
+Cell[T]: own rec
 {
 	value: ptr[T]
 

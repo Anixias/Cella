@@ -2,14 +2,14 @@ mod test
 
 Hit: enum { miss, hit(amount: i32), pair(a: i32, b: i32) }
 
-Box: rec
+Box: own rec
 {
 	n: i32
 
 	drop: op {}
 }
 
-Holder: enum { empty, full(b: Box) }
+Holder: own enum { empty, full(b: Box) }
 
 Point: rec { x: i32 }
 
@@ -41,7 +41,7 @@ listed: fun(h: Hit) -> i32 => match h
 	miss => 0
 }
 
-guarded: fun(own h: Holder) -> i32 => match own h
+guarded: fun(h: Holder) -> i32 => match h
 {
 	full(val b) if b.n > 0 => 1
 	else => 0

@@ -1,6 +1,6 @@
 mod test
 
-Token: rec
+Token: own rec
 {
 	id: i32
 

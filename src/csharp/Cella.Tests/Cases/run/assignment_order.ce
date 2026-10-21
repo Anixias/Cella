@@ -11,7 +11,7 @@ Effect: enum
 	hit(amount: i32)
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -27,7 +27,7 @@ Token: rec
 	}
 }
 
-Bag: rec
+Bag: own rec
 {
 	tokens: array[Token, 2]
 

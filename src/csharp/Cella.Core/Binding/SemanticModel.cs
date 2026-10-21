@@ -785,7 +785,6 @@ public sealed class SemanticModel
 		var mode = signature.GetMode(index) switch
 		{
 			ParameterMode.Mut => "mut ",
-			ParameterMode.Own => "own ",
 			ParameterMode.Imm => "imm ",
 			_ => ""
 		};

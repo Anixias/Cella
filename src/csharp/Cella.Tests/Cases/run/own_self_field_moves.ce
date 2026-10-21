@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -15,15 +15,15 @@ Token: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	first: Token
 	second: Token
 
-	take: fun(own self) -> Token
+	take: fun(self) -> Token
 	{
 		printf("taking\n")
-		ret own self.first
+		ret self.first
 	}
 
 	drop: op

@@ -7,14 +7,14 @@ ext
 	free: fun(memory: ptr)
 }
 
-Boxed[K: trait]: rec
+Boxed[K: trait]: own rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(own value: T) -> Boxed[K]
+	of[T: K]: fun(value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = own value
+		own *memory = value
 		ret Boxed[K](memory)
 	}
 
@@ -36,7 +36,7 @@ Shape: trait
 	grow: fun(mut self)
 }
 
-Circle: rec impl Shape
+Circle: own rec impl Shape
 {
 	radius: f64
 
@@ -63,7 +63,7 @@ Dot: rec impl Shape
 	}
 }
 
-Label: rec
+Label: own rec
 {
 	id: i32
 
@@ -73,7 +73,7 @@ Label: rec
 	}
 }
 
-Tagged: rec impl Shape
+Tagged: own rec impl Shape
 {
 	label: Label
 	side: f64
@@ -96,7 +96,7 @@ i64: impl Shape
 
 describe: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-keep: fun(own shape: Boxed[Shape]) -> f64
+keep: fun(shape: Boxed[Shape]) -> f64
 {
 	printf("kept %.1f\n", shape.area())
 	ret describe(imm *shape)

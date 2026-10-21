@@ -1,6 +1,6 @@
 mod test
 
-Grid: rec
+Grid: own rec
 {
 	cells: array[i32, 4]
 
@@ -22,7 +22,7 @@ Pair: rec
 	[]: pvt op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
-Hidden: rec
+Hidden: own rec
 {
 	cells: array[i32, 4]
 
@@ -43,7 +43,7 @@ Counter: rec
 	}
 }
 
-Counters: rec
+Counters: own rec
 {
 	values: array[Counter, 2]
 

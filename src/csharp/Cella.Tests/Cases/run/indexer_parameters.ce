@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Matrix: rec
+Matrix: own rec
 {
 	cells: array[f64, 4]
 
@@ -25,7 +25,7 @@ Color: enum
 	blue
 }
 
-Table: rec
+Table: own rec
 {
 	values: array[i32, 3]
 

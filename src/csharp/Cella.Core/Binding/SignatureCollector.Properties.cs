@@ -48,10 +48,6 @@ public sealed partial class SignatureCollector
 		ITypeNode? shared)
 	{
 		var isGetter = accessor.Identifier.Type == TokenType.KeywordGet;
-		if (accessor.Receiver is { Mode: { Type: TokenType.KeywordOwn } } receiver)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, receiver.SourceLocation,
-				$"Cannot take 'own self' in {(isGetter ? "getters" : "setters")}"));
-		
 		if (!isGetter && accessor.Parameters is [{ Mode: { Type: TokenType.KeywordMut } mode }])
 			Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
 				"Cannot take 'mut' parameters in setters"));

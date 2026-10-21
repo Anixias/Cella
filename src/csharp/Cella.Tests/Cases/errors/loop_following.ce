@@ -1,6 +1,6 @@
 mod test
 
-D: rec
+D: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ D: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	first: D
 	second: D
@@ -65,12 +65,12 @@ movedTwice: fun -> i32
 {
 	val d = D(1)
 	for i in 0..2
-		take(own d)
+		take(d)
 
 	ret 0
 }
 
-take: fun(own d: D)
+take: fun(d: D)
 {
 }
 

@@ -49,6 +49,28 @@ public sealed partial class TypePool
 	
 	public bool HoldsBorrows(TypeSymbol type) => HoldsBorrows(type, true);
 	
+	public bool OwnsConcretely(TypeSymbol type) => OwnsConcretely(type, []);
+	
+	private bool OwnsConcretely(TypeSymbol type, HashSet<TypeSymbol> path)
+	{
+		if (type is InvalidType or TypeParameterSymbol)
+			return false;
+		
+		if (!ContainsTypeParameters(type) || type is not (NamedTypeSymbol or ArrayType))
+			return !IsCopy(type);
+		
+		if (type is RecordSymbol { IsOwn: true } or RecordSymbol { HasDestructor: true } or EnumSymbol { IsOwn: true })
+			return true;
+		
+		var definition = type is NamedTypeSymbol named ? named.Definition : type;
+		if (!path.Add(definition))
+			return false;
+		
+		var owns = GetParts(type).Any(part => OwnsConcretely(part, path));
+		path.Remove(definition);
+		return owns;
+	}
+	
 	private bool HoldsBorrows(TypeSymbol type, bool countsParameters) => type switch
 	{
 		BorrowType or DynType or FStrType or FunctionType { IsRef: true } => true,
@@ -185,7 +207,7 @@ public sealed partial class TypePool
 		
 		for (var i = fixedCount; i < given; i++)
 		{
-			if (!ParameterMatches(ParameterMode.ReadOnly, element, expected, i, allowsStandIns))
+			if (!ParameterMatches(ParameterMode.Value, element, expected, i, allowsStandIns))
 				return false;
 		}
 		
@@ -208,7 +230,7 @@ public sealed partial class TypePool
 	
 	private FunctionSignature GetRunSignature(TypeSymbol type, TypeSymbol element) =>
 		new([GetPointerType(type), GetPointerType(element), NativeSymbols.UIntSize], NativeSymbols.Void, false,
-			[ParameterMode.Mut, ParameterMode.ReadOnly, ParameterMode.ReadOnly]);
+			[ParameterMode.Mut, ParameterMode.Value, ParameterMode.Value]);
 	
 	public string? DescribeHiddenRun(TypeSymbol type, TypeSymbol? element = null) =>
 		type is RecordSymbol &&
@@ -282,11 +304,11 @@ public sealed partial class TypePool
 			return null;
 		
 		var source = expected.ParameterTypes[1];
-		var canConsume = expected.GetMode(1) == ParameterMode.Own || IsCopy(source);
+		var canConsume = expected.GetMode(1) == ParameterMode.Value || IsCopy(source);
 		return GetExplicitConversions(source)
 			.Where(conversion => conversion.Signature.ReturnType == self &&
 			                     conversion.Symbol.Visibility >= GetConstructorFloor(source) &&
-			                     (canConsume || conversion.Signature.GetMode(0) != ParameterMode.Own))
+			                     (canConsume || conversion.Signature.GetMode(0) != ParameterMode.Value))
 			.Select(static conversion =>
 				new ConversionWitness(new FunctionConversion(conversion, ConversionKind.Explicit, 0)))
 			.FirstOrDefault();
@@ -367,8 +389,8 @@ public sealed partial class TypePool
 	
 	private bool IsConvertible(FunctionSignature expected) => expected.GetMode(1) switch
 	{
-		ParameterMode.Own => true,
-		ParameterMode.ReadOnly or ParameterMode.Imm => IsCopy(expected.ParameterTypes[1]),
+		ParameterMode.Value => true,
+		ParameterMode.Imm => IsCopy(expected.ParameterTypes[1]),
 		_ => false
 	};
 	

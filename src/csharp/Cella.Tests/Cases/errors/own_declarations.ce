@@ -5,7 +5,7 @@ Bits: own union
 	a: i32
 }
 
-Code: own ext enum
+Code: ext enum
 {
 	one = 1
 }

@@ -63,13 +63,13 @@ Hint at main.ce:31:1
 31 │ moves: fun
      ╘═══╛ 'moves' is never used
 
-Error at main.ce:34:22
+Error at main.ce:34:18
 33 │ var box = Box.make()
-34 │ val taken = own box.inner
-                         ╘═══╛ 'inner' is read-only outside its type
+34 │ val taken = box.inner
+                     ╘═══╛ 'inner' is read-only outside its type
 
 Error at main.ce:35:26
-34 │ val taken = own box.inner
+34 │ val taken = box.inner
 35 │ val copied: Inner = box.inner
                              ╘═══╛ 'inner' is read-only outside its type
 

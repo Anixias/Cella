@@ -5,7 +5,7 @@ ext
 	malloc: fun(size: usize) -> ptr
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Buffer: rec
 	}
 }
 
-Readings: rec
+Readings: own rec
 {
 	values: array[i32, 2]
 
@@ -32,7 +32,7 @@ Slots: rec
 	[]: op(mut self, i: usize) -> mut[i32] => mut self.values[i]
 }
 
-Boxes: rec
+Boxes: own rec
 {
 	values: array[Buffer, 2]
 

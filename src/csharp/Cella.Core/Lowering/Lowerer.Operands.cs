@@ -69,7 +69,7 @@ public sealed partial class Lowerer
 		}
 		
 		private List<Value> LowerOperands(IReadOnlyList<IResolvedExpressionNode> operands,
-			Func<int, Passing>? passing = null, bool hasReceiver = false, bool isPlaceOperator = false)
+			Func<int, Passing>? passing = null, bool isPlaceOperator = false)
 		{
 			var values = new List<Value>(operands.Count);
 			var passings = new List<Passing>(operands.Count);
@@ -85,7 +85,7 @@ public sealed partial class Lowerer
 				values.Add(passings[i] switch
 				{
 					Passing.Borrow => LowerBorrow(operand),
-					Passing.Consume => Consume(VisitNode(operand), (i > 0 || !hasReceiver) && NamesPlace(operand)),
+					Passing.Consume => Consume(VisitNode(operand)),
 					_ => VisitNode(operand)
 				});
 			}
@@ -108,26 +108,28 @@ public sealed partial class Lowerer
 		
 		private List<Value> LowerArguments(IReadOnlyList<IResolvedExpressionNode> arguments, FunctionInfo function,
 			int firstParameter, bool isPlaceOperator = false) => LowerOperands(arguments,
-			GetArgumentPassing(function, firstParameter),
-			firstParameter == 0 && function.Symbol.Kind == FunctionKind.Method,
-			isPlaceOperator);
+			GetArgumentPassing(function, firstParameter), isPlaceOperator);
 		
 		private Func<int, Passing> GetArgumentPassing(FunctionInfo function, int firstParameter)
 		{
 			var signature = function.DeclaredSignature;
-			return i => firstParameter + i < signature.ParameterTypes.Length
-				? GetPassing(signature.GetMode(firstParameter + i))
-				: Passing.Read;
+			return i => firstParameter + i >= signature.ParameterTypes.Length ? Passing.Read
+				: firstParameter + i == 0 && IsDynDispatch(function) ? Passing.Read
+				: GetPassing(signature.GetMode(firstParameter + i));
 		}
+		
+		private static bool IsDynDispatch(FunctionInfo function) =>
+			function.Symbol is { Trait: not null, Kind: FunctionKind.Method } &&
+			function.TypeArguments is [DynType, ..] && function.DeclaredSignature.GetMode(0) == ParameterMode.Value;
 		
 		private static Passing GetPassing(ParameterMode mode) =>
 			TypePool.PassesByPointer(mode) ? Passing.Borrow
-			: mode == ParameterMode.Own ? Passing.Consume
+			: mode == ParameterMode.Value ? Passing.Consume
 			: Passing.Read;
 		
-		private Value Consume(Value value, bool isImplicit = false) =>
+		private Value Consume(Value value) =>
 			!_typePool.IsCopy(value.Type) && IsPlaceValue(value)
-				? new MoveValue(value) { IsImplicit = isImplicit }
+				? new MoveValue(value)
 				: value;
 		
 		private static bool IsPlaceValue(Value value) => value switch
@@ -157,9 +159,6 @@ public sealed partial class Lowerer
 			ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 			_ => false
 		};
-		
-		private static bool NamesPlace(IResolvedExpressionNode node) =>
-			IsPlace(node is ResolvedAssignmentExpressionNode assignment ? assignment.Left : node);
 		
 		private bool MayEmit(IResolvedExpressionNode node) => node switch
 		{
@@ -231,7 +230,7 @@ public sealed partial class Lowerer
 				
 				GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(new CallValue(compound, args, location)));
 				return new CallValue(node.Setter,
-					[..PassReceiver(node.Setter, receiver), PassChainArgument(place, node.Setter, valueIndex, false)],
+					[..PassReceiver(node.Setter, receiver), PassChainArgument(place, node.Setter, valueIndex)],
 					location);
 			}
 			

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-D: rec
+D: own rec
 {
 	id: i32
 

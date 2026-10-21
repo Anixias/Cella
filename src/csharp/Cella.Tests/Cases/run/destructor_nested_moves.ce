@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-N: rec
+N: own rec
 {
 	id: i32
 
@@ -15,13 +15,13 @@ N: rec
 	}
 }
 
-Inner: rec
+Inner: own rec
 {
 	x: N
 	y: N
 }
 
-W: rec
+W: own rec
 {
 	first: N
 	inner: Inner
@@ -30,12 +30,12 @@ W: rec
 	drop: op
 	{
 		printf("destroy\n")
-		take(own self.inner.x)
-		take(own self.items[1])
+		take(self.inner.x)
+		take(self.items[1])
 	}
 }
 
-take: fun(own n: N)
+take: fun(n: N)
 {
 	printf("take %d\n", n.id)
 }

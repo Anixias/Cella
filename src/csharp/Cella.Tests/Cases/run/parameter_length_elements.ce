@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -15,13 +15,13 @@ Token: rec
 	}
 }
 
-take: fun(own t: Token)
+take: fun(t: Token)
 {
 }
 
-firstOf[N: const usize]: fun(own values: array[Token, N]) -> Token => values[0]
+firstOf[N: const usize]: fun(values: array[Token, N]) -> Token => values[0]
 
-middleOf[N: const usize]: fun(own values: array[Token, N]) -> Token => values[1]
+middleOf[N: const usize]: fun(values: array[Token, N]) -> Token => values[1]
 
 make[N: const usize]: fun
 {
@@ -31,17 +31,17 @@ make[N: const usize]: fun
 	printf("made\n")
 }
 
-maybe[N: const usize]: fun(own values: array[Token, N], deep: bool)
+maybe[N: const usize]: fun(values: array[Token, N], deep: bool)
 {
 	if deep
-		take(own values[5])
+		take(values[5])
 
 	printf("kept\n")
 }
 
 swapFirst[N: const usize]: fun(mut values: array[Token, N])
 {
-	take(own values[0])
+	take(values[0])
 	values[0] = Token(99)
 }
 

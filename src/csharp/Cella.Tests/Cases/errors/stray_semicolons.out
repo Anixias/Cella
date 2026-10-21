@@ -13,11 +13,6 @@ Error at members.ce:5:8
 5 │     x: i32;
               ^ Unexpected character ';'
 
-Error at members.ce:11:12
-10 │ {
-11 │     area: fun(self) -> i32;
-                   ╘══╛ Cannot copy 'Self'
-
 Error at members.ce:11:24
 10 │ {
 11 │     area: fun(self) -> i32;

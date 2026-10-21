@@ -28,7 +28,7 @@ area: fun(shape: Shape) -> f64 => match shape
 	rect(val w, val h) => w * h
 }
 
-Areas: rec
+Areas: own rec
 {
 	data: ptr[f64]
 	count: usize
@@ -82,12 +82,11 @@ freeing 3 areas
 
 ## Memory and checks
 
-Every value has one owner. A type with a `drop` operator runs it when its owner's scope ends. A parameter's mode says how it takes its argument: no mode copies, `imm` and `mut` borrow, and `own` takes ownership. Calls repeat the mode, as in `fill(mut areas, shapes)` above, and moving a value out of a variable is written `own`.
+Every value has one owner. A type that owns something, such as one with a `drop` operator, is declared `own rec` or `own enum`, and its `drop` runs when its owner's scope ends. A parameter's mode says how it takes its argument: no mode takes it by value (copying what can be copied and moving the rest), and `imm` and `mut` borrow. Calls repeat the borrow modes, as in `fill(mut areas, shapes)` above.
 
 The compiler reports these as errors:
 
 - using a value after it was moved ("Cannot use moved values")
-- moving a value without writing `own` ("Cannot move 'Buffer' values implicitly")
 - borrowing an argument without writing `imm` or `mut` ("Cannot borrow arguments implicitly")
 - returning a borrow of a local variable, or storing a borrow in a record that isn't declared `ref rec`
 

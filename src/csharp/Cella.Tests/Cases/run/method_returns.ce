@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Buffer: rec
 	}
 }
 
-Enemy: rec
+Enemy: own rec
 {
 	name: Buffer
 	hp: i32
@@ -25,7 +25,7 @@ Label: ref rec
 	buffer: imm[Buffer]
 }
 
-Party: rec
+Party: own rec
 {
 	members: array[Enemy, 2]
 	leaderIndex: usize
@@ -63,7 +63,7 @@ Party: rec
 	bestLeader: fun(imm self) -> imm[Enemy] => self.leader()
 }
 
-Slot: enum
+Slot: own enum
 {
 	small(buffer: Buffer)
 	large(buffer: Buffer, extra: i32)

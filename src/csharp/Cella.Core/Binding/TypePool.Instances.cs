@@ -17,6 +17,12 @@ public sealed partial class TypePool
 			TypeCompleter?.Invoke(type);
 	}
 	
+	public void CompleteGenericInstance(TypeSymbol type)
+	{
+		if (type is NamedTypeSymbol { IsGenericInstance: true } instance)
+			CompleteInstance(instance);
+	}
+	
 	public TypeSymbol Instantiate(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
 	{
 		if (typeArguments.Any(static argument => argument is InvalidType))
@@ -291,12 +297,9 @@ public sealed partial class TypePool
 		var substitutedModes = new ParameterMode[types.Length];
 		for (var i = 0; i < types.Length; i++)
 		{
-			var mode = i < modes.Count ? modes[i] : ParameterMode.ReadOnly;
+			var mode = i < modes.Count ? modes[i] : ParameterMode.Value;
 			var type = Substitute(types[i], map);
-			if (mode == ParameterMode.ReadOnly && types[i] is TypeParameterSymbol &&
-			    type is FunctionType { IsExternal: false, IsRef: false })
-				mode = ParameterMode.Own;
-			else if (mode == ParameterMode.Imm && types[i] is TypeParameterSymbol)
+			if (mode == ParameterMode.Imm && types[i] is TypeParameterSymbol)
 				type = GetPassedType(type, mode);
 			
 			substitutedTypes[i] = type;

@@ -11,7 +11,7 @@ Effect: enum
 	hit(amount: i32)
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 

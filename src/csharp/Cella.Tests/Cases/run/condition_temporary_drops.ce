@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Note: rec
+Note: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Note: rec
 	}
 }
 
-Effect: enum { none, owned(note: Note) }
+Effect: own enum { none, owned(note: Note) }
 
 make: fun(id: i32) -> Note
 {

@@ -1,17 +1,12 @@
 Error at conversion_writes.ce:12:33
 11 │ 
 12 │ as: op(self) -> imm[Sprite] => imm self.sprite
-                                    ╘═════════════╛ Cannot return borrows of copied parameters
+                                    ╘═════════════╛ Cannot return borrows of by-value parameters
 
 Hint at conversion_writes.ce:18:1
 17 │ 
 18 │ read: fun(handle: Handle)
      ╘══╛ 'read' is never used
-
-Error at conversion_writes.ce:20:11
-19 │ {
-20 │     heal(mut handle)
-                  ╘════╛ Cannot mutably borrow read-only parameters
 
 Error at conversion_writes.ce:26:11
 25 │ val handle = Handle(Sprite(1))

@@ -1,6 +1,6 @@
 mod test
 
-Countdown: rec
+Countdown: own rec
 {
 	left: i32
 

@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,13 +9,13 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 }
 
-Holder: rec
+Holder: own rec
 {
 	effect: Effect
 }
@@ -30,7 +30,7 @@ main: fun -> i32
 		else => {}
 	}
 
-	if *pointer is hold(own buffer)
+	if *pointer is hold(val buffer)
 	{
 	}
 

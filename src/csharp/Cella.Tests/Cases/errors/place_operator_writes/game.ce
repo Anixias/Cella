@@ -18,7 +18,7 @@ Handle: rec
 	}
 }
 
-Grid: rec
+Grid: own rec
 {
 	cells: array[i32, 4]
 
@@ -37,7 +37,7 @@ Grid: rec
 	}
 }
 
-Board: rec
+Board: own rec
 {
 	cells: array[i32, 2]
 

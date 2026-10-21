@@ -87,7 +87,7 @@ public sealed partial class CodeGenerator
 		var actual = function.Signature;
 		var adapts = FunctionType.CanAdapt(actual.ReturnType, type.ReturnType) || actual.ParameterTypes
 			.Where((parameter, i) => FunctionType.CanAdapt(type.ParameterTypes[i], parameter) ||
-			                         TakesCopy(type.ParameterModes[i], actual.GetMode(i)))
+			                         PassesDifferently(type.ParameterModes[i], actual.GetMode(i)))
 			.Any();
 		
 		var name = adapts
@@ -109,8 +109,9 @@ public sealed partial class CodeGenerator
 		thunk.Linkage = LLVMLinkage.LLVMInternalLinkage;
 		using var builder = CreateGeneratedBuilder(thunk, GetAdapterName(function), function.Symbol.Definition);
 		var args = parameterTypes
-			.Select((_, i) => AdaptFunction(type.ParameterTypes[i], actual.ParameterTypes[i],
-				ReceiveCopy(type.ParameterModes[i], actual, i, thunk.GetParam((uint)i + 1), builder), builder))
+			.Select((_, i) => LendCopy(type.ParameterModes[i], actual, i, AdaptFunction(type.ParameterTypes[i],
+				actual.ParameterTypes[i], ReceiveCopy(type.ParameterModes[i], actual, i, thunk.GetParam((uint)i + 1),
+					builder), builder), builder))
 			.ToList();
 		
 		var result = target.CSignature is { } signature
@@ -132,6 +133,11 @@ public sealed partial class CodeGenerator
 	private LLVMValueRef ReceiveCopy(ParameterMode passed, FunctionSignature actual, int index, LLVMValueRef value,
 		LLVMBuilderRef builder) => TakesCopy(passed, actual.GetMode(index))
 		? LoadValue(builder, actual.ParameterTypes[index], value, "argument")
+		: value;
+	
+	private LLVMValueRef LendCopy(ParameterMode passed, FunctionSignature actual, int index, LLVMValueRef value,
+		LLVMBuilderRef builder) => TakesCopy(actual.GetMode(index), passed)
+		? SpillValue(builder, actual.ParameterTypes[index], value, "argument")
 		: value;
 	
 	private LLVMValueRef GetExternalThunk(FunctionInfo function)
@@ -224,7 +230,7 @@ public sealed partial class CodeGenerator
 		_inputs.Exports.Contains(function.Symbol) &&
 		function.Symbol is { Kind: FunctionKind.Free, IsExternal: false, Captures.IsEmpty: true } &&
 		!IsOpenGeneric(function) &&
-		function.Signature.ParameterModes.All(static mode => mode == ParameterMode.ReadOnly) &&
+		function.Signature.ParameterModes.All(static mode => mode == ParameterMode.Value) &&
 		function.Signature.ParameterTypes.Append(function.Signature.ReturnType).All(_typePool.IsExtCompatible);
 	
 	private bool IsDefinedHere(FunctionSymbol symbol)

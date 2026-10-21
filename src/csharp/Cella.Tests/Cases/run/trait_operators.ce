@@ -51,13 +51,13 @@ Color: enum impl Eq
 
 sum[T: Num + noref]: fun(imm a: T, imm b: T, imm c: T) -> T => a + b * c
 
-flip[T: Num + noref]: fun(own value: T) -> T => -value
+flip[T: Num + noref]: fun(value: T) -> T => -value
 
 ordered[T: Num]: fun(imm a: T, imm b: T, imm c: T) -> bool => a < b < c
 
 same[T: Eq]: fun(imm a: T, imm b: T) -> bool => a == b
 
-gather[T: Num]: fun(mut total: T, own a: T, own b: T)
+gather[T: Num]: fun(mut total: T, a: T, b: T)
 {
 	total += a
 	total += b

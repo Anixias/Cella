@@ -31,7 +31,7 @@ readOnly: fun(p: Point, n: i32, values: array[i32, 2])
 	damage(mut values[1], 1)
 }
 
-owned: fun(own p: Point, own n: i32)
+owned: fun(p: Point, n: i32)
 {
 	p.x = 5
 	n += 1

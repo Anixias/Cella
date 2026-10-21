@@ -1,6 +1,6 @@
 Error at owned_callback_witnesses.ce:12:2
 11 │ 
-12 │ take: fun(self, own value: fun[-> i32]) -> i32 => value() + self.base
+12 │ take: fun(self, value: fun[-> i32]) -> i32 => value() + self.base
      ╘══╛ 'take' doesn't match 'Sink.take'
 
 [compilation failed]

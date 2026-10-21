@@ -19,14 +19,14 @@ Square: rec impl Shape
 	area: fun(self) -> i32 => self.side * self.side
 }
 
-Boxed[K: trait]: rec
+Boxed[K: trait]: own rec
 {
 	object: pvt ptr[dyn[K]]
 
-	of[T: K + noref]: fun(own value: T) -> Boxed[K]
+	of[T: K + noref]: fun(value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = own value
+		own *memory = value
 		ret Boxed[K](memory)
 	}
 
@@ -39,7 +39,7 @@ Boxed[K: trait]: rec
 	}
 }
 
-keep: fun(own box: Boxed[Shape]) => printf("kept\n")
+keep: fun(box: Boxed[Shape]) => printf("kept\n")
 
 leak: fun -> imm[dyn[Shape]]
 {
@@ -52,7 +52,7 @@ main: fun -> i32
 {
 	val box = Boxed[Shape].of(Square(3))
 	val shape = *box
-	keep(own box)
+	keep(box)
 	printf("%d\n", shape.area())
 	ret 0
 }

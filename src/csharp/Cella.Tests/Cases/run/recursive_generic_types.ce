@@ -28,7 +28,7 @@ Swap[A, B]: rec
 	a: A
 }
 
-Box[T]: rec
+Box[T]: own rec
 {
 	value: T
 

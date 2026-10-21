@@ -141,7 +141,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	[
 		TokenType.KeywordVal,
 		TokenType.KeywordMut,
-		TokenType.KeywordOwn,
 		TokenType.KeywordVar
 	];
 	

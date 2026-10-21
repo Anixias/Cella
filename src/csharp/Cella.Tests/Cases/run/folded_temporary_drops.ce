@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Slot: rec
+Slot: own rec
 {
 	n: i32
 
@@ -15,7 +15,7 @@ Slot: rec
 	}
 }
 
-Choice: enum
+Choice: own enum
 {
 	none
 	some(slot: Slot)

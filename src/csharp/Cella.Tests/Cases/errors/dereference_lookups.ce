@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Buffer: rec
 	}
 }
 
-Outer: rec
+Outer: own rec
 {
 	pointer: req ptr[BufferBox]
 
@@ -25,7 +25,7 @@ Outer: rec
 	}
 }
 
-BufferBox: rec
+BufferBox: own rec
 {
 	pointer: req ptr[Buffer]
 

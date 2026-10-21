@@ -3,9 +3,14 @@ Error at owned_binding_modes.ce:28:12
 28 │     hold(mut buffer) => touch(mut buffer)
                   ╘════╛ Cannot mutably borrow unstored values
 
-Error at owned_binding_modes.ce:40:12
+Hint at owned_binding_modes.ce:35:1
+34 │ 
+35 │ mutable: fun -> i32
+     ╘═════╛ 'mutable' is never used
+
+Error at owned_binding_modes.ce:40:32
 39 │ {
-40 │     hold(own buffer) => ret take(buffer)
-                  ╘════╛ Cannot move mutably borrowed payloads
+40 │     hold(val buffer) => ret take(buffer)
+                                      ╘════╛ Cannot move pattern bindings
 
 [compilation failed]

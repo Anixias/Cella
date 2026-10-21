@@ -3,11 +3,6 @@ Hint at enum_method_receivers.ce:13:2
 13 │ peek: fun(self)
      ╘══╛ 'peek' is never used
 
-Error at enum_method_receivers.ce:15:3
-14 │ {
-15 │     self.bump()
-         ╘══╛ Cannot mutably borrow read-only parameters
-
 Error at enum_method_receivers.ce:22:2
 21 │ val effect = Effect.hit(1)
 22 │ effect.bump()

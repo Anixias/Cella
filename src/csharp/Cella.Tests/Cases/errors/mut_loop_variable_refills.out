@@ -3,20 +3,20 @@ Hint at mut_loop_variable_refills.ce:29:1
 29 │ whole: fun(mut buffers: array[Buffer, 2])
      ╘═══╛ 'whole' is never used
 
-Error at mut_loop_variable_refills.ce:32:12
+Error at mut_loop_variable_refills.ce:32:8
 31 │ for mut buffer in buffers
-32 │     take(own buffer)
-                  ╘════╛ Cannot leave 'mut' loop variables moved
+32 │     take(buffer)
+              ╘════╛ Cannot leave 'mut' loop variables moved
 
 Hint at mut_loop_variable_refills.ce:35:1
 34 │ 
 35 │ field: fun(mut pairs: array[Pair, 2])
      ╘═══╛ 'field' is never used
 
-Error at mut_loop_variable_refills.ce:38:12
+Error at mut_loop_variable_refills.ce:38:8
 37 │ for mut pair in pairs
-38 │     take(own pair.left)
-                  ╘═══════╛ Cannot leave 'mut' loop variables partly moved
+38 │     take(pair.left)
+              ╘═══════╛ Cannot leave 'mut' loop variables partly moved
 
 Hint at mut_loop_variable_refills.ce:41:1
 40 │ 
@@ -53,10 +53,10 @@ Hint at mut_loop_variable_refills.ce:76:1
 76 │ readOnly: fun(mut buffers: array[Buffer, 2])
      ╘══════╛ 'readOnly' is never used
 
-Error at mut_loop_variable_refills.ce:79:12
+Error at mut_loop_variable_refills.ce:79:8
 78 │ for imm buffer in buffers
-79 │     take(own buffer)
-                  ╘════╛ Cannot move loop variables
+79 │     take(buffer)
+              ╘════╛ Cannot move loop variables
 
 Hint at mut_loop_variable_refills.ce:82:1
 81 │ 

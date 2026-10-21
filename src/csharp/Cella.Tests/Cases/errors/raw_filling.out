@@ -4,12 +4,12 @@ Hint at raw_filling.ce:38:1
      ╘═══╛ 'moved' is never used
 
 Hint at raw_filling.ce:42:6
-41 │ val c = own b
+41 │ val c = b
 42 │ val p = @b
          ^ 'p' is never used
 
 Error at raw_filling.ce:42:11
-41 │ val c = own b
+41 │ val c = b
 42 │ val p = @b
               ^ Cannot use moved values
               | Moved on line 41

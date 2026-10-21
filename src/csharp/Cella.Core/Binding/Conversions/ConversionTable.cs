@@ -8,25 +8,39 @@ public sealed class ConversionTable
 	private readonly Dictionary<(TypeSymbol From, TypeSymbol To), Conversion> _conversions = [];
 	
 	public Func<TypeSymbol, FunctionType, bool>? CallableAs { get; set; }
+	public Action<TypeSymbol>? Completer { get; set; }
 	
 	internal void Save(StateSnapshot snapshot)
 	{
 		snapshot.Save(_conversions);
 		snapshot.SaveValue(() => CallableAs, value => CallableAs = value);
+		snapshot.SaveValue(() => Completer, value => Completer = value);
 	}
 	
 	public void Add(Conversion conversion) => _conversions[(conversion.From, conversion.To)] = conversion;
 	
-	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to) =>
-		_conversions.TryGetValue((from, to), out var conversion)
+	public Conversion? FindImplicit(TypeSymbol from, TypeSymbol to)
+	{
+		Complete(from, to);
+		return _conversions.TryGetValue((from, to), out var conversion)
 			? conversion.Kind == ConversionKind.Implicit ? conversion : null
 			: FindFunctionConversion(from, to) ?? FindCallableConversion(from, to);
+	}
 	
-	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to) =>
-		from == to
+	public Conversion? FindExplicit(TypeSymbol from, TypeSymbol to)
+	{
+		Complete(from, to);
+		return from == to
 			? ConstructsItself(from) ? new IdentityConversion(from) : null
 			: _conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
 			FindCallableConversion(from, to);
+	}
+	
+	private void Complete(TypeSymbol from, TypeSymbol to)
+	{
+		Completer?.Invoke(from);
+		Completer?.Invoke(to);
+	}
 	
 	public static bool ConstructsItself(TypeSymbol type) =>
 		type is IntegerStorageType or FloatType or StringType or PointerType or ArrayType || type == NativeSymbols.Bool;
@@ -47,7 +61,8 @@ public sealed class ConversionTable
 		if (from is not FunctionType source || to is not FunctionType target || source == target)
 			return null;
 		
-		Conversion? conversion = FunctionType.CanStandIn(source, target)
+		Conversion? conversion = FunctionType.CanStandIn(source, target) &&
+		                         source.ParameterModes.SequenceEqual(target.ParameterModes)
 			? new FreeConversion(from, to, ConversionKind.Implicit)
 			: source.IsExternal && !target.IsExternal && FunctionType.SignatureStandsIn(source, target)
 				? new ExternalFunctionConversion(source, target)

@@ -1,6 +1,6 @@
 mod test
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -9,28 +9,28 @@ Texture: rec
 	}
 }
 
-Sprite: rec
+Sprite: own rec
 {
 	texture: Texture
 }
 
-Shelf: rec
+Shelf: own rec
 {
 	stored: Texture
 
-	store: fun(mut self, own texture: Texture)
+	store: fun(mut self, texture: Texture)
 	{
-		self.stored = own texture
+		self.stored = texture
 	}
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	full(texture: Texture)
 }
 
-Countdown: rec
+Countdown: own rec
 {
 	value: i32
 
@@ -47,11 +47,11 @@ Countdown: rec
 	}
 }
 
-take: fun(own texture: Texture) -> i32 => texture.id
+take: fun(texture: Texture) -> i32 => texture.id
 
 look: fun(imm texture: Texture) -> i32 => take(texture)
 
-sites: fun(apply: fun[own Texture -> i32])
+sites: fun(imm apply: fun[Texture -> i32])
 {
 	val a = Texture(1)
 	take(a)
@@ -78,11 +78,11 @@ sites: fun(apply: fun[own Texture -> i32])
 	}
 }
 
-arms: fun(own slot: Slot, own fallback: Texture) -> i32
+arms: fun(slot: Slot, fallback: Texture) -> i32
 {
-	val chosen = match own slot
+	val chosen = match slot
 	{
-		full(own texture) => texture
+		full(val texture) => texture
 		empty => fallback
 	}
 

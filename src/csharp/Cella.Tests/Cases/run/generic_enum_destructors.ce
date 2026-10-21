@@ -16,7 +16,7 @@ Option[T]: enum
 	}
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 

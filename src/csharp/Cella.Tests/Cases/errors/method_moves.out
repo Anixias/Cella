@@ -1,12 +1,12 @@
 Hint at method_moves.ce:24:2
 23 │ 
-24 │ take: fun(mut self) -> Buffer => own self.buffer
+24 │ take: fun(mut self) -> Buffer => self.buffer
      ╘══╛ 'take' is never used
 
-Error at method_moves.ce:24:39
+Error at method_moves.ce:24:35
 23 │ 
-24 │ take: fun(mut self) -> Buffer => own self.buffer
-                                          ╘═════════╛ Cannot leave 'self' partly moved
+24 │ take: fun(mut self) -> Buffer => self.buffer
+                                      ╘═════════╛ Cannot leave 'self' partly moved
 
 Hint at method_moves.ce:32:2
 31 │ 

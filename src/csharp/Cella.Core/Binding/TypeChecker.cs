@@ -360,6 +360,7 @@ public sealed class TypeChecker
 		if (node.IsMut)
 			CheckMutPlace(node.Value);
 		
+		ReportRedundantOwn(node.Value);
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
 		{
@@ -391,6 +392,7 @@ public sealed class TypeChecker
 		if (node.IsMut)
 			CheckMutPlace(node.Value);
 		
+		ReportRedundantOwn(node.Value);
 		VisitNode(node.Value);
 		foreach (var arm in node.Arms)
 		{
@@ -434,27 +436,22 @@ public sealed class TypeChecker
 		VisitNode(value);
 		CheckConsumed(value);
 		CheckBorrowedTemporary(value);
-		ReportRedundantOwn(value);
 	}
 	
 	private void ReportRedundantOwn(IResolvedExpressionNode value)
 	{
-		if (value is ResolvedMatchExpressionNode match)
-		{
-			foreach (var arm in match.Arms)
-				ReportRedundantOwn(arm.Value);
-		}
-		else if (value is ResolvedOwnExpressionNode { Syntax: OwnExpressionNode syntax } owned &&
-		         IsOwnedLocally(owned.Value))
+		if (value is ResolvedOwnExpressionNode { Syntax: OwnExpressionNode syntax } owned &&
+		    IsOwnedLocally(owned.Value))
 			Diagnostics.Add(DiagnosticFix.Redundant(syntax.Keyword.SourceLocation));
 	}
 	
 	private static bool IsOwnedLocally(IResolvedExpressionNode place) => place switch
 	{
-		ResolvedAccessExpressionNode { Member: FieldSymbol } node => IsOwnedLocally(node.Target),
+		ResolvedAccessExpressionNode { Member: FieldSymbol } node =>
+			node.Target.Type is not RecordSymbol { HasDestructor: true } && IsOwnedLocally(node.Target),
 		ResolvedIndexerExpressionNode { Target.Type: ArrayType } node => IsOwnedLocally(node.Target),
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsBorrowBinding: false } } or
-			ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.Own } } => true,
+			ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.Value } } => true,
 		_ => false
 	};
 	
@@ -579,11 +576,7 @@ public sealed class TypeChecker
 				Symbol: LocalVariableSymbol { IsBorrowBinding: true, IsMutBinding: false } local
 			}
 		} => local,
-		ResolvedVarExpressionNode
-			{
-				Symbol: ParameterSymbol { Mode: ParameterMode.ReadOnly or ParameterMode.Imm } parameter
-			} =>
-			parameter,
+		ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.Imm } parameter } => parameter,
 		ResolvedGlobalExpressionNode { Symbol: { IsMutable: false } global } => global,
 		ResolvedAccessExpressionNode { Member: FieldSymbol } e => FindImmutableBinding(e.Target),
 		ResolvedIndexerExpressionNode { Target.Type: ArrayType } e => FindImmutableBinding(e.Target),
@@ -797,7 +790,7 @@ public sealed class TypeChecker
 			
 			for (var j = 0; j < 2; j++)
 			{
-				if (function.Signature.GetMode(j) == ParameterMode.Own)
+				if (function.Signature.GetMode(j) == ParameterMode.Value)
 					CheckConsumed(node.Operands[i + j]);
 			}
 		}
@@ -812,7 +805,7 @@ public sealed class TypeChecker
 			VisitNode(arg);
 			CheckOwnArgument(node.Syntax, arg, node.Function.Signature, i + 1, node.Function.Symbol.Parameters);
 			
-			if (node.Function.Signature.GetMode(i + 1) == ParameterMode.Own)
+			if (node.Function.Signature.GetMode(i + 1) == ParameterMode.Value)
 				CheckConsumed(arg);
 		}
 	}
@@ -858,7 +851,7 @@ public sealed class TypeChecker
 			if (i > 0 || node.Function.Symbol.Kind != FunctionKind.Method)
 				CheckOwnArgument(node.Syntax, arg, signature, i, node.Function.Symbol.Parameters);
 			
-			if (signature.GetMode(i) == ParameterMode.Own)
+			if (signature.GetMode(i) == ParameterMode.Value)
 				CheckConsumed(arg);
 		}
 	}
@@ -883,11 +876,11 @@ public sealed class TypeChecker
 	private void CheckOwnArgument(IExpressionNode call, IResolvedExpressionNode arg, ParameterMode mode, string? name,
 		bool isPacked)
 	{
-		if (mode != ParameterMode.Own && !isPacked && arg.Syntax is OwnExpressionNode own &&
+		if (mode != ParameterMode.Value && !isPacked && arg.Syntax is OwnExpressionNode own &&
 		    IsWrittenArgument(call, own))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, own.Keyword.SourceLocation, name is null
-				? "Only an argument to an 'own' parameter can be marked 'own'"
-				: $"'{name}' isn't an 'own' parameter"));
+				? "Only an argument to a by-value parameter can be marked 'own'"
+				: $"'{name}' isn't a by-value parameter"));
 	}
 	
 	private static bool IsWrittenArgument(IExpressionNode call, IExpressionNode argument) => call switch
@@ -925,6 +918,7 @@ public sealed class TypeChecker
 	
 	private void CheckConsumed(IResolvedExpressionNode value)
 	{
+		ReportRedundantOwn(value);
 		var place = SkipAssignment(value);
 		if (value is ResolvedOwnExpressionNode || !IsLValue(place) || typePool.IsCopy(value.Type))
 			return;
@@ -1139,6 +1133,7 @@ public sealed class TypeChecker
 		if (node.IsMut)
 			CheckMutPlace(node.Value);
 		
+		ReportRedundantOwn(node.Value);
 		VisitNode(node.Value);
 		VisitPattern(node.Pattern);
 	}
@@ -1156,7 +1151,7 @@ public sealed class TypeChecker
 			CheckOwnArgument(node.Syntax, node.Arguments[i], node.FunctionType.ParameterModes[i], null,
 				node.FunctionType.HasVariadicParameter && i == node.FunctionType.ParameterTypes.Length - 1);
 			
-			if (node.FunctionType.ParameterModes[i] == ParameterMode.Own)
+			if (node.FunctionType.ParameterModes[i] == ParameterMode.Value)
 				CheckConsumed(node.Arguments[i]);
 		}
 	}

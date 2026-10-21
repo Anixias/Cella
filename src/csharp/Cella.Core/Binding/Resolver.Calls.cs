@@ -385,7 +385,7 @@ public sealed partial class Resolver
 		
 		public TypeSymbol ReturnType { get; } = operation.ParameterTypes[0];
 		
-		public ParameterMode GetMode(int index) => index == 0 ? ParameterMode.Mut : ParameterMode.ReadOnly;
+		public ParameterMode GetMode(int index) => index == 0 ? ParameterMode.Mut : ParameterMode.Value;
 	}
 	
 	private ICallable[] Shape(IEnumerable<ICallable> candidates, ImmutableArray<IExpressionNode> arguments)
@@ -596,7 +596,7 @@ public sealed partial class Resolver
 				receiver.Syntax)
 			{
 				OnlyMutOperator = place is { } op &&
-				                  FindPlaceOperator(receiver.Type, op.GetName(), ParameterMode.ReadOnly) is null
+				                  FindPlaceOperator(receiver.Type, op.GetName(), ParameterMode.Value) is null
 					? op.GetName()
 					: null
 			}

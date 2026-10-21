@@ -9,11 +9,11 @@ Box[T]: rec
 {
 	value: T
 
-	map[U]: fun(own self, change: fun[own T -> U]) -> Box[U] => Box(change(own self.value))
+	map[U]: fun(self, imm change: fun[T -> U]) -> Box[U] => Box(change(self.value))
 
-	twice: fun(own self, change: fun[own T -> T]) -> T => change(change(own self.value))
+	twice: fun(self, imm change: fun[T -> T]) -> T => change(change(self.value))
 
-	same: fun(own self) -> Box[T] => self.map(fun(x) => x)
+	same: fun(self) -> Box[T] => self.map(fun(x) => x)
 }
 
 Scored: trait
@@ -30,26 +30,26 @@ Player: rec impl Scored
 	score: fun(self) -> i32 => self.points
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-pass[T]: fun(f: fun[own T -> T], own x: T) -> T => f(own x)
+pass[T]: fun(imm f: fun[T -> T], x: T) -> T => f(x)
 
-call[T]: fun(f: fun[-> T]) -> T => f()
+call[T]: fun(imm f: fun[-> T]) -> T => f()
 
-same[T]: fun(own x: T) -> T => pass(fun(y) => y, own x)
+same[T]: fun(x: T) -> T => pass(fun(y) => y, x)
 
-last[T]: fun(own x: T, own y: T) -> T => pass(fun(z: T) -> T
+last[T]: fun(x: T, y: T) -> T => pass(fun(z: T) -> T
 {
-	val w: T = own z
+	val w: T = z
 	ret w
-}, own y)
+}, y)
 
-deep[T]: fun(own x: T) -> T => pass(fun(y) => pass(fun(z) => z, own y), own x)
+deep[T]: fun(x: T) -> T => pass(fun(y) => pass(fun(z) => z, y), x)
 
-both[T]: fun(own x: T, own y: T) -> T
+both[T]: fun(x: T, y: T) -> T
 {
-	val a = pass(fun(v) => v, own x)
-	val b = pass(fun(v) => v, own y)
+	val a = pass(fun(v) => v, x)
+	val b = pass(fun(v) => v, y)
 	if call(fun -> i32 => 7) == 7
 		ret b
 

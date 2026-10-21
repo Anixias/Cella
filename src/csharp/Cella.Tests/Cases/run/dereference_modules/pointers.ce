@@ -23,7 +23,7 @@ Cell: rec
 	}
 }
 
-SlotBox: rec
+SlotBox: own rec
 {
 	pointer: req ptr[Cell]
 

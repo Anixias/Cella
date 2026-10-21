@@ -6,7 +6,7 @@ Cursor[T]: pub trait
 	*: op(imm self) -> imm[T]
 }
 
-Bag: pub rec
+Bag: pub own rec
 {
 	items: array[i32, 4]
 	count: usize
@@ -55,10 +55,10 @@ make: pub fun -> Bag => Bag([1, 2, 3, 4], 4)
 
 view: pub fun(imm bag: Bag) -> i32 => sum(BagCursor(imm bag, 0, 0))
 
-sum[C: Cursor[i32]]: pub fun(own cursor: C) -> i32
+sum[C: Cursor[i32]]: pub fun(cursor: C) -> i32
 {
 	var total = 0
-	for x in own cursor
+	for x in cursor
 		total += x
 
 	ret total

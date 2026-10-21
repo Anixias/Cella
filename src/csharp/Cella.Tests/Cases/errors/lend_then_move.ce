@@ -1,6 +1,6 @@
 mod test
 
-Item: rec
+Item: own rec
 {
 	id: i32
 
@@ -8,52 +8,52 @@ Item: rec
 	{
 	}
 
-	poke: fun(mut self, own other: Item)
+	poke: fun(mut self, other: Item)
 	{
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	inner: Item
 	other: Item
 }
 
-view: fun(imm item: Item, own owned: Item)
+view: fun(imm item: Item, owned: Item)
 {
 }
 
-change: fun(mut item: Item, own owned: Item)
+change: fun(mut item: Item, owned: Item)
 {
 }
 
-store: fun(mut holder: Holder, own item: Item)
+store: fun(mut holder: Holder, item: Item)
 {
 }
 
-run: fun(f: fun[-> i32], own owned: Item)
+run: fun(imm f: fun[-> i32], owned: Item)
 {
 }
 
 main: fun -> i32
 {
 	var item = Item(1)
-	view(imm item, own item)
+	view(imm item, item)
 
 	var changed = Item(2)
-	change(mut changed, own changed)
+	change(mut changed, changed)
 
 	var poked = Item(3)
-	poked.poke(own poked)
+	poked.poke(poked)
 
 	var holder = Holder(Item(4), Item(5))
-	store(mut holder, own holder.other)
+	store(mut holder, holder.other)
 
 	val captured = Item(6)
-	run(fun -> i32 => captured.id, own captured)
+	run(fun -> i32 => captured.id, captured)
 
 	val first = Item(7)
 	val second = Item(8)
-	view(imm first, own second)
+	view(imm first, second)
 	ret 0
 }

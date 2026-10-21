@@ -1,7 +1,7 @@
 mod test
 
-takeInt: fun(own x: i32) {}
-apply: fun(f: fun[mut i32], mut x: i32) => f(mut x)
+takeInt: fun(x: i32) {}
+apply: fun(imm f: fun[mut i32], mut x: i32) => f(mut x)
 take: fun(x: i32) {}
 
 ext

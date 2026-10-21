@@ -28,7 +28,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	public ErrorContainment? Containment
 	{
 		get => _extSignatureTypes.Containment;
-		init => _extSignatureTypes.Containment = _copiedParameters.Containment = value;
+		init => _extSignatureTypes.Containment = value;
 	}
 	
 	public ImmutableArray<ImportExpression> ProjectImports { get; init; } = [];
@@ -64,7 +64,6 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private readonly Dictionary<(IResolvedExpressionNode, FStrType), IResolvedExpressionNode> _templates = [];
 	private readonly ExtSignatureTypes _extSignatureTypes;
 	private readonly List<IResolvedExpressionNode> _visited = [];
-	private readonly CopiedParameters _copiedParameters;
 	private readonly TypeInference _inference;
 	private readonly List<Instantiation> _instantiations = [];
 	private readonly HashSet<Diagnostic> _inferenceFailures = new(ReferenceEqualityComparer.Instance);
@@ -89,7 +88,6 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	{
 		_typePool = typePool;
 		_extSignatureTypes = new(typePool);
-		_copiedParameters = new(typePool);
 		_conversionTable = typePool.ConversionTable;
 		_inference = new(typePool);
 		_operatorRegistry = typePool.OperatorRegistry;
@@ -362,6 +360,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	
 	private readonly record struct CallableCost
 	(
+		int ModeCost,
 		int ResultRank,
 		int ConversionCost,
 		int Distance,
@@ -372,6 +371,10 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	{
 		public int CompareTo(CallableCost other)
 		{
+			var modeComparison = ModeCost.CompareTo(other.ModeCost);
+			if (modeComparison != 0)
+				return modeComparison;
+			
 			var voidComparison = (ResultRank == VoidResultRank).CompareTo(other.ResultRank == VoidResultRank);
 			if (voidComparison != 0)
 				return voidComparison;
@@ -560,7 +563,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	{
 		public ImmutableArray<TypeSymbol> ParameterTypes { get; } = fields;
 		public TypeSymbol ReturnType { get; } = record;
-		public ParameterMode GetMode(int index) => ParameterMode.Own;
+		public ParameterMode GetMode(int index) => ParameterMode.Value;
 	}
 	
 	private sealed class ReceiverCallable(FunctionInfo info, TypeSymbol type, CallForm? form = null) : ICallable
@@ -591,6 +594,6 @@ public interface ICallable
 	bool HasVariadicParameter => false;
 	bool IsGeneric => false;
 	bool Accepts(IReadOnlyList<IResolvedExpressionNode> arguments) => true;
-	ParameterMode GetMode(int index) => ParameterMode.ReadOnly;
+	ParameterMode GetMode(int index) => ParameterMode.Value;
 	string? GetParameterName(int index) => null;
 }

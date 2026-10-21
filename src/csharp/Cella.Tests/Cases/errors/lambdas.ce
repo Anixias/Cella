@@ -1,10 +1,10 @@
 mod test
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
-pair: fun(f: fun[i32, i32 -> i32]) -> i32 => f(1, 2)
-choose: fun(f: fun[i32 -> i32]) -> i32 => f(1)
-choose: fun(f: fun[i64 -> i64]) -> i32 => 2
-transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(value)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+pair: fun(imm f: fun[i32, i32 -> i32]) -> i32 => f(1, 2)
+choose: fun(imm f: fun[i32 -> i32]) -> i32 => f(1)
+choose: fun(imm f: fun[i64 -> i64]) -> i32 => 2
+transform[T, U]: fun(imm value: T, imm f: fun[imm T -> U]) -> U => f(value)
 limit: val i32 = 5
 
 Counter: rec
@@ -13,12 +13,12 @@ Counter: rec
 
 	add: fun(self, x: i32) -> i32 => apply(fun(y) => y + self.count, x)
 
-	new: op(f: fun[i32 -> i32])
+	new: op(imm f: fun[i32 -> i32])
 	{
 		self.count = f(1)
 	}
 
-	new: op(f: fun[i64 -> i64])
+	new: op(imm f: fun[i64 -> i64])
 	{
 		self.count = 2
 	}

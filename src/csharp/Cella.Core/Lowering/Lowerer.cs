@@ -107,7 +107,6 @@ public sealed partial class Lowerer
 		private readonly HashSet<int> _temporaryScopes = [];
 		private readonly Dictionary<int, List<VariableInfo>> _scopeDrops = [];
 		private readonly HashSet<LocalVariableSymbol> _temporaries = [];
-		private readonly HashSet<IResolvedExpressionNode> _returnedValues = [];
 		private readonly HashSet<ResolvedPattern> _heldSlots = new(ReferenceEqualityComparer.Instance);
 		private BasicBlock? currentBlock;
 		private ulong nextLoopId;
@@ -203,7 +202,7 @@ public sealed partial class Lowerer
 			var signature = node.FunctionInfo.Signature;
 			var parameters = node.FunctionInfo.Symbol.Parameters
 				.Select((p, i) => new VariableInfo(p, signature.ParameterTypes[i]))
-				.Where((p, i) => signature.GetMode(i) == ParameterMode.Own && _typePool.NeedsDrop(p.Type))
+				.Where((p, i) => signature.GetMode(i) == ParameterMode.Value && _typePool.NeedsDrop(p.Type))
 				.ToArray();
 			
 			if (parameters.Length == 0)
@@ -443,7 +442,6 @@ public sealed partial class Lowerer
 		public Value Visit(ResolvedMatchExpressionNode node)
 		{
 			var location = node.Syntax.SourceLocation;
-			var isReturned = _returnedValues.Contains(node);
 			VariableValue? result = null;
 			if (node.Type is not NeverType)
 			{
@@ -463,10 +461,7 @@ public sealed partial class Lowerer
 				location, node.OwnsValue, index =>
 				{
 					var arm = node.Arms[index].Value;
-					if (isReturned)
-						_returnedValues.Add(arm);
-					
-					var value = Consume(VisitNode(arm), isImplicit: !isReturned && NamesPlace(arm));
+					var value = Consume(VisitNode(arm));
 					if (result is not null)
 						currentBlock?.Instructions.Add(new ExpressionInstruction(
 							new AssignValue(node.Type, result, value, arm.Syntax.SourceLocation)));

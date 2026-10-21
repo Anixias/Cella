@@ -52,7 +52,7 @@ Error at variadic_declarations.ce:50:13
 Error at variadic_declarations.ce:51:11
 50 │ writes: fun(mut ...values: View[i32]) {}
 51 │ owns: fun(own ...values: View[i32]) {}
-               ╘═╛ Cannot take 'own' variadic parameters
+               ╘═╛ 'own' is a keyword
 
 Error at variadic_declarations.ce:52:23
 51 │ owns: fun(own ...values: View[i32]) {}

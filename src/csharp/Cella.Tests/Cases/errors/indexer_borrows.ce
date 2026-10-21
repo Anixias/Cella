@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	values: array[i32, 2]
 

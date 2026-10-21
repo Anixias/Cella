@@ -1,15 +1,5 @@
-Error at own_expressions.ce:32:12
-31 │ var a = Buffer(1)
-32 │ val p = @(own a)
-               ╘═══╛ Cannot take the address of unstored values
-
-Error at own_expressions.ce:33:11
-32 │ val p = @(own a)
-33 │ bump(mut own a)
-              ╘═══╛ Cannot mutably borrow unstored values
-
 Error at own_expressions.ce:34:2
-33 │ bump(mut own a)
+33 │ bump(mut a)
 34 │ own a = Buffer(2)
      ╘═══╛ Cannot assign with 'own' except through pointers
 

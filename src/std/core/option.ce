@@ -5,9 +5,9 @@ Option[T]: pub enum
 	none
 	some(value: T)
 	
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		some(own value) => value
+		some(val value) => value
 		none => ret none
 	}
 }

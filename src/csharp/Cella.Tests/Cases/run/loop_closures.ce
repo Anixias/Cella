@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-apply: fun(f: fun[-> i32]) -> i32 => f()
+apply: fun(imm f: fun[-> i32]) -> i32 => f()
 
 main: fun -> i32
 {

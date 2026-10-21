@@ -9,7 +9,7 @@ if: fun -> i32 => 1
 
 f: fun(in: i32) -> i32 => 0
 
-id[if]: fun(own x: i32) -> i32 => x
+id[if]: fun(x: i32) -> i32 => x
 
 local: fun -> i32
 {

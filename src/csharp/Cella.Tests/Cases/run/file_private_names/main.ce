@@ -5,7 +5,7 @@ ext
 	printf: pvt fun(format: cstr, ...) -> i32
 }
 
-Node: pvt rec
+Node: pvt own rec
 {
 	value: i32
 

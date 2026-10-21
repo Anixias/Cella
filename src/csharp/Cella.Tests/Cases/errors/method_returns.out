@@ -55,13 +55,13 @@ Error at method_returns.ce:55:63
 
 Hint at method_returns.ce:57:2
 56 │ 
-57 │ keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] => imm enemy
+57 │ keep: fun(imm self, enemy: Enemy) -> imm[Enemy] => imm enemy
      ╘══╛ 'keep' is never used
 
-Error at method_returns.ce:57:57
+Error at method_returns.ce:57:53
 56 │ 
-57 │ keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] => imm enemy
-                                                            ╘═══════╛ Cannot return borrows of 'own' parameters
+57 │ keep: fun(imm self, enemy: Enemy) -> imm[Enemy] => imm enemy
+                                                        ╘═══════╛ Cannot return borrows of by-value parameters
 
 Hint at method_returns.ce:68:2
 67 │ 
@@ -70,13 +70,13 @@ Hint at method_returns.ce:68:2
 
 Hint at method_returns.ce:70:2
 69 │ 
-70 │ take: fun(own self) -> imm[i32] => imm self.x
+70 │ take: fun(self) -> imm[i32] => imm self.x
      ╘══╛ 'take' is never used
 
-Error at method_returns.ce:70:37
+Error at method_returns.ce:70:33
 69 │ 
-70 │ take: fun(own self) -> imm[i32] => imm self.x
-                                        ╘════════╛ Cannot return borrows of 'own' parameters
+70 │ take: fun(self) -> imm[i32] => imm self.x
+                                    ╘════════╛ Cannot return borrows of by-value parameters
 
 Hint at method_returns.ce:78:2
 77 │ 

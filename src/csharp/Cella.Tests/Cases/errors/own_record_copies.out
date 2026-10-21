@@ -1,16 +1,16 @@
-Error at own_record_copies.ce:7:12
+Hint at own_record_copies.ce:7:2
 6 │ 
 7 │ show: fun(self) -> i32 => self.id
-              ╘══╛ Cannot copy 'Token'
+    ╘══╛ 'show' is never used
 
 Hint at own_record_copies.ce:8:2
 7 │ show: fun(self) -> i32 => self.id
 8 │ peek: fun(imm self) -> i32 => self.id
     ╘══╛ 'peek' is never used
 
-Error at own_record_copies.ce:11:11
+Hint at own_record_copies.ce:11:1
 10 │ 
 11 │ take: fun(t: Token) -> i32 => t.id
-               ^ Cannot copy 'Token'
+     ╘══╛ 'take' is never used
 
-[compilation failed]
+[exit code 0]

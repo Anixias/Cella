@@ -87,10 +87,4 @@ Hint at req_fields.ce:120:1
 120 │ movedPart: fun -> i32
       ╘═══════╛ 'movedPart' is never used
 
-Error at req_fields.ce:126:21
-125 │ holder.pos.x = 3
-126 │ ret describeHolder(holder)
-                         ╘════╛ Cannot use partly moved values
-                              | Moved on line 124
-
 [compilation failed]

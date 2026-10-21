@@ -166,10 +166,11 @@ public sealed partial class Resolver
 			return false;
 		
 		var signature = GetFunctionInfo(function).Signature;
-		return signature.ParameterTypes.Length > 0 && signature.GetMode(0) != ParameterMode.Own && !signature
-			.ParameterTypes.Skip(1)
-			.Append(signature.ReturnType)
-			.Any(type => TypePool.FindTypeParameters(type).Contains(function.Trait!.Self));
+		return signature.ParameterTypes.Length > 0 &&
+		       (signature.GetMode(0) != ParameterMode.Value || _typePool.IsCopy(function.Trait!.Self)) && !signature
+			       .ParameterTypes.Skip(1)
+			       .Append(signature.ReturnType)
+			       .Any(type => TypePool.FindTypeParameters(type).Contains(function.Trait!.Self));
 	}
 	
 	private IResolvedExpressionNode VisitDynCall(CallExpressionNode node, AccessExpressionNode access,

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Texture: rec
 	}
 }
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		visit(value)
@@ -68,6 +68,6 @@ main: fun -> i32
 
 	val step = 3
 	val first = own fun(x: i32) -> i32 => x + step
-	val second = own first
+	val second = first
 	ret first(1)
 }

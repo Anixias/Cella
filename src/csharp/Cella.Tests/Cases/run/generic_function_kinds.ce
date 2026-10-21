@@ -6,8 +6,8 @@ ext
 	abs: fun(value: i32) -> i32
 }
 
-first[T]: fun(own a: T, own b: T) -> T => a
-second[T]: fun(own a: T, own b: T) -> T => b
+first[T]: fun(a: T, b: T) -> T => a
+second[T]: fun(a: T, b: T) -> T => b
 neg: fun(value: i32) -> i32 => -value
 
 main: fun -> i32

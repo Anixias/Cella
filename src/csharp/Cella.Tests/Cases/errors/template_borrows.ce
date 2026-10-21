@@ -19,7 +19,7 @@ str: impl Display
 	}
 }
 
-Buffer: rec impl Display
+Buffer: own rec impl Display
 {
 	id: i32
 
@@ -58,7 +58,7 @@ fill: fun(mut message: Message, count: i32)
 
 compute: fun -> i32 => 4
 
-take: fun(own buffer: Buffer)
+take: fun(buffer: Buffer)
 {
 }
 
@@ -88,7 +88,7 @@ main: fun -> i32
 
 	val buffer = Buffer(1)
 	val held: fstr[Display] = "{buffer}"
-	take(own buffer)
+	take(buffer)
 	show(held)
 	var later: Buffer
 	show("{later}")

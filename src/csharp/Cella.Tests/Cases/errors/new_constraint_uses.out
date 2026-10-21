@@ -1,3 +1,8 @@
+Error at new_constraint_uses.ce:51:51
+50 │ 
+51 │ duplicate[T: new(T)]: fun(imm value: T) -> T => T(value)
+                                                       ╘═══╛ Cannot move read-only parameters
+
 Error at new_constraint_uses.ce:55:30
 54 │ 
 55 │ forward[T]: fun -> T => make[T]()
@@ -14,10 +19,10 @@ Error at new_constraint_uses.ce:59:31
 59 │ unconstrained[T]: fun -> T => T(1)
                                    ╘══╛ No constructor for 'T' accepts argument of type 'integer literal'
 
-Error at new_constraint_uses.ce:61:46
+Error at new_constraint_uses.ce:61:42
 60 │ 
-61 │ lost[T: new(i32)]: fun(own value: T) -> T => T(value)
-                                                  ╘══════╛ No constructor for 'T' accepts argument of type 'T'
+61 │ lost[T: new(i32)]: fun(value: T) -> T => T(value)
+                                              ╘══════╛ No constructor for 'T' accepts argument of type 'T'
 
 Error at new_constraint_uses.ce:66:8
 65 │ var n = 1
@@ -47,12 +52,6 @@ Error at new_constraint_uses.ce:79:7
           ╘══╛ 'make' requires 'T: new(i32)'
              | 'Wide' has no constructor taking 'i32'
 
-Error at new_constraint_uses.ce:80:7
-79 │ make[Wide]()
-80 │ make[Owned]()
-          ╘═══╛ 'make' requires 'T: new(i32)'
-              | 'Owned' has no constructor taking 'i32'
-
 Error at new_constraint_uses.ce:81:2
 80 │ make[Owned]()
 81 │ duplicate(Point(1, 2))
@@ -62,8 +61,8 @@ Error at new_constraint_uses.ce:81:2
 Error at new_constraint_uses.ce:82:9
 81 │ duplicate(Point(1, 2))
 82 │ taking[Point]()
-            ╘═══╛ 'taking' requires 'T: new(own str, mut i32)'
-                | 'Point' has no constructor taking 'own str, mut i32'
+            ╘═══╛ 'taking' requires 'T: new(str, mut i32)'
+                | 'Point' has no constructor taking 'str, mut i32'
 
 Error at new_constraint_uses.ce:83:7
 82 │ taking[Point]()

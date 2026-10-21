@@ -14,7 +14,7 @@ Text: rec
 		self.n = value + 1
 	}
 
-	new: op(own value: i64)
+	new: op(value: i64)
 	{
 		self.n = 0
 	}
@@ -49,7 +49,7 @@ Box[T]: rec
 		self.value = value
 	}
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		self.value = value
 	}
@@ -59,7 +59,7 @@ Make: trait
 {
 	new: op(value: i32)
 	new: op(value: i32)
-	new: op(own value: i64)
+	new: op(value: i64)
 	new: op(value: i64)
 }
 

@@ -134,7 +134,7 @@ public sealed unsafe partial class CodeGenerator
 	{
 		var type = Substitute(signature.GetDeclaredType(index));
 		var mode = signature.GetMode(index);
-		if (mode != ParameterMode.Own)
+		if (mode != ParameterMode.Value)
 			cleanups.Add(() => EmitDropCall(type, slot, builder));
 		
 		return TypePool.PassesByPointer(mode) ? slot : LoadValue(builder, type, slot, "argument");

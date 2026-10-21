@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -24,14 +24,14 @@ Buffer: rec
 	}
 }
 
-BufferBox: rec
+BufferBox: own rec
 {
 	pointer: req ptr[Buffer]
 
-	new: op(own buffer: Buffer)
+	new: op(buffer: Buffer)
 	{
 		self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
-		own *self.pointer = own buffer
+		own *self.pointer = buffer
 	}
 
 	*: op(imm self) -> imm[Buffer] => imm *self.pointer
@@ -47,14 +47,14 @@ BufferBox: rec
 	}
 }
 
-Outer: rec
+Outer: own rec
 {
 	pointer: req ptr[BufferBox]
 
-	new: op(own inner: BufferBox)
+	new: op(inner: BufferBox)
 	{
 		self.pointer = ptr[BufferBox](malloc(sizeOf(BufferBox)))
-		own *self.pointer = own inner
+		own *self.pointer = inner
 	}
 
 	*: op(imm self) -> imm[BufferBox] => imm *self.pointer

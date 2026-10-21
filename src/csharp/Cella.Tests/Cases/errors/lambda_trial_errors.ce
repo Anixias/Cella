@@ -1,7 +1,7 @@
 mod test
 
-apply: fun(f: fun[i32 -> i32]) -> i32 => f(1)
-apply: fun(f: fun[bool -> i32]) -> i32 => f(true)
+apply: fun(imm f: fun[i32 -> i32]) -> i32 => f(1)
+apply: fun(imm f: fun[bool -> i32]) -> i32 => f(true)
 
 Option[T]: enum { none, some(value: T) }
 

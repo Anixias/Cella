@@ -17,7 +17,7 @@ Counter: rec
 	get: fun(self) -> i32 => self.count
 }
 
-Logged: rec
+Logged: own rec
 {
 	values: array[i32, 2]
 
@@ -38,7 +38,7 @@ Logged: rec
 	}
 }
 
-Counters: rec
+Counters: own rec
 {
 	values: array[Counter, 2]
 
@@ -87,7 +87,7 @@ Slots: rec
 	}
 }
 
-Scores: rec
+Scores: own rec
 {
 	values: array[i32, 3]
 

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,13 +14,13 @@ Buffer: rec
 	}
 }
 
-Enemy: rec
+Enemy: own rec
 {
 	name: Buffer
 	hp: i32
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -37,7 +37,7 @@ Holder: ref rec
 	buffer: imm[Buffer]
 }
 
-Scope: ref rec
+Scope: own ref rec
 {
 	depth: mut[i32]
 
@@ -62,7 +62,7 @@ kills: fun(mut stats: Stats) -> mut[i32]
 	ret mut stats.kills
 }
 
-take: fun(own enemy: Enemy) {}
+take: fun(enemy: Enemy) {}
 
 make: fun(id: i32) -> Buffer => Buffer(id)
 
@@ -71,7 +71,7 @@ useAfterMove: fun
 	var buffer = Buffer(1)
 	val view = imm buffer
 	val copy = view
-	val moved = own buffer
+	val moved = buffer
 	printf("%d %d\n", view.id, copy.id)
 }
 
@@ -79,7 +79,7 @@ useAfterMoveIntoCall: fun
 {
 	val bat = Enemy(Buffer(3), 7)
 	val name = imm bat.name
-	take(own bat)
+	take(bat)
 	printf("%d\n", name.id)
 }
 
@@ -134,7 +134,7 @@ useRecordAfterMove: fun
 {
 	var count = 1
 	var tally = Tally(mut count, 5)
-	val moved = own count
+	val moved = count
 	printf("%d\n", tally.step)
 	tally.count += 1
 }
@@ -143,7 +143,7 @@ useResultAfterMove: fun
 {
 	var stats = Stats(1)
 	val total = mut kills(mut stats)
-	val moved = own stats
+	val moved = stats
 	total += 1
 }
 
@@ -151,7 +151,7 @@ dropAfterMove: fun
 {
 	var depth = 0
 	val scope = Scope(mut depth)
-	val moved = own depth
+	val moved = depth
 }
 
 useTemporary: fun
@@ -169,8 +169,8 @@ useThroughBorrow: fun
 	var tally = Tally(mut count, 2)
 	val view = imm tally
 	val counter: mut[i32] = view.count
-	val moved = own buffer
-	val gone = own count
+	val moved = buffer
+	val gone = count
 	printf("%d %d\n", inner, counter)
 }
 
@@ -181,7 +181,7 @@ storeThroughBorrow: fun
 	val target = mut tally
 	var y = 2
 	target = Tally(mut y, 1)
-	val moved = own y
+	val moved = y
 	printf("%d\n", tally.count)
 }
 

@@ -3,39 +3,9 @@ Hint at parameter_writes.ce:24:1
 24 │ readOnly: fun(p: Point, n: i32, values: array[i32, 2])
      ╘══════╛ 'readOnly' is never used
 
-Error at parameter_writes.ce:26:2
-25 │ {
-26 │     p.x = 5
-         ╘═╛ Cannot reassign read-only parameters
-
-Error at parameter_writes.ce:27:2
-26 │ p.x = 5
-27 │ n += 1
-     ^ Cannot reassign read-only parameters
-
-Error at parameter_writes.ce:28:2
-27 │ n += 1
-28 │ values[0] = 1
-     ╘═══════╛ Cannot reassign read-only parameters
-
-Error at parameter_writes.ce:29:13
-28 │ values[0] = 1
-29 │ damage(mut n, 1)
-                ^ Cannot mutably borrow read-only parameters
-
-Error at parameter_writes.ce:30:13
-29 │ damage(mut n, 1)
-30 │ damage(mut p.x, 1)
-                ╘═╛ Cannot mutably borrow read-only parameters
-
-Error at parameter_writes.ce:31:13
-30 │ damage(mut p.x, 1)
-31 │ damage(mut values[1], 1)
-                ╘═══════╛ Cannot mutably borrow read-only parameters
-
 Hint at parameter_writes.ce:34:1
 33 │ 
-34 │ owned: fun(own p: Point, own n: i32)
+34 │ owned: fun(p: Point, n: i32)
      ╘═══╛ 'owned' is never used
 
 Error at parameter_writes.ce:43:13

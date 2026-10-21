@@ -5,7 +5,7 @@ Point: rec
 	x: i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 }

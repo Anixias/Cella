@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -21,7 +21,7 @@ Holder: ref rec
 	k: i32
 }
 
-consume: fun(own t: Text)
+consume: fun(t: Text)
 {
 }
 
@@ -37,6 +37,6 @@ main: fun -> i32
 	val other = Text(2)
 	h = Holder(other, 6)
 	printf("%d\n", q.t.id)
-	consume(own text)
+	consume(text)
 	ret 0
 }

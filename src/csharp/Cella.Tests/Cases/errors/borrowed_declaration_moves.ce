@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -16,14 +16,14 @@ Texture: rec
 	}
 }
 
-TextureBox: rec
+TextureBox: own rec
 {
 	pointer: pvt ptr[Texture]
 
-	new: op(own texture: Texture)
+	new: op(texture: Texture)
 	{
 		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
-		own *self.pointer = own texture
+		own *self.pointer = texture
 	}
 
 	*: op(imm self) -> imm[Texture] => imm *self.pointer
@@ -35,7 +35,7 @@ TextureBox: rec
 	}
 }
 
-keep: fun(own box: TextureBox)
+keep: fun(box: TextureBox)
 {
 }
 
@@ -64,7 +64,7 @@ main: fun -> i32
 {
 	val held = TextureBox(Texture(2))
 	val inside = *held
-	keep(own held)
+	keep(held)
 	printf("%d\n", inside.id)
 	ret 0
 }

@@ -13,20 +13,14 @@ Error at owned_callback_arguments.ce:47:43
 47 │ saved = pick[fun[-> i32]](answer, fun => base)
                                               ╘══╛ Cannot capture 'base' in 'fun[-> i32]'
 
-Error at owned_callback_arguments.ce:50:43
+Error at owned_callback_arguments.ce:50:47
 49 │ box.show(fun => base)
-50 │ val borrowing: fun[fun[-> i32] -> i32] = look[fun[-> i32]]
-                                              ╘═══════════════╛ Cannot convert type 'fun[own fun[-> i32] -> i32]' to 'fun[fun[-> i32] -> i32]'
+50 │ val borrowing: fun[imm fun[-> i32] -> i32] = look[fun[-> i32]]
+                                                  ╘═══════════════╛ Cannot convert type 'fun[fun[-> i32] -> i32]' to 'fun[imm fun[-> i32] -> i32]'
 
-Error at owned_callback_arguments.ce:52:38
-51 │ val owning: fun[own fun[-> i32] -> i32] = run
-52 │ val back: fun[fun[-> i32] -> i32] = owning
-                                         ╘════╛ Cannot convert type 'fun[own fun[-> i32] -> i32]' to 'fun[fun[-> i32] -> i32]'
-
-Error at owned_callback_arguments.ce:53:12
-52 │ val back: fun[fun[-> i32] -> i32] = owning
-53 │ ret build[Holder]()
-               ╘════╛ 'build' requires 'T: new(fun[-> i32])'
-                    | 'Holder' has no constructor taking 'fun[-> i32]'
+Error at owned_callback_arguments.ce:52:42
+51 │ val owning: fun[fun[-> i32] -> i32] = run
+52 │ val back: fun[imm fun[-> i32] -> i32] = owning
+                                             ╘════╛ Cannot convert type 'fun[fun[-> i32] -> i32]' to 'fun[imm fun[-> i32] -> i32]'
 
 [compilation failed]

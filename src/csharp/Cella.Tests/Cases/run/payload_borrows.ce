@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,20 +14,20 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 	count(n: i32)
 }
 
-Outer: enum
+Outer: own enum
 {
 	empty
 	nested(inner: Effect)
 }
 
-Holder: rec
+Holder: own rec
 {
 	outer: Outer
 }
@@ -64,7 +64,7 @@ aliased: fun -> i32
 {
 	var effect = Effect.hold(Buffer(1))
 	val pointer = @effect
-	match effect
+	match imm effect
 	{
 		hold(val buffer) =>
 		{
@@ -94,7 +94,7 @@ main: fun -> i32
 {
 	val holder = Holder(Outer.nested(Effect.hold(Buffer(7))))
 	var total = 0
-	if holder.outer is nested(val inner)
+	if imm holder.outer is nested(val inner)
 		total = describe(imm inner)
 
 	printf("%d %d %d %d\n", describe(Effect.hold(Buffer(3))), unwrap(imm holder.outer), total, describe(Effect.count(4)))

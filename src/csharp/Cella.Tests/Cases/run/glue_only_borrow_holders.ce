@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Holder: ref rec
+Holder: own ref rec
 {
 	view: imm[Buffer]
 	owned: Buffer

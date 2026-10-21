@@ -4,7 +4,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Guard: rec
+Guard: own rec
 {
 	id: i32
 	new: op(id: i32)

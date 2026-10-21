@@ -90,7 +90,7 @@ Holder[E]: rec
 {
 	value: E
 
-	make[T: new(E)]: fun(imm self) -> T => T(self.value)
+	make[T: new(imm E)]: fun(imm self) -> T => T(imm self.value)
 }
 
 Wrapped: rec

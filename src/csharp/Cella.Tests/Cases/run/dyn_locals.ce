@@ -19,14 +19,14 @@ Square: rec impl Shape
 	area: fun(self) -> i32 => self.side * self.side
 }
 
-Boxed[K: trait]: rec
+Boxed[K: trait]: own rec
 {
 	object: pvt ptr[dyn[K]]
 
-	of[T: K + noref]: fun(own value: T) -> Boxed[K]
+	of[T: K + noref]: fun(value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = own value
+		own *memory = value
 		ret Boxed[K](memory)
 	}
 

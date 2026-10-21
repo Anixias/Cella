@@ -1,6 +1,6 @@
 mod test
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -9,9 +9,9 @@ Text: rec
 	}
 }
 
-call: fun(f: fun[-> i32]) -> i32 => f()
+call: fun(imm f: fun[-> i32]) -> i32 => f()
 
-consume: fun(own text: Text) { }
+consume: fun(text: Text) { }
 
 main: fun -> i32
 {

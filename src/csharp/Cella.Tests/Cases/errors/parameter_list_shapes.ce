@@ -4,7 +4,7 @@ untyped: fun(x) -> i32 => 0
 
 trailing: fun(x: i32,) -> i32 => x
 
-modes: fun(mut own x: i32) {}
+modes: fun(mut x: i32) {}
 
 comma: fun(a: i32 b: i32) -> i32 => a
 

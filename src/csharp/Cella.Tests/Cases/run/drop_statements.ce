@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Noisy: rec
+Noisy: own rec
 {
 	id: i32
 
@@ -17,7 +17,7 @@ Noisy: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	first: Noisy
 	second: Noisy

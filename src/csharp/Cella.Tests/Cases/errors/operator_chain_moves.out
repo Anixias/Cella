@@ -1,21 +1,21 @@
 Hint at operator_chain_moves.ce:19:6
 18 │ val last = Owned(9)
-19 │ val maybe = Owned(1) < Owned(20) > own last
+19 │ val maybe = Owned(1) < Owned(20) > last
          ╘═══╛ 'maybe' is never used
 
 Hint at operator_chain_moves.ce:21:6
 20 │ val first = Owned(3)
-21 │ val sure = own first <= Owned(4) < Owned(5)
+21 │ val sure = first <= Owned(4) < Owned(5)
          ╘══╛ 'sure' is never used
 
 Error at operator_chain_moves.ce:22:6
-21 │ val sure = own first <= Owned(4) < Owned(5)
+21 │ val sure = first <= Owned(4) < Owned(5)
 22 │ ret last.id + first.id
          ╘═════╛ Cannot use moved values
                | Moved on line 19
 
 Error at operator_chain_moves.ce:22:16
-21 │ val sure = own first <= Owned(4) < Owned(5)
+21 │ val sure = first <= Owned(4) < Owned(5)
 22 │ ret last.id + first.id
                    ╘══════╛ Cannot use moved values
                           | Moved on line 21

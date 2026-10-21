@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,18 +15,18 @@ Buffer: rec
 	}
 }
 
-Wrapper: rec
+Wrapper: own rec
 {
 	buffer: Buffer
 
 	drop: op
 	{
 		printf("wrapper\n")
-		take(own self.buffer)
+		take(self.buffer)
 	}
 }
 
-Conditional: rec
+Conditional: own rec
 {
 	flag: bool
 	buffer: Buffer
@@ -34,13 +34,13 @@ Conditional: rec
 	drop: op
 	{
 		if self.flag
-			take(own self.buffer)
+			take(self.buffer)
 
 		printf("conditional\n")
 	}
 }
 
-Refilled: rec
+Refilled: own rec
 {
 	buffer: Buffer
 
@@ -52,19 +52,19 @@ Refilled: rec
 	}
 }
 
-Two: rec
+Two: own rec
 {
 	first: Buffer
 	second: Buffer
 
 	drop: op
 	{
-		take(own self.first)
+		take(self.first)
 		printf("two %d\n", self.second.id)
 	}
 }
 
-take: fun(own buffer: Buffer) -> i32
+take: fun(buffer: Buffer) -> i32
 {
 	printf("take %d\n", buffer.id)
 	ret buffer.id

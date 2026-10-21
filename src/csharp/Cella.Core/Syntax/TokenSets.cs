@@ -8,7 +8,7 @@ internal static class TokenSets
 		["fun", "op", "prop", "get", "set", "rec", "enum", "union", "trait", "impl"];
 	
 	public static readonly HashSet<TokenType> ParameterModes =
-		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
+		[TokenType.KeywordMut, TokenType.KeywordImm];
 	
 	public static readonly HashSet<TokenType> BorrowKeywords = [TokenType.KeywordImm, TokenType.KeywordMut];
 	

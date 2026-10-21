@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	first: Buffer
 	second: Buffer
@@ -25,13 +25,13 @@ Tally: ref rec
 	count: mut[i32]
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 }
 
-Scope: ref rec
+Scope: own ref rec
 {
 	depth: mut[i32]
 
@@ -58,7 +58,7 @@ main: fun -> i32
 {
 	var holder = Holder(Buffer(1), Buffer(2))
 	val first = imm holder.first
-	val second = own holder.second
+	val second = holder.second
 	printf("%d ", first.id)
 
 	var x = 10

@@ -14,8 +14,8 @@ View[T]: ref rec
 
 typed: fun(callback: ext fun[cstr, ...View[i32]]) {}
 alone: fun(callback: ext fun[...View[i32]]) {}
-after: fun(callback: fun[...View[i32], i32]) {}
-writes: fun(callback: fun[mut ...View[i32]]) {}
-plain: fun(callback: fun[...i32]) {}
+after: fun(imm callback: fun[...View[i32], i32]) {}
+writes: fun(imm callback: fun[mut ...View[i32]]) {}
+plain: fun(imm callback: fun[...i32]) {}
 
 main: fun -> i32 => 0

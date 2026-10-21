@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	count: i32
@@ -19,12 +19,12 @@ Holder: rec
 	}
 }
 
-Inner: rec
+Inner: own rec
 {
 	buffer: Buffer
 }
 
-Shell: rec
+Shell: own rec
 {
 	inner: Inner
 	items: array[Buffer, 2]
@@ -34,14 +34,14 @@ Shell: rec
 	}
 }
 
-Outer: rec
+Outer: own rec
 {
 	holder: Holder
 	spare: Buffer
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 
 local: fun -> i32
 {
@@ -58,13 +58,13 @@ nested: fun -> i32
 	ret take(shell.inner.buffer) + take(shell.items[0])
 }
 
-owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
+owned: fun(holder: Holder) -> i32 => take(holder.buffer)
 
 whole: fun -> i32
 {
 	val outer = Outer(Holder(make(1), 2), make(3))
-	val holder = own outer.holder
-	val spare = own outer.spare
+	val holder = outer.holder
+	val spare = outer.spare
 	ret holder.count + spare.id
 }
 

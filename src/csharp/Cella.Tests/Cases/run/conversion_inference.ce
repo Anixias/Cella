@@ -43,9 +43,9 @@ count[T]: fun(values: View[T]) -> usize => values.length
 
 last[T]: fun(values: View[T]) -> imm[T] => values[values.length - 1]
 
-setFirst[T: noref]: fun(values: Span[T], own value: T)
+setFirst[T: noref]: fun(values: Span[T], value: T)
 {
-	values[0] = own value
+	values[0] = value
 }
 
 second: fun(values: View[u16]) -> u16 => values[1]

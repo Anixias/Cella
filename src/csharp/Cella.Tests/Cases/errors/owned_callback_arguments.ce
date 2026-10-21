@@ -11,7 +11,7 @@ Holder: rec
 {
 	value: i32
 
-	new: op(own f: fun[-> i32])
+	new: op(f: fun[-> i32])
 	{
 		self.value = f()
 	}
@@ -28,12 +28,12 @@ pick[T: copy]: fun(a: T, b: T) -> T => b
 
 look[T: copy]: fun(value: T) -> i32 => 7
 
-forward: fun(mut handlers: array[fun[-> i32], 3], visit: fun[-> i32])
+forward: fun(mut handlers: array[fun[-> i32], 3], imm visit: fun[-> i32])
 {
 	fill[fun[-> i32]](mut handlers, visit)
 }
 
-run: fun(callback: fun[-> i32]) -> i32 => callback()
+run: fun(imm callback: fun[-> i32]) -> i32 => callback()
 
 answer: fun -> i32 => 42
 
@@ -47,8 +47,8 @@ main: fun -> i32
 	saved = pick[fun[-> i32]](answer, fun => base)
 	val box = Box[fun[-> i32]](answer)
 	box.show(fun => base)
-	val borrowing: fun[fun[-> i32] -> i32] = look[fun[-> i32]]
-	val owning: fun[own fun[-> i32] -> i32] = run
-	val back: fun[fun[-> i32] -> i32] = owning
+	val borrowing: fun[imm fun[-> i32] -> i32] = look[fun[-> i32]]
+	val owning: fun[fun[-> i32] -> i32] = run
+	val back: fun[imm fun[-> i32] -> i32] = owning
 	ret build[Holder]()
 }

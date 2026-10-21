@@ -12,7 +12,7 @@ Sprite: rec
 	hp: i32
 }
 
-Item: rec
+Item: own rec
 {
 	id: i32
 
@@ -30,17 +30,17 @@ Slot[T]: rec
 	as: op(mut self) -> mut[T] => mut self.value
 }
 
-Box[T]: rec
+Box[T]: own rec
 {
 	pointer: pvt ptr[T]
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = own value
+		own *self.pointer = value
 	}
 
-	new: op(own self) -> T
+	new: op(self) -> T
 	{
 		val value = own *self.pointer
 		free(self.pointer)
@@ -58,7 +58,7 @@ Box[T]: rec
 	}
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	size: i32
 
@@ -68,11 +68,11 @@ Buffer: rec
 	}
 }
 
-Text: rec
+Text: own rec
 {
 	size: i32
 
-	as: op(own self) -> Buffer => Buffer(self.size)
+	as: op(self) -> Buffer => Buffer(self.size)
 
 	drop: op
 	{
@@ -90,12 +90,12 @@ heal: fun(mut sprite: Sprite)
 	sprite.hp += 10
 }
 
-send: fun(own buffer: Buffer)
+send: fun(buffer: Buffer)
 {
 	printf("send %d\n", buffer.size)
 }
 
-unbox[T]: fun(own boxed: Box[T]) -> T => T(own boxed)
+unbox[T]: fun(boxed: Box[T]) -> T => T(boxed)
 
 views: fun
 {
@@ -108,18 +108,18 @@ views: fun
 consuming: fun
 {
 	val text = Text(1)
-	send(own text)
+	send(text)
 	send(Text(2))
 	val kept: Buffer = Text(3)
 	val other = Text(4)
-	val moved: Buffer = own other
+	val moved: Buffer = other
 	printf("kept %d %d\n", kept.size, moved.size)
 }
 
 unboxing: fun
 {
 	val boxed = Box(Item(1))
-	val item = unbox(own boxed)
+	val item = unbox(boxed)
 	printf("unboxed %d\n", item.id)
 	val direct = Item(Box(Item(2)))
 	printf("unboxed %d\n", direct.id)

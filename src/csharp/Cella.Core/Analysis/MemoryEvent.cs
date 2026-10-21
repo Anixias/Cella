@@ -26,8 +26,7 @@ public sealed record AccessEvent
 	Place Place,
 	AccessKind Kind,
 	SourceLocation Location,
-	TypeSymbol Type,
-	bool IsImplicit = false
+	TypeSymbol Type
 ) : MemoryEvent(Location);
 
 public sealed record WriteEvent(Place Place, SourceLocation Location, Value Value) : MemoryEvent(Location);

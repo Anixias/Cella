@@ -1,0 +1,58 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Buffer: rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Sink: trait
+{
+	put: fun(imm self, value: Buffer) -> i32
+	put: fun(imm self, imm value: Buffer) -> i32
+}
+
+Logger: rec impl Sink
+{
+	base: i32
+
+	put: fun(imm self, value: Buffer) -> i32 => self.base + value.id
+	put: fun(imm self, imm value: Buffer) -> i32 => self.base * value.id
+}
+
+describe: fun(value: Buffer) -> i32 => value.id
+describe: fun(imm value: Buffer) -> i32 => value.id * 10
+describe: fun(mut value: Buffer) -> i32
+{
+	value.id += 1
+	ret value.id * 100
+}
+
+pair: fun(imm a: Buffer, b: Buffer) -> i32 => a.id + b.id
+pair: fun(imm a: Buffer, imm b: Buffer) -> i32 => a.id * b.id
+
+feed[S: Sink]: fun(imm sink: S, imm value: Buffer) -> i32 => sink.put(imm value)
+
+main: fun -> i32
+{
+	var buffer = Buffer(3)
+	printf("%d %d\n", describe(imm buffer), describe(mut buffer))
+	printf("%d\n", describe(Buffer(5)))
+	val looked: fun[imm Buffer -> i32] = describe
+	val changed: fun[mut Buffer -> i32] = describe
+	printf("%d %d\n", looked(imm buffer), changed(mut buffer))
+	printf("%d %d\n", pair(imm buffer, Buffer(2)), pair(imm buffer, imm buffer))
+	val logger = Logger(10)
+	printf("%d %d\n", logger.put(imm buffer), feed(imm logger, imm buffer))
+	printf("%d\n", describe(buffer))
+	ret 0
+}

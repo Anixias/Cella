@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -38,7 +38,7 @@ bump: fun(mut n: i32)
 moved: fun -> i32
 {
 	var b = Buffer(1)
-	val c = own b
+	val c = b
 	val p = @b
 	ret 0
 }

@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
@@ -21,7 +21,7 @@ show: fun(imm pair: Pair) -> i32 => pair.left.id
 whole: fun -> Pair
 {
 	val pair = Pair(make(1), make(2))
-	val left = own pair.left
+	val left = pair.left
 	val total = show(imm pair) + pair.right.id + left.id
 	ret pair
 }
@@ -29,7 +29,7 @@ whole: fun -> Pair
 refilled: fun -> Pair
 {
 	var pair = Pair(make(1), make(2))
-	val left = own pair.left
+	val left = pair.left
 	pair.left = make(left.id + 1)
 	ret pair
 }
@@ -37,14 +37,14 @@ refilled: fun -> Pair
 elements: fun(i: usize) -> i32
 {
 	var items = [make(1), make(2)]
-	val first = own items[0]
+	val first = items[0]
 	ret items[i].id + items[1].id + first.id
 }
 
 constant: fun -> i32
 {
 	val pair = Pair(Buffer(1), Buffer(2))
-	val left = own pair.left
+	val left = pair.left
 	ret pair.left.id + pair.right.id + left.id
 }
 

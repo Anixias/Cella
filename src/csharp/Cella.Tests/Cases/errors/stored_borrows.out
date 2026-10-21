@@ -11,12 +11,12 @@ Error at stored_borrows.ce:41:16
 Error at stored_borrows.ce:51:16
 50 │ {
 51 │     self.level = imm level
-                      ╘═══════╛ Cannot store borrows of copied parameters in 'self'
+                      ╘═══════╛ Cannot store borrows of by-value parameters in 'self'
 
 Error at stored_borrows.ce:61:15
 60 │ {
 61 │     self.view = imm buffer
-                     ╘════════╛ Cannot store borrows of 'own' parameters in 'self'
+                     ╘════════╛ Cannot store borrows of by-value parameters in 'self'
 
 Error at stored_borrows.ce:77:16
 76 │ var spare = 0

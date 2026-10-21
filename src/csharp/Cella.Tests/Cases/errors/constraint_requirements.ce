@@ -26,7 +26,7 @@ Nullable[Element: null]: rec
 	value: Element
 }
 
-Guard: rec
+Guard: own rec
 {
 	id: i32
 

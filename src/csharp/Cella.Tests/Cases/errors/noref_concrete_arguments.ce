@@ -20,7 +20,7 @@ Token: ref rec
 	text: imm[i32]
 }
 
-keep[T: noref]: fun(own value: T) -> T => own value
+keep[T: noref]: fun(value: T) -> T => value
 
 main: fun -> i32
 {

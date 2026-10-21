@@ -5,28 +5,28 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-identity[T]: fun(own value: T, depth: i32) -> T
+identity[T]: fun(value: T, depth: i32) -> T
 {
 	if depth == 0
 		ret value
 
 	val f = identity[T]
-	ret f(own value, depth - 1)
+	ret f(value, depth - 1)
 }
 
-first[A, B]: fun(own a: A, own b: B, depth: i32) -> A
+first[A, B]: fun(a: A, b: B, depth: i32) -> A
 {
 	if depth == 0
 		ret a
 
 	val g = first[A, i32]
-	ret g(own a, 7, depth - 1)
+	ret g(a, 7, depth - 1)
 }
 
-other[U]: fun(own value: U) -> U
+other[U]: fun(value: U) -> U
 {
 	val h = identity[U]
-	ret h(own value, 2)
+	ret h(value, 2)
 }
 
 main: fun -> i32

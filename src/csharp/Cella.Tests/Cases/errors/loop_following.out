@@ -38,11 +38,11 @@ Hint at loop_following.ce:64:1
 64 │ movedTwice: fun -> i32
      ╘════════╛ 'movedTwice' is never used
 
-Error at loop_following.ce:68:12
+Error at loop_following.ce:68:8
 67 │ for i in 0..2
-68 │     take(own d)
-                  ^ Cannot use moved values
-                  | Moved here in an earlier iteration
+68 │     take(d)
+              ^ Cannot use moved values
+              | Moved here in an earlier iteration
 
 Hint at loop_following.ce:77:1
 76 │ 

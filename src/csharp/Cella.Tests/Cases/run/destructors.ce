@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	data: ptr
 	size: usize
@@ -26,7 +26,7 @@ Buffer: rec
 	}
 }
 
-Handle: rec
+Handle: own rec
 {
 	id: i32
 

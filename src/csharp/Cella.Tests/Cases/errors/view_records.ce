@@ -32,14 +32,14 @@ Range: ref enum
 	}
 }
 
-Guard: rec
+Guard: own rec
 {
 	drop: op
 	{
 	}
 }
 
-Counter: ref rec
+Counter: own ref rec
 {
 	items: imm[array[i32, 6]]
 	count: i32

@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -10,29 +10,29 @@ Buffer: rec
 }
 
 show: fun(imm wrapper: Wrapper) -> i32 => 0
-take: fun(own buffer: Buffer) -> i32 => buffer.id
-consume: fun(own whole: Whole) -> i32 => 0
+take: fun(buffer: Buffer) -> i32 => buffer.id
+consume: fun(whole: Whole) -> i32 => 0
 
-Wrapper: rec
+Wrapper: own rec
 {
 	buffer: Buffer
 	count: i32
 
 	drop: op
 	{
-		take(own self.buffer)
+		take(self.buffer)
 		show(imm self)
 		self.count = self.buffer.id
 	}
 }
 
-Whole: rec
+Whole: own rec
 {
 	id: i32
 
 	drop: op
 	{
-		consume(own self)
+		consume(self)
 	}
 }
 

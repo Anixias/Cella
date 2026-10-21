@@ -6,11 +6,11 @@ ext
 	free: fun(data: ptr)
 }
 
-Box[T: noref]: pub rec
+Box[T: noref]: pub own rec
 {
 	data: pvt req ptr[T]
 	
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		// Can panic for zero-sized T
 		val p = malloc(sizeOf(T))
@@ -18,7 +18,7 @@ Box[T: noref]: pub rec
 			panic "out of memory"
 		
 		self.data = ptr[T](p)
-		own *self.data = own value
+		own *self.data = value
 	}
 	
 	drop: op
@@ -27,7 +27,7 @@ Box[T: noref]: pub rec
 		free(self.data)
 	}
 	
-	unbox: fun(own self) -> T
+	unbox: fun(self) -> T
 	{
 		val p = own self.data
 		val value = own *p

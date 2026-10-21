@@ -8,23 +8,8 @@ Error at own_unstored.ce:15:14
 15 │ val b = own 7
                  ^ Cannot move unstored values
 
-Error at own_unstored.ce:16:14
-15 │ val b = own 7
-16 │ val c = own Buffer(2)
-                 ╘═══════╛ Cannot move unstored values
-
-Error at own_unstored.ce:17:31
-16 │ val c = own Buffer(2)
-17 │ val d: fun[i32 -> i32] = own over
-                                  ╘══╛ Cannot move unstored values
-
-Error at own_unstored.ce:18:19
-17 │ val d: fun[i32 -> i32] = own over
-18 │ val e: ptr = own null
-                      ╘══╛ Cannot move unstored values
-
 Error at own_unstored.ce:19:15
-18 │ val e: ptr = own null
+18 │ val e: ptr = null
 19 │ val f = own (3 + 4)
                   ╘═══╛ Cannot move unstored values
 

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-run: fun(f: fun[i32])
+run: fun(imm f: fun[i32])
 {
 	f(1)
 }

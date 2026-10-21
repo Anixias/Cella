@@ -1,6 +1,6 @@
-Error at function_type_ellipsis.ce:3:35
+Error at function_type_ellipsis.ce:3:39
 2 │ 
-3 │ takes: fun(callback: fun[cstr, ...]) {}
-                                      ^ Expected a type
+3 │ takes: fun(imm callback: fun[cstr, ...]) {}
+                                          ^ Expected a type
 
 [compilation failed]

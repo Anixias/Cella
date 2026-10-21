@@ -28,9 +28,4 @@ Error at static_field_writes.ce:24:7
 24 │ Unit.created += 1
           ╘═════╛ 'created' is read-only outside its type
 
-Error at static_field_writes.ce:28:18
-27 │ val view = imm Unit.total
-28 │ val moved = own Unit.origin
-                     ╘═════════╛ Cannot move static values
-
 [compilation failed]

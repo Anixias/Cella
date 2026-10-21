@@ -12,17 +12,17 @@ Option[T]: pub enum
 
 	made: var i32 = 0
 
-	wrap: fun(own value: T) -> Option[T]
+	wrap: fun(value: T) -> Option[T]
 	{
 		made += 1
-		ret Option.some(own value)
+		ret Option.some(value)
 	}
 
-	orElse: fun(own self, own fallback: T) -> T
+	orElse: fun(self, fallback: T) -> T
 	{
-		match own self
+		match self
 		{
-			some(own v) => ret v
+			some(val v) => ret v
 			none => ret fallback
 		}
 	}
@@ -30,7 +30,7 @@ Option[T]: pub enum
 	isSome: get(imm self) -> bool => self is some(_)
 }
 
-Token: pub rec
+Token: pub own rec
 {
 	id: i32
 
@@ -40,7 +40,7 @@ Token: pub rec
 	}
 }
 
-first[T]: pub fun(own a: Option[T], own b: Option[T]) -> Option[T]
+first[T]: pub fun(a: Option[T], b: Option[T]) -> Option[T]
 {
 	if a.isSome
 		ret a

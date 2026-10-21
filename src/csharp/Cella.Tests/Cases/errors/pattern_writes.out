@@ -3,11 +3,6 @@ Hint at pattern_writes.ce:11:1
 11 │ readOnly: fun(e: Effect)
      ╘══════╛ 'readOnly' is never used
 
-Error at pattern_writes.ce:13:9
-12 │ {
-13 │     if mut e is hit(val n)
-                ^ Cannot mutably borrow read-only parameters
-
 Error at pattern_writes.ce:20:12
 19 │ val fixed = Effect.hit(1)
 20 │ match mut fixed

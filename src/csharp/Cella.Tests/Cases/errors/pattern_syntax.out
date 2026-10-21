@@ -23,9 +23,14 @@ Hint at pattern_syntax.ce:20:1
 20 │ nested: fun -> i32
      ╘════╛ 'nested' is never used
 
-Error at pattern_syntax.ce:32:12
-31 │ var e = E.hit(1)
-32 │ match own mut e
-               ╘═╛ Cannot combine 'own' and 'mut'
+Error at pattern_syntax.ce:34:7
+33 │ {
+34 │     hit(n) => n += 5
+             ^ Symbol 'n' not found in this scope
+
+Error at pattern_syntax.ce:34:13
+33 │ {
+34 │     hit(n) => n += 5
+                   ^ Symbol 'n' not found in this scope
 
 [compilation failed]

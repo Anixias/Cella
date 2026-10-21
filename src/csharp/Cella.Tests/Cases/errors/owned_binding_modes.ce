@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,14 +9,14 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 }
 
 make: fun(id: i32) -> Effect => Effect.hold(Buffer(id))
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 touch: fun(mut buffer: Buffer)
 {
 }
@@ -37,7 +37,7 @@ mutable: fun -> i32
 	var effect = make(3)
 	match mut effect
 	{
-		hold(own buffer) => ret take(buffer)
+		hold(val buffer) => ret take(buffer)
 		else => ret 0
 	}
 }

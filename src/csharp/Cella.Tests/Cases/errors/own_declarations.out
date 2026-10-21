@@ -3,11 +3,6 @@ Error at own_declarations.ce:3:7
 3 │ Bits: own union
           ╘═╛ Cannot declare 'own' unions
 
-Error at own_declarations.ce:8:7
-7 │ 
-8 │ Code: own ext enum
-          ╘═╛ Cannot combine 'own' and 'ext'
-
 Error at own_declarations.ce:13:12
 12 │ 
 13 │ Clock: own fun -> i32 = 0

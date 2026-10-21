@@ -1,6 +1,6 @@
 mod test
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -24,7 +24,7 @@ Builder: ref rec
 	}
 }
 
-consume: fun(own text: Text) { }
+consume: fun(text: Text) { }
 
 make: fun -> ref fun[-> i32]
 {
@@ -50,7 +50,7 @@ main: fun -> i32
 {
 	var text = Text(1)
 	val show = fun -> i32 => text.id
-	consume(own text)
+	consume(text)
 	show()
 	text = Text(2)
 	show()

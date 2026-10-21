@@ -1,7 +1,7 @@
 Error at single_candidate_arguments.ce:15:8
 14 │ var v = 1
 15 │ apply(takeInt, mut v)
-           ╘═════╛ Cannot convert type 'fun[own i32]' to 'ref fun[mut i32]'
+           ╘═════╛ Cannot convert type 'fun[i32]' to 'ref fun[mut i32]'
 
 Error at single_candidate_arguments.ce:16:7
 15 │ apply(takeInt, mut v)

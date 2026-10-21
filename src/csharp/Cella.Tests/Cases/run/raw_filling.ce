@@ -6,7 +6,7 @@ ext
 	memset: fun(target: ptr, value: i32, size: usize) -> ptr
 }
 
-D: rec
+D: own rec
 {
 	id: i32
 

@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	data: ptr
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	count: i32
@@ -30,7 +30,7 @@ Callbacks: rec
 ext
 {
 	show: fun(buffer: Buffer) -> i32
-	keep: fun(own buffer: Buffer)
+	keep: fun(buffer: Buffer)
 	fill: fun(mut buffer: Buffer)
 	make: fun -> Buffer
 	hold: fun(holder: Holder)
@@ -41,6 +41,6 @@ ext
 }
 
 echo: ext fun(buffer: Buffer) -> Buffer => buffer
-forward: fun(callback: fun[ext fun[own Buffer]]) {}
+forward: fun(imm callback: fun[ext fun[Buffer]]) {}
 
 main: fun -> i32 => 0

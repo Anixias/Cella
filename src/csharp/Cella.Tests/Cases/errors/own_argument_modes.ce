@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -19,16 +19,16 @@ Wrapper: rec
 
 show: fun(imm buffer: Buffer) -> i32 => buffer.id
 count: fun(n: i32) -> i32 => n
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 
 main: fun -> i32
 {
 	var b = Buffer(1)
 	var n = 3
 	val f: fun[i32 -> i32] = count
-	val shown = show(own b)
-	val counted = count(own n)
-	val called = f(own n)
-	val wrapped = Wrapper(own b)
-	ret take(own b)
+	val shown = show(b)
+	val counted = count(n)
+	val called = f(n)
+	val wrapped = Wrapper(b)
+	ret take(b)
 }

@@ -5,13 +5,13 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
 	<: op(imm a: Text, imm b: Text) -> bool => a.id < b.id
-	<=: op(own a: Text, imm b: Text) -> bool => a.id <= b.id
-	>: op(imm a: Text, own b: Text) -> bool => a.id > b.id
+	<=: op(a: Text, imm b: Text) -> bool => a.id <= b.id
+	>: op(imm a: Text, b: Text) -> bool => a.id > b.id
 
 	drop: op
 	{

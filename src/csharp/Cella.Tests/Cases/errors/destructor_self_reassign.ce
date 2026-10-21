@@ -1,6 +1,6 @@
 mod test
 
-Holder: rec
+Holder: own rec
 {
 	x: i32
 
@@ -10,7 +10,7 @@ Holder: rec
 	}
 }
 
-Other: rec
+Other: own rec
 {
 	x: i32
 

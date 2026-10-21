@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -10,7 +10,7 @@ Buffer: rec
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 pair: fun(a: i32, b: i32) -> i32 => a + b
 
 twice: fun -> i32
@@ -59,7 +59,7 @@ moved: fun -> i32
 {
 	val b: Buffer
 	b = make(1)
-	take(own b)
+	take(b)
 	b = make(2)
 	ret b.id
 }

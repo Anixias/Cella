@@ -34,9 +34,6 @@ public sealed partial class Lowerer
 		private void LowerReturn(IResolvedExpressionNode? expression, SourceLocation location)
 		{
 			GetOrMakeBlock();
-			if (expression is not null)
-				_returnedValues.Add(expression);
-			
 			var value = expression is null ? null : Consume(VisitNode(expression));
 			if (currentBlock is not { } block)
 				return;
@@ -60,7 +57,7 @@ public sealed partial class Lowerer
 			BeginScope(node.Syntax.SourceLocation, true);
 			var value = node switch
 			{
-				{ Initializer: { } initializer } => Consume(VisitNode(initializer), NamesPlace(initializer)),
+				{ Initializer: { } initializer } => Consume(VisitNode(initializer)),
 				{ Symbol.IsDeferred: true } => new UndefValue(node.Symbol.Type),
 				_ => new DefaultValue(node.Symbol.Type)
 			};
@@ -208,7 +205,7 @@ public sealed partial class Lowerer
 			var (cursor, cursorValue) = node.Cursor;
 			var value = VisitNode(cursorValue);
 			Declare(GetOrMakeBlock(), new LocalVarInstruction(cursor,
-				cursor.IsBorrowBinding ? value : Consume(value, NamesPlace(cursorValue)), location, scope.Id));
+				cursor.IsBorrowBinding ? value : Consume(value), location, scope.Id));
 			
 			var condBlock = CreateBlock($"for{id}_cond");
 			var bodyBlock = CreateBlock($"for{id}_body");

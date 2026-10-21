@@ -27,7 +27,7 @@ Scene: ref rec
 	focus: imm[dyn[Shape]]
 }
 
-Big: rec impl Shape
+Big: own rec impl Shape
 {
 	r: f64
 

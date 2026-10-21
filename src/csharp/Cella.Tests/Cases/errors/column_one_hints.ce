@@ -1,6 +1,6 @@
 mod test
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Text: rec
 	}
 }
 
-Holder: ref rec
+Holder: own ref rec
 {
 	text: imm[Text]
 

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -22,9 +22,9 @@ Cache: rec
 
 current: var Buffer = Buffer(1)
 
-replace: fun(own next: Buffer)
+replace: fun(next: Buffer)
 {
-	current = own next
+	current = next
 }
 
 main: fun -> i32

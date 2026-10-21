@@ -351,7 +351,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                         {
 		                                         	held(value: T)
 		                                         
-		                                         	?: op(own self) -> usize => sizeOf(T)
+		                                         	?: op(self) -> usize => sizeOf(T)
 		                                         }
 		                                         
 		                                         first: fun -> usize => Sized.held(40i64)?
@@ -361,8 +361,8 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                         """, Token);
 		
 		await InitializeAsync();
-		Assert.Equal(Code("T"), await HoverAsync(6, 36));
-		var definition = await DefinitionAsync(6, 36);
+		Assert.Equal(Code("T"), await HoverAsync(6, 32));
+		var definition = await DefinitionAsync(6, 32);
 		Assert.Equal(2, (int)definition!["range"]!["start"]!["line"]!);
 		Assert.Equal(6, (int)definition["range"]!["start"]!["character"]!);
 		Assert.Equal(0, await ShutDownAsync());
@@ -418,7 +418,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                                     {
 		                                                     	t: T
 		                                                     
-		                                                     	?: op(own self) -> T => self.t
+		                                                     	?: op(self) -> T => self.t
 		                                                     }
 		                                                     
 		                                                     main: fun -> i32
@@ -428,7 +428,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                                     }
 		                                                     """));
 		
-		Assert.Equal(Code("?: op(own self) -> i32"), await HoverAsync(12, 6));
+		Assert.Equal(Code("?: op(self) -> i32"), await HoverAsync(12, 6));
 		var declaration = await DefinitionAsync(12, 6);
 		Assert.Equal(6, (int)declaration!["range"]!["start"]!["line"]!);
 		Assert.Equal(1, (int)declaration["range"]!["start"]!["character"]!);
@@ -960,14 +960,14 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                 	ret b.x + v.point.x
 		                                 }
 		                                 
-		                                 Handle: rec
+		                                 Handle: own rec
 		                                 {
 		                                 	id: i32
 		                                 
 		                                 	drop: op { }
 		                                 }
 		                                 
-		                                 Owner: rec
+		                                 Owner: own rec
 		                                 {
 		                                 	handle: Handle
 		                                 }
@@ -1792,13 +1792,13 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                         {
 		                                         	data: T
 		                                         
-		                                         	new: op(own value: T)
+		                                         	new: op(value: T)
 		                                         	{
 		                                         		self.data = data
 		                                         	}
 		                                         }
 		                                         
-		                                         Counter: rec
+		                                         Counter: own rec
 		                                         {
 		                                         	count: i32
 		                                         

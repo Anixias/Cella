@@ -129,22 +129,22 @@ build[T, F: Factory[T]]: fun -> T => F.make()
 
 Mapper[T]: trait
 {
-	map[U]: fun(imm self, change: fun[imm T -> U]) -> U
-	keep: pvt fun(own value: T) -> T => value
+	map[U]: fun(imm self, imm change: fun[imm T -> U]) -> U
+	keep: pvt fun(value: T) -> T => value
 }
 
 Cell: rec impl Mapper[i32]
 {
 	value: i32
 
-	map[V]: fun(imm self, change: fun[imm i32 -> V]) -> V => change(imm self.value)
+	map[V]: fun(imm self, imm change: fun[imm i32 -> V]) -> V => change(imm self.value)
 }
 
 triple: fun(value: i32) -> i64 => value * 3
 
 half: fun(value: i32) -> f64 => f64(value) / 2.0
 
-run[T, M: Mapper[T]]: fun(imm item: M, change: fun[imm T -> i64]) -> i64 => item.map(change)
+run[T, M: Mapper[T]]: fun(imm item: M, imm change: fun[imm T -> i64]) -> i64 => item.map(imm change)
 
 main: fun -> i32
 {

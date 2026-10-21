@@ -52,4 +52,4 @@ build[T: new(i32)]: pub fun(value: i32) -> T => T(value)
 
 twin[T: copy]: pub fun(value: T) -> Box[T] => Box(value)
 
-measure[K: trait, T: K]: pub fun(value: ptr[T], action: fun[imm dyn[K] -> f64]) -> f64 => action(imm *Cell[K].of(value))
+measure[K: trait, T: K]: pub fun(value: ptr[T], imm action: fun[imm dyn[K] -> f64]) -> f64 => action(imm *Cell[K].of(value))

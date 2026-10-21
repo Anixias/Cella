@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Counter: rec
+Counter: own rec
 {
 	count: i32
 
@@ -22,7 +22,7 @@ Counter: rec
 	}
 }
 
-Plain: rec
+Plain: own rec
 {
 	count: i32
 
@@ -40,7 +40,7 @@ Plain: rec
 answer: fun() -> i32 => 4
 plain: fun -> i32 => 5
 
-call: fun(f: fun[-> i32]) -> i32 => f()
+call: fun(imm f: fun[-> i32]) -> i32 => f()
 
 made[T: new() + drop()]: fun -> T => T()
 bare[T: new + drop]: fun -> T => T()

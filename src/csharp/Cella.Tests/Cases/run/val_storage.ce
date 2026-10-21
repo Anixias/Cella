@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Cell[T: atomic]: rec
+Cell[T: atomic]: own rec
 {
 	value: T
 

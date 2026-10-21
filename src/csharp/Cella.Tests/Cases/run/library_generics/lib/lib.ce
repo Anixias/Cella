@@ -23,14 +23,14 @@ Counter[T]: pub rec
 	}
 }
 
-Box[T]: pub rec
+Box[T]: pub own rec
 {
 	pointer: req ptr[T]
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = own value
+		own *self.pointer = value
 	}
 
 	*: op(imm self) -> imm[T] => imm *self.pointer
@@ -43,9 +43,9 @@ Box[T]: pub rec
 	}
 }
 
-make[T]: pub fun(own value: T) -> Counter[T] => Counter(own value, 0)
+make[T]: pub fun(value: T) -> Counter[T] => Counter(value, 0)
 
-Inner: rec
+Inner: own rec
 {
 	id: i32
 
@@ -55,7 +55,7 @@ Inner: rec
 	}
 }
 
-Outer: pub rec
+Outer: pub own rec
 {
 	inner: pvt Inner
 

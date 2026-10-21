@@ -38,9 +38,6 @@ public sealed partial class SignatureCollector
 			var paramType = _typePool.GetPassedType(declaredType, paramSymbol.Mode);
 			declaredTypes.Add(declaredType);
 			
-			if (paramSymbol.Mode == ParameterMode.ReadOnly && !param.IsVariadic)
-				_copiedParameters.Add(paramType, param.Identifier.SourceLocation);
-			
 			ReportHiddenType(param.Type, paramType, visibility, node.Keyword.Text);
 			
 			paramTypes.Add(paramType);
@@ -114,7 +111,7 @@ public sealed partial class SignatureCollector
 			if (context.ContainingType is null)
 				Diagnostics.Add(new(DiagnosticSeverity.Error, receiver.SourceLocation,
 					"Cannot take 'self' outside types"));
-			else if (self.Mode == ParameterMode.ReadOnly)
+			else if (self.Mode == ParameterMode.Value && CannotConsumeSelf(function, node))
 				_copiedParameters.Add(selfType, receiver.Self.SourceLocation);
 			
 			paramTypes.Add(selfType);
@@ -137,7 +134,7 @@ public sealed partial class SignatureCollector
 			var paramType = _typePool.GetPassedType(declaredType, paramSymbol.Mode);
 			declaredTypes.Add(declaredType);
 			
-			if (paramSymbol.Mode == ParameterMode.ReadOnly && !function.IsExternal && !param.IsVariadic)
+			if (paramSymbol.Mode == ParameterMode.Value && node.When is not null && !param.IsVariadic)
 				_copiedParameters.Add(paramType, param.Identifier.SourceLocation);
 			
 			if (reportsHiddenTypes)
@@ -187,6 +184,10 @@ public sealed partial class SignatureCollector
 		return info;
 	}
 	
+	private static bool CannotConsumeSelf(FunctionSymbol function, FunctionNode node) =>
+		function.Property is not null || node.When is not null || IsDereference(node) || IsIndexer(node) ||
+		IsLoopOperator(node);
+	
 	private bool ReportWhenFunction(FunctionNode node, ResolutionContext context)
 	{
 		if (node.When is not { } when)
@@ -208,11 +209,6 @@ public sealed partial class SignatureCollector
 			
 			return false;
 		}
-		
-		var modes = node.Parameters.Select(static parameter => parameter.Mode).Prepend(node.Receiver?.Mode);
-		foreach (var mode in modes.OfType<Token>().Where(static mode => mode.Type == TokenType.KeywordOwn))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, mode.SourceLocation,
-				"Cannot take 'own' parameters in 'when' functions"));
 		
 		return true;
 	}

@@ -1,7 +1,7 @@
 Error at conversion_uses.ce:70:33
 69 │ 
 70 │ as: op(self) -> imm[Sprite] => imm self.sprite
-                                    ╘═════════════╛ Cannot return borrows of copied parameters
+                                    ╘═════════════╛ Cannot return borrows of by-value parameters
 
 Error at conversion_uses.ce:85:22
 84 │ val fixed = Fixed(1 << 16)

@@ -5,20 +5,20 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
 	drop: op { printf("drop %d\n", self.id) }
 }
 
-Slot: enum { empty, full(pair: Pair) }
+Slot: own enum { empty, full(pair: Pair) }
 
 make: fun -> Pair => Pair(Name(3), Name(4))
 
 makeSlot: fun -> Slot => Slot.full(Pair(Name(5), Name(6)))
 
-Pair: rec
+Pair: own rec
 {
 	first: Name
 	second: Name
@@ -27,7 +27,7 @@ Pair: rec
 stored: fun
 {
 	var p = Pair(Name(1), Name(2))
-	match p
+	match imm p
 	{
 		Pair(first: Name(id: 1), val second) => printf("borrowed %d\n", second.id)
 		else => {}
@@ -35,7 +35,7 @@ stored: fun
 
 	match p
 	{
-		Pair(own first) => printf("moved %d\n", first.id)
+		Pair(val first) => printf("moved %d\n", first.id)
 	}
 
 	printf("end\n")

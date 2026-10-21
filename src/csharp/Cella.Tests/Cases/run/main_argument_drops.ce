@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Owned: rec
+Owned: own rec
 {
 	count: usize
 

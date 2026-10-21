@@ -519,7 +519,6 @@ public sealed partial class SignatureCollector
 			TypePool = _typePool,
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = _extSignatureTypes,
-			CopiedParameters = _copiedParameters,
 			Containment = Containment,
 			EvaluateConstant = EvaluateConstant,
 			FindValueParameterUse = FindValueParameterUse,

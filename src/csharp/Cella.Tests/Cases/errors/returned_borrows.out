@@ -8,15 +8,10 @@ Error at returned_borrows.ce:41:6
 41 │ ret imm x
          ╘═══╛ Cannot return borrows of local variables
 
-Hint at returned_borrows.ce:44:1
-43 │ 
-44 │ returnStoredBorrow: fun -> imm[i32]
-     ╘════════════════╛ 'returnStoredBorrow' is never used
-
-Error at returned_borrows.ce:48:6
+Error at returned_borrows.ce:47:13
+46 │ val x = 5
 47 │ val view = imm x
-48 │ ret view
-         ╘══╛ Cannot return borrows of local variables
+                ╘═══╛ Cannot convert type 'imm[i32]' to 'i32'
 
 Hint at returned_borrows.ce:51:1
 50 │ 
@@ -30,7 +25,7 @@ Error at returned_borrows.ce:54:6
 
 Hint at returned_borrows.ce:57:1
 56 │ 
-57 │ returnIndirectResult: fun(get: fun[mut Stats -> mut[i32]]) -> mut[i32]
+57 │ returnIndirectResult: fun(imm get: fun[mut Stats -> mut[i32]]) -> mut[i32]
      ╘══════════════════╛ 'returnIndirectResult' is never used
 
 Error at returned_borrows.ce:60:6
@@ -95,23 +90,23 @@ Error at returned_borrows.ce:95:35
 
 Hint at returned_borrows.ce:97:1
 96 │ 
-97 │ returnOwned: fun(own buffer: Buffer) -> imm[Buffer] => imm buffer
+97 │ returnOwned: fun(buffer: Buffer) -> imm[Buffer] => imm buffer
      ╘═════════╛ 'returnOwned' is never used
 
-Error at returned_borrows.ce:97:56
+Error at returned_borrows.ce:97:52
 96 │ 
-97 │ returnOwned: fun(own buffer: Buffer) -> imm[Buffer] => imm buffer
-                                                            ╘════════╛ Cannot return borrows of 'own' parameters
+97 │ returnOwned: fun(buffer: Buffer) -> imm[Buffer] => imm buffer
+                                                        ╘════════╛ Cannot return borrows of by-value parameters
 
 Hint at returned_borrows.ce:99:1
 98 │ 
-99 │ returnOwnedCopy: fun(own value: i32) -> imm[i32] => imm value
+99 │ returnOwnedCopy: fun(value: i32) -> imm[i32] => imm value
      ╘═════════════╛ 'returnOwnedCopy' is never used
 
-Error at returned_borrows.ce:99:53
+Error at returned_borrows.ce:99:49
 98 │ 
-99 │ returnOwnedCopy: fun(own value: i32) -> imm[i32] => imm value
-                                                         ╘═══════╛ Cannot return borrows of 'own' parameters
+99 │ returnOwnedCopy: fun(value: i32) -> imm[i32] => imm value
+                                                     ╘═══════╛ Cannot return borrows of by-value parameters
 
 Hint at returned_borrows.ce:101:1
 100 │ 
@@ -121,12 +116,12 @@ Hint at returned_borrows.ce:101:1
 Error at returned_borrows.ce:104:7
 103 │ if a > b
 104 │     ret imm a
-              ╘═══╛ Cannot return borrows of copied parameters
+              ╘═══╛ Cannot return borrows of by-value parameters
 
 Error at returned_borrows.ce:105:6
 104 │     ret imm a
 105 │ ret imm b
-          ╘═══╛ Cannot return borrows of copied parameters
+          ╘═══╛ Cannot return borrows of by-value parameters
 
 Hint at returned_borrows.ce:108:1
 107 │ 
@@ -136,7 +131,7 @@ Hint at returned_borrows.ce:108:1
 Error at returned_borrows.ce:108:53
 107 │ 
 108 │ returnCopiedField: fun(tally: Tally) -> imm[i32] => imm tally.step
-                                                          ╘════════════╛ Cannot return borrows of copied parameters
+                                                          ╘════════════╛ Cannot return borrows of by-value parameters
 
 Hint at returned_borrows.ce:110:1
 109 │ 
@@ -146,6 +141,6 @@ Hint at returned_borrows.ce:110:1
 Error at returned_borrows.ce:110:49
 109 │ 
 110 │ returnCopiedText: fun(text: str) -> imm[str] => imm text
-                                                      ╘══════╛ Cannot return borrows of copied parameters
+                                                      ╘══════╛ Cannot return borrows of by-value parameters
 
 [compilation failed]

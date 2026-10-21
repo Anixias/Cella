@@ -6,7 +6,7 @@ View[T]: ref rec
 	length: pvt set usize
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 

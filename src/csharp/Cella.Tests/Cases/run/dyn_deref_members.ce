@@ -16,7 +16,7 @@ Pointer: trait
 	*: op(imm self) -> imm[Point]
 }
 
-Holder: rec impl Pointer
+Holder: own rec impl Pointer
 {
 	p: Point
 

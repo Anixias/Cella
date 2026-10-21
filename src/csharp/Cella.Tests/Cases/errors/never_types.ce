@@ -17,7 +17,7 @@ elements: fun(values: array[never, 2])
 {
 }
 
-callback: fun(handler: fun[never])
+callback: fun(imm handler: fun[never])
 {
 }
 

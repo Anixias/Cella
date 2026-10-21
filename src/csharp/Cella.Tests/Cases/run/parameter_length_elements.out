@@ -1,11 +1,11 @@
 Hint at parameter_length_elements.ce:22:9
 21 │ 
-22 │ firstOf[N: const usize]: fun(own values: array[Token, N]) -> Token => values[0]
+22 │ firstOf[N: const usize]: fun(values: array[Token, N]) -> Token => values[0]
              ^ 'N' doesn't match {camelCase}
 
 Hint at parameter_length_elements.ce:24:10
 23 │ 
-24 │ middleOf[N: const usize]: fun(own values: array[Token, N]) -> Token => values[1]
+24 │ middleOf[N: const usize]: fun(values: array[Token, N]) -> Token => values[1]
               ^ 'N' doesn't match {camelCase}
 
 Hint at parameter_length_elements.ce:26:6
@@ -15,7 +15,7 @@ Hint at parameter_length_elements.ce:26:6
 
 Hint at parameter_length_elements.ce:34:7
 33 │ 
-34 │ maybe[N: const usize]: fun(own values: array[Token, N], deep: bool)
+34 │ maybe[N: const usize]: fun(values: array[Token, N], deep: bool)
            ^ 'N' doesn't match {camelCase}
 
 Hint at parameter_length_elements.ce:42:11

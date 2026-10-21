@@ -137,22 +137,14 @@ public sealed partial class Resolver
 		List<MethodSymbol> collection) =>
 		sourceMode.Type == TokenType.KeywordMut && node.BindingMode?.Type is null or TokenType.KeywordImm &&
 		collection.Any(method => TakesReceiver(method, type, ParameterMode.Mut)) &&
-		!collection.Any(method => TakesReceiver(method, type, ParameterMode.ReadOnly));
+		!collection.Any(method => TakesReceiver(method, type, ParameterMode.Value));
 	
 	private static Token? FindSourceMode(ForStatementNode node) =>
 		node.Mode ?? (node.Source is OwnExpressionNode own ? own.Keyword : null);
 	
-	private void ReportCopiedElement(ForStatementNode node, TypeSymbol element)
-	{
-		if (node.BindingMode is null && node.Binding.Text != "_" && element is not InvalidType &&
-		    !_typePool.IsCopy(element))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, node.Binding.SourceLocation,
-				$"Cannot copy '{element.Name}'"));
-	}
-	
 	private IResolvedExpressionNode? ResolveArrayBuild(CallExpressionNode node, ArrayType array, IExpressionNode maker)
 	{
-		var function = _typePool.GetFunctionType(false, [NativeSymbols.UIntSize], [ParameterMode.ReadOnly],
+		var function = _typePool.GetFunctionType(false, [NativeSymbols.UIntSize], [ParameterMode.Value],
 			array.ElementType, true);
 		
 		IResolvedExpressionNode make;
@@ -185,10 +177,10 @@ public sealed partial class Resolver
 	private ForHeader ResolveArrayIteration(ForStatementNode node, IResolvedExpressionNode source, ArrayType array,
 		TokenType? elementMode)
 	{
-		if (elementMode == TokenType.KeywordOwn)
+		if (elementMode is null && node.Binding.Text != "_" && !_typePool.IsCopy(array.ElementType) &&
+		    (!IsStored(source) || IsOwnedOutright(source)))
 			return ResolveOwnedArrayIteration(node, source, array);
 		
-		ReportCopiedElement(node, array.ElementType);
 		var isMut = elementMode == TokenType.KeywordMut;
 		var syntax = node.Source;
 		var pointer = _typePool.GetPointerType(array);
@@ -277,14 +269,13 @@ public sealed partial class Resolver
 		{
 			_ when node.Mode is not null => ParameterMode.Mut,
 			TokenType.KeywordMut => ParameterMode.Mut,
-			TokenType.KeywordOwn => ParameterMode.Own,
-			_ => ParameterMode.ReadOnly
+			_ => ParameterMode.Value
 		};
 		
 		var location = node.Source.SourceLocation;
 		var sameMode = operators.Where(method => TakesReceiver(method, type, mode)).ToList();
 		if (isMut && sameMode.Count == 0)
-			sameMode = operators.Where(method => TakesReceiver(method, type, ParameterMode.ReadOnly) &&
+			sameMode = operators.Where(method => TakesReceiver(method, type, ParameterMode.Value) &&
 			                                     LendsWritably(GetFunctionInfo(method, type).Signature.ReturnType))
 				.ToList();
 		
@@ -298,11 +289,7 @@ public sealed partial class Resolver
 		if (sameMode.Count(other => CanAccess(type, other.Function)) > 1)
 			return RejectIteration(node, DescribeAmbiguousOperator("in", type), location);
 		
-		var receiver = mode == ParameterMode.Own && IsPlaceSyntax(node.Source)
-			? new ResolvedOwnExpressionNode(source, node.Source)
-			: source;
-		
-		var call = CallOperator(receiver, method, node.Source);
+		var call = CallOperator(source, method, node.Source);
 		return ResolveCursor(node,
 			new LocalVariableSymbol(HiddenName(node.Binding, "cursor"), call.Type, true)
 				{ IsSynthesized = true, IsUnstored = true }, call,
@@ -331,8 +318,8 @@ public sealed partial class Resolver
 				new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall, null, body, label, node));
 		
 		var dereference = isMut
-			? FindDereference(type, ParameterMode.Mut) ?? FindDereference(type, ParameterMode.ReadOnly)
-			: FindDereference(type, ParameterMode.ReadOnly) ?? FindDereference(type, ParameterMode.Mut);
+			? FindDereference(type, ParameterMode.Mut) ?? FindDereference(type, ParameterMode.Value)
+			: FindDereference(type, ParameterMode.Value) ?? FindDereference(type, ParameterMode.Mut);
 		
 		if (dereference is null)
 		{
@@ -352,18 +339,12 @@ public sealed partial class Resolver
 			return RejectIteration(node, $"Cannot iterate over '{type.Name}' with 'mut'",
 				node.BindingMode!.Value.SourceLocation);
 		
-		if (elementMode == TokenType.KeywordOwn)
+		if (elementMode is null && !lends && !_typePool.IsCopy(element.Type))
 		{
-			if (lends)
-				return RejectIteration(node, "Cannot move borrowed values", node.BindingMode!.Value.SourceLocation);
-			
 			var owned = new LocalVariableSymbol(node.Binding, element.Type, false);
 			return new(owned, (body, label) => new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall,
 				new(owned, element), body, label, node));
 		}
-		
-		if (lends)
-			ReportCopiedElement(node, element.Type);
 		
 		var binding = CreateLoopBinding(node.Binding, element.Type,
 			lends && (elementMode is not null || !_typePool.IsCopy(element.Type)), isMut)!;

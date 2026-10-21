@@ -5,20 +5,20 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-measure[T]: fun(imm value: T, f: fun[-> usize] = fun => sizeOf(T)) -> usize => f()
+measure[T]: fun(imm value: T, imm f: fun[-> usize] = fun => sizeOf(T)) -> usize => f()
 
-apply[T: copy]: fun(value: T, f: fun[T -> T] = fun(x) => x) -> T => f(value)
+apply[T: copy]: fun(value: T, imm f: fun[T -> T] = fun(x) => x) -> T => f(value)
 
 same[T: copy]: fun(v: T) -> T => v
 
-pass[T: copy]: fun(value: T, f: fun[T -> T] = same[T]) -> T => f(value)
+pass[T: copy]: fun(value: T, imm f: fun[T -> T] = same[T]) -> T => f(value)
 
 Pair[T: copy]: rec
 {
 	a: T
 
-	with: fun(self, f: fun[T -> T] = fun(x) => x) -> T => f(self.a)
-	size[U: copy]: fun(self, u: U, f: fun[U -> i32] = fun(v) => i32(sizeOf(U)) + i32(sizeOf(T))) -> i32 => f(u)
+	with: fun(self, imm f: fun[T -> T] = fun(x) => x) -> T => f(self.a)
+	size[U: copy]: fun(self, u: U, imm f: fun[U -> i32] = fun(v) => i32(sizeOf(U)) + i32(sizeOf(T))) -> i32 => f(u)
 }
 
 main: fun -> i32

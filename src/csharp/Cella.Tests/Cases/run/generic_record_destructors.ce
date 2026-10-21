@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -15,23 +15,23 @@ Token: rec
 	}
 }
 
-consume: fun(own token: Token)
+consume: fun(token: Token)
 {
 	printf("consume %d ", token.id)
 }
 
-Guard[T]: rec
+Guard[T]: own rec
 {
 	value: T
 	label: Token
 
 	drop: op
 	{
-		consume(own self.label)
+		consume(self.label)
 	}
 }
 
-Inventory: rec
+Inventory: own rec
 {
 	main: Guard[Token]
 	spare: Guard[i32]

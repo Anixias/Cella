@@ -57,7 +57,7 @@ public sealed partial class Resolver
 		if (args.Length != payloadTypes.Length || call is not null && payloadTypes.IsEmpty)
 			return Error(node, ReportPayloadCount(node.SourceLocation, definition, enumCase), CurrentTargetType);
 		
-		var inputs = args.Select((arg, i) => CreateInferenceInput(payloadTypes[i], ParameterMode.Own, arg));
+		var inputs = args.Select((arg, i) => CreateInferenceInput(payloadTypes[i], ParameterMode.Value, arg));
 		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
 			ExpectedType);
 		
@@ -213,7 +213,7 @@ public sealed partial class Resolver
 			type = borrow.Target;
 		
 		return type == target || type is NeverType || _conversionTable.FindImplicit(type, target) is not null ||
-		       FindUserConversion(type, null, ParameterMode.ReadOnly, target) is not null ||
+		       FindUserConversion(type, null, ParameterMode.Value, target) is not null ||
 		       TypePool.ContainsTypeParameters(type) && type.OriginalDefinition == target.OriginalDefinition;
 	}
 	

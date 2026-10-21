@@ -2,13 +2,13 @@ mod test
 
 make[T]: fun -> i32 => 0
 
-same[T]: fun(own a: T, own b: T) -> i32 => 0
+same[T]: fun(a: T, b: T) -> i32 => 0
 
-identity[T]: fun(own value: T) -> T => value
+identity[T]: fun(value: T) -> T => value
 
 plain: fun(value: i32) -> i32 => value
 
-keep[T: noref]: fun(own value: T) -> i32 => 0
+keep[T: noref]: fun(value: T) -> i32 => 0
 
 Box[T]: rec
 {

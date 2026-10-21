@@ -33,11 +33,6 @@ Error at method_receivers.ce:42:2
 42 │ Unit.make(2).restore(1)
      ╘══════════╛ Cannot mutably borrow unstored values
 
-Hint at method_receivers.ce:44:13
-43 │ var other = Unit.make(3)
-44 │ val view = imm other
-                ╘═╛ Redundant 'imm'
-
 Error at method_receivers.ce:45:2
 44 │ val view = imm other
 45 │ view.restore(1)

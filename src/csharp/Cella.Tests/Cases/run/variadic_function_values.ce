@@ -54,13 +54,13 @@ sum: fun(...values: View[i32]) -> i32
 	ret total
 }
 
-forward: fun(sink: fun[str, ...View[Arg]], template: str, ...args: View[Arg])
+forward: fun(imm sink: fun[str, ...View[Arg]], template: str, ...args: View[Arg])
 {
 	sink(template, ...args)
 	sink("extra", 7)
 }
 
-apply[T: copy + noref]: fun(f: fun[...View[T] -> T], a: T, b: T) -> T => f(a, b)
+apply[T: copy + noref]: fun(imm f: fun[...View[T] -> T], a: T, b: T) -> T => f(a, b)
 
 bound[F: fun[...View[i32] -> i32]]: fun(imm f: F) -> i32 => f(4, 5, 6)
 

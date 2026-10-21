@@ -1,6 +1,6 @@
 mod test
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Token: rec
 	}
 }
 
-Inner: rec
+Inner: own rec
 {
 	token: Token
 
@@ -18,20 +18,20 @@ Inner: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	first: Token
 	inner: Inner
 
-	split: fun(own p: Pair) -> Token => own p.first
+	split: fun(p: Pair) -> Token => p.first
 
-	deep: fun(own self) -> Token => own self.inner.token
+	deep: fun(self) -> Token => self.inner.token
 
 	drop: op
 	{
 	}
 }
 
-take: fun(own p: Pair) -> Token => own p.first
+take: fun(p: Pair) -> Token => p.first
 
 main: fun -> i32 => 0

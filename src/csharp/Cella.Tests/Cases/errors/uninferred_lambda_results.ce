@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-transform[T, U]: fun(own value: T, f: fun[own T -> U]) -> U => f(own value)
+transform[T, U]: fun(value: T, imm f: fun[T -> U]) -> U => f(value)
 
 main: fun -> i32
 {

@@ -1,0 +1,6 @@
+Error at mode_overloads.ce:12:2
+11 │ 
+12 │ drop: op
+     ╘══╛ Cannot declare 'drop' in records that aren't 'own'
+
+[compilation failed]

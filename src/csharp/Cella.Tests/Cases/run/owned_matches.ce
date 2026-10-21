@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -24,13 +24,13 @@ Effect: enum
 }
 
 make: fun(id: i32) -> Effect => Effect.hold(Buffer(id))
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 
 rvalue: fun -> i32
 {
 	match make(1)
 	{
-		hold(val buffer) => ret take(own buffer)
+		hold(val buffer) => ret take(buffer)
 		else => ret 0
 	}
 }
@@ -38,9 +38,9 @@ rvalue: fun -> i32
 moved: fun -> i32
 {
 	val effect = Effect.pair(Buffer(2), Buffer(3))
-	match own effect
+	match effect
 	{
-		pair(val first, _) => ret take(own first)
+		pair(val first, _) => ret take(first)
 		else => ret 0
 	}
 }
@@ -49,12 +49,12 @@ bindings: fun -> i32
 {
 	val effect = make(4)
 	var total = 0
-	match own effect
+	match effect
 	{
 		hold(var buffer) =>
 		{
 			buffer.id += 10
-			total = take(own buffer)
+			total = take(buffer)
 		}
 		else => {}
 	}
@@ -81,14 +81,14 @@ copies: fun -> i32
 condition: fun -> i32
 {
 	if make(6) is hold(val buffer)
-		ret take(own buffer)
+		ret take(buffer)
 
 	ret 0
 }
 
 value: fun -> i32 => match make(7)
 {
-	hold(val buffer) => take(own buffer)
+	hold(val buffer) => take(buffer)
 	else => 0
 }
 

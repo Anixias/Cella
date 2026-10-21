@@ -3,11 +3,6 @@ Hint at borrow_sources.ce:59:6
 59 │     var holder = Holder(Buffer(1), Buffer(2))
              ╘════╛ 'holder' is never changed
 
-Hint at borrow_sources.ce:60:14
-59 │ var holder = Holder(Buffer(1), Buffer(2))
-60 │ val first = imm holder.first
-                 ╘═╛ Redundant 'imm'
-
 Hint at borrow_sources.ce:64:6
 63 │ 
 64 │ var x = 10

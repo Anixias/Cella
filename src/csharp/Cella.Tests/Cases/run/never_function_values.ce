@@ -22,12 +22,12 @@ stop: fun(a: i32, b: i32) -> never
 
 sum: fun(a: i32, b: i32) -> Big => Big(a, b, 0, 0)
 
-pick: fun(f: fun[i32, i32 -> Big]) -> i32 => 1
-pick: fun(f: fun[i32, i32 -> never]) -> i32 => 2
+pick: fun(imm f: fun[i32, i32 -> Big]) -> i32 => 1
+pick: fun(imm f: fun[i32, i32 -> never]) -> i32 => 2
 
-borrow: fun(handler: fun[i32, i32 -> Big]) -> i64 => handler(1, 2).b
-keep: fun(own handler: fun[i32, i32 -> Big]) -> i64 => handler(8, 9).a
-code: fun(own handler: fun[i32 -> i32]) -> i32 => handler(30)
+borrow: fun(imm handler: fun[i32, i32 -> Big]) -> i64 => handler(1, 2).b
+keep: fun(handler: fun[i32, i32 -> Big]) -> i64 => handler(8, 9).a
+code: fun(handler: fun[i32 -> i32]) -> i32 => handler(30)
 
 main: fun -> i32
 {

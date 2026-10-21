@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -20,10 +20,10 @@ Result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		ok(own value) => value
-		err(own error) => ret Result.err(own error)
+		ok(val value) => value
+		err(val error) => ret Result.err(error)
 	}
 }
 
@@ -32,9 +32,9 @@ Option[T]: enum
 	none
 	some(value: T)
 
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		some(own value) => value
+		some(val value) => value
 		none => ret Option.none
 	}
 }
@@ -43,24 +43,24 @@ Wrap[T]: enum
 {
 	held(inner: Option[T])
 
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		held(own inner) => inner?
+		held(val inner) => inner?
 	}
 }
 
-Probe: rec
+Probe: own rec
 {
 	texture: Texture
 
-	?: op(own self) -> i32 => self.texture.id
+	?: op(self) -> i32 => self.texture.id
 }
 
 Sized[T]: enum
 {
 	held(value: T)
 
-	?: op(own self) -> usize => sizeOf(T)
+	?: op(self) -> usize => sizeOf(T)
 }
 
 parse: fun(n: i32) -> Result[i32, i32]

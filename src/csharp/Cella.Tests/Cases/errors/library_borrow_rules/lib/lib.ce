@@ -1,6 +1,6 @@
 mod lib
 
-Bag: pub rec
+Bag: pub own rec
 {
 	items: array[i32, 4]
 

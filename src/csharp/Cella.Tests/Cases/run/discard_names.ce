@@ -4,7 +4,7 @@ ext
 {
 	printf: fun(format: cstr, ...) -> i32
 }
-Note: rec
+Note: own rec
 {
 	id: i32
 
@@ -16,7 +16,7 @@ Note: rec
 
 handler: fun(_: i32, _: i32) -> i32 => 0
 
-each: fun(f: fun[i32, i32 -> i32]) -> i32 => f(1, 2)
+each: fun(imm f: fun[i32, i32 -> i32]) -> i32 => f(1, 2)
 
 main: fun -> i32
 {

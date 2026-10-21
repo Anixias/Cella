@@ -16,7 +16,7 @@ Vector3: rec
 	[]: op(mut self, i: usize) -> mut[f32] => mut self.values[i]
 }
 
-Bits: rec
+Bits: own rec
 {
 	words: req ptr[u64]
 

@@ -13,7 +13,7 @@ Range: rec
 	in: op(imm self) -> Walker => Walker(self.id, -1, self.count)
 }
 
-Walker: rec
+Walker: own rec
 {
 	id: i32
 	current: i32

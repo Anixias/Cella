@@ -6,7 +6,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-List[T: noref + copy]: pub rec
+List[T: noref + copy]: pub own rec
 {
 	items: req ptr[T]
 	length: pvt set usize
@@ -33,7 +33,7 @@ List[T: noref + copy]: pub rec
 	}
 }
 
-Scores: pub rec
+Scores: pub own rec
 {
 	values: array[i32, 3]
 

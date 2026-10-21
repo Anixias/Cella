@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,28 +9,28 @@ Buffer: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
 }
 
-Wrapper: rec
+Wrapper: own rec
 {
 	pair: Pair
 
 	drop: op
 	{
-		take(own self.pair.left)
+		take(self.pair.left)
 	}
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 
 whole: fun(mut buffer: Buffer)
 {
-	take(own buffer)
+	take(buffer)
 }
 
 field: fun(mut pair: Pair) -> i32
@@ -52,20 +52,20 @@ early: fun(mut buffer: Buffer, flag: bool) -> i32
 swap: fun(mut pair: Pair)
 {
 	val left = own pair.left
-	pair.left = own pair.right
-	pair.right = own left
+	pair.left = pair.right
+	pair.right = left
 }
 
-keep: fun(own built: Built) -> i32 => built.buffer.id
+keep: fun(built: Built) -> i32 => built.buffer.id
 
-Built: rec
+Built: own rec
 {
 	buffer: Buffer
 
 	new: op(id: i32)
 	{
 		self.buffer = make(id)
-		keep(own self)
+		keep(self)
 	}
 }
 

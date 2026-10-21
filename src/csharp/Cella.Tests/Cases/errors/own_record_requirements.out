@@ -1,0 +1,48 @@
+Error at own_record_requirements.ce:41:2
+40 │ {
+41 │     drop: op {}
+         ╘══╛ Cannot declare 'drop' in records that aren't 'own'
+
+Error at own_record_requirements.ce:46:8
+45 │ {
+46 │     file: File
+               ╘══╛ Cannot store owning values in records that aren't 'own'
+
+Error at own_record_requirements.ce:51:8
+50 │ {
+51 │     file: Option[File]
+               ╘══════════╛ Cannot store owning values in records that aren't 'own'
+
+Error at own_record_requirements.ce:56:8
+55 │ {
+56 │     cell: Cell[T]
+               ╘═════╛ Cannot store owning values in records that aren't 'own'
+
+Error at own_record_requirements.ce:61:9
+60 │ {
+61 │     token: Token
+                ╘═══╛ Cannot store owning values in records that aren't 'own'
+
+Error at own_record_requirements.ce:68:2
+67 │ 
+68 │ drop: op {}
+     ╘══╛ Cannot declare 'drop' in records that aren't 'own'
+
+Error at own_record_requirements.ce:81:15
+80 │ {
+81 │     opened(file: File)
+                      ╘══╛ Cannot store owning values in enums that aren't 'own'
+
+Error at own_record_requirements.ce:98:27
+97 │ val held = Holder[File](Option.none)
+98 │ ret copy(numbers).left + copy(files).left.handle + copy(held).value
+                              ╘══╛ 'copy' requires 'T: copy'
+                                 | 'Pair[File, File]' can't be copied
+
+Error at own_record_requirements.ce:98:53
+97 │ val held = Holder[File](Option.none)
+98 │ ret copy(numbers).left + copy(files).left.handle + copy(held).value
+                                                        ╘══╛ 'copy' requires 'T: copy'
+                                                           | 'Holder[File]' can't be copied
+
+[compilation failed]

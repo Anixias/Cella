@@ -45,7 +45,7 @@ Slot[K: trait, T: K]: rec
 
 measure: fun(imm shape: dyn[Shape]) -> f64 => shape.area()
 
-apply[K: trait, T: K]: fun(imm value: T, action: fun[imm dyn[K] -> f64]) -> f64 => action(imm value)
+apply[K: trait, T: K]: fun(imm value: T, imm action: fun[imm dyn[K] -> f64]) -> f64 => action(imm value)
 
 wrap[K: trait, T: K]: fun(value: ptr[T]) -> Cell[K] => Cell[K].of(value)
 

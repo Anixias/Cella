@@ -12,7 +12,7 @@ Dup: trait
 
 i32: impl Eq
 
-Text: rec
+Text: own rec
 {
 	id: i32
 

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -21,15 +21,15 @@ Point: rec
 	y: i32
 }
 
-Player: rec
+Player: own rec
 {
 	skin: Texture
 	hp: i32
 
-	retire: fun(own self) -> i32 => self.skin.id
+	retire: fun(self) -> i32 => self.skin.id
 }
 
-Sprite: rec
+Sprite: own rec
 {
 	texture: Texture
 
@@ -39,13 +39,13 @@ Sprite: rec
 	}
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	full(texture: Texture)
 }
 
-Countdown: rec
+Countdown: own rec
 {
 	value: i32
 
@@ -63,61 +63,61 @@ Countdown: rec
 	}
 }
 
-take: fun(own texture: Texture) -> i32 => texture.id
+take: fun(texture: Texture) -> i32 => texture.id
 
-shift: fun(own point: Point) -> i32 => point.x + point.y
+shift: fun(point: Point) -> i32 => point.x + point.y
 
 count: fun(imm textures: array[Texture, 2]) -> i32 => textures[0].id + textures[1].id
 
-pass: fun(own texture: Texture) -> Texture => texture
+pass: fun(texture: Texture) -> Texture => texture
 
-choose: fun(own slot: Slot, own fallback: Texture) -> Texture => match own slot
+choose: fun(slot: Slot, fallback: Texture) -> Texture => match slot
 {
-	full(own texture) => texture
+	full(val texture) => texture
 	empty => fallback
 }
 
 swap: fun(mut a: Texture, mut b: Texture)
 {
 	val kept = own a
-	a = own b
-	b = own kept
+	a = b
+	b = kept
 }
 
 arguments: fun
 {
 	val texture = Texture(1)
 	val point = Point(2, 3)
-	printf("arguments %d %d %d\n", take(own texture), take(Texture(2)), shift(point))
+	printf("arguments %d %d %d\n", take(texture), take(Texture(2)), shift(point))
 }
 
 storing: fun
 {
 	val a = Texture(3)
 	val b = Texture(4)
-	val sprite = Sprite(own a)
-	val slot = Slot.full(own b)
+	val sprite = Sprite(a)
+	val slot = Slot.full(b)
 	var current = Texture(5)
 	val next = Texture(6)
-	current = own next
-	val typed: Texture = own current
+	current = next
+	val typed: Texture = current
 	printf("storing %d\n", typed.id)
 }
 
 declarations: fun
 {
 	val original = Texture(7)
-	val view = original
+	val view = imm original
 	printf("view %d %d\n", view.id, original.id)
-	val taken = own original
+	val taken = original
 	printf("taken %d\n", taken.id)
 	val textures = [Texture(8), Texture(9)]
 	var i: usize = 1
-	val first = textures[0]
+	val first = imm textures[0]
 	val picked = textures[i]
 	printf("textures %d %d %d\n", first.id, picked.id, count(imm textures))
 	val player = Player(Texture(10), 5)
-	val skin = player.skin
+	val skin = imm player.skin
 	printf("skin %d %d\n", skin.id, player.retire())
 	val sprite = Sprite(Texture(11))
 	val inner = sprite.texture
@@ -143,7 +143,7 @@ swaps: fun
 loops: fun
 {
 	val cursor = Countdown(2)
-	for left in own cursor
+	for left in cursor
 		printf("left %d\n", left)
 }
 

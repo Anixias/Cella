@@ -7,7 +7,7 @@ ext
 
 Runner: trait
 {
-	run: fun(imm self, f: fun[i32 -> i32]) -> i32
+	run: fun(imm self, imm f: fun[i32 -> i32]) -> i32
 	make: fun(imm self) -> ext fun[i32 -> i32]
 }
 

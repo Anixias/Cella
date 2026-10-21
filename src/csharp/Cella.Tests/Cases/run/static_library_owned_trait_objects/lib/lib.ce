@@ -7,14 +7,14 @@ ext
 	free: fun(memory: ptr)
 }
 
-Boxed[K: trait]: pub rec
+Boxed[K: trait]: pub own rec
 {
 	object: ptr[dyn[K]]
 
-	of[T: K]: fun(own value: T) -> Boxed[K]
+	of[T: K]: fun(value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = own value
+		own *memory = value
 		ret Boxed[K](memory)
 	}
 
@@ -33,7 +33,7 @@ Shape: pub trait
 	area: fun(imm self) -> f64
 }
 
-Circle: pub rec impl Shape
+Circle: pub own rec impl Shape
 {
 	radius: f64
 

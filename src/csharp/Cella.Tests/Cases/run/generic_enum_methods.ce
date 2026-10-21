@@ -12,20 +12,20 @@ Option[T]: enum
 
 	isSome: get(imm self) -> bool => self is some(_)
 
-	orElse: fun(own self, own fallback: T) -> T
+	orElse: fun(self, fallback: T) -> T
 	{
-		match own self
+		match self
 		{
-			some(own v) => ret v
+			some(val v) => ret v
 			none => ret fallback
 		}
 	}
 
-	map[U]: fun(own self, change: fun[own T -> U]) -> Option[U]
+	map[U]: fun(self, imm change: fun[T -> U]) -> Option[U]
 	{
-		match own self
+		match self
 		{
-			some(own v) => ret Option.some(change(own v))
+			some(val v) => ret Option.some(change(v))
 			none => ret Option.none
 		}
 	}
@@ -40,33 +40,33 @@ Slot[T: noref]: enum
 
 	created: var i32 = 0
 
-	put: fun(mut self, own value: T)
+	put: fun(mut self, value: T)
 	{
 		match mut self
 		{
-			filled(val current) => current = own value
-			vacant => self = Slot.filled(own value)
+			filled(val current) => current = value
+			vacant => self = Slot.filled(value)
 		}
 	}
 
-	make: fun(own value: T) -> Slot[T]
+	make: fun(value: T) -> Slot[T]
 	{
 		created += 1
-		ret Slot.filled(own value)
+		ret Slot.filled(value)
 	}
 }
 
-double: fun(own n: i32) -> i64 => i64(n) * 2
+double: fun(n: i32) -> i64 => i64(n) * 2
 
-find[T]: fun(own value: T, present: bool) -> Option[T]
+find[T]: fun(value: T, present: bool) -> Option[T]
 {
 	if present
-		ret Option.some(own value)
+		ret Option.some(value)
 
 	ret Option.none
 }
 
-either[T]: fun(own first: Option[T], own second: Option[T]) -> Option[T]
+either[T]: fun(first: Option[T], second: Option[T]) -> Option[T]
 {
 	if first.isSome
 		ret first

@@ -5,12 +5,12 @@ Hint at borrowed_moves.ce:27:1
 
 Error at borrowed_moves.ce:29:11
 28 │ {
-29 │     ret take(buffer) + take(holder.buffer) + takeNumber(own n)
+29 │     ret take(buffer) + take(holder.buffer) + takeNumber(n)
                   ╘════╛ Cannot move read-only parameters
 
 Error at borrowed_moves.ce:29:26
 28 │ {
-29 │     ret take(buffer) + take(holder.buffer) + takeNumber(own n)
+29 │     ret take(buffer) + take(holder.buffer) + takeNumber(n)
                                  ╘═══════════╛ Cannot move read-only parameters
 
 Hint at borrowed_moves.ce:32:1

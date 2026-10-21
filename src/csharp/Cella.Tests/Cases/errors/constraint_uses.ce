@@ -1,6 +1,6 @@
 mod test
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -42,13 +42,13 @@ Pair[A, B]: rec
 
 twin[T: copy]: fun(value: T) -> i32 => 1
 
-hold[T: drop]: fun(own value: T) -> i32 => 1
+hold[T: drop]: fun(value: T) -> i32 => 1
 
 make[T: new]: fun -> T => T()
 
 forward[T]: fun(imm value: T) -> i32 => imm imm imm imm imm imm imm imm imm imm imm twin(value)
 
-relay[T]: fun(own value: T) -> i32 => hold(value)
+relay[T]: fun(value: T) -> i32 => hold(value)
 
 build[T]: fun -> T => make[T]()
 

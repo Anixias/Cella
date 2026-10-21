@@ -5,9 +5,9 @@ Counted[T]: pub rec
 	value: T
 	made: var i32 = 0
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
-		self.value = own value
+		self.value = value
 		made += 1
 	}
 }

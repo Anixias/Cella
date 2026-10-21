@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -17,14 +17,14 @@ Texture: rec
 	}
 }
 
-TextureBox: rec
+TextureBox: own rec
 {
 	pointer: pvt ptr[Texture]
 
-	new: op(own texture: Texture)
+	new: op(texture: Texture)
 	{
 		self.pointer = ptr[Texture](malloc(sizeOf(Texture)))
-		own *self.pointer = own texture
+		own *self.pointer = texture
 	}
 
 	*: op(imm self) -> imm[Texture] => imm *self.pointer
@@ -36,7 +36,7 @@ TextureBox: rec
 	}
 }
 
-Shelf: rec
+Shelf: own rec
 {
 	textures: array[Texture, 2]
 
@@ -49,7 +49,7 @@ Shelf: rec
 	}
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	full(texture: Texture)

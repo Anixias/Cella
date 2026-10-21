@@ -8,10 +8,10 @@ ext
 over: fun(x: i32) -> i32 => x + 1
 over: fun(x: f64) -> f64 => x * 2.0
 
-ident[T]: fun(own x: T) -> T => own x
+ident[T]: fun(x: T) -> T => x
 
 twice[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 => f(f(x))
-again[F: fun[own i32 -> i32]]: fun(imm f: F, x: i32) -> i32 => f(f(x))
+again[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 => f(f(x))
 scaled[F: fun[f64 -> f64]]: fun(imm f: F, x: f64) -> f64 => f(x)
 
 main: fun -> i32

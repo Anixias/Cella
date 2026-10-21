@@ -10,7 +10,7 @@ Token: ref rec
 	text: str
 }
 
-Box: rec
+Box: own rec
 {
 	id: i32
 
@@ -20,7 +20,7 @@ Box: rec
 	}
 }
 
-call: fun(f: fun[]) => f()
+call: fun(imm f: fun[]) => f()
 
 main: fun -> i32
 {
@@ -48,10 +48,10 @@ main: fun -> i32
 
 	var held = Box(1)
 	val replace = fun { held = Box(2) }
-	val before = held
+	val before = imm held
 	printf("%d\n", before.id)
 	replace()
-	val after = held
+	val after = imm held
 	printf("%d\n", after.id)
 	ret 0
 }

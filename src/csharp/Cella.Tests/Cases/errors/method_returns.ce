@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Enemy: rec
+Enemy: own rec
 {
 	name: Buffer
 	hp: i32
@@ -34,7 +34,7 @@ stronger: fun(imm a: Enemy, imm b: Enemy) -> imm[Enemy]
 	ret imm b
 }
 
-Referee: rec
+Referee: own rec
 {
 	rounds: i32
 	best: Enemy
@@ -54,7 +54,7 @@ Referee: rec
 
 	leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] => other.leader()
 
-	keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] => imm enemy
+	keep: fun(imm self, enemy: Enemy) -> imm[Enemy] => imm enemy
 
 	leader: fun(imm self) -> imm[Enemy] => imm self.best
 
@@ -67,10 +67,10 @@ Point: rec
 
 	get: fun(imm self) -> imm[i32] => imm self.x
 
-	take: fun(own self) -> imm[i32] => imm self.x
+	take: fun(self) -> imm[i32] => imm self.x
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	held(buffer: Buffer)

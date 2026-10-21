@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Unit: rec
+Unit: own rec
 {
 	hp: i32
 	buffer: Buffer

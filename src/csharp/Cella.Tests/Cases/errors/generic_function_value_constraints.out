@@ -1,18 +1,13 @@
-Hint at generic_function_value_constraints.ce:15:38
-14 │ 
-15 │ keep[T: copy]: fun(own x: T) -> T => own x
-                                          ╘═╛ Redundant 'own'
-
 Error at generic_function_value_constraints.ce:28:33
 27 │ {
 28 │     val g: fun[imm Point -> i32] = h
                                         ^ 'h' requires 'T: Hash'
                                         | 'Point' doesn't implement 'Hash'
 
-Error at generic_function_value_constraints.ce:29:35
+Error at generic_function_value_constraints.ce:29:31
 28 │ val g: fun[imm Point -> i32] = h
-29 │ val k: fun[own Guard -> Guard] = keep
-                                      ╘══╛ 'keep' requires 'T: copy'
-                                         | 'Guard' can't be copied
+29 │ val k: fun[Guard -> Guard] = keep
+                                  ╘══╛ 'keep' requires 'T: copy'
+                                     | 'Guard' can't be copied
 
 [compilation failed]

@@ -1,15 +1,5 @@
-Hint at generic_call_mismatches.ce:3:30
-2 │ 
-3 │ id[T]: fun(own a: T) -> T => own a
-                                 ╘═╛ Redundant 'own'
-
-Hint at generic_call_mismatches.ce:4:42
-3 │ id[T]: fun(own a: T) -> T => own a
-4 │ pick[T]: fun(own a: T, own b: T) -> T => own a
-                                             ╘═╛ Redundant 'own'
-
 Hint at generic_call_mismatches.ce:5:5
-4 │ pick[T]: fun(own a: T, own b: T) -> T => own a
+4 │ pick[T]: fun(a: T, b: T) -> T => a
 5 │ sum[N: const usize]: fun(values: array[i32, N]) -> i32 => 0
         ^ 'N' doesn't match {camelCase}
 

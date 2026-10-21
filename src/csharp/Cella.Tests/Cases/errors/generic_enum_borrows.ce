@@ -5,9 +5,9 @@ Option[T]: enum
 	none
 	some(value: T)
 
-	put: fun(mut self, own value: T)
+	put: fun(mut self, value: T)
 	{
-		self = Option.some(own value)
+		self = Option.some(value)
 	}
 }
 

@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,13 +9,13 @@ Buffer: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
 }
 
-Wrapper: rec
+Wrapper: own rec
 {
 	pair: Pair
 
@@ -24,18 +24,18 @@ Wrapper: rec
 	}
 }
 
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 
 whole: fun(mut buffers: array[Buffer, 2])
 {
 	for mut buffer in buffers
-		take(own buffer)
+		take(buffer)
 }
 
 field: fun(mut pairs: array[Pair, 2])
 {
 	for mut pair in pairs
-		take(own pair.left)
+		take(pair.left)
 }
 
 broken: fun(mut buffers: array[Buffer, 2])
@@ -46,7 +46,7 @@ broken: fun(mut buffers: array[Buffer, 2])
 		if old.id == 1
 			break
 
-		buffer = own old
+		buffer = old
 	}
 }
 
@@ -58,7 +58,7 @@ returned: fun(mut buffers: array[Buffer, 2]) -> i32
 		if old.id == 1
 			ret 1
 
-		buffer = own old
+		buffer = old
 	}
 
 	ret 0
@@ -69,14 +69,14 @@ guarded: fun(mut wrappers: array[Wrapper, 2])
 	for mut wrapper in wrappers
 	{
 		val left = own wrapper.pair.left
-		wrapper.pair.left = own left
+		wrapper.pair.left = left
 	}
 }
 
 readOnly: fun(mut buffers: array[Buffer, 2])
 {
 	for imm buffer in buffers
-		take(own buffer)
+		take(buffer)
 }
 
 refilled: fun(mut pairs: array[Pair, 2])
@@ -84,8 +84,8 @@ refilled: fun(mut pairs: array[Pair, 2])
 	for mut pair in pairs
 	{
 		val left = own pair.left
-		pair.left = own pair.right
-		pair.right = own left
+		pair.left = pair.right
+		pair.right = left
 	}
 }
 

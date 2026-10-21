@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-N: rec
+N: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ N: rec
 	}
 }
 
-W: rec
+W: own rec
 {
 	a: N
 	b: N
@@ -25,11 +25,11 @@ W: rec
 	{
 		printf("drop W\n")
 		if self.flag
-			take(own self.a)
+			take(self.a)
 	}
 }
 
-take: fun(own n: N) => printf("take %d\n", n.id)
+take: fun(n: N) => printf("take %d\n", n.id)
 
 main: fun -> i32
 {

@@ -102,7 +102,7 @@ public sealed class EventLinearizer
 			switch (value)
 			{
 				case MoveValue v:
-					AddAccess(v.Place, AccessKind.Move, v.IsImplicit);
+					AddAccess(v.Place, AccessKind.Move);
 					break;
 				
 				case AssignValue v:
@@ -257,11 +257,11 @@ public sealed class EventLinearizer
 		}
 	}
 	
-	private void AddAccess(Value place, AccessKind kind, bool isImplicit = false)
+	private void AddAccess(Value place, AccessKind kind)
 	{
 		AddOperands(place);
 		if (FindPlace(place) is { } target)
-			events.Add(new AccessEvent(target, kind, place.SourceLocation, place.Type, isImplicit));
+			events.Add(new AccessEvent(target, kind, place.SourceLocation, place.Type));
 	}
 	
 	private void AddOperands(Value place)

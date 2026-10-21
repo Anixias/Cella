@@ -4,16 +4,16 @@ Box[T]: rec
 {
 	value: T
 
-	copy: fun(own self) -> T
+	copy: fun(self) -> T
 	{
-		val first = own self.value
-		val second = own first
+		val first = self.value
+		val second = first
 		ret first
 	}
 
-	store: fun(mut self, own value: T)
+	store: fun(mut self, value: T)
 	{
-		self.value = own value
+		self.value = value
 	}
 }
 

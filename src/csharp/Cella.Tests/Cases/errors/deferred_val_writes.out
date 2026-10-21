@@ -57,7 +57,7 @@ Hint at deferred_val_writes.ce:58:1
      ╘═══╛ 'moved' is never used
 
 Error at deferred_val_writes.ce:63:2
-62 │ take(own b)
+62 │ take(b)
 63 │ b = make(2)
      ^ Cannot reassign values
      | Assigned on line 61

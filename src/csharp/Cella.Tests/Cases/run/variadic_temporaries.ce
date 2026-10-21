@@ -19,7 +19,7 @@ View[T]: ref rec
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
@@ -51,7 +51,7 @@ main: fun -> i32
 	val first = Name(1)
 	printf("%zu\n", count(Name(2), Name(3)))
 	printf("after\n")
-	printf("%zu\n", count(own first))
+	printf("%zu\n", count(first))
 	printf("moved\n")
 
 	show(say(1), say(2), say(3))

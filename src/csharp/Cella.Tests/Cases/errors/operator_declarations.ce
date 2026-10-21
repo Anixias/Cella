@@ -17,7 +17,7 @@ Point: rec
 
 	+=: op(a: Point, b: Point) { }
 	-=: op(self, other: Point) { }
-	*=: op(own self, other: Point) { }
+	*=: op(self, other: Point) { }
 	/=: op(mut self) { }
 	%=: op(mut self, other: Point) -> Point => other
 	&=: op(mut self, mut other: Point) { }

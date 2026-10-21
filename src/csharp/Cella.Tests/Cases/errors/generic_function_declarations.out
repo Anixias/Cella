@@ -1,6 +1,6 @@
 Error at generic_function_declarations.ce:7:6
 6 │ 
-7 │ new[V]: op(own value: T)
+7 │ new[V]: op(value: T)
         ^ Cannot declare type parameters on constructors
 
 Error at generic_function_declarations.ce:12:8

@@ -35,12 +35,12 @@ Hint at ext_type_parameters.ce:22:7
 
 Error at ext_type_parameters.ce:24:9
 23 │ 
-24 │ both[T: ext + drop]: fun(own value: T) -> i32 => 0
+24 │ both[T: ext + drop]: fun(value: T) -> i32 => 0
              ╘═╛ Cannot combine 'ext' and 'drop'
 
 Error at ext_type_parameters.ce:24:15
 23 │ 
-24 │ both[T: ext + drop]: fun(own value: T) -> i32 => 0
+24 │ both[T: ext + drop]: fun(value: T) -> i32 => 0
                    ╘══╛ Cannot combine 'ext' and 'drop'
 
 [compilation failed]

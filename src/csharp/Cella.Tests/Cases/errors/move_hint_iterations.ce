@@ -1,6 +1,6 @@
 mod test
 
-N: rec
+N: own rec
 {
 	id: i32
 
@@ -9,13 +9,13 @@ N: rec
 	}
 }
 
-P: rec
+P: own rec
 {
 	left: N
 	right: N
 }
 
-take: fun(own n: N) -> i32 => n.id
+take: fun(n: N) -> i32 => n.id
 show: fun(imm n: N) -> i32 => n.id
 showP: fun(imm p: P) -> i32 => 0
 
@@ -25,7 +25,7 @@ loopUse: fun -> i32
 	for i in 0..3
 	{
 		show(imm a)
-		take(own a)
+		take(a)
 	}
 
 	ret 0
@@ -35,9 +35,9 @@ branches: fun(flag: bool) -> i32
 {
 	val p = P(N(1), N(2))
 	if flag
-		take(own p.left)
+		take(p.left)
 	else
-		take(own p.right)
+		take(p.right)
 
 	ret showP(imm p)
 }
@@ -46,7 +46,7 @@ maybe: fun(flag: bool) -> i32
 {
 	val a = N(1)
 	if flag
-		take(own a)
+		take(a)
 
 	ret show(imm a)
 }

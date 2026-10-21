@@ -6,7 +6,7 @@ Error at ext_dyn_definitions.ce:10:21
 Error at ext_dyn_definitions.ce:13:23
 12 │ 
 13 │ visit: ext fun(shape: dyn[Shape]) -> i32 => shape.area()
-                           ╘════════╛ Cannot use 'dyn[Shape]' in 'ext' signatures
+                           ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at ext_dyn_definitions.ce:14:34
 13 │ visit: ext fun(shape: dyn[Shape]) -> i32 => shape.area()

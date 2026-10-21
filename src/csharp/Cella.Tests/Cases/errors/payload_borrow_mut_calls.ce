@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -26,7 +26,7 @@ Effect: enum
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	effect: Effect
 }

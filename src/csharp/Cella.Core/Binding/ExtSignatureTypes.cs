@@ -14,7 +14,7 @@ public sealed class ExtSignatureTypes(TypePool typePool)
 	public void Add(TypeSymbol type, ITypeNode node, bool isPassed) =>
 		_types.Add((type, node, isPassed, Containment?.Current ?? default));
 	
-	public static bool PassesByValue(ParameterMode mode) => mode is ParameterMode.ReadOnly or ParameterMode.Own;
+	public static bool PassesByValue(ParameterMode mode) => mode == ParameterMode.Value;
 	
 	public void Report(DiagnosticList diagnostics)
 	{

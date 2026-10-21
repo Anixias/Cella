@@ -4,7 +4,7 @@ Button: rec
 {
 	onClick: fun[]
 
-	new: op(onClick: fun[])
+	new: op(imm onClick: fun[])
 	{
 		self.onClick = onClick
 	}
@@ -32,34 +32,34 @@ beep: fun
 {
 }
 
-keep: fun(own onClick: fun[])
+keep: fun(onClick: fun[])
 {
 }
 
-attach: fun(mut button: Button, onClick: fun[])
+attach: fun(mut button: Button, imm onClick: fun[])
 {
 	button.onClick = onClick
 }
 
-remember: fun(onClick: fun[])
+remember: fun(imm onClick: fun[])
 {
 	saved = onClick
 	keep(onClick)
 	val local: fun[] = onClick
 }
 
-back: fun(onClick: fun[]) -> fun[] => onClick
+back: fun(imm onClick: fun[]) -> fun[] => onClick
 
-wrap: fun(onClick: fun[]) -> Plain => Plain(onClick)
+wrap: fun(imm onClick: fun[]) -> Plain => Plain(onClick)
 
-call: fun(visit: fun[i32])
+call: fun(imm visit: fun[i32])
 {
 	visit(1, 2)
 }
 
 main: fun -> i32
 {
-	val lambda = fun(f: ref fun[i32]) { }
+	val lambda = fun(imm f: ref fun[i32]) { }
 	val base = 1
 	keep(fun { val copy = base })
 	ret 0

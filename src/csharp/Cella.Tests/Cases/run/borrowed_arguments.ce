@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -24,7 +24,7 @@ Plain: rec
 	id: i32
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	matched: bool
@@ -36,7 +36,7 @@ Holder: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	owned(buffer: Buffer)

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Value: rec
+Value: own rec
 {
 	x: i32
 
@@ -17,11 +17,11 @@ Value: rec
 	}
 }
 
-Owned: rec
+Owned: own rec
 {
 	n: i32
 
-	as: op(own self) -> Value => Value(self.n)
+	as: op(self) -> Value => Value(self.n)
 
 	drop: op
 	{
@@ -29,7 +29,7 @@ Owned: rec
 	}
 }
 
-Lent: rec
+Lent: own rec
 {
 	n: i32
 
@@ -47,7 +47,7 @@ main: fun -> i32
 	printf("last %d\n", last)
 
 	val owned = Owned(9)
-	val named = Value(1) < Value(2) < own owned
+	val named = Value(1) < Value(2) < owned
 	printf("named %d\n", named)
 
 	val middle = Value(1) < Lent(2) < Value(3)

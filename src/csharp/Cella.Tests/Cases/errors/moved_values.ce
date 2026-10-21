@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -10,13 +10,13 @@ Buffer: rec
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 show: fun(imm buffer: Buffer) -> i32 => buffer.id
 
 again: fun -> Buffer
 {
 	val a = make(1)
-	take(own a)
+	take(a)
 	take(a)
 	show(imm a)
 	ret a
@@ -26,7 +26,7 @@ sometimes: fun(flag: bool) -> i32
 {
 	val a = make(1)
 	if flag
-		take(own a)
+		take(a)
 
 	ret a.id
 }
@@ -44,7 +44,7 @@ repeated: fun -> i32
 reassigned: fun -> i32
 {
 	var a = make(1)
-	val b = own a
+	val b = a
 	a = make(2)
 	val c = own (a = make(3))
 	ret a.id + b.id + c.id
@@ -53,7 +53,7 @@ reassigned: fun -> i32
 constant: fun -> i32
 {
 	val a = Buffer(1)
-	take(own a)
+	take(a)
 	ret a.id
 }
 

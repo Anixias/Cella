@@ -223,7 +223,11 @@ public sealed partial class SignatureCollector
 					
 					break;
 				
-				case DestructorNode:
+				case DestructorNode destructor:
+					if (!node.IsOwn)
+						Diagnostics.Add(new(DiagnosticSeverity.Error, destructor.Keyword.SourceLocation,
+							"Cannot declare 'drop' in records that aren't 'own'"));
+					
 					CollectDestructor((FunctionSymbol)symbol, context);
 					break;
 				
@@ -264,6 +268,10 @@ public sealed partial class SignatureCollector
 			{
 				if (!node.IsRef && !TypePool.ContainsTypeParameters(type) && _typePool.HoldsBorrows(type))
 					ReportOn(member, ReportStoredBorrow(typeNode, node.Identifier, node.Modifiers, "records", "rec"));
+				
+				if (!node.IsOwn && _typePool.OwnsConcretely(type))
+					ReportOn(member, new(DiagnosticSeverity.Error, typeNode.SourceLocation,
+						"Cannot store owning values in records that aren't 'own'"));
 			}
 		}
 		

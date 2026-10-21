@@ -16,7 +16,7 @@ Plain: rec impl Runner
 {
 	base: i32
 
-	run: fun(self, f: fun[i32 -> i32]) -> i32 => f(self.base)
+	run: fun(self, imm f: fun[i32 -> i32]) -> i32 => f(self.base)
 	make: fun(self) -> ext fun[i32 -> i32] => abs
 }
 
@@ -29,7 +29,7 @@ Wrapper: rec
 {
 	value: i32
 
-	new: op(f: fun[i32 -> i32])
+	new: op(imm f: fun[i32 -> i32])
 	{
 		self.value = f(-12)
 	}
@@ -37,9 +37,9 @@ Wrapper: rec
 
 pick: fun -> ext fun[i32 -> i32] => abs
 
-takesFun: fun(f: fun[i32 -> i32]) -> i32 => f(-5)
+takesFun: fun(imm f: fun[i32 -> i32]) -> i32 => f(-5)
 
-consume: fun(maker: fun[-> fun[i32 -> i32]]) -> i32 => maker()(-6)
+consume: fun(imm maker: fun[-> fun[i32 -> i32]]) -> i32 => maker()(-6)
 
 viaTrait[T: Runner]: fun(imm value: T) -> i32 => value.run(pick()) + value.make()(-1)
 

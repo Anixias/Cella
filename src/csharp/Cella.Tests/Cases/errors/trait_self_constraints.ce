@@ -20,7 +20,7 @@ Twice: trait req copy + copy
 
 Mixed: trait req copy + drop
 
-Handle: rec
+Handle: own rec
 {
 	id: i32
 

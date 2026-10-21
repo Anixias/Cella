@@ -73,7 +73,7 @@ PointHolder: rec
 	count: i32
 }
 
-take: fun(own pos: Point) -> i32 => pos.x
+take: fun(pos: Point) -> i32 => pos.x
 describe: fun(file: File) -> i32 => file.handle
 describeOwner: fun(owner: Owner) -> i32 => owner.count
 describeHolder: fun(holder: PointHolder) -> i32 => holder.count
@@ -121,7 +121,7 @@ movedPart: fun -> i32
 {
 	var holder: PointHolder
 	holder.pos = Point(1, 2)
-	take(own holder.pos)
+	take(holder.pos)
 	holder.pos.x = 3
 	ret describeHolder(holder)
 }

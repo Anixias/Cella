@@ -27,7 +27,7 @@ nudge: fun(mut p: Point, dx: i32)
 	p.x += dx
 }
 
-bump: fun(own n: i32) -> i32
+bump: fun(n: i32) -> i32
 {
 	n += 1
 	ret n
@@ -38,7 +38,7 @@ tick: ext fun(mut count: i32)
 	count += 1
 }
 
-apply: fun(action: fun[mut i32, i32], mut target: i32)
+apply: fun(imm action: fun[mut i32, i32], mut target: i32)
 {
 	action(mut target, 4)
 }
@@ -58,7 +58,7 @@ main: fun -> i32
 	handler.callback(mut p, 5)
 	printf("%d %d\n", p.x, p.y)
 
-	var increment: fun[own i32 -> i32] = bump
+	var increment: fun[i32 -> i32] = bump
 	printf("%d\n", increment(4))
 
 	var exponent = 0

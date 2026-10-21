@@ -34,7 +34,7 @@ public sealed partial class Resolver
 		
 		var info = GetFunctionInfo(method, operand.Type);
 		var function = info.Symbol;
-		if (info.Signature.GetMode(0) != ParameterMode.Own || info.Signature.ReturnType is InvalidType ||
+		if (info.Signature.GetMode(0) != ParameterMode.Value || info.Signature.ReturnType is InvalidType ||
 		    _signatures.FindInlineContext(function) is not { } declaration ||
 		    FindQuestionBody(function) is not { } body || !IsSoundQuestionBody(function, declaration, body))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
@@ -108,7 +108,6 @@ public sealed partial class Resolver
 		{
 			Diagnostics = Diagnostics,
 			ExtSignatureTypes = current.ExtSignatureTypes,
-			CopiedParameters = current.CopiedParameters,
 			Containment = current.Containment,
 			EvaluateConstant = current.EvaluateConstant,
 			FindValueParameterUse = current.FindValueParameterUse,

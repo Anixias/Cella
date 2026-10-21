@@ -496,7 +496,8 @@ public sealed partial class SignatureCollector
 					? $"'{member.Name.Text}' is declared more than once in '{target.Name}'"
 					: DescribeConflict(member.Name.Text, GetDeclaredSignature(function, member.Block, declared),
 						others.Select(other => AlignTypeParameters(function, other.Function!,
-							GetDeclaredSignature(other.Function!, other.Block, declared))).OfType<FunctionSignature>());
+							GetDeclaredSignature(other.Function!, other.Block, declared))).OfType<FunctionSignature>(),
+						CountFixedModes(function, GetFunctionInfo(function).Signature));
 				
 				if (message is null)
 					continue;

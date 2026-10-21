@@ -6,9 +6,9 @@ Stack[T]: pub rec
 
 	created: var i32 = 0
 
-	new: op(own top: T)
+	new: op(top: T)
 	{
-		self.top = own top
+		self.top = top
 		Stack[T].created += 1
 	}
 

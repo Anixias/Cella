@@ -1,6 +1,6 @@
 mod test
 
-each: fun(f: fun[i32]) => f(1)
+each: fun(imm f: fun[i32]) => f(1)
 
 main: fun -> i32
 {

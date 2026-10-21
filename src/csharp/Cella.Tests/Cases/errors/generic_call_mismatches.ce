@@ -1,7 +1,7 @@
 mod test
 
-id[T]: fun(own a: T) -> T => own a
-pick[T]: fun(own a: T, own b: T) -> T => own a
+id[T]: fun(a: T) -> T => a
+pick[T]: fun(a: T, b: T) -> T => a
 sum[N: const usize]: fun(values: array[i32, N]) -> i32 => 0
 
 main: fun -> i32

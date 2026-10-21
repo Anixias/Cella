@@ -1,8 +1,8 @@
 mod test
 
-take[T]: fun(own t: T) -> i32 => 1
+take[T]: fun(t: T) -> i32 => 1
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -13,21 +13,21 @@ Holder[T]: rec
 {
 	t: T
 
-	?: op(own self) -> i32 => take(self.t)
+	?: op(self) -> i32 => take(self.t)
 }
 
-Pair: rec
+Pair: own rec
 {
 	t: Texture
 
-	?: op(own self) -> i32 => take(own self.t) + take(own self.t)
+	?: op(self) -> i32 => take(self.t) + take(self.t)
 }
 
 Plain: rec
 {
 	t: i32
 
-	?: op(own self) -> i32 => ret self.t
+	?: op(self) -> i32 => ret self.t
 }
 
 Result[T, E]: enum
@@ -35,10 +35,10 @@ Result[T, E]: enum
 	ok(value: T)
 	err(error: E)
 
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		ok(own value) => value
-		err(own error) => ret Result.err(own error)
+		ok(val value) => value
+		err(val error) => ret Result.err(error)
 	}
 }
 
@@ -46,9 +46,9 @@ Wrap[T]: enum
 {
 	held(inner: Result[T, i32])
 
-	?: op(own self) -> T => match own self
+	?: op(self) -> T => match self
 	{
-		held(own inner) => inner?
+		held(val inner) => inner?
 	}
 }
 

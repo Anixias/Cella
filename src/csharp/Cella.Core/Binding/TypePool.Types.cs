@@ -94,7 +94,7 @@ public sealed partial class TypePool
 	public TypeSymbol GetPassedType(TypeSymbol type, ParameterMode mode) => (mode, type) switch
 	{
 		(ParameterMode.Mut, not InvalidType) => GetPointerType(type),
-		(ParameterMode.ReadOnly or ParameterMode.Imm, FunctionType { IsExternal: false, IsRef: false } function) =>
+		(ParameterMode.Imm, FunctionType { IsExternal: false, IsRef: false } function) =>
 			GetRefFunctionType(function),
 		_ => type
 	};
@@ -216,7 +216,7 @@ public sealed partial class TypePool
 			FunctionKind.Method);
 		
 		var signature = new FunctionSignature([type, NativeSymbols.UIntSize], result, false,
-			[ParameterMode.Imm, ParameterMode.ReadOnly]);
+			[ParameterMode.Imm, ParameterMode.Value]);
 		
 		_nativeFunctions[function] = new FunctionInfo($"{type.Name}.{name}", function, signature, null, null, null);
 		return new MethodSymbol(name, function);
@@ -259,7 +259,7 @@ public sealed partial class TypePool
 		DynType dyn => dyn,
 		ArrayType array => FindValueDyn(array.ElementType),
 		FunctionType function => FindValueDyn(function.ReturnType) ?? function.ParameterTypes
-			.Where((_, i) => function.ParameterModes[i] == ParameterMode.Own)
+			.Where((_, i) => function.ParameterModes[i] == ParameterMode.Value)
 			.Select(FindValueDyn)
 			.FirstOrDefault(static dyn => dyn is not null),
 		_ => null

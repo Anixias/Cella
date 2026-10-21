@@ -1,7 +1,7 @@
 Error at ambiguous_trait_operators.ce:40:29
 39 │ 
 40 │ *: op(self) -> imm[i32] => imm self.value
-                                ╘════════════╛ Cannot return borrows of copied parameters
+                                ╘════════════╛ Cannot return borrows of by-value parameters
 
 Error at ambiguous_trait_operators.ce:92:56
 91 │ 

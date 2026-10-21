@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -42,7 +42,7 @@ Label: ref rec
 	}
 }
 
-Scope: ref rec
+Scope: own ref rec
 {
 	depth: mut[i32]
 
@@ -99,7 +99,7 @@ clear: fun(mut slot: Slot)
 	}
 }
 
-attach: fun(own token: Token, other: str) -> Token
+attach: fun(token: Token, other: str) -> Token
 {
 	token.text = other
 	ret token
@@ -167,7 +167,7 @@ main: fun -> i32
 	var steps = 0
 	var plain = Tally(mut steps, 0)
 	plain.step = view.id
-	val moved = own buffer
+	val moved = buffer
 	plain.count += plain.step
 
 	printf("%d %d %d %d\n", count, depth, steps, measure("four"))

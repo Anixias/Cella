@@ -1,5 +1,5 @@
 Error at unnamed_parameter_arguments.ce:5:35
-4 │ take: fun(own _: i32) -> i32 => 0
+4 │ take: fun(_: i32) -> i32 => 0
 5 │ build[T: new(i32)]: fun -> T => T(mut 1)
                                       ╘═╛ Only an argument to a 'mut' parameter can be marked 'mut'
 

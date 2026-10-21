@@ -17,7 +17,7 @@ doubler: val fun[i32 -> i32] = twice
 
 table: val array[fun[i32 -> i32], 1] = [triple]
 
-Inner: pvt rec
+Inner: pvt own rec
 {
 	value: i32
 
@@ -27,7 +27,7 @@ Inner: pvt rec
 	}
 }
 
-Outer: rec
+Outer: own rec
 {
 	inner: pvt Inner
 

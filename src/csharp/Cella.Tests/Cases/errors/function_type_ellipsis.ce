@@ -1,5 +1,5 @@
 mod test
 
-takes: fun(callback: fun[cstr, ...]) {}
+takes: fun(imm callback: fun[cstr, ...]) {}
 
 main: fun -> i32 => 0

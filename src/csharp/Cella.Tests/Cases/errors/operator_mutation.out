@@ -3,11 +3,6 @@ Hint at operator_mutation.ce:13:1
 13 │ bump: fun(p: Point)
      ╘══╛ 'bump' is never used
 
-Error at operator_mutation.ce:15:2
-14 │ {
-15 │     p += Point(1)
-         ^ Cannot mutably borrow read-only parameters
-
 Error at operator_mutation.ce:21:2
 20 │ val a = Point(1)
 21 │ a += Point(2)

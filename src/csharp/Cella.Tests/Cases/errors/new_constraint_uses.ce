@@ -30,7 +30,7 @@ Owned: rec
 {
 	n: i32
 
-	new: op(own value: i32)
+	new: op(value: i32)
 	{
 		self.n = value
 	}
@@ -50,7 +50,7 @@ make[T: new(i32)]: fun -> T => T(5)
 
 duplicate[T: new(T)]: fun(imm value: T) -> T => T(value)
 
-taking[T: new(own str, mut i32)]: fun -> i32 => 0
+taking[T: new(str, mut i32)]: fun -> i32 => 0
 
 forward[T]: fun -> T => make[T]()
 
@@ -58,7 +58,7 @@ text[T: new(str)]: fun -> T => T(5)
 
 unconstrained[T]: fun -> T => T(1)
 
-lost[T: new(i32)]: fun(own value: T) -> T => T(value)
+lost[T: new(i32)]: fun(value: T) -> T => T(value)
 
 implicit[T: new(mut i32)]: fun -> T
 {

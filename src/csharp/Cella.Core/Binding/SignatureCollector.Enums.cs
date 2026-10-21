@@ -59,6 +59,10 @@ public sealed partial class SignatureCollector
 				if (!node.IsRef && !TypePool.ContainsTypeParameters(types[i]) && _typePool.HoldsBorrows(types[i]))
 					Diagnostics.Add(ReportStoredBorrow(enumCase.Fields[i].Node!.Type, node.Identifier, node.Modifiers,
 						"enums", "enum"));
+				
+				if (!node.IsOwn && !node.IsExternal && _typePool.OwnsConcretely(types[i]))
+					Diagnostics.Add(new(DiagnosticSeverity.Error, enumCase.Fields[i].Node!.Type.SourceLocation,
+						"Cannot store owning values in enums that aren't 'own'"));
 			}
 			
 			payloads[enumCase] = types;

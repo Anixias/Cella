@@ -125,7 +125,7 @@ wholeOuter: fun -> i32
 	ret describeOuter(outer)
 }
 
-Closer: rec
+Closer: own rec
 {
 	id: i32
 
@@ -134,7 +134,7 @@ Closer: rec
 	}
 }
 
-Keeper: rec
+Keeper: own rec
 {
 	closer: Closer
 	count: i32

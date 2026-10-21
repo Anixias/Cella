@@ -50,11 +50,7 @@ public sealed partial class Resolver
 					parameter.Mode is not null, false));
 			
 			if (parameter.Type is { } typeNode)
-			{
 				types[i] = _typePool.GetPassedType(outer.ResolveType(typeNode), modes[i]);
-				if (modes[i] == ParameterMode.ReadOnly)
-					_copiedParameters.Add(types[i], parameter.Identifier.SourceLocation);
-			}
 			else if (target is not null && IsKnown(target.ParameterTypes[i], open))
 				types[i] = GetExpectedParameterType(target, i, modes[i]);
 			else if (hasInvalidTarget)

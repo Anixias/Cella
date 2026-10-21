@@ -221,8 +221,11 @@ public sealed unsafe partial class CodeGenerator
 	}
 	
 	private static bool TakesCopies(FunctionType declared, FunctionType passed) => declared.ParameterModes
-		.Where((mode, i) => i < passed.ParameterModes.Length && TakesCopy(passed.ParameterModes[i], mode))
+		.Where((mode, i) => i < passed.ParameterModes.Length && PassesDifferently(passed.ParameterModes[i], mode))
 		.Any();
+	
+	private static bool PassesDifferently(ParameterMode passed, ParameterMode declared) =>
+		TakesCopy(passed, declared) || TakesCopy(declared, passed);
 	
 	private static bool TakesCopy(ParameterMode passed, ParameterMode declared) =>
 		TypePool.PassesByPointer(passed) && !TypePool.PassesByPointer(declared);
@@ -230,10 +233,13 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef[] LoadCopies(FunctionType passed, FunctionType declared, LLVMValueRef[] args,
 		LLVMBuilderRef builder) =>
 	[
-		..args.Select((arg, i) => i < declared.ParameterTypes.Length &&
-		                          TakesCopy(passed.ParameterModes[i], declared.ParameterModes[i])
-			? LoadValue(builder, declared.ParameterTypes[i], arg, "argument")
-			: arg)
+		..args.Select((arg, i) => i >= declared.ParameterTypes.Length
+			? arg
+			: TakesCopy(passed.ParameterModes[i], declared.ParameterModes[i])
+				? LoadValue(builder, declared.ParameterTypes[i], arg, "argument")
+				: TakesCopy(declared.ParameterModes[i], passed.ParameterModes[i])
+					? SpillValue(builder, declared.ParameterTypes[i], arg, "argument")
+					: arg)
 	];
 	
 	private LLVMValueRef GetCallThunk(string name, FunctionType signature, TypeSymbol calledReturnType,

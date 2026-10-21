@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Source: rec
+Source: own rec
 {
 	id: i32
 
@@ -24,7 +24,7 @@ Target: rec
 
 FromSource: trait
 {
-	new: op(own s: Source)
+	new: op(s: Source)
 }
 
 Target: impl FromSource {}
@@ -36,9 +36,9 @@ Wrap[T]: rec
 	new: op(imm self) -> i64 => 42
 }
 
-lend[T: new(Source)]: fun(imm value: Source) -> T => T(value)
-take[T: new(own Source)]: fun(own value: Source) -> T => T(own value)
-make[T: FromSource]: fun(own value: Source) -> T => T(own value)
+lend[T: new(imm Source)]: fun(imm value: Source) -> T => T(imm value)
+take[T: new(Source)]: fun(value: Source) -> T => T(value)
+make[T: FromSource]: fun(value: Source) -> T => T(value)
 unwrap[R: new(Wrap[i32])]: fun(w: Wrap[i32]) -> R => R(w)
 
 main: fun -> i32

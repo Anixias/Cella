@@ -4,7 +4,7 @@ ext
 {
 	printf: fun(format: cstr, ...) -> i32
 }
-consume: fun(own bag: lib.Bag) {}
+consume: fun(bag: lib.Bag) {}
 
 reassigned: fun -> i32
 {
@@ -18,7 +18,7 @@ moved: fun -> i32
 {
 	val bag = lib.Bag([1, 2, 3, 4])
 	val view = lib.watch(imm bag)
-	consume(own bag)
+	consume(bag)
 	ret view.value
 }
 

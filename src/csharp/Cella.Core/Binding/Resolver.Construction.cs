@@ -205,7 +205,7 @@ public sealed partial class Resolver
 		
 		var inputs = args.Length == 0
 			? []
-			: fields.Select((field, i) => CreateInferenceInput(GetMemberType(field), ParameterMode.Own, args[i]));
+			: fields.Select((field, i) => CreateInferenceInput(GetMemberType(field), ParameterMode.Value, args[i]));
 		
 		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
 			ExpectedType);

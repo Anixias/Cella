@@ -36,7 +36,7 @@ Twice: rec
 	}
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -56,13 +56,13 @@ Text: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	text: Text
 
-	new: op(own text: Text)
+	new: op(text: Text)
 	{
-		self.text = own text
+		self.text = text
 	}
 }
 
@@ -81,13 +81,13 @@ make[T: new(i32)]: fun -> T => T(5)
 
 pair[T: new(i32, i32)]: fun -> T => T(1, 2)
 
-both[T: new(i32) + new(T)]: fun(imm value: T) -> T
+both[T: new(i32) + new(T)]: fun(value: T) -> T
 {
 	val counted = T(5)
 	ret T(value)
 }
 
-convert[T: new(A) + new(B), A, B]: fun(imm a: A, imm b: B) -> T
+convert[T: new(A) + new(B), A, B]: fun(a: A, b: B) -> T
 {
 	val first = T(a)
 	ret T(b)
@@ -95,7 +95,7 @@ convert[T: new(A) + new(B), A, B]: fun(imm a: A, imm b: B) -> T
 
 duplicate[T: new(imm T)]: fun(imm value: T) -> T => T(imm value)
 
-take[T: new(own Text)]: fun(own value: Text) -> T => T(own value)
+take[T: new(Text)]: fun(value: Text) -> T => T(value)
 
 count[T: noref + new(mut i32)]: fun -> T
 {

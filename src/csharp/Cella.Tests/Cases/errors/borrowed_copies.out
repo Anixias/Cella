@@ -46,6 +46,6 @@ Hint at borrowed_copies.ce:52:1
 Error at borrowed_copies.ce:52:56
 51 │ 
 52 │ borrowed[T: copy]: fun(holder: Holder[T]) -> imm[T] => imm *holder
-                                                            ╘═════════╛ Cannot return borrows of copied parameters
+                                                            ╘═════════╛ Cannot return borrows of by-value parameters
 
 [compilation failed]

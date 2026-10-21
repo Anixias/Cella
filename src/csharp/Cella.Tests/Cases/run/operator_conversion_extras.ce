@@ -25,7 +25,7 @@ Sprite: rec
 	hp: i32
 }
 
-Slot: rec
+Slot: own rec
 {
 	value: Sprite
 
@@ -37,7 +37,7 @@ Slot: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	slot: Slot
 }

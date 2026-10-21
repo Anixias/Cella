@@ -32,7 +32,7 @@ Wide: rec
 	}
 }
 
-wrap[T]: fun(own value: T) -> Box[T] => Box(value)
+wrap[T]: fun(value: T) -> Box[T] => Box(value)
 takesBox64: fun(b: Box[i64]) -> i64 => b.value
 take: fun(p: Pair[i64, f64]) -> i32 => 1
 take: fun(p: Pair[f64, i64]) -> i32 => 2

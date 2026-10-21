@@ -1,6 +1,6 @@
 mod test
 
-Key: rec
+Key: own rec
 {
 	id: usize
 
@@ -22,8 +22,8 @@ main: fun -> i32
 {
 	var t = Table(1)
 	var k = Key(0)
-	val a = t[own k]
+	val a = t[k]
 	var k2 = Key(1)
-	val b = t + own k2
+	val b = t + k2
 	ret a
 }

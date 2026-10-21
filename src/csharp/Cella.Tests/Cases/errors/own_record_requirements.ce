@@ -1,0 +1,99 @@
+mod test
+
+File: own rec
+{
+	handle: i32
+
+	drop: op {}
+}
+
+Token: own rec
+{
+	id: i32
+}
+
+Option[T]: enum
+{
+	some(value: T)
+	none
+}
+
+Pair[A, B]: rec
+{
+	left: A
+	right: B
+}
+
+Holder[T]: rec
+{
+	value: Option[T]
+}
+
+Cell[T]: own rec
+{
+	value: T
+
+	drop: op {}
+}
+
+Closed: rec
+{
+	drop: op {}
+}
+
+Stored: rec
+{
+	file: File
+}
+
+Maybe: rec
+{
+	file: Option[File]
+}
+
+Wrapped[T]: rec
+{
+	cell: Cell[T]
+}
+
+Kept: rec
+{
+	token: Token
+}
+
+Viewed: ref rec
+{
+	value: imm[i32]
+
+	drop: op {}
+}
+
+Lent: own ref rec
+{
+	value: imm[i32]
+	file: File
+
+	drop: op {}
+}
+
+Message: enum
+{
+	opened(file: File)
+	closed
+}
+
+Ticket: own enum
+{
+	opened(file: File)
+	closed
+}
+
+copy[T: copy]: fun(value: T) -> T => value
+
+main: fun -> i32
+{
+	val numbers = Pair(1, 2)
+	val files = Pair(File(1), File(2))
+	val held = Holder[File](Option.none)
+	ret copy(numbers).left + copy(files).left.handle + copy(held).value
+}

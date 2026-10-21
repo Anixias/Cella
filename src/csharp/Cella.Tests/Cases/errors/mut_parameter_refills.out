@@ -3,10 +3,10 @@ Hint at mut_parameter_refills.ce:31:1
 31 │ whole: fun(mut buffer: Buffer)
      ╘═══╛ 'whole' is never used
 
-Error at mut_parameter_refills.ce:33:11
+Error at mut_parameter_refills.ce:33:7
 32 │ {
-33 │     take(own buffer)
-                  ╘════╛ Cannot leave 'mut' parameters moved
+33 │     take(buffer)
+              ╘════╛ Cannot leave 'mut' parameters moved
 
 Hint at mut_parameter_refills.ce:36:1
 35 │ 
@@ -33,10 +33,10 @@ Hint at mut_parameter_refills.ce:52:1
 52 │ swap: fun(mut pair: Pair)
      ╘══╛ 'swap' is never used
 
-Error at mut_parameter_refills.ce:68:12
+Error at mut_parameter_refills.ce:68:8
 67 │ self.buffer = make(id)
-68 │ keep(own self)
-              ╘══╛ Cannot leave 'self' moved
+68 │ keep(self)
+          ╘══╛ Cannot leave 'self' moved
 
 Hint at mut_parameter_refills.ce:72:1
 71 │ 
@@ -46,6 +46,6 @@ Hint at mut_parameter_refills.ce:72:1
 Error at mut_parameter_refills.ce:74:21
 73 │ {
 74 │     val copy: Buffer = buffer
-                            ╘════╛ Cannot move 'Buffer' values implicitly
+                            ╘════╛ Cannot leave 'mut' parameters moved
 
 [compilation failed]

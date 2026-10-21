@@ -13,9 +13,9 @@ Counted[T]: rec
 	none: val ptr[T] = null
 	seed: pvt var i32 = 7
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
-		self.value = own value
+		self.value = value
 		made += 1
 	}
 

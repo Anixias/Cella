@@ -25,7 +25,7 @@ Shape: enum
 	square(side: i32)
 }
 
-List[T: noref + copy]: rec
+List[T: noref + copy]: own rec
 {
 	items: req ptr[T]
 	length: pvt set usize

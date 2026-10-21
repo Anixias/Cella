@@ -1,10 +1,10 @@
 mod test
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
-	<: op(own a: Text, own b: Text) -> bool => a.id < b.id
+	<: op(a: Text, b: Text) -> bool => a.id < b.id
 
 	drop: op
 	{
@@ -27,7 +27,7 @@ Counter: rec
 {
 	n: i32
 
-	<: op(own a: Counter, own b: Counter) -> bool => a.n < b.n
+	<: op(a: Counter, b: Counter) -> bool => a.n < b.n
 }
 
 main: fun -> i32

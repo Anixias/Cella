@@ -1,6 +1,6 @@
 mod test
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -19,7 +19,7 @@ Count: ref rec
 	n: imm[i32]
 }
 
-consume: fun(own t: Text)
+consume: fun(t: Text)
 {
 }
 
@@ -28,7 +28,7 @@ holderSourceMoved: fun -> i32
 	var a = Text(1)
 	val h = Holder(a)
 	val r = imm h
-	consume(own a)
+	consume(a)
 	ret r.t.id
 }
 
@@ -63,7 +63,7 @@ closureViewMoved: fun -> i32
 	val text = Text(1)
 	val r: imm[Text] = imm text
 	val f = fun -> i32 => r.id
-	consume(own text)
+	consume(text)
 	ret f()
 }
 
@@ -72,7 +72,7 @@ closureOfClosure: fun -> i32
 	val text = Text(1)
 	val inner = fun -> i32 => text.id
 	val outer = fun -> i32 => inner() + 1
-	consume(own text)
+	consume(text)
 	ret outer()
 }
 

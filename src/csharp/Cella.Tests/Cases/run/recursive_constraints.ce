@@ -32,7 +32,7 @@ Leaf: rec
 	y: i32
 }
 
-Item: rec
+Item: own rec
 {
 	link: Guard[Item]
 

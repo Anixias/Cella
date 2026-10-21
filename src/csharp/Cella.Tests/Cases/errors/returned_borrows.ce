@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -25,7 +25,7 @@ Holder: ref rec
 	buffer: imm[Buffer]
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -54,7 +54,7 @@ returnCallResult: fun -> mut[i32]
 	ret kills(mut stats)
 }
 
-returnIndirectResult: fun(get: fun[mut Stats -> mut[i32]]) -> mut[i32]
+returnIndirectResult: fun(imm get: fun[mut Stats -> mut[i32]]) -> mut[i32]
 {
 	var stats = Stats(1)
 	ret get(mut stats)
@@ -94,9 +94,9 @@ returnBinding: fun(mut fallback: Buffer) -> imm[Buffer]
 
 returnTemporary: fun -> Holder => Holder(make(3))
 
-returnOwned: fun(own buffer: Buffer) -> imm[Buffer] => imm buffer
+returnOwned: fun(buffer: Buffer) -> imm[Buffer] => imm buffer
 
-returnOwnedCopy: fun(own value: i32) -> imm[i32] => imm value
+returnOwnedCopy: fun(value: i32) -> imm[i32] => imm value
 
 returnCopied: fun(a: i32, b: i32) -> imm[i32]
 {

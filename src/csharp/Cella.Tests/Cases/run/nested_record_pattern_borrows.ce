@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Name: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	name: Name
 
@@ -25,7 +25,7 @@ Holder: rec
 	}
 }
 
-Wrap: enum
+Wrap: own enum
 {
 	w(h: Holder)
 	pair(h: Holder, other: Name)
@@ -37,7 +37,7 @@ makeWrap: fun(id: i32) -> Wrap => Wrap.w(Holder(Name(id)))
 owned: fun -> i32
 {
 	val x = makeWrap(1)
-	match own x
+	match x
 	{
 		w(Holder(val name)) =>
 		{
@@ -88,7 +88,7 @@ mixed: fun(guarded: bool) -> i32
 			ret name.id + id
 		}
 
-		pair(Holder(val name), own other) =>
+		pair(Holder(val name), val other) =>
 		{
 			printf("mixed %d %d\n", name.id, other.id)
 			ret name.id

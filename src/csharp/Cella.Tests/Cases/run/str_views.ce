@@ -9,7 +9,7 @@ ext
 	strlen: fun(text: cstr) -> usize
 }
 
-String: rec
+String: own rec
 {
 	data: ptr[u8]
 	length: usize

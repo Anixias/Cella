@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Noisy: rec
+Noisy: own rec
 {
 	id: i32
 
@@ -22,7 +22,7 @@ Holder[F: fun[i32 -> i32]]: rec
 	run: fun(imm self, x: i32) -> i32 => self.f(x)
 }
 
-take[F: fun[i32 -> i32]]: fun(own f: F) -> i32 => f(1)
+take[F: fun[i32 -> i32]]: fun(f: F) -> i32 => f(1)
 
 main: fun -> i32
 {

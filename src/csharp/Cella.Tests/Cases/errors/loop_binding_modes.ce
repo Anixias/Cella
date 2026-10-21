@@ -1,6 +1,6 @@
 mod test
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
@@ -55,7 +55,7 @@ main: fun -> i32
 	{
 	}
 
-	for n in own names
+	for n in names
 	{
 	}
 
@@ -68,7 +68,7 @@ main: fun -> i32
 	{
 	}
 
-	for own x in down
+	for x in down
 	{
 	}
 

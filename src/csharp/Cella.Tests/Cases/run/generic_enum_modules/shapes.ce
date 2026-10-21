@@ -7,10 +7,10 @@ Option[T]: enum
 
 	made: var i32 = 0
 
-	wrap: fun(own value: T) -> Option[T]
+	wrap: fun(value: T) -> Option[T]
 	{
 		made += 1
-		ret Option.some(own value)
+		ret Option.some(value)
 	}
 }
 

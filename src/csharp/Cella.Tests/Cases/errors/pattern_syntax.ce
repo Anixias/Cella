@@ -29,7 +29,7 @@ nested: fun -> i32
 ownMut: fun -> i32
 {
 	var e = E.hit(1)
-	match own mut e
+	match mut e
 	{
 		hit(n) => n += 5
 		a => {}

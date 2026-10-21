@@ -18,9 +18,4 @@ Error at generic_function_bodies.ce:31:6
 31 │ ret second(Box(value), depth - 1)
          ╘════╛ Instantiating 'second' never ends
 
-Error at generic_function_bodies.ce:34:58
-33 │ 
-34 │ second[U]: fun(own value: U, depth: i32) -> i32 => first(value, depth)
-                                                              ╘═══╛ Cannot move 'U' values implicitly
-
 [compilation failed]

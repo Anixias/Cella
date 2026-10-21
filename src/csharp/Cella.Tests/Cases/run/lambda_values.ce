@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -27,11 +27,11 @@ Num: rec
 	+: op(a: Num, b: Num) -> Num => Num(apply(fun(x) => x * 10, a.n + b.n))
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-consume: fun(f: fun[own Text -> i32], own t: Text) -> i32 => f(own t)
+consume: fun(imm f: fun[Text -> i32], t: Text) -> i32 => f(t)
 
-inspect: fun(f: fun[imm Text -> i32], imm t: Text) -> i32 => f(imm t)
+inspect: fun(imm f: fun[imm Text -> i32], imm t: Text) -> i32 => f(imm t)
 
 make: fun -> fun[i32 -> i32] => fun(x) => x * 7
 
@@ -77,9 +77,9 @@ main: fun -> i32
 	printf("%d\n", consume(fun(t) => t.id * 10, Text(1)))
 	val kept = Text(2)
 	printf("%d\n", inspect(fun(t) => t.id * 10, imm kept))
-	printf("%d\n", consume(fun(own t)
+	printf("%d\n", consume(fun(t)
 	{
-		val moved = own t
+		val moved = t
 		ret moved.id
 	}, Text(3)))
 

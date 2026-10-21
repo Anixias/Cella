@@ -27,7 +27,7 @@ nested: fun
 	ret missing
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	size: usize
 

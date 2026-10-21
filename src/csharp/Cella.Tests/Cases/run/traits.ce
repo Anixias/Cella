@@ -47,7 +47,7 @@ Point: rec impl Hash + Sized
 	}
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 

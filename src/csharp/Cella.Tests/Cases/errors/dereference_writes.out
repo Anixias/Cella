@@ -1,8 +1,3 @@
-Error at dereference_writes.ce:30:23
-29 │ self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
-30 │ own *self.pointer = buffer
-                         ╘════╛ Cannot move 'Buffer' values implicitly
-
 Hint at dereference_writes.ce:60:1
 59 │ 
 60 │ writeShared: fun(mut shared: Shared)

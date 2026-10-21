@@ -23,11 +23,11 @@ Vector: rec
 	}
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
-	+=: op(mut self, own other: Text)
+	+=: op(mut self, other: Text)
 	{
 		self.id += other.id
 	}
@@ -38,7 +38,7 @@ Text: rec
 	}
 }
 
-Body: rec
+Body: own rec
 {
 	position: Vector
 	label: Text
@@ -58,7 +58,7 @@ Body: rec
 	name: prop Text
 	{
 		get(imm self) => Text(self.label.id)
-		set(mut self, own value) { self.label = own value }
+		set(mut self, value) { self.label = value }
 	}
 }
 

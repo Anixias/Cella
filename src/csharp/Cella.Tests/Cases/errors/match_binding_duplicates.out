@@ -19,7 +19,7 @@ Hint at match_binding_duplicates.ce:48:6
              ^ 'e' is never changed
 
 Error at match_binding_duplicates.ce:50:8
-49 │ val taken = own e
+49 │ val taken = e
 50 │ match e
            ^ Cannot use moved values
            | Moved on line 49

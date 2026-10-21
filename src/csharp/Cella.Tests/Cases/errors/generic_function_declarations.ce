@@ -4,7 +4,7 @@ Box[T]: rec
 {
 	value: T
 
-	new[V]: op(own value: T)
+	new[V]: op(value: T)
 	{
 		self.value = value
 	}

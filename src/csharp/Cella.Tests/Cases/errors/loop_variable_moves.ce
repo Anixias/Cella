@@ -1,6 +1,6 @@
 mod test
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Name: rec
 	}
 }
 
-Countdown: rec
+Countdown: own rec
 {
 	left: i32
 
@@ -26,15 +26,15 @@ Countdown: rec
 	}
 }
 
-take: fun(own name: Name)
+take: fun(name: Name)
 {
 }
 
-takeAll: fun(own names: array[Name, 2])
+takeAll: fun(names: array[Name, 2])
 {
 }
 
-finish: fun(own countdown: Countdown)
+finish: fun(countdown: Countdown)
 {
 }
 
@@ -51,7 +51,7 @@ main: fun -> i32
 {
 	var names = [Name(1), Name(2)]
 	for imm name in names
-		take(own name)
+		take(name)
 
 	for mut name in names
 	{
@@ -60,17 +60,17 @@ main: fun -> i32
 
 	var group = [Name(3), Name(4)]
 	for imm name in group
-		takeAll(own group)
+		takeAll(group)
 
 	var c = Countdown(3)
-	for x in own c
+	for x in c
 	{
 	}
 
-	finish(own c)
+	finish(c)
 	var d = Countdown(3)
 	for x in mut d
-		finish(own d)
+		finish(d)
 
 	ret 0
 }

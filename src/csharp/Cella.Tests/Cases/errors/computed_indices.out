@@ -8,20 +8,21 @@ Hint at computed_indices.ce:23:6
 23 │     var items = [make(1), make(2), make(3)]
              ╘═══╛ 'items' is never changed
 
-Error at computed_indices.ce:24:19
-23 │ var items = [make(1), make(2), make(3)]
-24 │ val picked = own items[i]
-                      ╘══════╛ Cannot move array elements at computed indices
+Error at computed_indices.ce:27:6
+26 │ val first = items[0]
+27 │ ret picked.id + shown + first.id + take(items[2])
+         ╘════╛ Cannot use borrows of moved values
+              | Moved on line 26
 
 Hint at computed_indices.ce:30:1
 29 │ 
-30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 => take(own items[i])
+30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 => take(items[i])
      ╘═══════╛ 'parameter' is never used
 
-Error at computed_indices.ce:30:74
+Error at computed_indices.ce:30:70
 29 │ 
-30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 => take(own items[i])
-                                                                              ╘══════╛ Cannot move array elements at computed indices
+30 │ parameter: fun(mut items: array[Buffer, 2], i: usize) -> i32 => take(items[i])
+                                                                          ╘══════╛ Cannot move array elements at computed indices
 
 Hint at computed_indices.ce:32:1
 31 │ 
@@ -49,7 +50,7 @@ Hint at computed_indices.ce:50:1
      ╘═══╛ 'moved' is never used
 
 Error at computed_indices.ce:54:2
-53 │ val other = own items
+53 │ val other = items
 54 │ items[i] = make(3)
      ╘══════╛ Cannot assign elements of moved arrays at computed indices
             | Moved on line 53

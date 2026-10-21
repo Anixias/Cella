@@ -60,7 +60,7 @@ Effect: enum
 		}
 	}
 
-	release: fun(own self) -> i32 => self.size()
+	release: fun(self) -> i32 => self.size()
 
 	twice: fun(self) -> Effect => strong(self.size())
 }
@@ -77,7 +77,7 @@ Color: ext enum
 	}
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -87,7 +87,7 @@ Buffer: rec
 	}
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	held(buffer: Buffer)

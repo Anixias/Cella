@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	data: req ptr
 	size: usize
@@ -51,7 +51,7 @@ takesU8: fun(value: u8) -> u8 => value
 takesI64: fun(value: i64) -> i64 => value
 takesIsize: fun(value: isize) -> isize => value
 
-identity[T]: fun(own value: T) -> T => value
+identity[T]: fun(value: T) -> T => value
 
 main: fun -> i32
 {

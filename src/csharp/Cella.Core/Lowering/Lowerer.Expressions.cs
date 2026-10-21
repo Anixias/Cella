@@ -136,7 +136,7 @@ public sealed partial class Lowerer
 		
 		public Value Visit(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
 			node.IsConversion
-				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0), _returnedValues.Contains(node))
+				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0))
 				: LowerArguments(node.Arguments, node.Function, 0, node.PlaceOperator is not null),
 			node.Syntax.SourceLocation) { IsPlaceOperator = node.PlaceOperator is not null });
 		
@@ -412,7 +412,6 @@ public sealed partial class Lowerer
 			Declare(GetOrMakeBlock(),
 				new LocalVarInstruction(node.Self, operand, node.Syntax.SourceLocation, CurrentScopeId));
 			
-			_returnedValues.Add(node.Body);
 			_function.InlinedBodies.Add(node.Body.Syntax.SourceLocation);
 			return VisitNode(node.Body);
 		}

@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -24,24 +24,24 @@ Pair[A: noref, B: noref]: rec
 
 	left: get(imm self) -> imm[A] => imm self.first
 
-	swapFirst: fun(mut self, own value: A) -> A
+	swapFirst: fun(mut self, value: A) -> A
 	{
 		val old = own self.first
-		self.first = own value
+		self.first = value
 		ret old
 	}
 
-	make: fun(own first: A, own second: B) -> Pair[A, B] => Pair[A, B](own first, own second)
+	make: fun(first: A, second: B) -> Pair[A, B] => Pair[A, B](first, second)
 }
 
-Box[T]: rec
+Box[T]: own rec
 {
 	pointer: req ptr[T]
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = own value
+		own *self.pointer = value
 	}
 
 	*: op(imm self) -> imm[T] => imm *self.pointer
@@ -55,7 +55,7 @@ Box[T]: rec
 	}
 }
 
-Buffer[T]: rec
+Buffer[T]: own rec
 {
 	start: req ptr[T]
 	length: usize
@@ -66,9 +66,9 @@ Buffer[T]: rec
 		self.length = length
 	}
 
-	set: fun(mut self, index: usize, own value: T)
+	set: fun(mut self, index: usize, value: T)
 	{
-		own *(self.start + index) = own value
+		own *(self.start + index) = value
 	}
 
 	get: fun(imm self, index: usize) -> imm[T] => imm *(self.start + index)

@@ -236,7 +236,6 @@ public static class Completion
 	private static string ModeOf(ParameterMode mode) => mode switch
 	{
 		ParameterMode.Mut => "mut ",
-		ParameterMode.Own => "own ",
 		ParameterMode.Imm => "imm ",
 		_ => ""
 	};

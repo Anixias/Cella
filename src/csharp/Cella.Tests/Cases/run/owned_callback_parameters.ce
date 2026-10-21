@@ -19,15 +19,15 @@ Caller: rec impl Sink[fun[-> i32]] + Store[fun[-> i32]]
 {
 	base: i32
 
-	take: fun(self, value: fun[-> i32]) -> i32 => value() + self.base
-	put: fun(self, value: fun[-> i32]) -> i32 => value() * self.base
+	take: fun(self, imm value: fun[-> i32]) -> i32 => value() + self.base
+	put: fun(self, imm value: fun[-> i32]) -> i32 => value() * self.base
 }
 
 Holder: rec
 {
 	value: i32
 
-	new: op(f: fun[-> i32])
+	new: op(imm f: fun[-> i32])
 	{
 		self.value = f()
 	}
@@ -40,17 +40,17 @@ fill[T: copy + noref]: fun(mut items: array[T, 3], value: T)
 	items[2] = value
 }
 
-apply[T]: fun(f: fun[imm T -> i32], imm x: T) -> i32 => f(imm x)
+apply[T]: fun(imm f: fun[imm T -> i32], imm x: T) -> i32 => f(imm x)
 
 look[T: copy]: fun(value: T) -> i32 => 7
 
-build[T: new(own fun[-> i32])]: fun -> T => T(answer)
+build[T: new(fun[-> i32])]: fun -> T => T(answer)
 
 feed[T, S: Sink[T]]: fun(imm sink: S, imm value: T) -> i32 => sink.take(imm value)
 
 viaDyn: fun(imm sink: dyn[Sink[fun[-> i32]]]) -> i32 => sink.take(seven)
 
-run: fun(callback: fun[-> i32]) -> i32 => callback() + 1
+run: fun(imm callback: fun[-> i32]) -> i32 => callback() + 1
 
 answer: fun -> i32 => 42
 
@@ -64,14 +64,14 @@ main: fun -> i32
 
 	var handlers: array[fun[-> i32], 3] = [answer, answer, answer]
 	fill(mut handlers, seven)
-	val keep: fun[mut array[fun[-> i32], 3], own fun[-> i32]] = fill[fun[-> i32]]
+	val keep: fun[mut array[fun[-> i32], 3], fun[-> i32]] = fill[fun[-> i32]]
 	keep(mut handlers, answer)
-	val f: fun[own fun[-> i32] -> i32] = look[fun[-> i32]]
+	val f: fun[fun[-> i32] -> i32] = look[fun[-> i32]]
 	printf("%d %d %d %d\n", handlers[0](), apply(run, answer), feed(imm caller, seven), f(answer))
 
-	val borrowing: fun[fun[-> i32] -> i32] = run
-	val owning: fun[own fun[-> i32] -> i32] = borrowing
-	val named: fun[own fun[-> i32] -> i32] = run
+	val borrowing: fun[imm fun[-> i32] -> i32] = run
+	val owning = borrowing
+	val named: fun[fun[-> i32] -> i32] = run
 	printf("%d %d %d\n", owning(seven), named(answer), build[Holder]().value)
 	ret 0
 }

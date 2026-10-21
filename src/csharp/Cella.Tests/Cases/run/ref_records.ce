@@ -23,7 +23,7 @@ Target: ref enum
 	unit(health: imm[i32])
 }
 
-Scope: ref rec
+Scope: own ref rec
 {
 	depth: mut[i32]
 

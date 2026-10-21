@@ -3,11 +3,6 @@ Hint at borrow_types.ce:113:6
 113 │ var effect = Effect.hit(7)
           ╘════╛ 'effect' is never changed
 
-Hint at borrow_types.ce:126:15
-125 │ var buffer = make(1)
-126 │ val viewed = imm buffer
-                   ╘═╛ Redundant 'imm'
-
 30 30
 3 40 43 4 70 70
 1 2 10 20

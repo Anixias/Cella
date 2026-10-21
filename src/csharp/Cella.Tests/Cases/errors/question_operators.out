@@ -1,6 +1,6 @@
 Error at question_operators.ce:21:22
 20 │ {
-21 │     held(own value) => valu
+21 │     held(val value) => valu
                             ╘══╛ Symbol 'valu' not found in this scope
                                | Did you mean 'value'?
 

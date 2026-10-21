@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Unit: rec
+Unit: own rec
 {
 	hp: i32
 	buffer: Buffer
@@ -19,9 +19,9 @@ Unit: rec
 		self.hp += amount
 	}
 
-	release: fun(own self) -> i32 => self.buffer.id
+	release: fun(self) -> i32 => self.buffer.id
 
-	take: fun(mut self) -> Buffer => own self.buffer
+	take: fun(mut self) -> Buffer => self.buffer
 }
 
 Cursor: ref rec

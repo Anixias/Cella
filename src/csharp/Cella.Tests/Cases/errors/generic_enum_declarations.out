@@ -28,6 +28,11 @@ Error at generic_enum_declarations.ce:24:13
 24 │ more(next: Endless[T])
                 ╘════════╛ Payload 'next' of type 'Endless[T]' causes a cycle in the memory layout
 
+Error at generic_enum_declarations.ce:27:1
+26 │ 
+27 │ Growing[T]: enum
+     ╘═════╛ 'Growing' depends on its own layout
+
 Error at generic_enum_declarations.ce:30:13
 29 │ stop
 30 │ more(next: Growing[ptr[T]])

@@ -1,13 +1,3 @@
-Error at required_trait_syntax.ce:5:9
-4 │ {
-5 │     ==: op(a: Self, b: Self) -> bool
-               ^ Cannot copy 'Self'
-
-Error at required_trait_syntax.ce:5:18
-4 │ {
-5 │     ==: op(a: Self, b: Self) -> bool
-                        ^ Cannot copy 'Self'
-
 Error at required_trait_syntax.ce:9:1
 8 │ Empty: trait req
 9 │ {

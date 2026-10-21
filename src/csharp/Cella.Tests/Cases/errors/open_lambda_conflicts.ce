@@ -1,7 +1,7 @@
 mod test
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
-applyLong: fun(f: fun[i64 -> i64], x: i64) -> i64 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+applyLong: fun(imm f: fun[i64 -> i64], x: i64) -> i64 => f(x)
 
 main: fun -> i32
 {

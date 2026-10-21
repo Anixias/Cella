@@ -36,7 +36,7 @@ op: val fun[i32 -> i32] = triple
 ops: val array[fun[i32 -> i32], 2] = [double, triple]
 pipeline: val Pipeline = Pipeline(double, triple)
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
 pick: fun(which: i32) -> fun[i32 -> i32]
 {
@@ -46,12 +46,12 @@ pick: fun(which: i32) -> fun[i32 -> i32]
 	ret triple
 }
 
-countdown: fun(n: i32, step: fun[i32 -> i32]) -> i32
+countdown: fun(n: i32, imm step: fun[i32 -> i32]) -> i32
 {
 	if n <= 0
 		ret 0
 
-	ret 1 + countdown(step(n), step)
+	ret 1 + countdown(step(n), imm step)
 }
 
 main: fun -> i32

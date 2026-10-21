@@ -19,9 +19,9 @@ double: fun(x: i32) -> i32 => x * 2
 
 sum: fun(big: Big) -> i64 => big.a + big.b + big.c + big.d + big.e
 
-apply: fun(f: fun[imm i32 -> i32], imm x: i32) -> i32 => f(imm x)
+apply: fun(imm f: fun[imm i32 -> i32], imm x: i32) -> i32 => f(imm x)
 
-applyBig: fun(f: fun[imm Big -> i64], imm big: Big) -> i64 => f(imm big)
+applyBig: fun(imm f: fun[imm Big -> i64], imm big: Big) -> i64 => f(imm big)
 
 generic[F: fun[imm Big -> i64]]: fun(imm f: F, imm big: Big) -> i64 => f(imm big)
 

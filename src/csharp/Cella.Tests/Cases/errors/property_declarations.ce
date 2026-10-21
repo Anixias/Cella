@@ -36,8 +36,8 @@ Unit: rec
 
 	owned: prop i32
 	{
-		get(own self) => 1
-		set(own self, value) => 0
+		get(self) => 1
+		set(self, value) => 0
 	}
 
 	borrowed: set(mut self, mut value: i32) => 0

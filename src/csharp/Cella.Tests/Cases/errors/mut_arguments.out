@@ -58,9 +58,9 @@ Error at mut_arguments.ce:43:30
 43 │ var g: fun[ptr[i32], i32] = damage
                                  ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[ptr[i32], i32]'
 
-Error at mut_arguments.ce:44:29
+Error at mut_arguments.ce:44:25
 43 │ var g: fun[ptr[i32], i32] = damage
-44 │ var h: fun[own i32, i32] = damage
-                                ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[own i32, i32]'
+44 │ var h: fun[i32, i32] = damage
+                            ╘════╛ Cannot convert type 'fun[mut i32, i32]' to 'fun[i32, i32]'
 
 [compilation failed]

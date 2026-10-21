@@ -1,6 +1,6 @@
 mod test
 
-Value: rec
+Value: own rec
 {
 	x: i32
 
@@ -11,11 +11,11 @@ Value: rec
 	}
 }
 
-Owned: rec
+Owned: own rec
 {
 	n: i32
 
-	as: op(own self) -> Value => Value(self.n)
+	as: op(self) -> Value => Value(self.n)
 
 	drop: op
 	{

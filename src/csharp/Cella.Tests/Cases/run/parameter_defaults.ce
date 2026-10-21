@@ -67,7 +67,7 @@ scaled: fun(scale: f64 = 1.5, flag: bool = true, name: str = "anon", raw: cstr =
 }
 
 effects: fun(effect: Effect = Effect.hit(7), pointer: ptr[i32] = null, values: array[i32, 3] = corners,
-	apply: fun[i32 -> i32] = double)
+	imm apply: fun[i32 -> i32] = double)
 {
 	if effect is hit(val n)
 		printf("hit %d %d %d %d\n", n, i32(pointer == null), values[2], apply(5))
@@ -79,7 +79,7 @@ maybe: fun(value: Nullable[ptr[i32]] = none) -> i32 => i32(value is some(_))
 
 sum: fun(value: Big = big) -> i64 => value.a + value.b + value.c
 
-owned: fun(own name: str = "owned") -> usize => name.byteLength
+owned: fun(name: str = "owned") -> usize => name.byteLength
 
 count: fun(first: i32 = 9, ...rest: View[i32])
 {

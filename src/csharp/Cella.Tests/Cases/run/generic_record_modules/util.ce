@@ -5,9 +5,9 @@ Cell[T]: rec
 	value: T
 	hits: i32
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
-		self.value = own value
+		self.value = value
 		self.hits = 1
 	}
 }

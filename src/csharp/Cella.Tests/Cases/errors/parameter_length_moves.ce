@@ -1,6 +1,6 @@
 mod test
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -9,35 +9,35 @@ Token: rec
 	}
 }
 
-take: fun(own t: Token)
+take: fun(t: Token)
 {
 }
 
-takeAll[N: const usize]: fun(own values: array[Token, N])
+takeAll[N: const usize]: fun(values: array[Token, N])
 {
 }
 
-twice[N: const usize]: fun(own values: array[Token, N])
+twice[N: const usize]: fun(values: array[Token, N])
 {
-	take(own values[0])
-	take(own values[0])
+	take(values[0])
+	take(values[0])
 }
 
-peek[N: const usize]: fun(own values: array[Token, N]) -> i32
+peek[N: const usize]: fun(values: array[Token, N]) -> i32
 {
-	take(own values[0])
+	take(values[0])
 	ret values[0].id
 }
 
-both[N: const usize]: fun(own values: array[Token, N])
+both[N: const usize]: fun(values: array[Token, N])
 {
-	take(own values[0])
-	takeAll(own values)
+	take(values[0])
+	takeAll(values)
 }
 
 steal[N: const usize]: fun(mut values: array[Token, N])
 {
-	take(own values[0])
+	take(values[0])
 }
 
 main: fun -> i32 => 0

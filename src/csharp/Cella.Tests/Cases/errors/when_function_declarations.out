@@ -18,20 +18,20 @@ Error at when_function_declarations.ce:23:37
 23 │ +: op(a: Meter, b: Meter) -> Meter when debug => Meter(a.n + b.n)
                                         ╘══╛ Cannot use 'when' on operators
 
-Error at when_function_declarations.ce:25:13
+Hint at when_function_declarations.ce:25:2
 24 │ 
-25 │ drain: fun(own self) when debug
-                ╘═╛ Cannot take 'own' parameters in 'when' functions
+25 │ drain: fun(self) when debug
+     ╘═══╛ 'drain' is never used
 
 Error at when_function_declarations.ce:30:27
 29 │ 
 30 │ total: fun(value: i32) -> i32 when debug => value
                                ╘═╛ Cannot return values from 'when' functions
 
-Error at when_function_declarations.ce:32:11
+Hint at when_function_declarations.ce:32:1
 31 │ 
-32 │ take: fun(own text: str, mut count: i32) when debug
-               ╘═╛ Cannot take 'own' parameters in 'when' functions
+32 │ take: fun(text: str, mut count: i32) when debug
+     ╘══╛ 'take' is never used
 
 Error at when_function_declarations.ce:36:11
 35 │ 

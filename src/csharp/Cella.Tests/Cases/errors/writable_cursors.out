@@ -1,7 +1,7 @@
 Error at writable_cursors.ce:26:29
 25 │ 
 26 │ *: op(self) -> imm[i32] => imm self.left
-                                ╘═══════════╛ Cannot return borrows of copied parameters
+                                ╘═══════════╛ Cannot return borrows of by-value parameters
 
 Error at writable_cursors.ce:33:3
 32 │ for x in Steps(3)

@@ -28,7 +28,7 @@ aliased: fun(items: array[i32, 100], mut other: array[i32, 100]) -> i32
 	ret items[0]
 }
 
-called: fun(items: array[i32, 100], change: fun[]) -> i32
+called: fun(items: array[i32, 100], imm change: fun[]) -> i32
 {
 	change()
 	ret items[0]

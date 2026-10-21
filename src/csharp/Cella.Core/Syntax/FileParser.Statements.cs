@@ -259,7 +259,7 @@ public sealed partial class FileParser
 	
 	private ForStatementNode? ParseForStatement(ref int index, Token keyword, Token? label)
 	{
-		Token? bindingMode = Match(ref index, out var modeKeyword, _loopBindingModes) ? modeKeyword : null;
+		Token? bindingMode = Match(ref index, out var modeKeyword, TokenSets.BorrowKeywords) ? modeKeyword : null;
 		
 		if (!Match(ref index, out var binding, TokenType.Identifier))
 		{

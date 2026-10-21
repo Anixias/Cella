@@ -205,7 +205,7 @@ public sealed partial class CodeGenerator
 	}
 	
 	private static bool CopiesReceiver(FunctionInfo member) =>
-		member.Signature.ParameterTypes.Length > 0 && member.Signature.GetMode(0) == ParameterMode.ReadOnly;
+		member.Signature.ParameterTypes.Length > 0 && member.Signature.GetMode(0) == ParameterMode.Value;
 	
 	private LLVMValueRef GetDynEntry(FunctionInfo member)
 	{

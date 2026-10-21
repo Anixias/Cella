@@ -8,34 +8,74 @@ Error at mode_overloads.ce:12:38
 12 │ register: fun(callback: ext fun[mut Team])
                                          ╘══╛ Cannot use plain enums in 'ext' signatures
 
-Error at mode_overloads.ce:15:1
+Hint at mode_overloads.ce:15:1
 14 │ 
 15 │ first: fun(mut x: i32) {}
-     ╘═══╛ 'first' overloads cannot differ only in parameter modes
+     ╘═══╛ 'first' is never used
 
-Error at mode_overloads.ce:16:1
+Hint at mode_overloads.ce:16:1
 15 │ first: fun(mut x: i32) {}
 16 │ first: fun(x: i32) {}
-     ╘═══╛ 'first' overloads cannot differ only in parameter modes
+     ╘═══╛ 'first' is never used
 
 Error at mode_overloads.ce:18:1
 17 │ 
-18 │ second: fun(own x: i32) {}
-     ╘════╛ 'second' overloads cannot differ only in parameter modes
+18 │ second: fun(x: i32) {}
+     ╘════╛ 'second' is declared more than once with the same signature
 
 Error at mode_overloads.ce:19:1
-18 │ second: fun(own x: i32) {}
+18 │ second: fun(x: i32) {}
 19 │ second: fun(x: i32) {}
-     ╘════╛ 'second' overloads cannot differ only in parameter modes
+     ╘════╛ 'second' is declared more than once with the same signature
 
-Error at mode_overloads.ce:21:1
+Hint at mode_overloads.ce:21:1
 20 │ 
 21 │ third: fun(mut x: i32) -> i32 => 1
-     ╘═══╛ 'third' overloads cannot differ only in parameter modes and return type
+     ╘═══╛ 'third' is never used
 
-Error at mode_overloads.ce:22:1
+Hint at mode_overloads.ce:22:1
 21 │ third: fun(mut x: i32) -> i32 => 1
 22 │ third: fun(x: i32) {}
-     ╘═══╛ 'third' overloads cannot differ only in parameter modes and return type
+     ╘═══╛ 'third' is never used
+
+Error at mode_overloads.ce:24:1
+23 │ 
+24 │ crossed: fun(imm a: i32, b: i32) {}
+     ╘═════╛ 'crossed' overloads cannot accept the same arguments
+
+Error at mode_overloads.ce:25:1
+24 │ crossed: fun(imm a: i32, b: i32) {}
+25 │ crossed: fun(a: i32, imm b: i32) {}
+     ╘═════╛ 'crossed' overloads cannot accept the same arguments
+
+Error at mode_overloads.ce:34:2
+33 │ 
+34 │ shift: fun(self) -> i32 => self.x
+     ╘═══╛ 'Point.shift' overloads cannot differ only in parameter modes
+
+Error at mode_overloads.ce:35:2
+34 │ shift: fun(self) -> i32 => self.x
+35 │ shift: fun(imm self) -> i32 => self.x
+     ╘═══╛ 'Point.shift' overloads cannot differ only in parameter modes
+
+Error at mode_overloads.ce:39:2
+38 │ 
+39 │ +: op(a: Point, b: Point) -> Point => Point(a.x + b.x)
+     ^ 'Point.+' overloads cannot differ only in parameter modes
+
+Error at mode_overloads.ce:40:2
+39 │ +: op(a: Point, b: Point) -> Point => Point(a.x + b.x)
+40 │ +: op(imm a: Point, b: Point) -> Point => Point(a.x + b.x)
+     ^ 'Point.+' overloads cannot differ only in parameter modes
+
+Error at mode_overloads.ce:49:18
+48 │ 
+49 │ Square: rec impl Shape
+                      ╘═══╛ 'Square' needs 'Shape.area'
+
+Error at mode_overloads.ce:61:12
+60 │ {
+61 │     val any = pick
+                   ╘══╛ Reference to 'pick' is ambiguous
 
 [compilation failed]

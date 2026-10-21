@@ -15,7 +15,7 @@ R: rec
 	}
 }
 
-D: rec
+D: own rec
 {
 	id: i32
 
@@ -30,7 +30,7 @@ D: rec
 	}
 }
 
-take: fun(own d: D)
+take: fun(d: D)
 {
 }
 
@@ -102,7 +102,7 @@ moves: fun
 		b[i] = D(i32(i))
 
 	for i in 1..5
-		take(own b[i])
+		take(b[i])
 
 	printf("moved\n")
 }

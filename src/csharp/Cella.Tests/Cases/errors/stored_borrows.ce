@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -56,13 +56,13 @@ Viewer: ref rec
 {
 	view: imm[Buffer]
 
-	new: op(own buffer: Buffer)
+	new: op(buffer: Buffer)
 	{
 		self.view = imm buffer
 	}
 }
 
-Scope: ref rec
+Scope: own ref rec
 {
 	depth: mut[i32]
 
@@ -138,7 +138,7 @@ shuffleHeld: fun(mut pair: Pair)
 	pair.token.text = pair.token.rest
 }
 
-Cursor: ref rec
+Cursor: own ref rec
 {
 	text: str
 	rest: str

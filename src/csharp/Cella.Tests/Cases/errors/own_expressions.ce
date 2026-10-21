@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	count: i32
@@ -23,14 +23,14 @@ bump: fun(mut buffer: Buffer)
 	buffer.id += 1
 }
 
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 make: fun -> Holder => Holder(Buffer(1), 2)
 
 main: fun -> i32
 {
 	var a = Buffer(1)
-	val p = @(own a)
-	bump(mut own a)
+	val p = @(a)
+	bump(mut a)
 	own a = Buffer(2)
 	own a
 

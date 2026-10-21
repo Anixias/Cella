@@ -1,5 +1,5 @@
 Hint at owned_match_moves.ce:20:1
-19 │ take: fun(own buffer: Buffer) -> i32 => buffer.id
+19 │ take: fun(buffer: Buffer) -> i32 => buffer.id
 20 │ touch: fun(mut buffer: Buffer)
      ╘═══╛ 'touch' is never used
 
@@ -19,9 +19,9 @@ Hint at owned_match_moves.ce:40:1
 40 │ parameter: fun(imm effect: Effect) -> i32
      ╘═══════╛ 'parameter' is never used
 
-Error at owned_match_moves.ce:42:12
-41 │ {
-42 │     match own effect
-                   ╘════╛ Cannot move read-only parameters
+Error at owned_match_moves.ce:44:32
+43 │ {
+44 │     hold(val buffer) => ret take(buffer)
+                                      ╘════╛ Cannot move pattern bindings
 
 [compilation failed]

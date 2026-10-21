@@ -13,7 +13,7 @@ Error at borrow_parameters.ce:12:12
 11 │ count: i32
 12 │ step: fun[imm[i32] -> i32]
                ╘══════╛ Cannot use borrow types for parameters
-                      | 'i32' is already a read-only borrow
+                      | Did you mean 'imm i32'?
 
 Error at borrow_parameters.ce:14:17
 13 │ 
@@ -31,17 +31,18 @@ Error at borrow_parameters.ce:25:18
 24 │ 
 25 │ look: fun(value: imm[i32]) -> i32 => value
                       ╘══════╛ Cannot use borrow types for parameters
-                             | 'value: i32' is already a read-only borrow
+                             | Did you mean 'imm value: i32'?
 
-Error at borrow_parameters.ce:27:24
+Error at borrow_parameters.ce:27:28
 26 │ 
-27 │ apply: fun(action: fun[mut[i32]], own target: imm[i32]) {}
-                            ╘══════╛ Cannot use borrow types for parameters
-                                   | Did you mean 'mut i32'?
+27 │ apply: fun(imm action: fun[mut[i32]], target: imm[i32]) {}
+                                ╘══════╛ Cannot use borrow types for parameters
+                                       | Did you mean 'mut i32'?
 
 Error at borrow_parameters.ce:27:47
 26 │ 
-27 │ apply: fun(action: fun[mut[i32]], own target: imm[i32]) {}
+27 │ apply: fun(imm action: fun[mut[i32]], target: imm[i32]) {}
                                                    ╘══════╛ Cannot use borrow types for parameters
+                                                          | Did you mean 'imm target: i32'?
 
 [compilation failed]

@@ -1,6 +1,6 @@
 mod test
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Texture: rec
 	}
 }
 
-take: fun(own texture: Texture)
+take: fun(texture: Texture)
 {
 }
 

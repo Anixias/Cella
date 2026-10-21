@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,19 +15,19 @@ Buffer: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	left: Buffer
 	right: Buffer
 }
 
-Nest: rec
+Nest: own rec
 {
 	pair: Pair
 	tail: Buffer
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -35,14 +35,14 @@ Effect: enum
 }
 
 make: fun(id: i32) -> Buffer => Buffer(id)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 
 sometimes: fun(flag: bool) -> i32
 {
 	val a = make(1)
 	var total = 0
 	if flag
-		total += take(own a)
+		total += take(a)
 
 	ret total
 }
@@ -50,14 +50,14 @@ sometimes: fun(flag: bool) -> i32
 partly: fun -> i32
 {
 	var p = Pair(make(1), make(2))
-	val left = own p.left
+	val left = p.left
 	ret left.id + p.right.id
 }
 
 refilled: fun -> i32
 {
 	var p = Pair(make(1), make(2))
-	val old = own p.left
+	val old = p.left
 	p.left = make(old.id + 10)
 	ret p.left.id + old.id + p.right.id
 }
@@ -80,16 +80,16 @@ wholeFromFields: fun -> i32
 	var q: Pair = undef
 	q.left = make(5)
 	q.right = make(6)
-	val whole = own q
+	val whole = q
 	ret whole.left.id + whole.right.id
 }
 
 nested: fun -> i32
 {
 	var n = Nest(Pair(make(1), make(2)), make(3))
-	val right = own n.pair.right
+	val right = n.pair.right
 	n.pair.right = make(right.id + 4)
-	val tail = own n.tail
+	val tail = n.tail
 	ret n.pair.left.id + n.pair.right.id + right.id + tail.id
 }
 
@@ -121,7 +121,7 @@ cycle: fun(limit: i32) -> i32
 		if i == 2
 			cont
 
-		total += take(own x)
+		total += take(x)
 		x = make(i)
 		if total > 4
 			break
@@ -142,7 +142,7 @@ rounds: fun -> i32
 		{
 			if inner == outer
 			{
-				total += take(own y)
+				total += take(y)
 				break
 			}
 
@@ -160,9 +160,9 @@ early: fun(flag: bool) -> i32
 	val a = make(5)
 	val b = make(6)
 	if flag
-		ret take(own a)
+		ret take(a)
 
-	ret take(own b) + a.id
+	ret take(b) + a.id
 }
 
 matched: fun(imm effect: Effect) -> i32
@@ -171,7 +171,7 @@ matched: fun(imm effect: Effect) -> i32
 	match effect
 	{
 		hold(val buffer) => ret buffer.id
-		count(val n) => ret n + take(own spare)
+		count(val n) => ret n + take(spare)
 		else => {}
 	}
 
@@ -185,9 +185,9 @@ swapIn: fun(mut pair: Pair, id: i32) -> i32
 	ret old.id
 }
 
-reowned: fun(own buffer: Buffer) -> i32
+reowned: fun(buffer: Buffer) -> i32
 {
-	val first = take(own buffer)
+	val first = take(buffer)
 	buffer = make(first + 1)
 	ret buffer.id
 }
@@ -198,9 +198,9 @@ choose: fun(flag: bool) -> i32
 	val b = make(9)
 	var chosen: Buffer = undef
 	if flag
-		chosen = own a
+		chosen = a
 	else
-		chosen = own b
+		chosen = b
 
 	ret chosen.id
 }

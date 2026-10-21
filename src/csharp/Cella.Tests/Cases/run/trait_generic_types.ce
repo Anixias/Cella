@@ -12,7 +12,7 @@ Hash: trait
 
 Mapper: trait
 {
-	apply[U]: fun(imm self, change: fun[i32 -> U]) -> U
+	apply[U]: fun(imm self, imm change: fun[i32 -> U]) -> U
 }
 
 Point: rec impl Hash
@@ -51,7 +51,7 @@ Cell: rec impl Mapper
 {
 	value: i32
 
-	apply[V]: fun(self, change: fun[i32 -> V]) -> V => change(self.value)
+	apply[V]: fun(self, imm change: fun[i32 -> V]) -> V => change(self.value)
 }
 
 describe[T: Hash]: fun(imm value: T) -> u64 => value.hash()

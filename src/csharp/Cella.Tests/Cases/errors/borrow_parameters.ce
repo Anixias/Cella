@@ -24,6 +24,6 @@ inc: fun(counter: mut[i32])
 
 look: fun(value: imm[i32]) -> i32 => value
 
-apply: fun(action: fun[mut[i32]], own target: imm[i32]) {}
+apply: fun(imm action: fun[mut[i32]], target: imm[i32]) {}
 
 main: fun -> i32 => 0

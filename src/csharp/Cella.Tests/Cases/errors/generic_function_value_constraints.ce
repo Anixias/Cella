@@ -12,9 +12,9 @@ Point: rec
 
 h[T: Hash]: fun(imm x: T) -> i32 => 1
 
-keep[T: copy]: fun(own x: T) -> T => own x
+keep[T: copy]: fun(x: T) -> T => x
 
-Guard: rec
+Guard: own rec
 {
 	id: i32
 
@@ -26,6 +26,6 @@ Guard: rec
 main: fun -> i32
 {
 	val g: fun[imm Point -> i32] = h
-	val k: fun[own Guard -> Guard] = keep
+	val k: fun[Guard -> Guard] = keep
 	ret 0
 }

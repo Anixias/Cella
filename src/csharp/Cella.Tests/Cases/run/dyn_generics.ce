@@ -17,7 +17,7 @@ Circle: rec impl Shape
 	area: fun(self) -> f64 => self.radius
 }
 
-Text: rec impl Shape
+Text: own rec impl Shape
 {
 	id: i32
 

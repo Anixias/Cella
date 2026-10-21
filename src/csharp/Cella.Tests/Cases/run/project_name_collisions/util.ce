@@ -9,7 +9,7 @@ helper: fun -> i32 => 1
 
 pick[T]: fun(imm x: T) -> i32 => 100
 
-Res: rec
+Res: own rec
 {
 	id: i32
 

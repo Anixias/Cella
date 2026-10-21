@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,11 +9,11 @@ Buffer: rec
 	}
 }
 
-take: fun(own b: Buffer)
+take: fun(b: Buffer)
 {
 }
 
-consume: fun(own b: Buffer) -> i32 => b.id
+consume: fun(b: Buffer) -> i32 => b.id
 
 trace: fun(id: i32) when release
 {
@@ -26,12 +26,12 @@ show: fun(imm b: Buffer) when release
 main: fun -> i32
 {
 	val a = Buffer(1)
-	take(own a)
+	take(a)
 	show(imm a)
 	val x: i32
 	trace(x)
 	x = 1
 	val b = Buffer(2)
-	trace(consume(own b))
+	trace(consume(b))
 	ret b.id
 }

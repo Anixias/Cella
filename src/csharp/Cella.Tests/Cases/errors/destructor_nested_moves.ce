@@ -1,29 +1,29 @@
 mod test
 
-N: rec
+N: own rec
 {
 	id: i32
 
 	drop: op {}
 }
 
-Inner: rec
+Inner: own rec
 {
 	x: N
 
 	drop: op {}
 }
 
-W: rec
+W: own rec
 {
 	inner: Inner
 
 	drop: op
 	{
-		take(own self.inner.x)
+		take(self.inner.x)
 	}
 }
 
-take: fun(own n: N) {}
+take: fun(n: N) {}
 
 main: fun -> i32 => 0

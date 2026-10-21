@@ -8,15 +8,15 @@ Error at loop_variable_moves.ce:44:11
 44 │ for x in countdown
               ╘═══════╛ Cannot move read-only parameters
 
-Error at loop_variable_moves.ce:54:12
+Error at loop_variable_moves.ce:54:8
 53 │ for imm name in names
-54 │     take(own name)
-                  ╘══╛ Cannot move loop variables
+54 │     take(name)
+              ╘══╛ Cannot move loop variables
 
 Error at loop_variable_moves.ce:58:20
 57 │ {
 58 │     val copy: Name = name
-                          ╘══╛ Cannot move 'Name' values implicitly
+                          ╘══╛ Cannot leave 'mut' loop variables moved
 
 Hint at loop_variable_moves.ce:61:6
 60 │ 
@@ -30,22 +30,22 @@ Error at loop_variable_moves.ce:62:18
                          | Borrowed by this loop
                          | Moved on line 63 in an earlier iteration
 
-Error at loop_variable_moves.ce:63:15
+Error at loop_variable_moves.ce:63:11
 62 │ for imm name in group
-63 │     takeAll(own group)
-                     ╘═══╛ Cannot use moved values
-                         | Moved here in an earlier iteration
+63 │     takeAll(group)
+                 ╘═══╛ Cannot use moved values
+                     | Moved here in an earlier iteration
 
 Hint at loop_variable_moves.ce:65:6
 64 │ 
 65 │ var c = Countdown(3)
          ^ 'c' is never changed
 
-Error at loop_variable_moves.ce:70:13
+Error at loop_variable_moves.ce:70:9
 69 │ 
-70 │ finish(own c)
-                ^ Cannot use moved values
-                | Moved on line 66
+70 │ finish(c)
+            ^ Cannot use moved values
+            | Moved on line 66
 
 Error at loop_variable_moves.ce:72:15
 71 │ var d = Countdown(3)
@@ -54,10 +54,10 @@ Error at loop_variable_moves.ce:72:15
                   | Borrowed by this loop
                   | Moved on line 73 in an earlier iteration
 
-Error at loop_variable_moves.ce:73:14
+Error at loop_variable_moves.ce:73:10
 72 │ for x in mut d
-73 │     finish(own d)
-                    ^ Cannot use moved values
-                    | Moved here in an earlier iteration
+73 │     finish(d)
+                ^ Cannot use moved values
+                | Moved here in an earlier iteration
 
 [compilation failed]

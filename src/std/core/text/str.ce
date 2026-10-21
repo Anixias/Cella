@@ -8,14 +8,13 @@ StringComparison: pub enum
 	ignoreCase = 1
 }
 
-str: impl
+str: pub impl
 {
 	refEq: fun(imm left: str, imm right: str) -> bool => left.data == right.data
 }
 
 str: impl Eq
 {
-	
 	==: op(imm left: str, imm right: str) -> bool => panic
 	!=: op(imm left: str, imm right: str) -> bool => panic
 }

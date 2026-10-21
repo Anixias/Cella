@@ -460,6 +460,10 @@ public sealed partial class Lowerer
 				ReleasePayload(scrutinee, pattern);
 				GetOrMakeBlock().Instructions.Add(new ExpressionInstruction(Consume(scrutinee)));
 			}
+			else if (pattern is { Record: not null, TestedType: null } && MovesParts(pattern))
+			{
+				ReleaseFields(scrutinee, pattern);
+			}
 			else
 			{
 				StoreTemporary(Consume(scrutinee), "unbound");

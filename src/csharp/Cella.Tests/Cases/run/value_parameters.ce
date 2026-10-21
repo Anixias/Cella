@@ -12,9 +12,9 @@ Ring[T: noref, N: const usize]: rec
 	items: array[T, N]
 	used: usize
 
-	push: fun(mut self, own value: T)
+	push: fun(mut self, value: T)
 	{
-		self.items[self.used] = own value
+		self.items[self.used] = value
 		self.used += 1
 	}
 

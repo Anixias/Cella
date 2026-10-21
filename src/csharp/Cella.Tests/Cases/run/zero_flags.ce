@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-R: rec
+R: own rec
 {
 	a: i32
 	b: i32
@@ -16,7 +16,7 @@ R: rec
 	}
 }
 
-take: fun(own r: R) => printf("take %d\n", r.a)
+take: fun(r: R) => printf("take %d\n", r.a)
 
 run: fun(flag: bool)
 {
@@ -25,7 +25,7 @@ run: fun(flag: bool)
 	if flag
 	{
 		r = R(1, 2)
-		take(own r)
+		take(r)
 	}
 
 	r.a = 5

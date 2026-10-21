@@ -2,21 +2,21 @@ mod test
 
 ext
 {
-	register: fun(callback: ref fun[i32])
+	register: fun(imm callback: ref fun[i32])
 }
 
 Holder: rec
 {
-	new: op(f: ref fun[i32])
+	new: op(imm f: ref fun[i32])
 	{
 	}
 }
 
-visit: fun(f: ref fun[i32])
+visit: fun(imm f: ref fun[i32])
 {
 }
 
-keep: fun(own f: ref fun[i32])
+keep: fun(f: ref fun[i32])
 {
 }
 
@@ -24,7 +24,7 @@ change: fun(mut f: ref fun[i32])
 {
 }
 
-typed: fun(f: fun[ref fun[i32]])
+typed: fun(imm f: fun[imm ref fun[i32]])
 {
 }
 

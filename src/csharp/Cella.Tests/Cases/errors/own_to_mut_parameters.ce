@@ -1,6 +1,6 @@
 mod test
 
-B: rec
+B: own rec
 {
 	n: i32
 	drop: op {}
@@ -16,8 +16,8 @@ poke: fun(mut b: B) {}
 main: fun -> i32
 {
 	var hp = 10
-	damage(own hp, 3)
+	damage(hp, 3)
 	var b = B(3)
-	poke(own b)
+	poke(b)
 	ret 0
 }

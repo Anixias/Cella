@@ -95,7 +95,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(DestructorNode node)
 	{
-		var self = new ParameterSymbol("self", node.SourceLocation) { Mode = ParameterMode.Mut };
+		var self = new ParameterSymbol("self", node.SourceLocation)
+			{ Mode = ParameterMode.Mut, IsDestructorSelf = true };
 		
 		var name = $"{_typeStack.Peek()}.drop";
 		
@@ -215,9 +216,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public static ParameterMode GetMode(Token? keyword) => keyword?.Type switch
 	{
 		TokenType.KeywordMut => ParameterMode.Mut,
-		TokenType.KeywordOwn => ParameterMode.Own,
 		TokenType.KeywordImm => ParameterMode.Imm,
-		_ => ParameterMode.ReadOnly
+		_ => ParameterMode.Value
 	};
 	
 	public Symbol Visit(RecordNode node)

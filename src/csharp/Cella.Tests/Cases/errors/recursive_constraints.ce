@@ -10,7 +10,7 @@ Holder[T: new]: rec
 	value: ptr[T]
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -19,7 +19,7 @@ Text: rec
 	}
 }
 
-Bad: rec
+Bad: own rec
 {
 	next: Cell[Bad]
 	text: Text

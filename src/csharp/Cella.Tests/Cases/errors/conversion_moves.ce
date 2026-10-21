@@ -6,7 +6,7 @@ ext
 	free: fun(memory: ptr[u8])
 }
 
-String: rec
+String: own rec
 {
 	data: pvt ptr[u8]
 	length: pvt usize
@@ -25,7 +25,7 @@ String: rec
 	}
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	size: i32
 
@@ -34,18 +34,18 @@ Buffer: rec
 	}
 }
 
-Text: rec
+Text: own rec
 {
 	size: i32
 
-	as: op(own self) -> Buffer => Buffer(self.size)
+	as: op(self) -> Buffer => Buffer(self.size)
 
 	drop: op
 	{
 	}
 }
 
-send: fun(own buffer: Buffer) {}
+send: fun(buffer: Buffer) {}
 
 local: fun -> str
 {

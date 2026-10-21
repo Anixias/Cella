@@ -77,7 +77,7 @@ public sealed partial class Resolver
 			return new ResolvedConversionExpressionNode(callee,
 				_conversionTable.FindImplicit(callee.Type, _typePool.GetRefFunctionType(signature))!, callee.Syntax);
 		
-		return dereferences && FindDereference(callee.Type, ParameterMode.ReadOnly) is not null
+		return dereferences && FindDereference(callee.Type, ParameterMode.Value) is not null
 			? ResolveCallTarget(ResolveDereference(TokenType.OpStar, callee, callee.Syntax), false)
 			: callee;
 	}

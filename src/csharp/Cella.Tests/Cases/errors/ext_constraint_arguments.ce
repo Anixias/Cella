@@ -12,7 +12,7 @@ i32: impl Display
 	}
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -21,7 +21,7 @@ Token: rec
 	}
 }
 
-Bundle: rec
+Bundle: own rec
 {
 	token: Token
 }

@@ -8,10 +8,10 @@ Error at parameter_list_shapes.ce:5:21
 5 │ trailing: fun(x: i32,) -> i32 => x
                         ^ Cannot end lists with ','
 
-Error at parameter_list_shapes.ce:7:16
+Hint at parameter_list_shapes.ce:7:1
 6 │ 
-7 │ modes: fun(mut own x: i32) {}
-                   ╘═╛ Cannot combine 'mut' and 'own'
+7 │ modes: fun(mut x: i32) {}
+    ╘═══╛ 'modes' is never used
 
 Error at parameter_list_shapes.ce:9:19
 8 │ 

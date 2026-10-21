@@ -147,7 +147,8 @@ public sealed partial class Resolver
 	
 	private FunctionType? ExpectLocalLambda(CallShape shape, IReadOnlyList<IResolvedExpressionNode?> values, int index,
 		IExpressionNode node) =>
-		node is VarExpressionNode name && FindOpenLocal(name) is { Initializer: LambdaExpressionNode lambda }
+		(node is BorrowExpressionNode { IsMutable: false } borrow ? borrow.Value : node) is VarExpressionNode name &&
+		FindOpenLocal(name) is { Initializer: LambdaExpressionNode lambda }
 			? ExpectLambda(shape, values, index, ResolveAnnotations(lambda))
 			: null;
 	
@@ -444,6 +445,7 @@ public sealed partial class Resolver
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
 		CallExpressionNode or ArrayExpressionNode or LambdaExpressionNode => true,
+		BorrowExpressionNode { IsMutable: false } borrow => IsDeferred(borrow.Value),
 		MatchExpressionNode match => match.Arms.Any(arm => arm.Value is { } value && IsDeferred(value)),
 		AccessExpressionNode => FindGenericCaseEnum(node) is not null,
 		VarExpressionNode name => CurrentResolutionContext.Resolve(name.Identifier.Text) is null ||
@@ -502,7 +504,7 @@ public sealed partial class Resolver
 	}
 	
 	private static CallShape CreateShape(ImmutableArray<TypeSymbol> parameters, NamedTypeSymbol definition) =>
-		new(parameters, definition.TypeParameters, definition, [..parameters.Select(static _ => ParameterMode.Own)]);
+		new(parameters, definition.TypeParameters, definition, [..parameters.Select(static _ => ParameterMode.Value)]);
 	
 	private bool AcceptsInferred(CallShape shape, IResolvedExpressionNode[] args)
 	{

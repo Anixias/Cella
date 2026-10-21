@@ -31,7 +31,7 @@ writes: fun
 moves: fun
 {
 	var box = Box.make()
-	val taken = own box.inner
+	val taken = box.inner
 	val copied: Inner = box.inner
 }
 

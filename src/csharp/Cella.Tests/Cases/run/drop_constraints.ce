@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
@@ -21,9 +21,9 @@ Pair[A, B]: rec
 	b: B
 }
 
-hold[T: drop]: fun(own value: T) -> i32 => 1
+hold[T: drop]: fun(value: T) -> i32 => 1
 
-pass[T: drop]: fun(own value: T) -> i32 => hold(own value)
+pass[T: drop]: fun(value: T) -> i32 => hold(value)
 
 main: fun -> i32
 {

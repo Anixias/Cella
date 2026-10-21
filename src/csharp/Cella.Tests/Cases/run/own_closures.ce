@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -15,15 +15,15 @@ Texture: rec
 	}
 }
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		visit(value)
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-infer[T]: fun(f: fun[imm T -> i32], imm x: T) -> i32 => f(imm x)
+infer[T]: fun(imm f: fun[imm T -> i32], imm x: T) -> i32 => f(imm x)
 
 look[T]: fun(imm value: T) -> i32 => 7
 
@@ -88,7 +88,7 @@ textures: fun
 	val second = Texture(2)
 	val show = own fun { printf("textures %d %d\n", second.id, first.id) }
 	show()
-	val moved = own show
+	val moved = show
 	moved()
 	printf("textures end\n")
 }

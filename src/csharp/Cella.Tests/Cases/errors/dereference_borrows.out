@@ -14,7 +14,7 @@ Hint at dereference_borrows.ce:50:6
              ╘═══╛ 'boxed' is never changed
 
 Error at dereference_borrows.ce:53:6
-52 │ take(own boxed)
+52 │ take(boxed)
 53 │ ret view
          ╘══╛ Cannot use borrows of moved values
             | Moved on line 52

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -48,7 +48,7 @@ bump: fun(mut pair: Pair)
 main: fun -> i32
 {
 	var e = Effect.hold(Buffer(1))
-	if e is hold(val b)
+	if imm e is hold(val b)
 	{
 		printf("%d %d %d\n", peek(imm e), i32(e.isHeld()), b.id)
 		show(mut e, b.id)

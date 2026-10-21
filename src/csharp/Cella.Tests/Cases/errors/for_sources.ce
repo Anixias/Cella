@@ -5,7 +5,7 @@ Point: rec
 	x: i32
 }
 
-Ticker: rec
+Ticker: own rec
 {
 	left: i32
 
@@ -42,7 +42,7 @@ Hidden: rec
 	}
 }
 
-Plain: rec
+Plain: own rec
 {
 	x: i32
 
@@ -53,7 +53,7 @@ Plain: rec
 	}
 }
 
-Secret: rec
+Secret: own rec
 {
 	x: i32
 
@@ -67,7 +67,7 @@ Secret: rec
 	}
 }
 
-Closed: rec
+Closed: own rec
 {
 	x: i32
 
@@ -78,7 +78,7 @@ Closed: rec
 	}
 }
 
-ReadOnly: rec
+ReadOnly: own rec
 {
 	x: i32
 

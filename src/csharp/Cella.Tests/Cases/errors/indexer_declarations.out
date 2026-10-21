@@ -3,11 +3,6 @@ Error at indexer_declarations.ce:7:2
 7 │ []: op(i: usize) -> imm[i32] => imm *ptr[i32](null)
     ╘╛ Cannot declare '[]' operators without 'self'
 
-Error at indexer_declarations.ce:14:13
-13 │ 
-14 │ []: op(own self, i: usize) -> imm[i32] => imm self.pointer[i]
-                ╘══╛ Cannot take 'own self' in '[]' operators
-
 Error at indexer_declarations.ce:21:2
 20 │ 
 21 │ []: op(self) -> imm[i32] => imm *self.pointer

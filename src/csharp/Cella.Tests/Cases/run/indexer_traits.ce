@@ -12,7 +12,7 @@ Indexed: trait
 	[]: op(imm self, i: usize) -> imm[i32]
 }
 
-Palette: rec impl Indexed
+Palette: own rec impl Indexed
 {
 	values: array[i32, 3]
 

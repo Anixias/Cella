@@ -6,7 +6,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -20,14 +20,14 @@ Buffer: rec
 	}
 }
 
-BufferBox: rec
+BufferBox: own rec
 {
 	pointer: req ptr[Buffer]
 
-	new: op(own buffer: Buffer)
+	new: op(buffer: Buffer)
 	{
 		self.pointer = ptr[Buffer](malloc(sizeOf(Buffer)))
-		own *self.pointer = own buffer
+		own *self.pointer = buffer
 	}
 
 	*: op(imm self) -> imm[Buffer] => imm *self.pointer
@@ -41,7 +41,7 @@ BufferBox: rec
 	}
 }
 
-take: fun(own boxed: BufferBox)
+take: fun(boxed: BufferBox)
 {
 }
 
@@ -49,7 +49,7 @@ outlive: fun -> i32
 {
 	var boxed = BufferBox(Buffer(1))
 	val view = imm boxed.id
-	take(own boxed)
+	take(boxed)
 	ret view
 }
 

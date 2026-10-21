@@ -7,7 +7,7 @@ ext
 	free: fun(memory: ptr)
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -17,14 +17,14 @@ Token: rec
 	}
 }
 
-Box[T]: rec
+Box[T]: own rec
 {
 	pointer: req ptr[T]
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
 		self.pointer = ptr[T](malloc(sizeOf(T)))
-		own *self.pointer = own value
+		own *self.pointer = value
 	}
 
 	drop: op
@@ -39,9 +39,9 @@ Slots[T: noref]: rec
 	items: array[T, 4]
 	count: usize
 
-	push: fun(mut self, own item: T)
+	push: fun(mut self, item: T)
 	{
-		self.items[self.count] = own item
+		self.items[self.count] = item
 		self.count += 1
 	}
 }
@@ -51,17 +51,17 @@ Stack[T: noref]: rec
 	slots: Slots[T]
 	pushes: i32
 
-	push: fun(mut self, own item: T)
+	push: fun(mut self, item: T)
 	{
-		self.slots.push(own item)
+		self.slots.push(item)
 		self.pushes += 1
 	}
 
 	peek: fun(imm self) -> imm[T] => imm self.slots.items[self.slots.count - 1]
 
-	scratch: fun(own item: T) -> i32
+	scratch: fun(item: T) -> i32
 	{
-		val held = Box[T](own item)
+		val held = Box[T](item)
 		ret 1
 	}
 }
@@ -76,7 +76,7 @@ Mapper[T: noref]: rec
 		self.value = self.change(imm self.value)
 	}
 
-	wrap: fun(own value: T) -> Pair[T, i32] => Pair[T, i32](own value, 1)
+	wrap: fun(value: T) -> Pair[T, i32] => Pair[T, i32](value, 1)
 
 	score: fun(imm value: T) -> i32 => 7
 }
@@ -99,7 +99,7 @@ main: fun -> i32
 	var doubler = Mapper[i32](5, double)
 	doubler.apply()
 	doubler.apply()
-	val make: fun[own i32 -> Pair[i32, i32]] = Mapper[i32].wrap
+	val make: fun[i32 -> Pair[i32, i32]] = Mapper[i32].wrap
 	val score: fun[imm i32 -> i32] = Mapper[i32].score
 	val both = make(4)
 	printf("%d %d %d %d\n", doubler.value, both.first, both.second, score(3))

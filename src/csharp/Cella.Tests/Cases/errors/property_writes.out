@@ -3,16 +3,6 @@ Hint at property_writes.ce:24:1
 24 │ writes: fun(unit: Unit)
      ╘════╛ 'writes' is never used
 
-Error at property_writes.ce:26:2
-25 │ {
-26 │     unit.health = 1
-         ╘══╛ Cannot mutably borrow read-only parameters
-
-Error at property_writes.ce:27:2
-26 │ unit.health = 1
-27 │ unit.health += 1
-     ╘══╛ Cannot mutably borrow read-only parameters
-
 Error at property_writes.ce:30:2
 29 │ val view = imm other
 30 │ view.health = 2

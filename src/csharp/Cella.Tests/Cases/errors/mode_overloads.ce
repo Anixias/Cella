@@ -15,13 +15,50 @@ ext
 first: fun(mut x: i32) {}
 first: fun(x: i32) {}
 
-second: fun(own x: i32) {}
+second: fun(x: i32) {}
 second: fun(x: i32) {}
 
 third: fun(mut x: i32) -> i32 => 1
 third: fun(x: i32) {}
 
+crossed: fun(imm a: i32, b: i32) {}
+crossed: fun(a: i32, imm b: i32) {}
+
+lent: fun(imm a: i32, b: i32) -> i32 => a
+lent: fun(imm a: i32, imm b: i32) -> i32 => b
+
+Point: rec
+{
+	x: i32
+
+	shift: fun(self) -> i32 => self.x
+	shift: fun(imm self) -> i32 => self.x
+	move: fun(self, by: i32) -> i32 => self.x + by
+	move: fun(self, imm by: i32) -> i32 => self.x - by
+
+	+: op(a: Point, b: Point) -> Point => Point(a.x + b.x)
+	+: op(imm a: Point, b: Point) -> Point => Point(a.x + b.x)
+}
+
+Shape: trait
+{
+	area: fun(imm self, scale: i32) -> i32
+	area: fun(imm self, imm scale: i32) -> i32
+}
+
+Square: rec impl Shape
+{
+	side: i32
+
+	area: fun(imm self, scale: i32) -> i32 => self.side * scale
+}
+
+pick: fun(value: i32) -> i32 => value
+pick: fun(imm value: i32) -> i32 => value
+
 main: fun -> i32
 {
-	ret 0
+	val any = pick
+	val n = 4
+	ret lent(imm n, imm n) + Point(1).move(2)
 }

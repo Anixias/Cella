@@ -100,7 +100,7 @@ Pair[T]: rec
 	right: T
 }
 
-swap[T]: fun(own pair: Pair[T]) -> Pair[T] => Pair[T](own pair.right, own pair.left)
+swap[T]: fun(pair: Pair[T]) -> Pair[T] => Pair[T](pair.right, pair.left)
 
 Numbers: rec
 {
@@ -148,7 +148,7 @@ main: fun -> i32
 	describe(copied)
 
 	val p = Pair[array[i32, 8]]([1, 2, 3, 4, 5, 6, 7, 8], [9, 10, 11, 12, 13, 14, 15, 16])
-	val q = swap(own p)
+	val q = swap(p)
 	val pickPair = fun(index: usize) -> i32 => q.left[index] + q.right[index]
 	printf("%d %d %d\n", q.left[0], q.right[7], pickPair(3))
 

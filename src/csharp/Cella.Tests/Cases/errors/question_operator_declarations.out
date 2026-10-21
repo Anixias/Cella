@@ -1,36 +1,31 @@
-Error at question_operator_declarations.ce:7:8
-6 │ 
-7 │ ?: op(self) -> i32 => 1
-          ╘══╛ Cannot take 'self' in '?' operators
-
-Error at question_operator_declarations.ce:14:18
+Error at question_operator_declarations.ce:14:14
 13 │ 
-14 │ ?: op(own self, x: i32) -> i32 => 1
-                     ^ Cannot take parameters in '?' operators with 'self'
+14 │ ?: op(self, x: i32) -> i32 => 1
+                 ^ Cannot take parameters in '?' operators with 'self'
 
 Error at question_operator_declarations.ce:21:2
 20 │ 
-21 │ ?: op(own self) -> i32
+21 │ ?: op(self) -> i32
      ^ '?' operators must have an expression body
 
 Error at question_operator_declarations.ce:31:2
 30 │ 
 31 │ ?: op -> i32 => 1
-     ^ Cannot declare '?' operators without 'own self'
+     ^ Cannot declare '?' operators without 'self'
 
 Error at question_operator_declarations.ce:38:2
 37 │ 
-38 │ ?: op(own self) => 1
+38 │ ?: op(self) => 1
      ^ '?' operators need a return type
 
 Error at question_operator_declarations.ce:45:4
 44 │ 
-45 │ ?[T]: op(own self) -> i32 => 1
+45 │ ?[T]: op(self) -> i32 => 1
        ^ Cannot infer 'T' from the operands of '?'
 
 Error at question_operator_declarations.ce:50:2
 49 │ {
-50 │     ?: op(own self) -> i32
+50 │     ?: op(self) -> i32
          ^ Cannot declare '?' operators in traits
 
 [compilation failed]

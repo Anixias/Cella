@@ -1,6 +1,6 @@
 mod test
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -11,7 +11,7 @@ Token: rec
 	peek: fun(imm self) -> i32 => self.id
 }
 
-Pair: rec
+Pair: own rec
 {
 	token: Token
 }

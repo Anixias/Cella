@@ -1,8 +1,3 @@
-Error at dyn_syntax.ce:5:12
-4 │ {
-5 │     area: fun(self) -> f64
-                  ╘══╛ Cannot copy 'Self'
-
 Error at dyn_syntax.ce:8:22
 7 │ 
 8 │ first: fun(shape: dyn) -> f64 => 0.0

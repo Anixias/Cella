@@ -103,8 +103,7 @@ public sealed partial class CodeGenerator
 		
 		var args = parameters
 			.Take(direct)
-			.Select((parameter, i) => AdaptFunction(function.Signature.ParameterTypes[i],
-				target.Signature.ParameterTypes[i], PassToWitness(function, target, i, parameter, builder), builder))
+			.Select((parameter, i) => PassToWitness(function, target, i, parameter, builder))
 			.ToList();
 		
 		var cleanups = new List<Action>();
@@ -127,13 +126,14 @@ public sealed partial class CodeGenerator
 		LLVMBuilderRef builder)
 	{
 		var fromPointer = TypePool.PassesByPointer(function, index);
-		if (fromPointer == TypePool.PassesByPointer(target, index))
-			return value;
+		var toPointer = TypePool.PassesByPointer(target, index);
+		var from = function.Signature.ParameterTypes[index];
+		var to = target.Signature.ParameterTypes[index];
+		if (fromPointer && !toPointer)
+			value = LoadValue(builder, from, value, "argument");
 		
-		var type = function.Signature.ParameterTypes[index];
-		return fromPointer
-			? LoadValue(builder, type, value, "argument")
-			: SpillValue(builder, type, value, "argument");
+		value = AdaptFunction(from, to, value, builder);
+		return !fromPointer && toPointer ? SpillValue(builder, to, value, "argument") : value;
 	}
 	
 	private LLVMValueRef EmitNativeWitness(FunctionInfo function, NativeWitness witness, List<LLVMValueRef> parameters,
@@ -209,9 +209,9 @@ public sealed partial class CodeGenerator
 			: new ConversionValue(value, conversion, location);
 		
 		EmitValue(new AssignValue(type, self, converted, location), builder);
-		if (function.DeclaredSignature.GetMode(1) == ParameterMode.Own &&
+		if (function.DeclaredSignature.GetMode(1) == ParameterMode.Value &&
 		    conversion is FunctionConversion { Function: var lending } &&
-		    lending.DeclaredSignature.GetMode(0) != ParameterMode.Own)
+		    lending.DeclaredSignature.GetMode(0) != ParameterMode.Value)
 			EmitDrop(value, builder);
 		
 		return default;

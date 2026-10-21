@@ -5,20 +5,20 @@ Hint at earlier_iteration_hints.ce:16:1
 
 Error at earlier_iteration_hints.ce:19:27
 18 │ val a = N(1)
-19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
+19 │ for i in 0..3 { show(imm a)  val t = take(a) }
                               ^ Cannot use moved values
                               | Moved on line 19 in an earlier iteration
 
 Hint at earlier_iteration_hints.ce:19:35
 18 │ val a = N(1)
-19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
+19 │ for i in 0..3 { show(imm a)  val t = take(a) }
                                       ^ 't' is never used
 
-Error at earlier_iteration_hints.ce:19:48
+Error at earlier_iteration_hints.ce:19:44
 18 │ val a = N(1)
-19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
-                                                   ^ Cannot use moved values
-                                                   | Moved here in an earlier iteration
+19 │ for i in 0..3 { show(imm a)  val t = take(a) }
+                                               ^ Cannot use moved values
+                                               | Moved here in an earlier iteration
 
 Hint at earlier_iteration_hints.ce:22:1
 21 │ 
@@ -43,18 +43,18 @@ Hint at earlier_iteration_hints.ce:33:1
 
 Hint at earlier_iteration_hints.ce:40:8
 39 │ {
-40 │     val t = take(own a)
+40 │     val t = take(a)
              ^ 't' is never used
 
-Error at earlier_iteration_hints.ce:40:21
+Error at earlier_iteration_hints.ce:40:17
 39 │ {
-40 │     val t = take(own a)
-                          ^ Cannot use moved values
-                          | Moved on line 45 in an earlier iteration
+40 │     val t = take(a)
+                      ^ Cannot use moved values
+                      | Moved on line 45 in an earlier iteration
 
 Hint at earlier_iteration_hints.ce:45:7
 44 │ show(imm a)
-45 │ val u = take(own a)
+45 │ val u = take(a)
          ^ 'u' is never used
 
 [compilation failed]

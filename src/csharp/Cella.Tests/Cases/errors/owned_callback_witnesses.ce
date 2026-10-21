@@ -2,14 +2,14 @@ mod test
 
 Sink: trait
 {
-	take: fun(imm self, value: fun[-> i32]) -> i32
+	take: fun(imm self, imm value: fun[-> i32]) -> i32
 }
 
 Caller: rec impl Sink
 {
 	base: i32
 
-	take: fun(self, own value: fun[-> i32]) -> i32 => value() + self.base
+	take: fun(self, value: fun[-> i32]) -> i32 => value() + self.base
 }
 
 main: fun -> i32 => 0

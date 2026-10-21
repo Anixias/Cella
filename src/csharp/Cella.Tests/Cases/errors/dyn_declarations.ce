@@ -28,7 +28,7 @@ ext
 
 make: fun -> dyn[Shape] => make()
 
-take: fun(own shape: dyn[Shape]) => take(shape)
+take: fun(shape: dyn[Shape]) => take(shape)
 
 bad: fun(shape: dyn[Point]) -> i32 => 0
 

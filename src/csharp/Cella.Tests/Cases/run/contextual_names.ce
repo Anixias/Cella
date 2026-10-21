@@ -3,7 +3,7 @@ mod test
 union: fun(a: i32, b: i32) -> i32 => a | b
 rec: fun -> i32 => 7
 trait: val i32 = 1
-impl[T]: fun(own x: T) -> i32 => 2
+impl[T]: fun(x: T) -> i32 => 2
 mod: fun -> i32 => 3
 use: fun -> i32 => 4
 ext: fun -> i32 => 5

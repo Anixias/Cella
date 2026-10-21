@@ -3,15 +3,15 @@ Error at function_type_syntax.ce:3:18
 3 │ apply: fun(f: fun(i32) -> i32) -> i32 => 0
                      ^ Expected '['
 
-Error at function_type_syntax.ce:5:22
+Error at function_type_syntax.ce:5:26
 4 │ 
-5 │ pair: fun(f: fun[i32 i32]) => {}
-                         ╘═╛ Expected ']'
+5 │ pair: fun(imm f: fun[i32 i32]) => {}
+                             ╘═╛ Expected ']'
 
-Error at function_type_syntax.ce:5:31
+Error at function_type_syntax.ce:5:35
 4 │ 
-5 │ pair: fun(f: fun[i32 i32]) => {}
-                                  ^ Expected an expression
+5 │ pair: fun(imm f: fun[i32 i32]) => {}
+                                      ^ Expected an expression
 
 Error at function_type_syntax.ce:9:19
 8 │ {

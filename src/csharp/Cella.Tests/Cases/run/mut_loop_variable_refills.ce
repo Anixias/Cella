@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -22,8 +22,8 @@ main: fun -> i32
 	for mut buffer in buffers
 	{
 		val old = own buffer
-		buffer = own spare
-		spare = own old
+		buffer = spare
+		spare = old
 	}
 
 	printf("%d %d %d\n", buffers[0].id, buffers[1].id, spare.id)

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Owned: rec
+Owned: own rec
 {
 	count: usize
 
@@ -20,7 +20,7 @@ Owned: rec
 	}
 }
 
-main: fun(own args: Owned) -> i32
+main: fun(args: Owned) -> i32
 {
 	printf("main %zu\n", args.count)
 	ret 0

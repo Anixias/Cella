@@ -6,29 +6,29 @@ ext
 	qsort: fun(base: ptr, count: usize, size: usize, compare: ext fun[ptr[i32], ptr[i32] -> i32])
 }
 
-apply: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+apply: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		visit(value)
 }
 
-bumpAll: fun(mut values: array[i32, 3], bump: fun[mut i32])
+bumpAll: fun(mut values: array[i32, 3], imm bump: fun[mut i32])
 {
 	for mut value in values
 		bump(mut value)
 }
 
-call: fun(f: fun[-> i32]) -> i32 => f()
+call: fun(imm f: fun[-> i32]) -> i32 => f()
 
-run: fun(f: fun[]) => f()
+run: fun(imm f: fun[]) => f()
 
-transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(imm value)
+transform[T, U]: fun(imm value: T, imm f: fun[imm T -> U]) -> U => f(imm value)
 
-pick: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
-pick: fun(f: fun[i32, i32 -> i32], x: i32) -> i32 => f(x, x)
-pick: fun(f: fun[str -> i32], x: str) -> i32 => f(x)
+pick: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+pick: fun(imm f: fun[i32, i32 -> i32], x: i32) -> i32 => f(x, x)
+pick: fun(imm f: fun[str -> i32], x: str) -> i32 => f(x)
 
 main: fun -> i32
 {

@@ -1,19 +1,25 @@
-Error at payload_borrow_mut_calls.ce:52:19
-51 │ clear(mut e)
-52 │ printf("%d\n", b.id)
-                    ╘══╛ Cannot use borrows of reassigned values
-                       | Reassigned on line 51
+Error at payload_borrow_mut_calls.ce:51:14
+50 │ {
+51 │     clear(mut e)
+                   ^ Cannot use moved values
+                   | Moved on line 47
 
-Error at payload_borrow_mut_calls.ce:60:18
-59 │ e.clear()
-60 │ printf("%d\n", b.id)
-                    ╘══╛ Cannot use borrows of reassigned values
-                       | Reassigned on line 59
+Error at payload_borrow_mut_calls.ce:57:5
+56 │ 
+57 │ if e is hold(val b)
+        ^ Cannot use moved values
+        | Moved on line 47
 
-Error at payload_borrow_mut_calls.ce:67:18
-66 │ reset(mut holder)
-67 │ printf("%d\n", b.id)
-                    ╘══╛ Cannot use borrows of reassigned values
-                       | Reassigned on line 66
+Error at payload_borrow_mut_calls.ce:59:3
+58 │ {
+59 │     e.clear()
+         ^ Cannot use moved values
+         | Moved on line 57
+
+Error at payload_borrow_mut_calls.ce:66:13
+65 │ {
+66 │     reset(mut holder)
+                   ╘════╛ Cannot use partly moved values
+                        | Moved on line 64
 
 [compilation failed]

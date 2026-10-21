@@ -1,6 +1,6 @@
 mod test
 
-Noisy: rec
+Noisy: own rec
 {
 	id: i32
 
@@ -31,7 +31,7 @@ throughBox: fun(b: Box[Noisy])
 	drop *b
 }
 
-local: fun(own value: Noisy)
+local: fun(value: Noisy)
 {
 	drop value
 }

@@ -10,33 +10,18 @@ Error at constructor_overloads.ce:12:2
 
 Error at constructor_overloads.ce:17:2
 16 │ 
-17 │ new: op(own value: i64)
-     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
+17 │ new: op(value: i64)
+     ╘═╛ 'Text.new' is declared more than once with the same signature
 
 Error at constructor_overloads.ce:22:2
 21 │ 
 22 │ new: op(value: i64)
-     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
+     ╘═╛ 'Text.new' is declared more than once with the same signature
 
-Error at constructor_overloads.ce:27:2
-26 │ 
-27 │ new: op(mut value: u8)
-     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
-
-Error at constructor_overloads.ce:32:2
-31 │ 
-32 │ new: op(value: u8)
-     ╘═╛ 'Text.new' overloads cannot differ only in parameter modes
-
-Error at constructor_overloads.ce:47:2
-46 │ 
-47 │ new: op(imm value: T)
-     ╘═╛ 'Box.new' overloads cannot differ only in parameter modes
-
-Error at constructor_overloads.ce:52:2
-51 │ 
-52 │ new: op(own value: T)
-     ╘═╛ 'Box.new' overloads cannot differ only in parameter modes
+Error at constructor_overloads.ce:49:16
+48 │ {
+49 │     self.value = value
+                      ╘═══╛ Cannot move read-only parameters
 
 Error at constructor_overloads.ce:60:2
 59 │ {
@@ -50,13 +35,13 @@ Error at constructor_overloads.ce:61:2
 
 Error at constructor_overloads.ce:62:2
 61 │ new: op(value: i32)
-62 │ new: op(own value: i64)
-     ╘═╛ 'Make.new' overloads cannot differ only in parameter modes
+62 │ new: op(value: i64)
+     ╘═╛ 'Make.new' is declared more than once with the same signature
 
 Error at constructor_overloads.ce:63:2
-62 │ new: op(own value: i64)
+62 │ new: op(value: i64)
 63 │ new: op(value: i64)
-     ╘═╛ 'Make.new' overloads cannot differ only in parameter modes
+     ╘═╛ 'Make.new' is declared more than once with the same signature
 
 Error at constructor_overloads.ce:70:13
 69 │ 

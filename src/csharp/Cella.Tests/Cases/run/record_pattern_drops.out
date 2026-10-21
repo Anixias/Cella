@@ -5,9 +5,9 @@ Hint at record_pattern_drops.ce:29:6
 
 borrowed 2
 moved 1
+drop 2
 drop 1
 end
-drop 2
 temp 3 4
 drop 4
 drop 3

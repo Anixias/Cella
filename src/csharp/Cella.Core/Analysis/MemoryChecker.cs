@@ -44,7 +44,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		ownSelf = function.Info.Symbol is
 		{
 			Kind: FunctionKind.Method, Syntax: FunctionNode { Receiver: not null },
-			Parameters: [{ Mode: ParameterMode.Own } owned, ..]
+			Parameters: [{ Mode: ParameterMode.Value } owned, ..]
 		}
 			? owned
 			: null;
@@ -227,7 +227,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				switch (memoryEvent)
 				{
 					case AccessEvent access:
-						CheckAccess(access, state, paths, reportedMoves);
+						CheckAccess(access, state, paths);
 						break;
 					
 					case WriteEvent write when write.Place.Path.Any(IsComputedIndex):
@@ -411,8 +411,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 				function.Info.Symbol.Parameters[0]);
 	}
 	
-	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths,
-		HashSet<SourceLocation> reportedMoves)
+	private void CheckAccess(AccessEvent access, InitState state, MovePaths paths)
 	{
 		if (access.Kind == AccessKind.Move && GetMoveError(access.Place, paths) is { } error)
 		{
@@ -426,8 +425,6 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 		if (FindUninitialized(access.Place, state, paths) is { } uninitialized)
 			Report(access.Location, $"Cannot use {uninitialized.Condition} values",
 				DescribeMoves(access.Location, uninitialized.Moves), access.Place.Root);
-		else if (access.IsImplicit && reportedMoves.Add(access.Location))
-			Report(access.Location, $"Cannot move '{access.Type.Name}' values implicitly", [], access.Place.Root);
 	}
 	
 	private static MovePath? FindFillable(Place place, InitState state, MovePaths paths) =>
@@ -537,7 +534,7 @@ public sealed class MemoryChecker(TypePool typePool, ConstantEvaluator evaluator
 	private string? GetMoveError(Place place, MovePaths paths) => place.Root switch
 	{
 		GlobalSymbol => null,
-		ParameterSymbol { Mode: ParameterMode.ReadOnly or ParameterMode.Imm } parameter
+		ParameterSymbol { Mode: ParameterMode.Imm } parameter
 			when !typePool.IsCopy(paths.GetRoot(parameter).Type) => "Cannot move read-only parameters",
 		LocalVariableSymbol { Captured: not null } => "Cannot move captured variables",
 		LocalVariableSymbol { IsLoopBinding: true, IsMutBinding: true } when place.Path is [DerefProjection, ..] =>

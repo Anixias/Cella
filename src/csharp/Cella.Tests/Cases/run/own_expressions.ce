@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -20,36 +20,36 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	count: i32
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	owned(buffer: Buffer)
 }
 
 same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> bool => @buffer == address
-keep: fun(own count: i32) -> i32 => count
-take: fun(own buffer: Buffer) -> i32 => buffer.id
-give: fun(own buffer: Buffer) -> Buffer => own buffer
+keep: fun(count: i32) -> i32 => count
+take: fun(buffer: Buffer) -> i32 => buffer.id
+give: fun(buffer: Buffer) -> Buffer => buffer
 flag: fun(value: bool) -> i32 => i32(value)
 
 main: fun -> i32
 {
 	var count = 6
-	val moved = own count
+	val moved = count
 	var other = 7
-	val wide: i64 = own other
+	val wide: i64 = other
 	var third = 8
-	printf("%d %lld %d\n", moved, wide, keep(own third))
+	printf("%d %lld %d\n", moved, wide, keep(third))
 
 	var d = Buffer(9)
 	val address = @d
-	printf("%d %d\n", flag(same(imm d, address)), flag(same(imm give(own d), address)))
+	printf("%d %d\n", flag(same(imm d, address)), flag(same(imm give(d), address)))
 
 	var values = [Buffer(10), Buffer(11)]
 	val p = @values[0]
@@ -62,23 +62,23 @@ main: fun -> i32
 	own h.buffer = Buffer(31)
 
 	val effect = Effect.owned(Buffer(14))
-	if own effect is owned(val buffer)
+	if effect is owned(val buffer)
 		printf("%d\n", buffer.id)
 
 	var next = Effect.owned(Buffer(15))
-	match own next
+	match next
 	{
 		owned(val buffer) => printf("%d\n", buffer.id)
 		else => {}
 	}
 
 	var e = Buffer(16)
-	val f = own e
+	val f = e
 	var g = Buffer(17)
-	val wrapped = Holder(own g, 18)
+	val wrapped = Holder(g, 18)
 	var k = Buffer(19)
-	printf("%d %d %d %d\n", f.id, wrapped.buffer.id, take(own k), give(Buffer(20)).id)
+	printf("%d %d %d %d\n", f.id, wrapped.buffer.id, take(k), give(Buffer(20)).id)
 
 	var status = 0
-	ret own status
+	ret status
 }

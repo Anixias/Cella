@@ -12,7 +12,7 @@ View[T]: ref rec
 	}
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 

@@ -284,7 +284,7 @@ Node: rec
 	next: ptr[Node]
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 

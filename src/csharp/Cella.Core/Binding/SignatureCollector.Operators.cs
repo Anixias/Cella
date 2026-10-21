@@ -117,8 +117,7 @@ public sealed partial class SignatureCollector
 			{ Parameters: [var parameter, ..] } =>
 				(parameter.SourceLocation, $"Cannot take parameters in '{name}' operators with 'self'"),
 			{ ReturnType: null } => (node.Identifier.SourceLocation, $"'{name}' operators need a return type"),
-			_ when result is BorrowType { IsMutable: var isMutable } && (isMutable != (mode == ParameterMode.Mut) ||
-			                                                             mode == ParameterMode.Own) ||
+			_ when result is BorrowType { IsMutable: var isMutable } && isMutable != (mode == ParameterMode.Mut) ||
 			       result is not (BorrowType or NamedTypeSymbol { IsRef: true }) && mode == ParameterMode.Mut =>
 				(resultLocation,
 					$"Cannot return '{result.Name}' from '{name}' with '{DescribeConversionReceiver(mode)}'"),
@@ -146,12 +145,8 @@ public sealed partial class SignatureCollector
 	private bool IsBuiltIn(TypeSymbol from, TypeSymbol to) =>
 		_typePool.ConversionTable.FindExplicit(from, to) is not (null or FunctionConversion);
 	
-	private static string DescribeConversionReceiver(ParameterMode mode) => mode switch
-	{
-		ParameterMode.Mut => "mut self",
-		ParameterMode.Own => "own self",
-		_ => "self"
-	};
+	private static string DescribeConversionReceiver(ParameterMode mode) =>
+		mode == ParameterMode.Mut ? "mut self" : "self";
 	
 	private void ReportLoopOperators(TypeSymbol type, List<FunctionNode> operators)
 	{
@@ -190,8 +185,6 @@ public sealed partial class SignatureCollector
 		{
 			{ Receiver: null } => (node.Identifier.SourceLocation,
 				$"Cannot declare '{name}' operators without '{(isStep ? "mut self" : "self")}'"),
-			{ Receiver: { Mode.Type: TokenType.KeywordOwn } receiver } =>
-				(receiver.SourceLocation, $"Cannot take 'own self' in '{name}' operators"),
 			{ Receiver: { Mode: null } receiver } when isStep =>
 				(receiver.SourceLocation, "Cannot take 'self' in 'for' operators"),
 			{ Parameters: [var parameter, ..] } =>
@@ -277,8 +270,6 @@ public sealed partial class SignatureCollector
 		FunctionSignature signature) => node switch
 	{
 		{ Receiver: null } => (node.Identifier.SourceLocation, "Cannot declare '[]' operators without 'self'"),
-		{ Receiver: { Mode: { Type: TokenType.KeywordOwn } } receiver } =>
-			(receiver.SourceLocation, "Cannot take 'own self' in '[]' operators"),
 		{ Parameters: [] } => (node.Identifier.SourceLocation, "'[]' operators need at least one parameter"),
 		_ when node.Parameters.FirstOrDefault(static p => p.Mode?.Type == TokenType.KeywordMut) is { } parameter =>
 			(parameter.SourceLocation, "Cannot take 'mut' parameters in '[]' operators"),
@@ -319,8 +310,6 @@ public sealed partial class SignatureCollector
 	private static (SourceLocation Location, string Message)? FindDereferenceError(TypeSymbol type, FunctionNode node,
 		FunctionSignature signature) => node switch
 	{
-		{ Receiver: { Mode: { Type: TokenType.KeywordOwn } } receiver } =>
-			(receiver.SourceLocation, "Cannot take 'own self' in '*' operators"),
 		{ Parameters: [var parameter, ..] } =>
 			(parameter.SourceLocation, "Cannot take parameters in '*' operators with 'self'"),
 		{ ReturnType: null } => (node.Identifier.SourceLocation, "'*' operators need a return type"),
@@ -432,8 +421,8 @@ public sealed partial class SignatureCollector
 		_ when type is TypeParameterSymbol =>
 			(node.Identifier.SourceLocation, "Cannot declare '?' operators in traits"),
 		{ Receiver: null } =>
-			(node.Identifier.SourceLocation, "Cannot declare '?' operators without 'own self'"),
-		{ Receiver: { } receiver } when receiver.Mode?.Type != TokenType.KeywordOwn =>
+			(node.Identifier.SourceLocation, "Cannot declare '?' operators without 'self'"),
+		{ Receiver: { Mode: not null } receiver } =>
 			(receiver.SourceLocation, $"Cannot take '{DescribeReceiver(receiver)}' in '?' operators"),
 		{ Parameters: [var parameter, ..] } =>
 			(parameter.SourceLocation, "Cannot take parameters in '?' operators with 'self'"),

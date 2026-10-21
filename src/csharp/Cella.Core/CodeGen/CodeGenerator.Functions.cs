@@ -163,7 +163,7 @@ public sealed partial class CodeGenerator
 		var mode = signature.GetMode(0);
 		var slot = SpillValue(builder, type, EmitZeroed(builder, type, "arguments"), "arguments");
 		BuildRun(type, _typePool.FindArgumentsWitness(type), slot, strings, count, builder);
-		cleanup = mode == ParameterMode.Own ? null : () => EmitDropCall(type, slot, builder);
+		cleanup = mode == ParameterMode.Value ? null : () => EmitDropCall(type, slot, builder);
 		return TypePool.PassesByPointer(mode) ? slot : LoadValue(builder, type, slot, "arguments");
 	}
 	
@@ -274,13 +274,13 @@ public sealed partial class CodeGenerator
 	{
 		for (var i = 0; i < info.Signature.ParameterTypes.Length; i++)
 		{
-			if (TypePool.PassesByPointer(info, i) || info.DeclaredSignature.GetMode(i) != ParameterMode.ReadOnly ||
-			    !IsLarge(info.Signature.ParameterTypes[i]))
+			if (info.DeclaredSignature.GetMode(i) != ParameterMode.Value ||
+			    !IsLarge(info.Signature.ParameterTypes[i]) ||
+			    _typePool.NeedsDrop(info.Signature.ParameterTypes[i]))
 				continue;
 			
 			var index = (LLVMAttributeIndex)(leading + i + 1);
 			AddParameterAttribute(function, index, "noalias", 0);
-			AddParameterAttribute(function, index, "readonly", 0);
 			AddParameterAttribute(function, index, "captures", 0);
 		}
 	}

@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-make[T]: fun(f: fun[-> T], n: i32) -> T
+make[T]: fun(imm f: fun[-> T], n: i32) -> T
 {
 	if n > 0
 		printf("%d\n", make(fun => 5, n - 1))
@@ -13,7 +13,7 @@ make[T]: fun(f: fun[-> T], n: i32) -> T
 	ret f()
 }
 
-apply[T: copy]: fun(f: fun[T -> T], value: T, n: i32) -> T
+apply[T: copy]: fun(imm f: fun[T -> T], value: T, n: i32) -> T
 {
 	if n > 0
 		printf("%d\n", apply(fun(x) => x * 2, 10, n - 1))

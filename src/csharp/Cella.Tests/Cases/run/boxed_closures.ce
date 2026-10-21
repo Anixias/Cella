@@ -8,7 +8,7 @@ ext
 	abs: fun(value: i32) -> i32
 }
 
-Texture: rec
+Texture: own rec
 {
 	id: i32
 
@@ -18,14 +18,14 @@ Texture: rec
 	}
 }
 
-Boxed[K: trait]: rec
+Boxed[K: trait]: own rec
 {
 	object: pvt ptr[dyn[K]]
 
-	of[T: K + noref]: fun(own value: T) -> Boxed[K]
+	of[T: K + noref]: fun(value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = own value
+		own *memory = value
 		ret Boxed[K](memory)
 	}
 
@@ -38,7 +38,7 @@ Boxed[K: trait]: rec
 	}
 }
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		visit(value)

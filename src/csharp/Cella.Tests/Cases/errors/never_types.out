@@ -18,9 +18,9 @@ Error at never_types.ce:16:29
 16 │ elements: fun(values: array[never, 2])
                                  ╘═══╛ 'never' can only be a return type
 
-Error at never_types.ce:20:28
+Error at never_types.ce:20:32
 19 │ 
-20 │ callback: fun(handler: fun[never])
-                                ╘═══╛ 'never' can only be a return type
+20 │ callback: fun(imm handler: fun[never])
+                                    ╘═══╛ 'never' can only be a return type
 
 [compilation failed]

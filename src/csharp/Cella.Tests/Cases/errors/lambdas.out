@@ -1,7 +1,7 @@
-Error at lambdas.ce:7:66
-6 │ choose: fun(f: fun[i64 -> i64]) -> i32 => 2
-7 │ transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(value)
-                                                                     ╘═══╛ Cannot borrow arguments implicitly
+Error at lambdas.ce:7:70
+6 │ choose: fun(imm f: fun[i64 -> i64]) -> i32 => 2
+7 │ transform[T, U]: fun(imm value: T, imm f: fun[imm T -> U]) -> U => f(value)
+                                                                         ╘═══╛ Cannot borrow arguments implicitly
 
 Hint at lambdas.ce:14:2
 13 │ 

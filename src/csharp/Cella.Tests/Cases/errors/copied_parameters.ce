@@ -1,6 +1,6 @@
 mod test
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -16,7 +16,7 @@ Shape: trait
 	area: fun(imm self) -> i32
 }
 
-Card: rec impl Shape
+Card: own rec impl Shape
 {
 	token: Token
 
@@ -29,6 +29,6 @@ keep[T]: fun(value: T) -> i32 => 0
 
 copies[T: copy]: fun(value: T) -> i32 => 0
 
-holder: fun(f: fun[Token -> i32]) -> i32 => 0
+holder: fun(imm f: fun[Token -> i32]) -> i32 => 0
 
 main: fun -> i32 => 0

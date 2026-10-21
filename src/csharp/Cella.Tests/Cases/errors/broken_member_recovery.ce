@@ -1,6 +1,6 @@
 mod test
 
-A: rec
+A: own rec
 {
 	x: i32
 	y: i32

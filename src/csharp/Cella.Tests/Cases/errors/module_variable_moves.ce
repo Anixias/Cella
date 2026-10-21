@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,12 +9,12 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	full(buffer: Buffer)
@@ -31,7 +31,7 @@ buffers: var array[Buffer, 2] = [Buffer(3), Buffer(4)]
 slot: var Slot = Slot.full(Buffer(5))
 origin: val Buffer = Buffer(6)
 
-take: fun(own buffer: Buffer)
+take: fun(buffer: Buffer)
 {
 }
 
@@ -42,7 +42,7 @@ main: fun -> i32
 	take(current)
 	val c: Buffer = holder.buffer
 	val d = own buffers[1]
-	match own slot
+	match slot
 	{
 		empty => {}
 		full(val buffer) => take(buffer)

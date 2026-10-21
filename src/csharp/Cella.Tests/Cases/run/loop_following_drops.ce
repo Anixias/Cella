@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-D: rec
+D: own rec
 {
 	id: i32
 
@@ -20,7 +20,7 @@ D: rec
 	}
 }
 
-take: fun(own d: D)
+take: fun(d: D)
 {
 	printf("take %d\n", d.id)
 }
@@ -49,7 +49,7 @@ moved: fun
 		b[i] = D(i32(i) + 10)
 
 	for i in 0..2
-		take(own b[i])
+		take(b[i])
 
 	printf("moved\n")
 }
@@ -127,7 +127,7 @@ picked: fun
 	for i in 0..3
 	{
 		if pick(i)
-			take(own a[i])
+			take(a[i])
 	}
 
 	printf("picked\n")

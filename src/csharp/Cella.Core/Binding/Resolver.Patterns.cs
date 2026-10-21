@@ -21,6 +21,9 @@ public sealed partial class Resolver
 			value = owned.Value;
 		}
 		
+		if (value is ResolvedBorrowExpressionNode { IsMutable: false, Syntax: BorrowExpressionNode } borrow)
+			value = borrow.Place;
+		
 		value = Decay(value);
 		if (!IsInvalid(value) && value.Type is UntypedType)
 			value = MaterializeAsDefault(value);
@@ -34,19 +37,16 @@ public sealed partial class Resolver
 		return (value, null);
 	}
 	
-	private IResolvedExpressionNode TakeOwnership(IResolvedExpressionNode value, IExpressionNode syntax,
-		EnumSymbol? enumType, bool isMut, IEnumerable<PatternNode?> patterns)
+	private IResolvedExpressionNode TakeOwnership(IResolvedExpressionNode value, IExpressionNode syntax, bool isMut,
+		IEnumerable<PatternNode?> patterns)
 	{
 		if (isMut)
 			return MakeWritable(value);
 		
-		if (enumType is null || !IsStored(value) || !patterns.Any(pattern => MovesPayload(pattern, enumType)))
-			return value;
-		
-		Diagnostics.Add(new(DiagnosticSeverity.Error, syntax.SourceLocation,
-			$"Cannot move '{enumType.Name}' values implicitly"));
-		
-		return value;
+		return syntax is BorrowExpressionNode || !IsDestructurable(value.Type) || !IsOwnedOutright(value) ||
+		       !patterns.Any(pattern => MovesPayload(pattern, value.Type))
+			? value
+			: new ResolvedOwnExpressionNode(value, syntax);
 	}
 	
 	private bool MovesPayload(PatternNode? pattern, TypeSymbol type)
@@ -58,9 +58,10 @@ public sealed partial class Resolver
 			return true;
 		
 		if (type is not EnumSymbol enumType)
-			return pattern.IsDestructuring && pattern.Elements.Any(element =>
-				GetFieldName(element) is { } name && _typePool.ResolveMember(type, name.Text) is FieldSymbol field &&
-				MovesSlot(element, GetMemberType(field)));
+			return type is not RecordSymbol { HasDestructor: true } && pattern.IsDestructuring &&
+			       pattern.Elements.Any(element => GetFieldName(element) is { } name &&
+			                                       _typePool.ResolveMember(type, name.Text) is FieldSymbol field &&
+			                                       MovesSlot(element, GetMemberType(field)));
 		
 		if (pattern.Kind != PatternKind.Case ||
 		    enumType.Cases.FirstOrDefault(c => c.Name == pattern.CaseName.Text) is not { } enumCase)
@@ -80,13 +81,15 @@ public sealed partial class Resolver
 		element.Kind == PatternKind.Binding ? MovesValue(element, type) : MovesPayload(element, type);
 	
 	private bool MovesValue(PatternNode binding, TypeSymbol type) =>
-		binding.Mode?.Type is TokenType.KeywordOwn or TokenType.KeywordVar && !_typePool.IsCopy(type);
+		binding.Mode?.Type is TokenType.KeywordVal or TokenType.KeywordVar && !_typePool.IsCopy(type);
 	
 	private static Token? GetFieldName(PatternNode element) =>
 		element.Field ?? (element.Kind == PatternKind.Binding ? element.CaseName : null);
 	
-	private bool OwnsValue(IResolvedExpressionNode value, EnumSymbol? enumType) =>
-		enumType is not null && !_typePool.IsCopy(enumType) && !IsStored(value);
+	private bool OwnsValue(IResolvedExpressionNode value) =>
+		IsDestructurable(value.Type) && !_typePool.IsCopy(value.Type) && !IsStored(value);
+	
+	private static bool IsDestructurable(TypeSymbol type) => type is EnumSymbol or RecordSymbol;
 	
 	private static bool IsStored(IResolvedExpressionNode value) => value switch
 	{
@@ -406,7 +409,8 @@ public sealed partial class Resolver
 			}
 			
 			var fieldType = GetMemberType(field);
-			if (!ResolveSlot(element, fieldType, isMut, false, true, out var binding, out var nested))
+			if (!ResolveSlot(element, fieldType, isMut, false,
+				    ownsValue && type is not RecordSymbol { HasDestructor: true }, out var binding, out var nested))
 			{
 				failed = true;
 				continue;
@@ -541,11 +545,9 @@ public sealed partial class Resolver
 		if (modeType == TokenType.KeywordMut && ownsValue)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
 				"Cannot mutably borrow unstored values"));
-		else if (modeType is TokenType.KeywordOwn or TokenType.KeywordVar && isMut && !copies)
+		else if (modeType == TokenType.KeywordVar && isMut && !copies)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, token.SourceLocation,
 				"Cannot move mutably borrowed payloads"));
-		else if (modeType == TokenType.KeywordOwn && !ownsValue && isCopy)
-			Diagnostics.Add(DiagnosticFix.Redundant(mode!.Value.SourceLocation));
 		
 		var isMutBinding = !ownsValue && !copies && (isMut || modeType == TokenType.KeywordMut);
 		var isBorrowBinding = !ownsValue && !copies && (isMutBinding || !isCopy);

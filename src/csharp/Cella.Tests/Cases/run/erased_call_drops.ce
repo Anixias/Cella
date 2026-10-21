@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-consume: fun(own b: Buffer) -> i32 => b.id
+consume: fun(b: Buffer) -> i32 => b.id
 
 trace: fun(id: i32) when release
 {
@@ -25,7 +25,7 @@ trace: fun(id: i32) when release
 main: fun -> i32
 {
 	val b = Buffer(1)
-	trace(consume(own b))
+	trace(consume(b))
 	printf("end\n")
 	ret 0
 }

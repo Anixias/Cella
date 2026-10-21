@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Token: rec
+Token: own rec
 {
 	id: i32
 
@@ -18,13 +18,13 @@ Token: rec
 swap[T: noref]: fun(mut a: T, mut b: T)
 {
 	val first = own a
-	a = own b
-	b = own first
+	a = b
+	b = first
 }
 
-identity[T]: fun(own value: T) -> T => value
+identity[T]: fun(value: T) -> T => value
 
-pick[T]: fun(useFirst: bool, own a: T, own b: T) -> T
+pick[T]: fun(useFirst: bool, a: T, b: T) -> T
 {
 	if useFirst
 		ret a
@@ -36,17 +36,17 @@ describe: fun(value: i32) -> i32 => 1
 
 describe[T]: fun(imm value: T) -> i32 => 2
 
-consume[T]: fun(own value: T)
+consume[T]: fun(value: T)
 {
 	printf("consume ")
 }
 
-countdown[T]: fun(own value: T, steps: i32) -> i32
+countdown[T]: fun(value: T, steps: i32) -> i32
 {
 	if steps == 0
 		ret 0
 
-	ret 1 + countdown(own value, steps - 1)
+	ret 1 + countdown(value, steps - 1)
 }
 
 size[T]: fun -> usize => sizeOf(T)

@@ -18,15 +18,15 @@ Error at generic_overload_conflicts.ce:12:1
 12 │ defaults[T]: fun(imm x: T) {}
      ╘══════╛ 'defaults' overloads cannot accept the same arguments
 
-Error at generic_overload_conflicts.ce:14:1
+Hint at generic_overload_conflicts.ce:14:1
 13 │ 
 14 │ modes[T]: fun(mut x: T) {}
-     ╘═══╛ 'modes' overloads cannot differ only in parameter modes
+     ╘═══╛ 'modes' is never used
 
-Error at generic_overload_conflicts.ce:15:1
+Hint at generic_overload_conflicts.ce:15:1
 14 │ modes[T]: fun(mut x: T) {}
 15 │ modes[T]: fun(imm x: T) {}
-     ╘═══╛ 'modes' overloads cannot differ only in parameter modes
+     ╘═══╛ 'modes' is never used
 
 Error at generic_overload_conflicts.ce:17:1
 16 │ 

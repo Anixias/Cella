@@ -50,7 +50,7 @@ Stroll: trait
 	in: op(imm self) -> Cursor
 }
 
-Box: rec
+Box: own rec
 {
 	value: i32
 

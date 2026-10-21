@@ -55,7 +55,7 @@ Error at record_pattern_errors.ce:84:36
 
 Error at record_pattern_errors.ce:94:12
 93 │ {
-94 │     Pair(own first) if first.id > 0 => {}
+94 │     Pair(val first) if first.id > 0 => {}
                   ╘═══╛ Cannot move values in arms with 'if'
 
 Error at record_pattern_errors.ce:103:8

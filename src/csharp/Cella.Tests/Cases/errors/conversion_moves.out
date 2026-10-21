@@ -8,16 +8,6 @@ Error at conversion_moves.ce:53:6
 53 │ ret name
          ╘══╛ Cannot return borrows of local variables
 
-Error at conversion_moves.ce:59:7
-58 │ val text = Text(1)
-59 │ send(text)
-          ╘══╛ Cannot move 'Text' values implicitly
-
-Error at conversion_moves.ce:61:22
-60 │ val other = Text(2)
-61 │ val buffer = Buffer(other)
-                         ╘═══╛ Cannot move 'Text' values implicitly
-
 Error at conversion_moves.ce:62:18
 61 │ val buffer = Buffer(other)
 62 │ val view: str = String("temp")

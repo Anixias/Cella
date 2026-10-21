@@ -7,7 +7,7 @@ Pair: ref rec
 	other: mut[i32]
 }
 
-Cell: ref rec
+Cell: own ref rec
 {
 	value: i32
 	alias: mut[i32]
@@ -72,7 +72,7 @@ storeInMutParameter: fun(mut pair: Pair)
 	pair.alias = mut pair.value
 }
 
-storeInOwnParameter: fun(own pair: Pair) -> Pair
+storeInOwnParameter: fun(pair: Pair) -> Pair
 {
 	pair.alias = mut pair.value
 	ret pair

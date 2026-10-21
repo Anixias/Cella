@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Square: rec impl lib.Shape
+Square: own rec impl lib.Shape
 {
 	side: f64
 	id: i32

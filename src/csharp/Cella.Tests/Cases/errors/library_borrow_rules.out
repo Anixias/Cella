@@ -9,7 +9,7 @@ Hint at main.ce:17:1
      ╘═══╛ 'moved' is never used
 
 Error at main.ce:22:6
-21 │ consume(own bag)
+21 │ consume(bag)
 22 │ ret view.value
          ╘════════╛ Cannot use borrows of moved values
                   | Moved on line 21

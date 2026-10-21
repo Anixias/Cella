@@ -13,7 +13,7 @@ Nullable[T: null]: enum match T
 	some(value) = else
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -22,11 +22,11 @@ Buffer: rec
 	}
 }
 
-Holder: enum { none, hold(b: Buffer) }
+Holder: own enum { none, hold(b: Buffer) }
 
-Effect: enum { none, d(b: Buffer) }
+Effect: own enum { none, d(b: Buffer) }
 
-R: rec
+R: own rec
 {
 	e: Effect
 
@@ -46,7 +46,7 @@ uninitialized: fun -> i32
 moved: fun
 {
 	var e = Holder.hold(Buffer(1))
-	val taken = own e
+	val taken = e
 	match e
 	{
 		hold(val b) => printf("%d\n", b.id)

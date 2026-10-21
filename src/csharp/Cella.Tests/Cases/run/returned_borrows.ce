@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,7 +14,7 @@ Buffer: rec
 	}
 }
 
-Enemy: rec
+Enemy: own rec
 {
 	name: Buffer
 	hp: i32
@@ -32,13 +32,13 @@ Tally: ref rec
 	step: i32
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 }
 
-Scope: ref rec
+Scope: own ref rec
 {
 	depth: mut[i32]
 
@@ -60,7 +60,7 @@ kills: fun(mut stats: Stats) -> mut[i32] => mut stats.kills
 
 forward: fun(mut stats: Stats) -> mut[i32] => kills(mut stats)
 
-apply: fun(get: fun[mut Stats -> mut[i32]], mut stats: Stats) -> mut[i32] => get(mut stats)
+apply: fun(imm get: fun[mut Stats -> mut[i32]], mut stats: Stats) -> mut[i32] => get(mut stats)
 
 stronger: fun(imm a: Enemy, imm b: Enemy) -> imm[Enemy]
 {

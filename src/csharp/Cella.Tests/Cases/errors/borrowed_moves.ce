@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,24 +9,24 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
 	count(n: i32)
 }
 
-take: fun(own buffer: Buffer) -> i32 => buffer.id
-takeNumber: fun(own n: i32) -> i32 => n
+take: fun(buffer: Buffer) -> i32 => buffer.id
+takeNumber: fun(n: i32) -> i32 => n
 
 parameters: fun(imm buffer: Buffer, imm holder: Holder, n: i32) -> i32
 {
-	ret take(buffer) + take(holder.buffer) + takeNumber(own n)
+	ret take(buffer) + take(holder.buffer) + takeNumber(n)
 }
 
 returned: fun(imm buffer: Buffer) -> Buffer
@@ -39,7 +39,7 @@ bindings: fun(imm effect: Effect) -> i32
 	match effect
 	{
 		hold(val buffer) => ret take(buffer)
-		count(val n) => ret takeNumber(own n)
+		count(val n) => ret takeNumber(n)
 		else => ret 0
 	}
 }

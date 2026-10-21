@@ -55,7 +55,7 @@ Error at self_references.ce:72:15
 
 Hint at self_references.ce:75:1
 74 │ 
-75 │ storeInOwnParameter: fun(own pair: Pair) -> Pair
+75 │ storeInOwnParameter: fun(pair: Pair) -> Pair
      ╘═════════════════╛ 'storeInOwnParameter' is never used
 
 Error at self_references.ce:77:15

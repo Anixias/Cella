@@ -9,7 +9,7 @@ Wrap: rec
 {
 	value: i32
 
-	as: op(f: fun[-> i32]) -> Wrap => Wrap(f())
+	as: op(imm f: fun[-> i32]) -> Wrap => Wrap(f())
 }
 
 Counter: rec

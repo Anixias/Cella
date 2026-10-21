@@ -25,7 +25,6 @@ public sealed partial class Resolver
 		_lambdas.RemoveAll(lambda => lambda.FunctionInfo.File == file);
 		_resolutionContexts.Pop();
 		_extSignatureTypes.Report(Diagnostics);
-		_copiedParameters.Report(Diagnostics);
 		ReportTooLargeTypes();
 		
 		var result = new ResolvedFileNode(file, resolvedDeclarations, _importedFunctions.Values, node);
@@ -41,7 +40,6 @@ public sealed partial class Resolver
 		TypePool = _typePool,
 		Diagnostics = Diagnostics,
 		ExtSignatureTypes = _extSignatureTypes,
-		CopiedParameters = _copiedParameters,
 		Containment = Containment,
 		EvaluateConstant = EvaluateConstant,
 		FindValueParameterUse = FindValueParameterUse,

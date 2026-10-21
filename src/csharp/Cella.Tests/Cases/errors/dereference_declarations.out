@@ -3,11 +3,6 @@ Error at dereference_declarations.ce:12:2
 12 │ *: op -> imm[Buffer] => imm *ptr[Buffer](null)
      ^ '*' operators need 'self' or two parameters
 
-Error at dereference_declarations.ce:19:12
-18 │ 
-19 │ *: op(own self) -> imm[Buffer] => imm *self.pointer
-               ╘══╛ Cannot take 'own self' in '*' operators
-
 Error at dereference_declarations.ce:26:14
 25 │ 
 26 │ *: op(self, index: i32) -> imm[Buffer] => imm *self.pointer

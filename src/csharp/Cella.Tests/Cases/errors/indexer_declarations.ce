@@ -11,7 +11,7 @@ Owned: rec
 {
 	pointer: req ptr[i32]
 
-	[]: op(own self, i: usize) -> imm[i32] => imm self.pointer[i]
+	[]: op(self, i: usize) -> imm[i32] => imm self.pointer[i]
 }
 
 Empty: rec

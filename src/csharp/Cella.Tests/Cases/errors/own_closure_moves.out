@@ -57,11 +57,11 @@ Error at own_closure_moves.ce:65:23
 
 Hint at own_closure_moves.ce:71:6
 70 │ val first = own fun(x: i32) -> i32 => x + step
-71 │ val second = own first
+71 │ val second = first
          ╘════╛ 'second' is never used
 
 Error at own_closure_moves.ce:72:6
-71 │ val second = own first
+71 │ val second = first
 72 │ ret first(1)
          ╘═══╛ Cannot use moved values
              | Moved on line 71

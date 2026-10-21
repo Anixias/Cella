@@ -25,7 +25,7 @@ writes: fun
 	addOne(mut Unit.total)
 	val pointer = @Unit.total
 	val view = imm Unit.total
-	val moved = own Unit.origin
+	val moved = Unit.origin
 	Unit.total += 1
 }
 

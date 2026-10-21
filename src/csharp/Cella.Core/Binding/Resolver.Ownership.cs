@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Binding.Nodes;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -29,6 +30,41 @@ public sealed partial class Resolver
 		
 		return value;
 	}
+	
+	private bool IsOwnedOutright(IResolvedExpressionNode place) => place switch
+	{
+		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol { IsBorrowBinding: false, IsLoopBinding: false } } or
+			ResolvedVarExpressionNode { Symbol: ParameterSymbol { Mode: ParameterMode.Value } } => true,
+		_ when IsDestructorSelf(place) => true,
+		ResolvedAccessExpressionNode { Member: FieldSymbol } node => IsOwnedOutright(node.Target) &&
+		                                                             (IsConsumedSelf(node.Target) ||
+		                                                              node.Target.Type is not RecordSymbol
+		                                                              {
+			                                                              HasDestructor: true
+		                                                              }),
+		ResolvedIndexerExpressionNode { Target.Type: ArrayType } node =>
+			_evaluator.Evaluate(node.Index) is IntegerConstant && IsOwnedOutright(node.Target),
+		ResolvedAssignmentExpressionNode node => IsOwnedOutright(node.Left),
+		_ => false
+	};
+	
+	private static bool IsConsumedSelf(IResolvedExpressionNode node) => IsDestructorSelf(node) ||
+	                                                                    node is ResolvedVarExpressionNode
+	                                                                    {
+		                                                                    Symbol: ParameterSymbol
+		                                                                    {
+			                                                                    Mode: ParameterMode.Value,
+			                                                                    Name: "self"
+		                                                                    }
+	                                                                    };
+	
+	private static bool IsDestructorSelf(IResolvedExpressionNode node) => node is
+		ResolvedVarExpressionNode { Symbol: ParameterSymbol { IsDestructorSelf: true } } or
+		ResolvedUnaryOpExpressionNode
+		{
+			Operation.Op: TokenType.OpStar,
+			Operand: ResolvedVarExpressionNode { Symbol: ParameterSymbol { IsDestructorSelf: true } }
+		};
 	
 	private static bool IsPlaceSyntax(IExpressionNode node) =>
 		node is VarExpressionNode or AccessExpressionNode or IndexerExpressionNode
@@ -143,7 +179,11 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(BorrowExpressionNode node)
 	{
-		var place = VisitNode(node.Value, null);
+		var hint = node.IsMutable ? null : ExpectedType is BorrowType borrow ? borrow.Target : ExpectedType;
+		var place = hint is null ? VisitNode(node.Value, null) : VisitHinted(node.Value, hint);
+		if (!node.IsMutable && survey is not null && IsOpenValue(place))
+			return place;
+		
 		if (!IsInvalid(place) && place.Type is UntypedType)
 			place = MaterializeAsDefault(place);
 		

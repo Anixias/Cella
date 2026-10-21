@@ -10,7 +10,7 @@ Tally: ref rec
 	count: imm[i32]
 }
 
-Box: rec
+Box: own rec
 {
 	id: i32
 
@@ -25,9 +25,9 @@ Effect: enum
 	hit(n: i32)
 }
 
-call: fun(f: fun[]) => f()
+call: fun(imm f: fun[]) => f()
 
-apply: fun(mut t: Tally, f: fun[mut Tally]) => f(mut t)
+apply: fun(mut t: Tally, imm f: fun[mut Tally]) => f(mut t)
 
 localIntoCapture: fun -> i32
 {

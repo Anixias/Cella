@@ -1,6 +1,6 @@
 mod test
 
-Point: rec
+Point: own rec
 {
 	x: i32
 

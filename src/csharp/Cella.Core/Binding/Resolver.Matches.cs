@@ -14,9 +14,9 @@ public sealed partial class Resolver
 	public IResolvedExpressionNode Visit(IsExpressionNode node)
 	{
 		var isMut = node.Mode is not null;
-		var (value, enumType) = ResolveMatchedValue(node.Value);
-		value = TakeOwnership(value, node.Value, enumType, isMut, [node.Pattern]);
-		var ownsValue = OwnsValue(value, enumType);
+		var (value, _) = ResolveMatchedValue(node.Value);
+		value = TakeOwnership(value, node.Value, isMut, [node.Pattern]);
+		var ownsValue = OwnsValue(value);
 		if (ResolveTopPattern(node.Pattern, value.Type, isMut, ownsValue) is { } pattern)
 			return new ResolvedIsExpressionNode(value, pattern, isMut || pattern.HasMutBindings, ownsValue, node);
 		
@@ -72,10 +72,10 @@ public sealed partial class Resolver
 	{
 		var isMut = node.Mode is not null;
 		var (value, enumType) = ResolveMatchedValue(node.Value);
-		value = TakeOwnership(value, node.Value, enumType, isMut,
+		value = TakeOwnership(value, node.Value, isMut,
 			node.Arms.SelectMany(static arm => arm.Patterns));
 		
-		var ownsValue = OwnsValue(value, enumType);
+		var ownsValue = OwnsValue(value);
 		var arms = new List<ResolvedMatchArm>(node.Arms.Length);
 		var summaries = new List<MatchArmSummary>(node.Arms.Length);
 		foreach (var arm in node.Arms)
@@ -101,10 +101,10 @@ public sealed partial class Resolver
 		var hint = target is null ? ExpectedType : null;
 		var isMut = node.Mode is not null;
 		var (value, enumType) = ResolveMatchedValue(node.Value);
-		value = TakeOwnership(value, node.Value, enumType, isMut,
+		value = TakeOwnership(value, node.Value, isMut,
 			node.Arms.SelectMany(static arm => arm.Patterns));
 		
-		var ownsValue = OwnsValue(value, enumType);
+		var ownsValue = OwnsValue(value);
 		var patterns = new List<List<ResolvedPattern>>(node.Arms.Length);
 		var guards = new List<IResolvedExpressionNode?>(node.Arms.Length);
 		var values = new IResolvedExpressionNode?[node.Arms.Length];

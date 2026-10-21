@@ -23,7 +23,7 @@ public sealed class FunctionSignature
 	public ImmutableArray<ParameterMode> ParameterModes { get; } = parameterModes?.ToImmutableArray() ?? [];
 	
 	public ParameterMode GetMode(int index) =>
-		index < ParameterModes.Length ? ParameterModes[index] : ParameterMode.ReadOnly;
+		index < ParameterModes.Length ? ParameterModes[index] : ParameterMode.Value;
 	
 	public TypeSymbol GetDeclaredType(int index) => GetMode(index).GetDeclaredType(ParameterTypes[index]);
 }

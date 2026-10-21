@@ -42,7 +42,7 @@ swapNative: ext fun(pair: Pair) -> Pair => Pair(pair.y, pair.x)
 
 natives: val array[ext fun[i32 -> i32], 2] = [twice, double]
 
-applyFun: fun(f: fun[i32 -> i32], x: i32) -> i32 => f(x)
+applyFun: fun(imm f: fun[i32 -> i32], x: i32) -> i32 => f(x)
 applyExt: fun(f: ext fun[i32 -> i32], x: i32) -> i32 => f(x)
 
 main: fun -> i32

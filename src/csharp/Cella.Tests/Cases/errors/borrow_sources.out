@@ -8,19 +8,14 @@ Hint at borrow_sources.ce:71:6
 71 │     var buffer = Buffer(1)
              ╘════╛ 'buffer' is never changed
 
-Hint at borrow_sources.ce:72:13
-71 │ var buffer = Buffer(1)
-72 │ val view = imm buffer
-                ╘═╛ Redundant 'imm'
-
 Error at borrow_sources.ce:75:20
-74 │ val moved = own buffer
+74 │ val moved = buffer
 75 │ printf("%d %d\n", view.id, copy.id)
                        ╘══╛ Cannot use borrows of moved values
                           | Moved on line 74
 
 Error at borrow_sources.ce:75:29
-74 │ val moved = own buffer
+74 │ val moved = buffer
 75 │ printf("%d %d\n", view.id, copy.id)
                                 ╘══╛ Cannot use borrows of moved values
                                    | Moved on line 74
@@ -30,13 +25,8 @@ Hint at borrow_sources.ce:78:1
 78 │ useAfterMoveIntoCall: fun
      ╘══════════════════╛ 'useAfterMoveIntoCall' is never used
 
-Hint at borrow_sources.ce:81:13
-80 │ val bat = Enemy(Buffer(3), 7)
-81 │ val name = imm bat.name
-                ╘═╛ Redundant 'imm'
-
 Error at borrow_sources.ce:83:17
-82 │ take(own bat)
+82 │ take(bat)
 83 │ printf("%d\n", name.id)
                     ╘══╛ Cannot use borrows of moved values
                        | Moved on line 82
@@ -61,11 +51,6 @@ Hint at borrow_sources.ce:97:1
 96 │ 
 97 │ useAfterReassign: fun
      ╘══════════════╛ 'useAfterReassign' is never used
-
-Hint at borrow_sources.ce:100:14
- 99 │ var buffer = Buffer(1)
-100 │ val first = imm buffer
-                  ╘═╛ Redundant 'imm'
 
 Error at borrow_sources.ce:102:17
 101 │ buffer = Buffer(2)
@@ -94,12 +79,6 @@ Hint at borrow_sources.ce:119:1
 119 │ useBindingAfterReassign: fun
       ╘═════════════════════╛ 'useBindingAfterReassign' is never used
 
-Error at borrow_sources.ce:127:19
-126 │ effect = Effect.none
-127 │ printf("%d\n", buffer.id)
-                     ╘═══════╛ Cannot use borrows of reassigned values
-                             | Reassigned on line 126
-
 Hint at borrow_sources.ce:133:1
 132 │ 
 133 │ useRecordAfterMove: fun
@@ -112,14 +91,8 @@ Hint at borrow_sources.ce:136:6
 
 Hint at borrow_sources.ce:137:6
 136 │ var tally = Tally(mut count, 5)
-137 │ val moved = own count
+137 │ val moved = count
           ╘═══╛ 'moved' is never used
-
-Error at borrow_sources.ce:139:2
-138 │ printf("%d\n", tally.step)
-139 │ tally.count += 1
-      ╘═════════╛ Cannot use borrows of moved values
-                | Moved on line 137
 
 Hint at borrow_sources.ce:142:1
 141 │ 
@@ -128,14 +101,8 @@ Hint at borrow_sources.ce:142:1
 
 Hint at borrow_sources.ce:146:6
 145 │ val total = mut kills(mut stats)
-146 │ val moved = own stats
+146 │ val moved = stats
           ╘═══╛ 'moved' is never used
-
-Error at borrow_sources.ce:147:2
-146 │ val moved = own stats
-147 │ total += 1
-      ╘═══╛ Cannot use borrows of moved values
-          | Moved on line 146
 
 Hint at borrow_sources.ce:150:1
 149 │ 
@@ -144,15 +111,8 @@ Hint at borrow_sources.ce:150:1
 
 Hint at borrow_sources.ce:154:6
 153 │ val scope = Scope(mut depth)
-154 │ val moved = own depth
+154 │ val moved = depth
           ╘═══╛ 'moved' is never used
-
-Error at borrow_sources.ce:155:1
-154 │     val moved = own depth
-155 │ }
-      ^ Cannot use borrows of moved values
-      | 'scope' is dropped here
-      | Moved on line 154
 
 Hint at borrow_sources.ce:157:1
 156 │ 
@@ -174,32 +134,21 @@ Hint at borrow_sources.ce:165:6
 165 │     var buffer = Buffer(1)
               ╘════╛ 'buffer' is never changed
 
-Hint at borrow_sources.ce:166:14
-165 │ var buffer = Buffer(1)
-166 │ val outer = imm buffer
-                  ╘═╛ Redundant 'imm'
-
 Hint at borrow_sources.ce:169:6
 168 │ var count = 1
 169 │ var tally = Tally(mut count, 2)
           ╘═══╛ 'tally' is never changed
 
 Hint at borrow_sources.ce:173:6
-172 │ val moved = own buffer
-173 │ val gone = own count
+172 │ val moved = buffer
+173 │ val gone = count
           ╘══╛ 'gone' is never used
 
 Error at borrow_sources.ce:174:20
-173 │ val gone = own count
+173 │ val gone = count
 174 │ printf("%d %d\n", inner, counter)
                         ╘═══╛ Cannot use borrows of moved values
                             | Moved on line 172
-
-Error at borrow_sources.ce:174:27
-173 │ val gone = own count
-174 │ printf("%d %d\n", inner, counter)
-                               ╘═════╛ Cannot use borrows of moved values
-                                     | Moved on line 173
 
 Hint at borrow_sources.ce:177:1
 176 │ 
@@ -208,13 +157,7 @@ Hint at borrow_sources.ce:177:1
 
 Hint at borrow_sources.ce:184:6
 183 │ target = Tally(mut y, 1)
-184 │ val moved = own y
+184 │ val moved = y
           ╘═══╛ 'moved' is never used
-
-Error at borrow_sources.ce:185:17
-184 │ val moved = own y
-185 │ printf("%d\n", tally.count)
-                     ╘═════════╛ Cannot use borrows of moved values
-                               | Moved on line 184
 
 [compilation failed]

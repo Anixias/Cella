@@ -7,18 +7,18 @@ ext
 	free: fun(memory: ptr)
 }
 
-Boxed[K: trait]: rec
+Boxed[K: trait]: own rec
 {
 	object: pvt ptr[dyn[K]]
 
-	of[T: K + noref]: fun(own value: T) -> Boxed[K]
+	of[T: K + noref]: fun(value: T) -> Boxed[K]
 	{
 		val memory = ptr[T](malloc(sizeOf(T)))
-		own *memory = own value
+		own *memory = value
 		ret Boxed[K](memory)
 	}
 
-	as[T: K + noref]: op(own value: T) -> Boxed[K] => Boxed[K].of(own value)
+	as[T: K + noref]: op(value: T) -> Boxed[K] => Boxed[K].of(value)
 
 	*: op(imm self) -> imm[dyn[K]] => imm *self.object
 
@@ -31,7 +31,7 @@ Boxed[K: trait]: rec
 
 twice: fun(x: i32) -> i32 => x * 2
 
-run: fun(own f: Boxed[fun[i32 -> i32]], x: i32) -> i32 => f(x)
+run: fun(f: Boxed[fun[i32 -> i32]], x: i32) -> i32 => f(x)
 
 main: fun -> i32
 {

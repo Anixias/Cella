@@ -293,7 +293,7 @@ public sealed partial class Resolver
 	}
 	
 	private bool BorrowsWhenDeclared(IResolvedExpressionNode value) =>
-		value.Type is DynType || !_typePool.IsCopy(value.Type) && IsStored(value);
+		value.Type is DynType || !_typePool.IsCopy(value.Type) && IsStored(value) && !IsOwnedOutright(value);
 	
 	public IResolvedStatementNode Visit(WhileStatementNode node)
 	{

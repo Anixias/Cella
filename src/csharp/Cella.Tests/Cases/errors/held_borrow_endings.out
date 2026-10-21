@@ -9,7 +9,7 @@ Hint at held_borrow_endings.ce:28:6
              ^ 'a' is never changed
 
 Error at held_borrow_endings.ce:32:6
-31 │ consume(own a)
+31 │ consume(a)
 32 │ ret r.t.id
          ^ Cannot use borrows of moved values
          | Moved on line 31
@@ -62,7 +62,7 @@ Hint at held_borrow_endings.ce:61:1
      ╘══════════════╛ 'closureViewMoved' is never used
 
 Error at held_borrow_endings.ce:67:6
-66 │ consume(own text)
+66 │ consume(text)
 67 │ ret f()
          ^ Cannot use borrows of moved values
          | Moved on line 66
@@ -73,7 +73,7 @@ Hint at held_borrow_endings.ce:70:1
      ╘══════════════╛ 'closureOfClosure' is never used
 
 Error at held_borrow_endings.ce:76:6
-75 │ consume(own text)
+75 │ consume(text)
 76 │ ret outer()
          ╘═══╛ Cannot use borrows of moved values
              | Moved on line 75

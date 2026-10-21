@@ -1,6 +1,6 @@
 Error at lend_and_move_arguments.ce:17:15
 16 │ val b = Buffer(1)
-17 │ ret take(imm b, own b)
+17 │ ret take(imm b, b)
                   ^ Cannot use moved values
                   | Moved on line 17
 

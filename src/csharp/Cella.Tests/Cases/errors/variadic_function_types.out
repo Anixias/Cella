@@ -9,19 +9,19 @@ Error at variadic_function_types.ce:16:30
 16 │ alone: fun(callback: ext fun[...View[i32]]) {}
                                   ╘══════════╛ Cannot take typed variadic parameters in 'ext' functions
 
-Error at variadic_function_types.ce:17:40
+Error at variadic_function_types.ce:17:44
 16 │ alone: fun(callback: ext fun[...View[i32]]) {}
-17 │ after: fun(callback: fun[...View[i32], i32]) {}
-                                            ╘═╛ Cannot take parameters after variadic parameters
+17 │ after: fun(imm callback: fun[...View[i32], i32]) {}
+                                                ╘═╛ Cannot take parameters after variadic parameters
 
-Error at variadic_function_types.ce:18:27
-17 │ after: fun(callback: fun[...View[i32], i32]) {}
-18 │ writes: fun(callback: fun[mut ...View[i32]]) {}
-                               ╘═╛ Cannot take 'mut' variadic parameters
+Error at variadic_function_types.ce:18:31
+17 │ after: fun(imm callback: fun[...View[i32], i32]) {}
+18 │ writes: fun(imm callback: fun[mut ...View[i32]]) {}
+                                   ╘═╛ Cannot take 'mut' variadic parameters
 
-Error at variadic_function_types.ce:19:29
-18 │ writes: fun(callback: fun[mut ...View[i32]]) {}
-19 │ plain: fun(callback: fun[...i32]) {}
-                                 ╘═╛ 'i32' doesn't meet 'new(ptr[T], usize)'
+Error at variadic_function_types.ce:19:33
+18 │ writes: fun(imm callback: fun[mut ...View[i32]]) {}
+19 │ plain: fun(imm callback: fun[...i32]) {}
+                                     ╘═╛ 'i32' doesn't meet 'new(ptr[T], usize)'
 
 [compilation failed]

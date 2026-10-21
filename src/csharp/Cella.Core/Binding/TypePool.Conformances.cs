@@ -478,7 +478,7 @@ public sealed partial class TypePool
 	
 	public bool CopiesForImm(ParameterMode mode, TypeSymbol type, ParameterMode expectedMode,
 		TypeSymbol expectedType) =>
-		mode == ParameterMode.ReadOnly && expectedMode == ParameterMode.Imm &&
+		mode == ParameterMode.Value && expectedMode == ParameterMode.Imm &&
 		(type == expectedType || type == GetPassedType(expectedType, mode)) && IsCopy(type);
 	
 	public bool CopiesForImm(FunctionType source, FunctionType target) => !target.IsExternal &&

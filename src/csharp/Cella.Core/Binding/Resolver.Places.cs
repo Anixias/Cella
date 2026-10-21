@@ -88,7 +88,7 @@ public sealed partial class Resolver
 	
 	private PlaceOperator? FindReader(ResolvedFunctionCallExpressionNode call) =>
 		call is { PlaceOperator: { } op, Arguments: [var receiver, ..] } &&
-		FindPlaceOperator(receiver.Type, op.GetName(), ParameterMode.ReadOnly)?.Function == call.Function.Symbol
+		FindPlaceOperator(receiver.Type, op.GetName(), ParameterMode.Value)?.Function == call.Function.Symbol
 			? op
 			: null;
 	
@@ -187,7 +187,7 @@ public sealed partial class Resolver
 		List<MethodSymbol> declared)
 	{
 		var type = target.Type;
-		if ((FindIndexer(type, ParameterMode.ReadOnly) ?? FindIndexer(type, ParameterMode.Mut)) is not { } indexer)
+		if ((FindIndexer(type, ParameterMode.Value) ?? FindIndexer(type, ParameterMode.Mut)) is not { } indexer)
 			return RejectIndexing(node, Error(node, ReportHiddenMember(node.SourceLocation, "[]",
 				declared.Select(static method => method.Function)), CurrentTargetType));
 		

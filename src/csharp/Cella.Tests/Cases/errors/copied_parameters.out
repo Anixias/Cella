@@ -1,36 +1,31 @@
-Error at copied_parameters.ce:11:11
+Hint at copied_parameters.ce:11:2
 10 │ 
 11 │ get: fun(self) -> i32 => self.id
-              ╘══╛ Cannot copy 'Token'
+     ╘═╛ 'get' is never used
 
 Error at copied_parameters.ce:23:2
 22 │ 
 23 │ area: fun(self) -> i32 => 1
      ╘══╛ 'area' doesn't match 'Shape.area'
 
-Error at copied_parameters.ce:23:12
-22 │ 
-23 │ area: fun(self) -> i32 => 1
-               ╘══╛ Cannot copy 'Card'
-
-Error at copied_parameters.ce:26:11
+Hint at copied_parameters.ce:26:1
 25 │ 
 26 │ show: fun(token: Token) -> i32 => token.id
-               ╘═══╛ Cannot copy 'Token'
+     ╘══╛ 'show' is never used
 
-Error at copied_parameters.ce:28:14
+Hint at copied_parameters.ce:28:1
 27 │ 
 28 │ keep[T]: fun(value: T) -> i32 => 0
-                  ╘═══╛ Cannot copy 'T'
+     ╘══╛ 'keep' is never used
 
 Hint at copied_parameters.ce:30:1
 29 │ 
 30 │ copies[T: copy]: fun(value: T) -> i32 => 0
      ╘════╛ 'copies' is never used
 
-Error at copied_parameters.ce:32:20
+Hint at copied_parameters.ce:32:1
 31 │ 
-32 │ holder: fun(f: fun[Token -> i32]) -> i32 => 0
-                        ╘═══╛ Cannot copy 'Token'
+32 │ holder: fun(imm f: fun[Token -> i32]) -> i32 => 0
+     ╘════╛ 'holder' is never used
 
 [compilation failed]

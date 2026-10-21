@@ -80,7 +80,7 @@ Item: rec
 	power: i32
 }
 
-Inventory: rec
+Inventory: own rec
 {
 	items: pvt array[Item, 4]
 	length: pvt set usize

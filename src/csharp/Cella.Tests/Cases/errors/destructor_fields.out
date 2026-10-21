@@ -30,13 +30,13 @@ Error at destructor_fields.ce:58:38
 
 Hint at destructor_fields.ce:61:1
 60 │ 
-61 │ owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
+61 │ owned: fun(holder: Holder) -> i32 => take(holder.buffer)
      ╘═══╛ 'owned' is never used
 
-Error at destructor_fields.ce:61:47
+Error at destructor_fields.ce:61:43
 60 │ 
-61 │ owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
-                                                   ╘═══════════╛ Cannot move fields out of values with destructors
+61 │ owned: fun(holder: Holder) -> i32 => take(holder.buffer)
+                                               ╘═══════════╛ Cannot move fields out of values with destructors
 
 Hint at destructor_fields.ce:63:1
 62 │ 

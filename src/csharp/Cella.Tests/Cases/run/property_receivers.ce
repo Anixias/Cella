@@ -27,7 +27,7 @@ Trace: rec
 	}
 }
 
-TraceBox: rec
+TraceBox: own rec
 {
 	pointer: req ptr[Trace]
 

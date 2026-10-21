@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Down: rec impl lib.Cursor[i32]
+Down: own rec impl lib.Cursor[i32]
 {
 	left: i32
 

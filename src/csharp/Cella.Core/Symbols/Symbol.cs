@@ -675,9 +675,8 @@ public sealed class GlobalSymbol(GlobalNode syntax, Visibility visibility)
 
 public enum ParameterMode
 {
-	ReadOnly,
+	Value,
 	Mut,
-	Own,
 	Imm
 }
 
@@ -689,7 +688,7 @@ public static class ParameterModeExtensions
 	public static bool CanStandIn(this ParameterMode mode, TypeSymbol type, ParameterMode expectedMode,
 		TypeSymbol expectedType) =>
 		mode == expectedMode && type == expectedType ||
-		mode == ParameterMode.ReadOnly && expectedMode == ParameterMode.Own &&
+		mode == ParameterMode.Imm && expectedMode == ParameterMode.Value &&
 		type is FunctionType { IsRef: true, IsExternal: false } borrowed &&
 		expectedType is FunctionType { IsRef: false, IsExternal: false } owned &&
 		borrowed.ReturnType == owned.ReturnType && borrowed.ParameterTypes.SequenceEqual(owned.ParameterTypes) &&
@@ -700,12 +699,12 @@ public static class ParameterModeExtensions
 		mode.CanStandIn(type, expectedMode, expectedType) || mode != ParameterMode.Mut &&
 		expectedMode != ParameterMode.Mut && FunctionType.CanAdapt(expectedType, type);
 	
-	public static bool IsReadOnly(this ParameterMode mode) => mode is ParameterMode.ReadOnly or ParameterMode.Imm;
+	public static bool IsReadOnly(this ParameterMode mode) => mode is ParameterMode.Value or ParameterMode.Imm;
 	
 	public static string Describe(this ParameterMode mode, TypeSymbol passedType) => mode switch
 	{
 		ParameterMode.Mut => $"mut {mode.GetDeclaredType(passedType).Name}",
-		ParameterMode.Own => $"own {passedType.Name}",
+		ParameterMode.Imm when passedType is FunctionType function => $"imm {function.PlainName}",
 		ParameterMode.Imm => $"imm {passedType.Name}",
 		_ when passedType is FunctionType function => function.PlainName,
 		_ => passedType.Name
@@ -716,6 +715,7 @@ public sealed class ParameterSymbol : VariableSymbol
 {
 	public SourceLocation Definition { get; }
 	public ParameterMode Mode { get; init; }
+	public bool IsDestructorSelf { get; init; }
 	public bool IsNamed { get; init; } = true;
 	public bool IsWritten { get; }
 	public string? WrittenName => IsNamed ? Name : null;

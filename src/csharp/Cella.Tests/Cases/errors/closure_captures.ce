@@ -5,9 +5,9 @@ ext
 	qsort: fun(base: ptr, count: usize, size: usize, compare: ext fun[ptr[i32], ptr[i32] -> i32])
 }
 
-store: fun(own f: fun[i32 -> i32]) { }
-call: fun(f: fun[-> i32]) -> i32 => f()
-keep[T: noref]: fun(own value: T) { }
+store: fun(f: fun[i32 -> i32]) { }
+call: fun(imm f: fun[-> i32]) -> i32 => f()
+keep[T: noref]: fun(value: T) { }
 
 main: fun -> i32
 {

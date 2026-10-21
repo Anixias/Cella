@@ -5,16 +5,16 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 
 	+: op(imm a: Text, imm b: Text) -> Text => Text(a.id * 10 + b.id)
-	-: op(own a: Text, imm b: Text) -> Text => Text(a.id - b.id)
+	-: op(a: Text, imm b: Text) -> Text => Text(a.id - b.id)
 	==: op(imm a: Text, imm b: Text) -> bool => a.id == b.id
-	-: op(own self) -> Text => Text(-self.id)
+	-: op(self) -> Text => Text(-self.id)
 
-	+=: op(mut self, own other: Text)
+	+=: op(mut self, other: Text)
 	{
 		self.id += other.id
 	}
@@ -36,7 +36,7 @@ main: fun -> i32
 	var d = Text(100)
 	d += Text(5)
 	printf("d %d\n", d.id)
-	val e = own d - b
+	val e = d - b
 	printf("e %d\n", e.id)
 	val f = -e
 	printf("f %d\n", f.id)

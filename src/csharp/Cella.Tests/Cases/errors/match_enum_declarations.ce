@@ -95,7 +95,7 @@ Cell[T]: rec
 
 limit: fun -> u8 => 3
 
-first[T]: fun(own value: T) -> Nullable[T] => some(value)
+first[T]: fun(value: T) -> Nullable[T] => some(value)
 
 count: fun(numbers: Nullable[i32]) -> i32 => 0
 

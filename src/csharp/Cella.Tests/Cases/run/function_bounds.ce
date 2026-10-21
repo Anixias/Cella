@@ -10,7 +10,7 @@ twice[F: fun[i32 -> i32]]: fun(imm f: F, x: i32) -> i32 => f(f(x))
 
 apply[F: fun[i32]]: fun(imm f: F, x: i32) => f(x)
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		apply(imm visit, value)
@@ -18,7 +18,7 @@ each: fun(values: array[i32, 3], visit: fun[i32])
 
 forward[G: fun[i32 -> i32]]: fun(imm g: G, x: i32) -> i32 => twice(imm g, x)
 
-run: fun(f: fun[i32 -> i32]) -> i32 => f(5)
+run: fun(imm f: fun[i32 -> i32]) -> i32 => f(5)
 
 viaBound[F: fun[i32 -> i32]]: fun(imm f: F) -> i32 => run(f) + 1
 
@@ -28,7 +28,7 @@ relay: fun(callback: ext fun[i32 -> i32]) -> i32 => twice(imm callback, -5)
 
 pick: fun -> ext fun[i32 -> i32] => abs
 
-keep: fun(own f: fun[i32 -> i32]) -> i32 => f(-8)
+keep: fun(f: fun[i32 -> i32]) -> i32 => f(-8)
 
 Counter[F: fun[-> i32]]: rec
 {

@@ -23,11 +23,6 @@ Error at module_variable_moves.ce:44:14
 44 │ val d = own buffers[1]
                  ╘════════╛ Cannot move module variables
 
-Error at module_variable_moves.ce:45:12
-44 │ val d = own buffers[1]
-45 │ match own slot
-               ╘══╛ Cannot move module variables
-
 Error at module_variable_moves.ce:51:18
 50 │ 
 51 │ val e: Buffer = Cache.kept

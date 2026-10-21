@@ -34,8 +34,7 @@ public sealed class BorrowChecker
 		Closure,
 		Local,
 		Unstored,
-		Owned,
-		Copied,
+		Value,
 		Borrowed,
 		ViewRecord
 	}
@@ -622,8 +621,7 @@ public sealed class BorrowChecker
 	{
 		Escape.Local => "local variables",
 		Escape.Unstored => "unstored values",
-		Escape.Owned => "'own' parameters",
-		Escape.Copied => "copied parameters",
+		Escape.Value => "by-value parameters",
 		Escape.Borrowed => "parameters other than 'self'",
 		_ => "view records"
 	};
@@ -905,13 +903,15 @@ public sealed class BorrowChecker
 	
 	private Escape? GetEscape(ParameterMode mode, TypeSymbol declared, bool mayLend)
 	{
-		if (mode != ParameterMode.Mut && !TypePool.PassesByPointer(mode))
-			return mode == ParameterMode.Own ? Escape.Owned : Escape.Copied;
+		if (mode == ParameterMode.Value)
+			return Escape.Value;
 		
 		if (!mayLend)
 			return Escape.Borrowed;
 		
-		return typePool.IsViewRecord(declared) ? Escape.ViewRecord : null;
+		return typePool.IsViewRecord(declared) || declared is FunctionType { IsRef: true, IsExternal: false }
+			? Escape.ViewRecord
+			: null;
 	}
 	
 	private static bool IsCapture(Place source) => source.Path is [.., CaptureProjection];

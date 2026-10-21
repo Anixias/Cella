@@ -58,13 +58,13 @@ Error at operator_declarations.ce:19:9
 19 │ -=: op(self, other: Point) { }
             ╘══╛ Cannot take 'self' in '-=' operators
 
-Error at operator_declarations.ce:20:13
+Error at operator_declarations.ce:20:9
 19 │ -=: op(self, other: Point) { }
-20 │ *=: op(own self, other: Point) { }
-                ╘══╛ Cannot take 'own self' in '*=' operators
+20 │ *=: op(self, other: Point) { }
+            ╘══╛ Cannot take 'self' in '*=' operators
 
 Error at operator_declarations.ce:21:2
-20 │ *=: op(own self, other: Point) { }
+20 │ *=: op(self, other: Point) { }
 21 │ /=: op(mut self) { }
      ╘╛ '/=' operators need one parameter
 

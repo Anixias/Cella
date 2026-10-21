@@ -1,6 +1,6 @@
 Hint at own_records.ce:45:6
 44 │ val t = Ticket.open(3)
-45 │ val u = own t
+45 │ val u = t
          ^ 'u' is never used
 
 2 2

@@ -1,12 +1,12 @@
 mod test
 
-Owned: rec
+Owned: own rec
 {
 	id: i32
 
 	<: op(imm a: Owned, imm b: Owned) -> bool => a.id < b.id
-	>: op(imm a: Owned, own b: Owned) -> bool => a.id > b.id
-	<=: op(own a: Owned, imm b: Owned) -> bool => a.id <= b.id
+	>: op(imm a: Owned, b: Owned) -> bool => a.id > b.id
+	<=: op(a: Owned, imm b: Owned) -> bool => a.id <= b.id
 
 	drop: op
 	{
@@ -16,8 +16,8 @@ Owned: rec
 main: fun -> i32
 {
 	val last = Owned(9)
-	val maybe = Owned(1) < Owned(20) > own last
+	val maybe = Owned(1) < Owned(20) > last
 	val first = Owned(3)
-	val sure = own first <= Owned(4) < Owned(5)
+	val sure = first <= Owned(4) < Owned(5)
 	ret last.id + first.id
 }

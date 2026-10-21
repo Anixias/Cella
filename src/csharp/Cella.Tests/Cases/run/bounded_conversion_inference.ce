@@ -36,7 +36,7 @@ Bag: impl Spannable[i32]
 	spanned: fun(mut self) -> Span[i32] => Span[i32](ptr[i32](ptr(@self.items)), 2)
 }
 
-check[T: copy]: fun(values: Span[T], test: fun[T -> bool]) -> bool => test(values.data[0])
+check[T: copy]: fun(values: Span[T], imm test: fun[T -> bool]) -> bool => test(values.data[0])
 
 main: fun -> i32
 {

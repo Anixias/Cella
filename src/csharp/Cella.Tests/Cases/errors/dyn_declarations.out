@@ -18,10 +18,10 @@ Error at dyn_declarations.ce:29:14
 29 │ make: fun -> dyn[Shape] => make()
                   ╘════════╛ Cannot use 'dyn[Shape]' by value
 
-Error at dyn_declarations.ce:31:22
+Error at dyn_declarations.ce:31:18
 30 │ 
-31 │ take: fun(own shape: dyn[Shape]) => take(shape)
-                          ╘════════╛ Cannot use 'dyn[Shape]' by value
+31 │ take: fun(shape: dyn[Shape]) => take(shape)
+                      ╘════════╛ Cannot use 'dyn[Shape]' by value
 
 Error at dyn_declarations.ce:33:21
 32 │ 

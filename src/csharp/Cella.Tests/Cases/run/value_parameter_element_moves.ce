@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Item: rec
+Item: own rec
 {
 	id: i32
 
@@ -15,10 +15,10 @@ Item: rec
 	}
 }
 
-swap[N: const usize]: fun(mut items: array[Item, N], own item: Item) -> i32
+swap[N: const usize]: fun(mut items: array[Item, N], item: Item) -> i32
 {
 	val old = own items[0]
-	items[0] = own item
+	items[0] = item
 	ret old.id
 }
 

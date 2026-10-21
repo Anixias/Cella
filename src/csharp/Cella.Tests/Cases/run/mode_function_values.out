@@ -10,7 +10,7 @@ Hint at mode_function_values.ce:56:6
 
 Hint at mode_function_values.ce:61:6
 60 │ 
-61 │ var increment: fun[own i32 -> i32] = bump
+61 │ var increment: fun[i32 -> i32] = bump
          ╘═══════╛ 'increment' is never changed
 
 Hint at mode_function_values.ce:65:6

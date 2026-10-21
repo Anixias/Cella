@@ -75,7 +75,7 @@ gaps: fun -> i32
 	ret i32(buf[0]) + i32(buf[2]) + i32(buf[299996])
 }
 
-D: rec
+D: own rec
 {
 	id: i32
 

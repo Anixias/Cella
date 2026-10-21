@@ -3,13 +3,8 @@ Error at loop_operators.ce:19:2
 19 │ in: op -> Cursor => Cursor(0)
      ╘╛ Cannot declare 'in' operators without 'self'
 
-Error at loop_operators.ce:20:13
-19 │ in: op -> Cursor => Cursor(0)
-20 │ in: op(own self) -> Cursor => Cursor(0)
-                ╘══╛ Cannot take 'own self' in 'in' operators
-
 Error at loop_operators.ce:21:15
-20 │ in: op(own self) -> Cursor => Cursor(0)
+20 │ in: op(self) -> Cursor => Cursor(0)
 21 │ in: op(self, extra: i32) -> Cursor => Cursor(extra)
                   ╘═══╛ Cannot take parameters in 'in' operators
 
@@ -43,13 +38,13 @@ Error at loop_operators.ce:45:10
 45 │ for: op(self) -> bool => true
              ╘══╛ Cannot take 'self' in 'for' operators
 
-Error at loop_operators.ce:46:14
+Error at loop_operators.ce:46:10
 45 │ for: op(self) -> bool => true
-46 │ for: op(own self) -> bool => true
-                 ╘══╛ Cannot take 'own self' in 'for' operators
+46 │ for: op(self) -> bool => true
+             ╘══╛ Cannot take 'self' in 'for' operators
 
 Error at loop_operators.ce:47:20
-46 │ for: op(own self) -> bool => true
+46 │ for: op(self) -> bool => true
 47 │ for: op(mut self, n: i32) -> bool => true
                        ^ Cannot take parameters in 'for' operators
 

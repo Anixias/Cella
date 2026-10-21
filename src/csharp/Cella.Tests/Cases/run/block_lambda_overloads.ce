@@ -2,8 +2,8 @@ mod test
 
 Option[T]: enum { none, some(value: T) }
 
-pick: fun(f: fun[i32 -> i32], o: Option[i32]) -> i32 => 1
-pick: fun(f: fun[i64 -> i64], o: Option[i64]) -> i32 => 2
+pick: fun(imm f: fun[i32 -> i32], o: Option[i32]) -> i32 => 1
+pick: fun(imm f: fun[i64 -> i64], o: Option[i64]) -> i32 => 2
 
 exprBody: fun -> i32 => pick(fun(x) => x, some(2))
 

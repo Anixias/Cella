@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Name: rec
 	}
 }
 
-keep: fun(own n: Name)
+keep: fun(n: Name)
 {
 	printf("k%d ", n.id)
 }
@@ -86,13 +86,13 @@ main: fun -> i32
 		printf("n%d ", n.id)
 
 	printf("\n")
-	for own n in names
+	for n in names
 	{
 		if n.id == 3
 			break
 
 		if n.id == 1
-			keep(own n)
+			keep(n)
 	}
 
 	printf("\n")

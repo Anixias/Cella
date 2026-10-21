@@ -9,4 +9,4 @@ Box[T]: pub rec
 	bump: val fun[] = fun { count += 1 }
 }
 
-measure[T]: pub fun(imm value: T, f: fun[-> usize] = fun => sizeOf(T)) -> usize => f()
+measure[T]: pub fun(imm value: T, imm f: fun[-> usize] = fun => sizeOf(T)) -> usize => f()

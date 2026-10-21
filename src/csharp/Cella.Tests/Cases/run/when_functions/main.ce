@@ -40,7 +40,7 @@ i32: impl Show
 	code: fun(self) -> i32 => self
 }
 
-Text: rec
+Text: own rec
 {
 	id: i32
 

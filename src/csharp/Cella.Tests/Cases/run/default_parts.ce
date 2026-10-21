@@ -33,7 +33,7 @@ Wrapper: rec
 {
 	handler: Handler
 
-	new: op(own f: fun[i32 -> i32])
+	new: op(f: fun[i32 -> i32])
 	{
 		self.handler.callback = f
 	}
@@ -83,7 +83,7 @@ constructed: fun -> i32
 	ret wrapper.handler.callback(wrapper.handler.scale + 21)
 }
 
-Closer: rec
+Closer: own rec
 {
 	id: i32
 
@@ -92,13 +92,13 @@ Closer: rec
 	}
 }
 
-Keeper: rec
+Keeper: own rec
 {
 	closer: Closer
 	count: i32
 }
 
-Guarded: rec
+Guarded: own rec
 {
 	handle: req i32
 	flags: i32

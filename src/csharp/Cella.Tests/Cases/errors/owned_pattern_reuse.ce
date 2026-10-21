@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	hold(buffer: Buffer)
@@ -18,7 +18,7 @@ Effect: enum
 keep: fun -> i32
 {
 	val effect = Effect.hold(Buffer(5))
-	match own effect
+	match effect
 	{
 		hold(var buffer) => buffer.id += 10
 		else => {}

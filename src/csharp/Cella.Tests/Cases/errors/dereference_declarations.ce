@@ -16,7 +16,7 @@ Owned: rec
 {
 	pointer: req ptr[Buffer]
 
-	*: op(own self) -> imm[Buffer] => imm *self.pointer
+	*: op(self) -> imm[Buffer] => imm *self.pointer
 }
 
 Indexed: rec

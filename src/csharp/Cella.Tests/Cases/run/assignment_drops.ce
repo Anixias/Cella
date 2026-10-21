@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 	count: i32
@@ -37,7 +37,7 @@ next: fun -> usize
 
 make: fun(id: i32) -> Buffer => Buffer(id)
 grow: fun(imm buffer: Buffer) -> Buffer => Buffer(buffer.id * 2)
-give: fun(own buffer: Buffer) -> Buffer => Buffer(buffer.id + 1)
+give: fun(buffer: Buffer) -> Buffer => Buffer(buffer.id + 1)
 
 refill: fun(mut buffer: Buffer, id: i32)
 {
@@ -70,7 +70,7 @@ main: fun -> i32
 		i += 1
 	}
 
-	b = give(own b)
+	b = give(b)
 	printf("%d\n", b.id)
 	ret 0
 }

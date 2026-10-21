@@ -24,7 +24,7 @@ Ticket: own enum
 	closed
 }
 
-finish: fun(own c: Countdown) -> i32 => c.left
+finish: fun(c: Countdown) -> i32 => c.left
 peek: fun(imm c: Countdown) -> i32 => c.left
 
 main: fun -> i32
@@ -37,12 +37,12 @@ main: fun -> i32
 	}
 
 	printf("%d %d\n", peek(imm c), c.left)
-	val d = own c
-	for x in own d
+	val d = c
+	for x in d
 		printf("%d ", x)
 
 	val t = Ticket.open(3)
-	val u = own t
+	val u = t
 	printf("| %d\n", finish(Countdown(9)))
 	ret 0
 }

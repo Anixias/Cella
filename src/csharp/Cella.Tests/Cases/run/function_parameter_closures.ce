@@ -15,7 +15,7 @@ Button: rec
 {
 	onClick: fun[]
 
-	new: op(own onClick: fun[])
+	new: op(onClick: fun[])
 	{
 		self.onClick = onClick
 	}
@@ -28,7 +28,7 @@ Panel: rec
 	action: prop fun[i32 -> i32]
 	{
 		get(self) => self.handler
-		set(mut self, own value) { self.handler = value }
+		set(mut self, value) { self.handler = value }
 	}
 }
 
@@ -44,19 +44,19 @@ beep: fun
 
 double: fun(x: i32) -> i32 => x * 2
 
-each: fun(values: array[i32, 3], visit: fun[i32])
+each: fun(values: array[i32, 3], imm visit: fun[i32])
 {
 	for value in values
 		visit(value)
 }
 
-scaled: fun(values: array[i32, 3], factor: i32, visit: fun[i32])
+scaled: fun(values: array[i32, 3], factor: i32, imm visit: fun[i32])
 {
-	each(values, visit)
+	each(values, imm visit)
 	each(values, fun(value) { visit(value * factor) })
 }
 
-pick: fun(first: bool, a: fun[-> i32], b: fun[-> i32]) -> ref fun[-> i32]
+pick: fun(first: bool, imm a: fun[-> i32], imm b: fun[-> i32]) -> ref fun[-> i32]
 {
 	if first
 		ret a
@@ -64,14 +64,14 @@ pick: fun(first: bool, a: fun[-> i32], b: fun[-> i32]) -> ref fun[-> i32]
 	ret b
 }
 
-filter: fun(keep: fun[i32 -> bool]) -> Filter => Filter(keep)
+filter: fun(imm keep: fun[i32 -> bool]) -> Filter => Filter(keep)
 
-transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(imm value)
+transform[T, U]: fun(imm value: T, imm f: fun[imm T -> U]) -> U => f(imm value)
 
-twice: fun(f: fun[fun[i32], i32], visit: fun[i32])
+twice: fun(imm f: fun[imm fun[i32], i32], imm visit: fun[i32])
 {
-	f(visit, 1)
-	f(visit, 2)
+	f(imm visit, 1)
+	f(imm visit, 2)
 }
 
 maybe: fun(callback: Option[ref fun[i32]], value: i32)
@@ -80,7 +80,7 @@ maybe: fun(callback: Option[ref fun[i32]], value: i32)
 		f(value)
 }
 
-attach: fun(mut button: Button, own onClick: fun[])
+attach: fun(mut button: Button, onClick: fun[])
 {
 	button.onClick = onClick
 }
@@ -94,7 +94,7 @@ main: fun -> i32
 
 	val run = each
 	run([4, 5, 6], fun(value) { total += value })
-	val visitor = fun(visit: fun[i32], value: i32) => visit(value * 100)
+	val visitor = fun(imm visit: fun[i32], value: i32) => visit(value * 100)
 	twice(visitor, fun(value) { total += value })
 	maybe(some(fun(value) { total += value }), 1000)
 	maybe(none, 5)

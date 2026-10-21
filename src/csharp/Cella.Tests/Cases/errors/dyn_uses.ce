@@ -6,8 +6,8 @@ Shape: trait
 	scale: fun(mut self, factor: f64)
 	label: fun -> i32
 	same: fun(imm self, imm other: Self) -> bool
-	map[T]: fun(imm self, own value: T) -> T
-	take: fun(own self) -> i32
+	map[T]: fun(imm self, value: T) -> T
+	take: fun(self) -> i32
 	twin: get(imm self) -> Self
 	mix: pvt fun(imm self) -> i32 => 1
 }
@@ -24,8 +24,8 @@ Circle: rec impl Shape
 
 	label: fun -> i32 => 1
 	same: fun(self, other: Circle) -> bool => true
-	map[T]: fun(self, own value: T) -> T => value
-	take: fun(own self) -> i32 => 1
+	map[T]: fun(self, value: T) -> T => value
+	take: fun(self) -> i32 => 1
 	twin: get(self) -> Circle => self
 }
 

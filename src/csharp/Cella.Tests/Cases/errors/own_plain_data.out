@@ -1,13 +1,12 @@
+Hint at own_plain_data.ce:8:10
+7 │ val y = 7
+8 │ val z = own y
+            ╘═╛ Redundant 'own'
+
 Error at own_plain_data.ce:11:14
-10 │ val w = take(own a)
+10 │ val w = take(a)
 11 │ ret z + w + y + a
                  ^ Cannot use moved values
                  | Moved on line 8
-
-Error at own_plain_data.ce:11:18
-10 │ val w = take(own a)
-11 │ ret z + w + y + a
-                     ^ Cannot use moved values
-                     | Moved on line 10
 
 [compilation failed]

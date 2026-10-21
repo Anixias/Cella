@@ -8,7 +8,7 @@ ext
 add: fun(a: i32, b: i32) -> i32 => a + b
 takesU8: fun(value: u8) -> u8 => value
 opt: fun(a: i32, b: i32 = 1, c: i32 = 2) -> i32 => a + b + c
-id[T]: fun(own a: T) -> T => own a
+id[T]: fun(a: T) -> T => a
 
 Point: rec
 {

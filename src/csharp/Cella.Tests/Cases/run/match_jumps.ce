@@ -18,7 +18,7 @@ Step: enum
 	skip
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -27,7 +27,7 @@ Buffer: rec
 	}
 }
 
-Slot: enum
+Slot: own enum
 {
 	empty
 	held(buffer: Buffer)

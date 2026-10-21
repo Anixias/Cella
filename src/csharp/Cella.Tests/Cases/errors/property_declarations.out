@@ -38,15 +38,10 @@ Error at property_declarations.ce:34:3
 34 │ set(mut self, value) => 0
      ╘═╛ Cannot combine static and instance accessors
 
-Error at property_declarations.ce:39:11
-38 │ {
-39 │     get(own self) => 1
-                 ╘══╛ Cannot take 'own self' in getters
-
-Error at property_declarations.ce:40:11
-39 │ get(own self) => 1
-40 │ set(own self, value) => 0
-             ╘══╛ Cannot take 'own self' in setters
+Error at property_declarations.ce:40:23
+39 │ get(self) => 1
+40 │ set(self, value) => 0
+                         ^ Cannot use values as statements
 
 Error at property_declarations.ce:43:26
 42 │ 

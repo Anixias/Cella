@@ -10,38 +10,38 @@ Error at returned_matches.ce:32:12
 
 Hint at returned_matches.ce:40:1
 39 │ 
-40 │ pick: fun(imm effect: Effect, own fallback: Buffer) -> imm[Buffer] => match effect
+40 │ pick: fun(imm effect: Effect, fallback: Buffer) -> imm[Buffer] => match effect
      ╘══╛ 'pick' is never used
 
 Error at returned_matches.ce:43:10
 42 │ hold(val buffer) => buffer
 43 │ else => imm fallback
-             ╘══════════╛ Cannot return borrows of 'own' parameters
+             ╘══════════╛ Cannot return borrows of by-value parameters
 
 Hint at returned_matches.ce:46:1
 45 │ 
-46 │ every: fun(imm effect: Effect, own a: Buffer, own b: Buffer) -> imm[Buffer] => match effect
+46 │ every: fun(imm effect: Effect, a: Buffer, b: Buffer) -> imm[Buffer] => match effect
      ╘═══╛ 'every' is never used
 
 Error at returned_matches.ce:48:22
 47 │ {
 48 │     hold(val buffer) => imm a
-                             ╘═══╛ Cannot return borrows of 'own' parameters
+                             ╘═══╛ Cannot return borrows of by-value parameters
 
 Error at returned_matches.ce:49:10
 48 │ hold(val buffer) => imm a
 49 │ else => imm b
-             ╘═══╛ Cannot return borrows of 'own' parameters
+             ╘═══╛ Cannot return borrows of by-value parameters
 
 Hint at returned_matches.ce:52:1
 51 │ 
-52 │ nested: fun(imm outer: Effect, imm inner: Effect, own fallback: Buffer) -> imm[Buffer] => match outer
+52 │ nested: fun(imm outer: Effect, imm inner: Effect, fallback: Buffer) -> imm[Buffer] => match outer
      ╘════╛ 'nested' is never used
 
 Error at returned_matches.ce:58:11
 57 │ hold(val buffer) => buffer
 58 │ else => imm fallback
-             ╘══════════╛ Cannot return borrows of 'own' parameters
+             ╘══════════╛ Cannot return borrows of by-value parameters
 
 Hint at returned_matches.ce:62:1
 61 │ 
@@ -71,7 +71,7 @@ Error at returned_matches.ce:74:22
 Error at returned_matches.ce:75:10
 74 │ count(val value) => imm value
 75 │ else => imm x
-             ╘═══╛ Cannot return borrows of copied parameters
+             ╘═══╛ Cannot return borrows of by-value parameters
 
 Hint at returned_matches.ce:78:1
 77 │ 
@@ -85,12 +85,12 @@ Error at returned_matches.ce:80:22
 
 Hint at returned_matches.ce:84:1
 83 │ 
-84 │ stored: fun(imm effect: Effect, own fallback: Buffer) -> imm[Buffer]
+84 │ stored: fun(imm effect: Effect, fallback: Buffer) -> imm[Buffer]
      ╘════╛ 'stored' is never used
 
 Error at returned_matches.ce:91:6
 90 │ }
 91 │ ret result
-         ╘════╛ Cannot return borrows of 'own' parameters
+         ╘════╛ Cannot return borrows of by-value parameters
 
 [compilation failed]

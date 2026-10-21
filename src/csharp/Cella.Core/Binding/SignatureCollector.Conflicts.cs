@@ -56,18 +56,10 @@ public sealed partial class SignatureCollector
 				_builder.Functions[(FunctionSymbol)d.Symbol].Signature))
 			.ToList();
 		
-		var groups = signatures
-			.Where(static entry => Enumerable.Range(0, entry.Signature.ParameterTypes.Length)
-				.All(i => entry.Signature.GetDeclaredType(i) is not InvalidType))
-			.GroupBy(static entry => new ParameterKey(entry.Signature), static entry => entry.Signature)
-			.ToDictionary(static group => group.Key, static group => new OverloadGroup(group.ToList()));
-		
 		foreach (var (declaration, function, signature) in signatures)
 		{
-			var message = groups.TryGetValue(new ParameterKey(signature), out var group) && group.Count > 1
-				? group.DescribeConflict(function.Name, signature)
-				: DescribeConflict(function.Name, signature,
-					signatures.Where(other => other.Function != function).Select(static other => other.Signature));
+			var message = DescribeConflict(function, signature,
+				signatures.Where(other => other.Function != function).Select(static other => other.Signature));
 			
 			if (message is null)
 				continue;
@@ -78,55 +70,6 @@ public sealed partial class SignatureCollector
 		}
 		
 		return true;
-	}
-	
-	private sealed class OverloadGroup(List<FunctionSignature> signatures)
-	{
-		private readonly Dictionary<string, int> _modes = signatures.CountBy(DescribeModes).ToDictionary();
-		
-		private readonly Dictionary<TypeSymbol, int> _returns =
-			signatures.CountBy(static signature => signature.ReturnType).ToDictionary();
-		
-		private readonly Dictionary<(string, TypeSymbol), int> _exact = signatures
-			.CountBy(static signature => (DescribeModes(signature), signature.ReturnType))
-			.ToDictionary();
-		
-		public int Count => signatures.Count;
-		
-		public string DescribeConflict(string name, FunctionSignature signature)
-		{
-			var modes = DescribeModes(signature);
-			return (_modes[modes] > 1, _returns[signature.ReturnType] > 1) switch
-			{
-				(true, _) when _exact[(modes, signature.ReturnType)] > 1 =>
-					$"'{name}' is declared more than once with the same signature",
-				(true, _) => $"'{name}' overloads cannot differ only in return type",
-				(false, true) => $"'{name}' overloads cannot differ only in parameter modes",
-				(false, false) => $"'{name}' overloads cannot differ only in parameter modes and return type"
-			};
-		}
-		
-		private static string DescribeModes(FunctionSignature signature) =>
-			string.Join(",", signature.ParameterModes);
-	}
-	
-	private readonly struct ParameterKey(FunctionSignature signature) : IEquatable<ParameterKey>
-	{
-		private readonly FunctionSignature _signature = signature;
-		
-		public bool Equals(ParameterKey other) => HasSameParameters(_signature, other._signature);
-		public override bool Equals(object? obj) => obj is ParameterKey other && Equals(other);
-		
-		public override int GetHashCode()
-		{
-			var hash = new HashCode();
-			hash.Add(_signature.IsVariadic);
-			hash.Add(_signature.HasVariadicParameter);
-			for (var i = 0; i < _signature.ParameterTypes.Length; i++)
-				hash.Add(_signature.GetDeclaredType(i));
-			
-			return hash.ToHashCode();
-		}
 	}
 	
 	private void ReportPlainNameConflicts()
@@ -180,7 +123,7 @@ public sealed partial class SignatureCollector
 		if (isExternal && others.Any(static s => s is FunctionSymbol { Kind: FunctionKind.External }))
 			return new(DiagnosticSeverity.Error, location, "'ext' functions cannot be overloaded");
 		
-		var message = DescribeConflict(symbol.Name, _builder.Functions[function].Signature,
+		var message = DescribeConflict(function, _builder.Functions[function].Signature,
 			others.Cast<FunctionSymbol>()
 				.Where(other => HasReceiver(other) == HasReceiver(function))
 				.Select(other => AlignTypeParameters(function, other, _builder.Functions[other].Signature))
@@ -249,7 +192,12 @@ public sealed partial class SignatureCollector
 			       pair.First.Signature.ParameterTypes.Skip(1).SequenceEqual(other.ParameterTypes.Skip(1));
 		});
 	
-	private string? DescribeConflict(string name, FunctionSignature signature, IEnumerable<FunctionSignature> others)
+	private string? DescribeConflict(FunctionSymbol function, FunctionSignature signature,
+		IEnumerable<FunctionSignature> others) =>
+		DescribeConflict(function.Name, signature, others, CountFixedModes(function, signature));
+	
+	private string? DescribeConflict(string name, FunctionSignature signature, IEnumerable<FunctionSignature> others,
+		int fixedModes)
 	{
 		var overloads = others.ToList();
 		var sameParameters = overloads.Where(other => HasSameParameters(other, signature)).ToList();
@@ -258,20 +206,67 @@ public sealed partial class SignatureCollector
 				? $"'{name}' overloads cannot accept the same arguments"
 				: null;
 		
-		var sameModes = sameParameters
-			.Where(other => other.ParameterModes.SequenceEqual(signature.ParameterModes))
+		var overlaps = sameParameters
+			.Select(other => (Other: other, Overlap: CompareModes(signature, other, fixedModes)))
 			.ToList();
 		
-		var sameReturn = sameParameters.Any(other => other.ReturnType == signature.ReturnType);
-		return (sameModes.Count > 0, sameReturn) switch
-		{
-			(true, _) when sameModes.Any(other => other.ReturnType == signature.ReturnType) =>
-				$"'{name}' is declared more than once with the same signature",
-			(true, _) => $"'{name}' overloads cannot differ only in return type",
-			(false, true) => $"'{name}' overloads cannot differ only in parameter modes",
-			(false, false) => $"'{name}' overloads cannot differ only in parameter modes and return type"
-		};
+		var sameModes = overlaps.Where(static pair => pair.Overlap == ModeOverlap.Same).ToList();
+		if (sameModes.Count > 0)
+			return sameModes.Any(pair => pair.Other.ReturnType == signature.ReturnType)
+				? $"'{name}' is declared more than once with the same signature"
+				: $"'{name}' overloads cannot differ only in return type";
+		
+		var fixedOverlaps = overlaps.Where(static pair => pair.Overlap == ModeOverlap.Fixed).ToList();
+		if (fixedOverlaps.Count > 0)
+			return fixedOverlaps.Any(pair => pair.Other.ReturnType == signature.ReturnType)
+				? $"'{name}' overloads cannot differ only in parameter modes"
+				: $"'{name}' overloads cannot differ only in parameter modes and return type";
+		
+		return overlaps.Any(static pair => pair.Overlap == ModeOverlap.Tie)
+			? $"'{name}' overloads cannot accept the same arguments"
+			: null;
 	}
+	
+	private enum ModeOverlap
+	{
+		Same,
+		Fixed,
+		Tie,
+		Distinct
+	}
+	
+	private static ModeOverlap CompareModes(FunctionSignature first, FunctionSignature second, int fixedModes)
+	{
+		var differs = false;
+		var firstTakesValue = false;
+		var secondTakesValue = false;
+		var separates = false;
+		for (var i = 0; i < first.ParameterTypes.Length; i++)
+		{
+			var (a, b) = (first.GetMode(i), second.GetMode(i));
+			if (a == b)
+				continue;
+			
+			if (i < fixedModes)
+				return ModeOverlap.Fixed;
+			
+			differs = true;
+			separates |= a == ParameterMode.Mut || b == ParameterMode.Mut;
+			firstTakesValue |= a == ParameterMode.Value;
+			secondTakesValue |= b == ParameterMode.Value;
+		}
+		
+		return !differs ? ModeOverlap.Same
+			: !separates && firstTakesValue && secondTakesValue ? ModeOverlap.Tie
+			: ModeOverlap.Distinct;
+	}
+	
+	private static int CountFixedModes(FunctionSymbol function, FunctionSignature signature) => function.Syntax switch
+	{
+		FunctionNode { Identifier.Type: not TokenType.Identifier } => signature.ParameterTypes.Length,
+		FunctionNode { Receiver: not null } => 1,
+		_ => 0
+	};
 	
 	private void ReportModuleConflicts()
 	{

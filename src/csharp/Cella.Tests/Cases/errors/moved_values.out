@@ -4,7 +4,7 @@ Hint at moved_values.ce:16:1
      ╘═══╛ 'again' is never used
 
 Error at moved_values.ce:20:7
-19 │ take(own a)
+19 │ take(a)
 20 │ take(a)
           ^ Cannot use moved values
           | Moved on line 19
@@ -40,11 +40,6 @@ Hint at moved_values.ce:34:1
 Error at moved_values.ce:39:17
 38 │ for _ in 0..3
 39 │     total += take(a)
-                       ^ Cannot move 'Buffer' values implicitly
-
-Error at moved_values.ce:39:17
-38 │ for _ in 0..3
-39 │     total += take(a)
                        ^ Cannot use moved values
                        | Moved here in an earlier iteration
 
@@ -65,7 +60,7 @@ Hint at moved_values.ce:53:1
      ╘══════╛ 'constant' is never used
 
 Error at moved_values.ce:57:6
-56 │ take(own a)
+56 │ take(a)
 57 │ ret a.id
          ╘══╛ Cannot use moved values
             | Moved on line 56

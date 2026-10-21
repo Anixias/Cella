@@ -3,11 +3,6 @@ Error at function_parameter_moves.ce:9:18
 9 │     self.onClick = onClick
                        ╘═════╛ Cannot move read-only parameters
 
-Error at function_parameter_moves.ce:25:41
-24 │ get(self) => self.handler
-25 │ set(mut self, value) { self.handler = value }
-                                           ╘═══╛ Cannot move read-only parameters
-
 Error at function_parameter_moves.ce:41:19
 40 │ {
 41 │     button.onClick = onClick
@@ -28,26 +23,25 @@ Error at function_parameter_moves.ce:48:21
 48 │ val local: fun[] = onClick
                         ╘═════╛ Cannot move read-only parameters
 
-Error at function_parameter_moves.ce:51:39
+Error at function_parameter_moves.ce:51:43
 50 │ 
-51 │ back: fun(onClick: fun[]) -> fun[] => onClick
-                                           ╘═════╛ Cannot move read-only parameters
+51 │ back: fun(imm onClick: fun[]) -> fun[] => onClick
+                                               ╘═════╛ Cannot move read-only parameters
 
-Error at function_parameter_moves.ce:53:45
+Error at function_parameter_moves.ce:53:49
 52 │ 
-53 │ wrap: fun(onClick: fun[]) -> Plain => Plain(onClick)
-                                                 ╘═════╛ Cannot move read-only parameters
+53 │ wrap: fun(imm onClick: fun[]) -> Plain => Plain(onClick)
+                                                     ╘═════╛ Cannot move read-only parameters
 
 Error at function_parameter_moves.ce:57:2
 56 │ {
 57 │     visit(1, 2)
          ╘═══╛ 'visit' takes one argument
 
-Error at function_parameter_moves.ce:62:22
+Error at function_parameter_moves.ce:62:26
 61 │ {
-62 │     val lambda = fun(f: ref fun[i32]) { }
-                             ╘══════════╛ Cannot use borrow types for parameters
-                                        | 'f: fun[i32]' is already a read-only borrow
+62 │     val lambda = fun(imm f: ref fun[i32]) { }
+                                 ╘══════════╛ Cannot use borrow types for parameters
 
 Error at function_parameter_moves.ce:64:24
 63 │ val base = 1

@@ -10,9 +10,9 @@ Pack[T]: pub rec
 	n: pvt set i32
 	item: T
 
-	new: op(own item: T)
+	new: op(item: T)
 	{
 		self.n = 3
-		self.item = own item
+		self.item = item
 	}
 }

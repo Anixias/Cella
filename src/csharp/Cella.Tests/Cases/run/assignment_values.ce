@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -14,14 +14,14 @@ Buffer: rec
 	}
 }
 
-Holder: rec
+Holder: own rec
 {
 	buffer: Buffer
 }
 
 show: fun(imm buffer: Buffer) -> i32 => buffer.id
 same: fun(imm buffer: Buffer, address: ptr[Buffer]) -> i32 => i32(@buffer == address)
-take: fun(own buffer: Buffer) -> i32 => buffer.id
+take: fun(buffer: Buffer) -> i32 => buffer.id
 grow: fun(mut buffer: Buffer) => buffer.id += 10
 
 main: fun -> i32
@@ -32,14 +32,14 @@ main: fun -> i32
 		same(holder.buffer = Buffer(5), @holder.buffer))
 
 	val c = own (b = Buffer(6))
-	printf("%d %d %d\n", c.id, (b = Buffer(7)).id, take(own (b = Buffer(8))))
+	printf("%d %d %d\n", c.id, (b = Buffer(7)).id, take((b = Buffer(8))))
 
 	var a = Buffer(0)
-	a = own (b = Buffer(9))
+	a = (b = Buffer(9))
 	printf("%d\n", a.id)
 
 	var e = Buffer(13)
-	val viewed = (e = Buffer(14))
+	val viewed = imm (e = Buffer(14))
 	printf("%d %d\n", viewed.id, same(imm viewed, @e))
 	val typed: imm[Buffer] = (e = Buffer(15))
 	printf("%d\n", typed.id)

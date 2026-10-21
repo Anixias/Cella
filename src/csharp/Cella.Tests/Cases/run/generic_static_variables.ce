@@ -16,9 +16,9 @@ Counter[T]: rec
 	value: T
 	created: var Pair = Pair(0, 0)
 
-	new: op(own value: T)
+	new: op(value: T)
 	{
-		self.value = own value
+		self.value = value
 		Counter[T].created.left += 1
 	}
 }

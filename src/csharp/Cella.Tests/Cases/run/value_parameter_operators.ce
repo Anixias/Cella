@@ -41,7 +41,7 @@ Total: rec
 	}
 }
 
-Grid: rec
+Grid: own rec
 {
 	cells: array[i32, 9]
 

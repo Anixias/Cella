@@ -95,11 +95,10 @@ Hint at closure_stores.ce:121:1
 121 │ reassigned: fun -> i32
       ╘════════╛ 'reassigned' is never used
 
-Error at closure_stores.ce:127:6
+Error at closure_stores.ce:126:7
+125 │ val inside = held
 126 │ call(replace)
-127 │ ret inside.id
-          ╘════╛ Cannot use borrows of reassigned values
-               | Reassigned on line 126
+           ╘═════╛ Cannot borrow arguments implicitly
 
 Hint at closure_stores.ce:130:1
 129 │ 

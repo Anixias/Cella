@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	count(n: i32)
@@ -32,7 +32,7 @@ main: fun -> i32
 	}
 
 	val effect = Effect.hold(Buffer(5))
-	match own effect
+	match effect
 	{
 		hold(var buffer) =>
 		{

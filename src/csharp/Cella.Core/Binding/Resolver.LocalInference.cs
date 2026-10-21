@@ -40,11 +40,11 @@ public sealed partial class Resolver
 	
 	private bool ConvertsInOneStep(TypeSymbol from, TypeSymbol to) =>
 		from == to || _conversionTable.FindImplicit(from, to) is not null ||
-		FindUserConversion(from, null, ParameterMode.ReadOnly, to) is { IsAmbiguous: false };
+		FindUserConversion(from, null, ParameterMode.Value, to) is { IsAmbiguous: false };
 	
 	private bool CastsInOneStep(TypeSymbol from, TypeSymbol to) =>
 		from == to || _conversionTable.FindExplicit(from, to) is not null ||
-		FindUserConversion(from, null, ParameterMode.ReadOnly, to, true) is { IsAmbiguous: false } ||
+		FindUserConversion(from, null, ParameterMode.Value, to, true) is { IsAmbiguous: false } ||
 		_typePool.GetConstructors(to).Any(constructor => constructor.Signature.ParameterTypes is [var parameter] &&
 		                                                 parameter == from);
 	

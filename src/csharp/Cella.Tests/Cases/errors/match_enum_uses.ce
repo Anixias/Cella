@@ -17,7 +17,7 @@ Point: rec
 	x: i32
 }
 
-wrap[T: null]: fun(own value: T) -> Nullable[T] => some(value)
+wrap[T: null]: fun(value: T) -> Nullable[T] => some(value)
 
 unwrap[T: null]: fun(imm n: Nullable[T]) -> T => T(n)
 

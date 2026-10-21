@@ -12,21 +12,21 @@ Enemy: rec
 	secret: pvt i32
 }
 
-Name: rec
+Name: own rec
 {
 	id: i32
 
 	drop: op {}
 }
 
-Holder: rec
+Holder: own rec
 {
 	name: Name
 
 	drop: op {}
 }
 
-Pair: rec
+Pair: own rec
 {
 	first: Name
 	second: Name
@@ -91,7 +91,7 @@ guarded: fun -> i32
 	var p = Pair(Name(1), Name(2))
 	match p
 	{
-		Pair(own first) if first.id > 0 => {}
+		Pair(val first) if first.id > 0 => {}
 		else => {}
 	}
 

@@ -5,7 +5,7 @@ Sprite: rec
 	hp: i32
 }
 
-Handle: rec
+Handle: own rec
 {
 	sprite: Sprite
 

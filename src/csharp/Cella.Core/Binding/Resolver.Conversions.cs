@@ -234,8 +234,8 @@ public sealed partial class Resolver
 		var (value, use) = source switch
 		{
 			ResolvedMutArgumentExpressionNode argument => (Decay(argument.Place), ParameterMode.Mut),
-			ResolvedOwnExpressionNode owned => (Decay(owned.Value), ParameterMode.Own),
-			_ => (Decay(source), ParameterMode.ReadOnly)
+			ResolvedOwnExpressionNode owned => (Decay(owned.Value), ParameterMode.Value),
+			_ => (Decay(source), ParameterMode.Value)
 		};
 		
 		return IsInvalid(value)
@@ -300,12 +300,9 @@ public sealed partial class Resolver
 			               Produces(info.Signature.ReturnType, target, use == ParameterMode.Mut))
 			.ToList();
 		
-		ParameterMode[] modes = use switch
-		{
-			ParameterMode.Mut => [ParameterMode.Mut],
-			ParameterMode.Own => [ParameterMode.Own, ParameterMode.ReadOnly, ParameterMode.Imm],
-			_ => [ParameterMode.ReadOnly, ParameterMode.Imm, ParameterMode.Own]
-		};
+		ParameterMode[] modes = use == ParameterMode.Mut
+			? [ParameterMode.Mut]
+			: [ParameterMode.Value, ParameterMode.Imm];
 		
 		return modes
 			.Select(mode => matching.Where(info => info.Signature.GetMode(0) == mode).ToList())
@@ -359,13 +356,11 @@ public sealed partial class Resolver
 					.Select(info => new ConversionCallable(info, target))
 			];
 		
-		var (value, use) = arg is ResolvedOwnExpressionNode owned
-			? (Decay(owned.Value), ParameterMode.Own)
-			: (Decay(arg), ParameterMode.ReadOnly);
+		var value = Decay(arg is ResolvedOwnExpressionNode owned ? owned.Value : arg);
 		
 		return
 		[
-			..FindOutwardConversions(value.Type, use, target, true)
+			..FindOutwardConversions(value.Type, ParameterMode.Value, target, true)
 				.Concat(GetInwardConversions(target)
 					.Select(info => InferConversion(info, value.Type, value as ResolvedLiteralExpressionNode))
 					.OfType<FunctionInfo>())

@@ -5,7 +5,7 @@ ext
 	abort: fun -> never
 }
 
-id[T]: fun(own x: T) -> T => x
+id[T]: fun(x: T) -> T => x
 
 explicit: fun -> i32
 {

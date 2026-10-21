@@ -1,6 +1,6 @@
 mod test
 
-Buffer: rec
+Buffer: own rec
 {
 	id: i32
 
@@ -9,7 +9,7 @@ Buffer: rec
 	}
 }
 
-Effect: enum
+Effect: own enum
 {
 	none
 	count(n: i32)
@@ -34,7 +34,7 @@ pairs: fun -> i32
 	val effect = Effect.two(Buffer(1), Buffer(2))
 	match effect
 	{
-		two(own a, val b) => ret a.id + b.id
+		two(val a, val b) => ret a.id + b.id
 		else => ret 0
 	}
 }

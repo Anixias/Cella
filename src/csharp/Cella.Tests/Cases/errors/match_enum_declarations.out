@@ -95,11 +95,11 @@ Error at match_enum_declarations.ce:93:18
                          ^ 'Nullable' requires 'T: null'
                          | 'T' has no null
 
-Error at match_enum_declarations.ce:98:41
+Error at match_enum_declarations.ce:98:37
 97 │ 
-98 │ first[T]: fun(own value: T) -> Nullable[T] => some(value)
-                                             ^ 'Nullable' requires 'T: null'
-                                             | 'T' has no null
+98 │ first[T]: fun(value: T) -> Nullable[T] => some(value)
+                                         ^ 'Nullable' requires 'T: null'
+                                         | 'T' has no null
 
 Error at match_enum_declarations.ce:100:30
  99 │ 

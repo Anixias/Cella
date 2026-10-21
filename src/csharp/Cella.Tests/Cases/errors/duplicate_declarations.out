@@ -25,7 +25,7 @@ Hint at duplicate_declarations.ce:11:1
 
 Error at duplicate_declarations.ce:16:1
 15 │ 
-16 │ Point: rec
+16 │ Point: own rec
      ╘═══╛ 'Point' is declared more than once in this module
 
 Error at duplicate_declarations.ce:18:2

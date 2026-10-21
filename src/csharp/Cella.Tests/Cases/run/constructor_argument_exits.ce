@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Part: rec
+Part: own rec
 {
 	id: i32
 
@@ -15,7 +15,7 @@ Part: rec
 	}
 }
 
-Pair: rec
+Pair: own rec
 {
 	a: Part
 	b: Part
@@ -26,7 +26,7 @@ Pair: rec
 	}
 }
 
-Built: rec
+Built: own rec
 {
 	id: i32
 
