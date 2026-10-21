@@ -1,0 +1,65 @@
+mod test
+
+Ord: trait
+{
+	<: op(imm left: Self, imm right: Self) -> bool
+}
+
+i32: impl Ord
+
+Money: rec
+{
+	cents: i32
+
+	<: op(left: Money, right: Money) -> bool => left < right
+	-: op(self) -> Money => -self
+}
+
+smaller[T: Ord + copy]: fun(a: T, b: T) -> T
+{
+	if a < b
+		ret a
+
+	ret b
+}
+
+count: fun(n: i32) -> i32 => count(n + 1)
+
+both: fun(n: i32) -> i32
+{
+	if n > 0
+		ret both(n - 1)
+
+	ret both(n + 1)
+}
+
+later: fun(n: i32) -> i32
+{
+	val doubled = n * 2
+	val result = later(doubled)
+	ret result
+}
+
+spin: fun -> never => spin()
+
+same[T: copy]: fun(value: T) -> T => same(value)
+
+down: fun(n: i32) -> i32
+{
+	if n == 0
+		ret 0
+
+	ret down(n - 1)
+}
+
+halts: fun(n: i32) -> i32
+{
+	while n > 0
+		ret halts(n - 1)
+
+	ret 0
+}
+
+either: fun(a: bool, b: bool) -> bool => a && either(a, b)
+
+main: fun -> i32 => smaller(7, 3) + down(4) + halts(2) + i32(either(false, true))

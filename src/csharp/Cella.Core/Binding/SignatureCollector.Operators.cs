@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Binding.Conversions;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
@@ -359,9 +360,28 @@ public sealed partial class SignatureCollector
 		foreach (var node in operators)
 		{
 			var signature = _builder.Functions[(FunctionSymbol)_symbolTable.DeclarationSymbols[node]].Signature;
-			if (FindOperatorError(type, node, signature) is var (location, message))
+			var error = FindOperatorError(type, node, signature) ?? FindBuiltInOperator(node, signature);
+			if (error is var (location, message))
 				ReportOn(node, new(DiagnosticSeverity.Error, location, message));
 		}
+	}
+	
+	private (SourceLocation Location, string Message)? FindBuiltInOperator(FunctionNode node,
+		FunctionSignature signature)
+	{
+		TypeSymbol[] operands = [..signature.ParameterTypes.Select((_, i) => signature.GetDeclaredType(i))];
+		var registry = _typePool.OperatorRegistry;
+		var candidates = operands.Length == 1
+			? registry.GetUnaryCandidates(node.Identifier.Type)
+			: registry.GetBinaryCandidates(node.Identifier.Type);
+		
+		if (!candidates.OfType<OperationImpl>().Any(candidate => candidate.ParameterTypes.SequenceEqual(operands)))
+			return null;
+		
+		var name = node.Identifier.Text;
+		return (node.Identifier.SourceLocation, operands is [var left, var right]
+			? $"Operator '{name}' between '{left.Name}' and '{right.Name}' is built in"
+			: $"Operator '{name}' on '{operands[0].Name}' is built in");
 	}
 	
 	private static (SourceLocation Location, string Message)? FindOperatorError(TypeSymbol type, FunctionNode node,

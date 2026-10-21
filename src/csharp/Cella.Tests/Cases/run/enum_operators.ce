@@ -17,20 +17,11 @@ Shape: enum
 
 area: fun(s: Shape) -> i32 => match s { circle(val r) => 3 * r * r, square(val side) => side * side, empty => 0 }
 
-Team: enum
-{
-	red
-	blue
-
-	==: op(a: Team, b: Team) -> bool => true
-}
-
 main: fun -> i32
 {
 	val a: Shape = circle(2)
 	val b: Shape = square(4)
 	val c: Shape = square(3)
 	printf("%d %d %d %d\n", i32(a == c), i32(a == b), i32(a < b), i32(c == empty))
-	printf("%d %d\n", i32(Team.red == Team.blue), i32(Team.red != Team.blue))
 	ret 0
 }

@@ -10,8 +10,88 @@ public sealed class ControlFlowAnalyzer(DiagnosticList diagnostics)
 	public bool Analyze(LoweredFunction function)
 	{
 		DetectUnreachableCode(function);
+		DetectEndlessRecursion(function);
 		return AllPathsReturn(function);
 	}
+	
+	private void DetectEndlessRecursion(LoweredFunction function)
+	{
+		var self = function.Info.Symbol;
+		if (function.Blocks.Count == 0 || self.IsConversion)
+			return;
+		
+		var recurses = false;
+		var visited = new HashSet<BasicBlock> { function.Blocks[0] };
+		var pending = new Stack<BasicBlock>(visited);
+		while (pending.TryPop(out var block))
+		{
+			if (GetValues(block).Any(value => CallsFunction(value, self)))
+			{
+				recurses = true;
+				continue;
+			}
+			
+			var targets = GetTargets(block.Terminator).ToList();
+			if (targets.Count == 0)
+				return;
+			
+			foreach (var target in targets)
+				if (visited.Add(target))
+					pending.Push(target);
+		}
+		
+		if (recurses)
+			diagnostics.Add(new(DiagnosticSeverity.Warning, self.Definition,
+				$"{DiagnosticReporter.DescribeFunction(self, true)} recurses forever")
+			{
+				Lint = Lints.EndlessRecursion
+			});
+	}
+	
+	private static IEnumerable<Value> GetValues(BasicBlock block) => block.Instructions
+		.Select(static instruction => instruction switch
+		{
+			LocalVarInstruction local => local.Initializer,
+			ExpressionInstruction expression => expression.Value,
+			_ => null
+		})
+		.Append(block.Terminator switch
+		{
+			ReturnTerminator ret => ret.Value,
+			ConditionalBranchTerminator branch => branch.Condition,
+			SwitchTerminator branch => branch.Value,
+			_ => null
+		})
+		.OfType<Value>();
+	
+	private static bool CallsFunction(Value value, FunctionSymbol function) =>
+		value is CallValue call && call.Function.Symbol == function ||
+		GetOperands(value).OfType<Value>().Any(operand => CallsFunction(operand, function));
+	
+	private static IEnumerable<Value?> GetOperands(Value value) => value switch
+	{
+		MoveValue move => [move.Place],
+		ConversionValue conversion => [conversion.Source],
+		CallValue call => [..call.Arguments],
+		IndirectCallValue call => [call.Target, ..call.Arguments],
+		ClosureValue closure => [..closure.Captures],
+		OwnClosureValue closure => [..closure.Captures],
+		IndexerValue indexer => [indexer.Target, indexer.Index],
+		AccessValue access => [access.Target],
+		EnumValue enumValue => [..enumValue.Payload],
+		EnumTagValue tag => [tag.Target],
+		EnumPayloadValue payload => [payload.Target],
+		ArrayValue array => [..array.Elements],
+		FStrValue fstr => [fstr.Text, fstr.Values],
+		FStrPartValue part => [part.Target, part.Index],
+		AtomicValue atomic => [atomic.Pointer, atomic.Expected, atomic.Operand],
+		UnaryOpValue unary => [unary.Operand],
+		BinOpValue binary => [binary.Left, binary.Right],
+		AssignValue assign => [assign.Left, assign.Right],
+		PointerOffsetValue offset => [offset.Pointer, offset.Offset],
+		PointerDifferenceValue difference => [difference.Left, difference.Right],
+		_ => []
+	};
 	
 	private void DetectUnreachableCode(LoweredFunction function)
 	{

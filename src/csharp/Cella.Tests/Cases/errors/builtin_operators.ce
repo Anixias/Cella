@@ -1,0 +1,35 @@
+mod test
+
+Ord: trait
+{
+	<: op(imm left: Self, imm right: Self) -> bool
+}
+
+Color: enum
+{
+	red
+	green
+
+	==: op(left: Color, right: Color) -> bool => true
+}
+
+i32: impl Ord
+{
+	<: op(left: i32, right: i32) -> bool => left < right
+}
+
+i32: impl
+{
+	-: op(self) -> i32 => 0
+	+=: op(mut self, value: i32)
+	{
+	}
+	+: op(left: i32, right: i64) -> i64 => right
+}
+
+f64: impl
+{
+	*: op(left: f64, right: f64) -> i32 => 0
+}
+
+main: fun -> i32 => 0

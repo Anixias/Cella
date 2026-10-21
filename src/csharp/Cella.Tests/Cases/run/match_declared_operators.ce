@@ -47,7 +47,7 @@ where: fun(p: Point) -> i32 => match p
 Team: enum
 {
 	red
-	blue
+	blue(size: i32)
 
 	==: op(a: Team, b: Team) -> bool => true
 }
@@ -55,13 +55,13 @@ Team: enum
 name: fun(t: Team) -> i32 => match t
 {
 	red => 1
-	blue => 2
+	blue(val size) => size
 }
 
 main: fun -> i32
 {
 	printf("%d %d %d\n", where(Point(0, 0)), where(Point(1, 1)), where(Point(3, 1)))
-	printf("%d %d\n", name(Team.red), name(Team.blue))
+	printf("%d %d\n", name(Team.red), name(Team.blue(2)))
 	val items = [1, 2, 1, 1]
 	val one = 1
 	printf("%d\n", count(imm items, imm one))

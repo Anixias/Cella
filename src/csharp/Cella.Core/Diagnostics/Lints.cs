@@ -20,6 +20,7 @@ public static class Lints
 	public const string UnreachableCode = nameof(UnreachableCode);
 	public const string FloatPattern = nameof(FloatPattern);
 	public const string SelfConversion = nameof(SelfConversion);
+	public const string EndlessRecursion = nameof(EndlessRecursion);
 	public const string UnusedLocal = nameof(UnusedLocal);
 	public const string UnusedDeclaration = nameof(UnusedDeclaration);
 	public const string Naming = nameof(Naming);
@@ -32,6 +33,7 @@ public static class Lints
 		new(UnreachableCode, "Unreachable code", LintLevel.Warning),
 		new(FloatPattern, "Float patterns", LintLevel.Warning),
 		new(SelfConversion, "Conversions that call themselves", LintLevel.Warning),
+		new(EndlessRecursion, "Functions that recurse forever", LintLevel.Warning),
 		new(UnusedLocal, "Unused local variables", LintLevel.Hint),
 		new(UnusedDeclaration, "Unused functions and globals", LintLevel.Hint),
 		new(Naming, "Naming rules", LintLevel.Hint)

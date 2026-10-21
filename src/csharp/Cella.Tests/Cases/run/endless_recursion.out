@@ -1,0 +1,36 @@
+Warning at endless_recursion.ce:14:2
+13 │ 
+14 │ <: op(left: Money, right: Money) -> bool => left < right
+     ^ 'Money.<' recurses forever
+
+Warning at endless_recursion.ce:15:2
+14 │ <: op(left: Money, right: Money) -> bool => left < right
+15 │ -: op(self) -> Money => -self
+     ^ 'Money.-' recurses forever
+
+Warning at endless_recursion.ce:26:1
+25 │ 
+26 │ count: fun(n: i32) -> i32 => count(n + 1)
+     ╘═══╛ 'count' recurses forever
+
+Warning at endless_recursion.ce:28:1
+27 │ 
+28 │ both: fun(n: i32) -> i32
+     ╘══╛ 'both' recurses forever
+
+Warning at endless_recursion.ce:36:1
+35 │ 
+36 │ later: fun(n: i32) -> i32
+     ╘═══╛ 'later' recurses forever
+
+Warning at endless_recursion.ce:43:1
+42 │ 
+43 │ spin: fun -> never => spin()
+     ╘══╛ 'spin' recurses forever
+
+Warning at endless_recursion.ce:45:1
+44 │ 
+45 │ same[T: copy]: fun(value: T) -> T => same(value)
+     ╘══╛ 'same' recurses forever
+
+[exit code 3]

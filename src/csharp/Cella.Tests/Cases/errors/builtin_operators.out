@@ -1,0 +1,26 @@
+Error at builtin_operators.ce:13:2
+12 │ 
+13 │ ==: op(left: Color, right: Color) -> bool => true
+     ╘╛ Operator '==' between 'Color' and 'Color' is built in
+
+Error at builtin_operators.ce:18:2
+17 │ {
+18 │     <: op(left: i32, right: i32) -> bool => left < right
+         ^ Operator '<' between 'i32' and 'i32' is built in
+
+Error at builtin_operators.ce:23:2
+22 │ {
+23 │     -: op(self) -> i32 => 0
+         ^ Operator '-' on 'i32' is built in
+
+Error at builtin_operators.ce:24:2
+23 │ -: op(self) -> i32 => 0
+24 │ +=: op(mut self, value: i32)
+     ╘╛ Operator '+=' between 'i32' and 'i32' is built in
+
+Error at builtin_operators.ce:32:2
+31 │ {
+32 │     *: op(left: f64, right: f64) -> i32 => 0
+         ^ Operator '*' between 'f64' and 'f64' is built in
+
+[compilation failed]
