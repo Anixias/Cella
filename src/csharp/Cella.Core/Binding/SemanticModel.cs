@@ -15,6 +15,7 @@ namespace Cella.Core.Binding;
 public sealed record SymbolReference(SourceLocation Location, Symbol Symbol, string Description)
 {
 	public SourceLocation? Declaration { get; init; } = SemanticModel.FindDeclaration(Symbol);
+	public ImmutableArray<SourceLocation> OverloadDeclarations { get; init; } = [];
 	public bool NeedsDrop { get; init; }
 }
 
@@ -33,6 +34,7 @@ public sealed class SemanticModel
 	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
 	private readonly List<SourceLocation> _inactiveCalls = [];
+	private readonly Lazy<Dictionary<string, Dictionary<TextRange, List<SymbolReference>>>> _usages;
 	
 	private readonly Dictionary<IExpressionNode, AccessExpressionNode> _accesses =
 		new(ReferenceEqualityComparer.Instance);
@@ -46,6 +48,7 @@ public sealed class SemanticModel
 		_functions = functions;
 		_globals = globals;
 		_typeConstants = typeConstants;
+		_usages = new(IndexUsages);
 		foreach (var file in files)
 			Walk(file);
 		
@@ -63,7 +66,8 @@ public sealed class SemanticModel
 		}
 		
 		foreach (var (location, symbols) in named)
-			Add(location, symbols[0], string.Join('\n', symbols.Select(symbol => DescribeNamed(symbol, functions))));
+			Add(location, symbols[0], string.Join('\n', symbols.Select(symbol => DescribeNamed(symbol, functions))),
+				symbols.Skip(1));
 		
 		var declared = new Dictionary<Symbol, string>(ReferenceEqualityComparer.Instance);
 		foreach (var reference in _references.Values.SelectMany(static references => references))
@@ -115,6 +119,29 @@ public sealed class SemanticModel
 	
 	public IReadOnlyList<SourceLocation> InactiveCalls => _inactiveCalls;
 	
+	public IReadOnlyList<SymbolReference> GetUsages(SourceLocation declaration) =>
+		_usages.Value.TryGetValue(declaration.Source.FilePath, out var byRange) &&
+		byRange.TryGetValue(declaration.Range, out var usages)
+			? usages
+			: [];
+	
+	private Dictionary<string, Dictionary<TextRange, List<SymbolReference>>> IndexUsages()
+	{
+		var usages = new Dictionary<string, Dictionary<TextRange, List<SymbolReference>>>(_pathComparer);
+		foreach (var reference in GetReferences())
+		{
+			if (reference.Declaration is not { } declaration)
+				continue;
+			
+			if (!usages.TryGetValue(declaration.Source.FilePath, out var byRange))
+				usages[declaration.Source.FilePath] = byRange = [];
+			
+			byRange.GetOrAdd(declaration.Range).Add(reference);
+		}
+		
+		return usages;
+	}
+	
 	public static SourceLocation? FindDeclaration(Symbol symbol)
 	{
 		SourceLocation? location = symbol switch
@@ -140,7 +167,7 @@ public sealed class SemanticModel
 		return location is { Source.FilePath.Length: > 0 } ? location : null;
 	}
 	
-	private void Add(SourceLocation location, Symbol symbol, string description)
+	private void Add(SourceLocation location, Symbol symbol, string description, IEnumerable<Symbol>? overloads = null)
 	{
 		var path = location.Source.FilePath;
 		if (path.Length == 0 || !location.Range.IsValid || symbol is LocalVariableSymbol { IsSynthesized: true })
@@ -149,7 +176,15 @@ public sealed class SemanticModel
 		if (!_references.TryGetValue(path, out var references))
 			_references[path] = references = [];
 		
-		references.Add(new(location, symbol, description) { NeedsDrop = NeedsDrop(symbol) });
+		references.Add(new(location, symbol, description)
+		{
+			NeedsDrop = NeedsDrop(symbol),
+			OverloadDeclarations =
+			[
+				..(overloads ?? []).Select(FindDeclaration).Where(static declaration => declaration is not null)
+				.Select(static declaration => declaration!.Value)
+			]
+		});
 	}
 	
 	private bool NeedsDrop(Symbol symbol)

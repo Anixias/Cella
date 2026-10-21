@@ -147,11 +147,11 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		RequestCheck();
 	}
 	
-	public async Task<SymbolReference?> FindAsync(string uri, int line, int character)
+	public async Task<SymbolReference?> FindAsync(string uri, int line, int character, CancellationToken ct)
 	{
 		var path = Protocol.ToPath(uri);
-		var (projects, text) = await GetCheckedProjectsAsync(path);
-		text ??= File.Exists(path) ? await File.ReadAllTextAsync(path) : null;
+		var (projects, text) = await GetCheckedProjectsAsync(path, ct);
+		text ??= File.Exists(path) ? await File.ReadAllTextAsync(path, ct) : null;
 		if (text is null)
 			return null;
 		
@@ -162,10 +162,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	}
 	
 	public async Task<(IReadOnlyList<SymbolReference> References, ImmutableArray<Token> Keywords)> GetTokensAsync(
-		string uri)
+		string uri, CancellationToken ct)
 	{
 		var path = Protocol.ToPath(uri);
-		var projects = (await GetCheckedProjectsAsync(path)).Projects;
+		var projects = (await GetCheckedProjectsAsync(path, ct)).Projects;
 		var references = ModelsOf(path, projects)
 			.Select(model => model.GetReferences(path))
 			.FirstOrDefault(static references => references.Count > 0) ?? [];
@@ -174,10 +174,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	}
 	
 	public async Task<IReadOnlyList<(FunctionInfo Function, SourceLocation Name, bool IsMain)>> GetRunnablesAsync(
-		string uri)
+		string uri, CancellationToken ct)
 	{
 		var path = Protocol.ToPath(uri);
-		if (FindFile((await GetCheckedProjectsAsync(path)).Projects, path) is not { } file)
+		if (FindFile((await GetCheckedProjectsAsync(path, ct)).Projects, path) is not { } file)
 			return [];
 		
 		return
@@ -193,7 +193,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		];
 	}
 	
-	private async Task<(ProjectCheck[] Projects, string? Text)> GetCheckedProjectsAsync(string path)
+	private async Task<(ProjectCheck[] Projects, string? Text)> GetCheckedProjectsAsync(string path,
+		CancellationToken ct)
 	{
 		while (true)
 		{
@@ -213,7 +214,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			if (!isCurrent)
 			{
 				_urgent.Release();
-				await completed.WaitAsync(_stopping.Token);
+				using var stopping = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token, ct);
+				await completed.WaitAsync(stopping.Token);
 				continue;
 			}
 			
@@ -222,9 +224,9 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	}
 	
 	public async Task<IReadOnlyList<SourceLocation>> FindUsagesAsync(string uri, int line, int character,
-		bool includeDeclaration)
+		bool includeDeclaration, CancellationToken ct)
 	{
-		if ((await FindAsync(uri, line, character))?.Declaration is not { } declaration)
+		if ((await FindAsync(uri, line, character, ct))?.Declaration is not { } declaration)
 			return [];
 		
 		ProjectCheck[] projects;
@@ -235,10 +237,9 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		var usages = new List<SourceLocation>();
 		foreach (var model in projects.Select(static project => project.Model?.Value).OfType<SemanticModel>())
 		{
-			foreach (var reference in model.GetReferences())
+			foreach (var reference in model.GetUsages(declaration))
 			{
-				if (reference.Declaration is not { } target || !IsSameLocation(target, declaration) ||
-				    !includeDeclaration && IsSameLocation(reference.Location, declaration))
+				if (!includeDeclaration && IsSameLocation(reference.Location, declaration))
 					continue;
 				
 				var path = reference.Location.Source.FilePath;
@@ -363,7 +364,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		
 		foreach (var root in roots)
 		{
-			if (await RunAsync(root, builder => builder.BuildAsync(root, unsaved, ct)) is not { } result)
+			if (await RunAsync(root, builder => builder.BuildAsync(root, unsaved, ct), ct) is not { } result)
 				continue;
 			
 			lock (_lock)
@@ -386,7 +387,7 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			await notify(Protocol.Request($"refresh-{++refreshCount}", "workspace/semanticTokens/refresh"));
 	}
 	
-	public async Task<CompletionProbe?> ProbeAsync(string path, string text, int offset)
+	public async Task<CompletionProbe?> ProbeAsync(string path, string text, int offset, CancellationToken ct)
 	{
 		string? root;
 		Dictionary<string, string> unsaved;
@@ -402,14 +403,17 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		
 		unsaved[path] = text;
 		var probe = new CompletionProbe(path, offset);
-		return await RunAsync(root, builder => builder.CompleteAsync(root, unsaved, probe, _stopping.Token)) is null
+		using var stopping = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token, ct);
+		return await RunAsync(root, builder => builder.CompleteAsync(root, unsaved, probe, _stopping.Token),
+			stopping.Token) is null
 			? null
 			: probe;
 	}
 	
-	private async Task<BuildResult?> RunAsync(string root, Func<Builder, Task<BuildResult>> build)
+	private async Task<BuildResult?> RunAsync(string root, Func<Builder, Task<BuildResult>> build,
+		CancellationToken ct)
 	{
-		await _building.WaitAsync(_stopping.Token);
+		await _building.WaitAsync(ct);
 		try
 		{
 			BuildOptions options;

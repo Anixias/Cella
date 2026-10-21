@@ -69,7 +69,7 @@ private fun cellaNameAt(element: PsiElement): Pair<PsiFile, Document>? {
 private sealed interface NameResolution {
 	data object Declared : NameResolution
 	
-	class Referenced(val location: CellaLocation) : NameResolution
+	class Referenced(val locations: List<CellaLocation>) : NameResolution
 }
 
 private val resolutionsKey = Key.create<Pair<Long, ConcurrentHashMap<Int, NameResolution>>>("cella.name.resolutions")
@@ -82,8 +82,8 @@ private fun resolveName(file: PsiFile, document: Document, element: PsiElement):
 		?: ConcurrentHashMap<Int, NameResolution>().also { document.putUserData(resolutionsKey, stamp to it) }
 	
 	resolutions[start]?.let { return it }
-	val location = definitionAt(file.project, virtualFile, document, start) ?: return null
-	val resolution = if (location.isAt(element)) NameResolution.Declared else NameResolution.Referenced(location)
+	val locations = definitionsAt(file.project, virtualFile, document, start).takeIf { it.isNotEmpty() } ?: return null
+	val resolution = if (locations.first().isAt(element)) NameResolution.Declared else NameResolution.Referenced(locations)
 	resolutions[start] = resolution
 	return resolution
 }
@@ -96,7 +96,7 @@ private fun symbolAt(project: Project, location: CellaLocation): CellaSymbol? {
 	return CellaSymbol(location.file, location.offset, name)
 }
 
-private class ProjectTarget(val range: TextRange, val location: CellaLocation)
+private class ProjectTarget(val range: TextRange, val locations: List<CellaLocation>)
 
 private val projectTargetsKey = Key.create<Pair<Long, ConcurrentHashMap<Int, ProjectTarget>>>("cella.project.targets")
 
@@ -116,8 +116,8 @@ private fun projectTargetAt(file: PsiFile, document: Document, offset: Int): Pro
 		it.textDocumentService.hover(HoverParams(TextDocumentIdentifier(CellaServer.uriOf(virtualFile)), position))
 	}, 2000)?.range ?: return null
 	
-	val location = definitionAt(file.project, virtualFile, document, offset) ?: return null
-	val target = ProjectTarget(TextRange(offsetOf(document, range.start), offsetOf(document, range.end)), location)
+	val locations = definitionsAt(file.project, virtualFile, document, offset).takeIf { it.isNotEmpty() } ?: return null
+	val target = ProjectTarget(TextRange(offsetOf(document, range.start), offsetOf(document, range.end)), locations)
 	targets[offset] = target
 	return target
 }
@@ -127,11 +127,11 @@ private fun projectReference(element: PsiElement, offsetInElement: Int): PsiSymb
 	val document = file.viewProvider.document ?: return null
 	val elementStart = element.textRange.startOffset
 	val target = projectTargetAt(file, document, elementStart + offsetInElement) ?: return null
-	val symbol = symbolAt(file.project, target.location) ?: return null
+	val symbols = target.locations.mapNotNull { symbolAt(file.project, it) }.takeIf { it.isNotEmpty() } ?: return null
 	return object : PsiSymbolReference {
 		override fun getElement() = element
 		override fun getRangeInElement() = target.range.shiftLeft(elementStart)
-		override fun resolveReference() = listOf(symbol)
+		override fun resolveReference() = symbols
 	}
 }
 
@@ -158,11 +158,13 @@ class CellaReferenceProvider : ImplicitReferenceProvider {
 		
 		val (file, document) = cellaNameAt(element) ?: return null
 		val resolution = resolveName(file, document, element) as? NameResolution.Referenced ?: return null
-		val symbol = symbolAt(file.project, resolution.location) ?: return null
+		val symbols = resolution.locations.mapNotNull { symbolAt(file.project, it) }.takeIf { it.isNotEmpty() }
+			?: return null
+		
 		return object : PsiSymbolReference {
 			override fun getElement() = element
 			override fun getRangeInElement() = TextRange(0, element.textLength)
-			override fun resolveReference() = listOf(symbol)
+			override fun resolveReference() = symbols
 		}
 	}
 }

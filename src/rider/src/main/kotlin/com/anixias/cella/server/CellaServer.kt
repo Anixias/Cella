@@ -167,6 +167,9 @@ class CellaServer(private val project: Project) : Disposable {
 	fun <T> request(call: (CellaLanguageServer) -> CompletableFuture<T>): CompletableFuture<T?> {
 		val result = CompletableFuture<T?>()
 		sender.execute {
+			if (result.isDone)
+				return@execute
+			
 			val server = connect()?.server
 			if (server == null) {
 				result.complete(null)
@@ -174,7 +177,13 @@ class CellaServer(private val project: Project) : Disposable {
 			}
 			
 			try {
-				call(server).whenComplete { value, error ->
+				val pending = call(server)
+				result.whenComplete { _, _ ->
+					if (result.isCancelled)
+						pending.cancel(true)
+				}
+				
+				pending.whenComplete { value, error ->
 					if (error != null)
 						result.complete(null)
 					else
@@ -202,16 +211,20 @@ class CellaServer(private val project: Project) : Disposable {
 
 	fun <T> await(future: CompletableFuture<T?>, milliseconds: Long = 3000): T? {
 		val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(milliseconds)
-		while (true) {
-			ProgressManager.checkCanceled()
-			try {
-				return future.get(10, TimeUnit.MILLISECONDS)
-			} catch (_: TimeoutException) {
-				if (System.nanoTime() >= deadline)
+		try {
+			while (true) {
+				ProgressManager.checkCanceled()
+				try {
+					return future.get(10, TimeUnit.MILLISECONDS)
+				} catch (_: TimeoutException) {
+					if (System.nanoTime() >= deadline)
+						return null
+				} catch (_: Exception) {
 					return null
-			} catch (_: Exception) {
-				return null
+				}
 			}
+		} finally {
+			future.cancel(true)
 		}
 	}
 	

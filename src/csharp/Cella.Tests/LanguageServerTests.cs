@@ -1,4 +1,4 @@
-using System.IO.Pipes;
+﻿using System.IO.Pipes;
 using System.Text.Json.Nodes;
 using Cella.LanguageServer;
 using Xunit;
@@ -1893,6 +1893,40 @@ public sealed class LanguageServerTests : IAsyncDisposable
 		
 		Assert.EndsWith("panic.ce", (string)definition["uri"]!);
 		Assert.Equal(2, (int)definition["range"]!["start"]!["line"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task FindsEveryImportedOverload()
+	{
+		await File.WriteAllTextAsync(ProjectPath,
+			"OutputType = \"StaticLibrary\"\nStandardLibrary = \"None\"\nPrelude = [\"std.process.panic\"]\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "panic.ce"),
+			"mod std.process\n\npanic: pub op(location: str) -> never\n{\n\tloop\n\t{\n\t}\n}\n\n" +
+			"panic: pub op(message: str, location: str) -> never\n{\n\tloop\n\t{\n\t}\n}\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "other.ce"),
+			"mod test.other\n\nuse std.process.panic\n", Token);
+		
+		await File.WriteAllTextAsync(SourcePath, "mod test\n\nfail: pub fun -> never => panic\n", Token);
+		await InitializeAsync();
+		
+		foreach (var (path, line, character) in new[]
+		         {
+			         (ProjectPath, 2, 25), (Path.Combine(_directory, "other.ce"), 2, 18)
+		         })
+		{
+			var parameters = Position(line, character);
+			parameters["textDocument"]!["uri"] = UriOf(path);
+			var definitions = (JsonArray)(await ReadResponseAsync(await RequestAsync("textDocument/definition",
+				parameters)))["result"]!;
+			
+			Assert.Equal([2, 9],
+				definitions.Select(static definition => (int)definition!["range"]!["start"]!["line"]!));
+		}
+		
+		Assert.Single((JsonArray)(await AskAsync("textDocument/definition", 2, 26))!);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

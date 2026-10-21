@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Collections.Concurrent;
+using System.Text.Json.Nodes;
 using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
@@ -14,6 +15,7 @@ public sealed class Server
 	
 	private readonly MessageConnection _connection;
 	private readonly Workspace _workspace;
+	private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new();
 	private bool hoversPlainText;
 	
 	public Server(Stream input, Stream output, TimeSpan debounce)
@@ -45,9 +47,21 @@ public sealed class Server
 					await _workspace.StopAsync();
 				}
 				
+				if (method == "$/cancelRequest")
+				{
+					if (message["params"]?["id"] is { } cancelled &&
+					    _pending.TryGetValue(cancelled.ToJsonString(), out var pending))
+						await pending.CancelAsync();
+					
+					continue;
+				}
+				
 				if (id is not null && AnswerLater(method, message["params"] as JsonObject) is { } answer)
 				{
-					_ = AnswerLaterAsync(id, answer, ct);
+					var key = id.ToJsonString();
+					var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+					_pending[key] = cancellation;
+					_ = Task.Run(() => AnswerLaterAsync(id, key, answer, cancellation), CancellationToken.None);
 					continue;
 				}
 				
@@ -128,63 +142,69 @@ public sealed class Server
 		}
 	}
 	
-	private Func<Task<JsonNode?>>? AnswerLater(string method, JsonObject? parameters) => method switch
-	{
-		"textDocument/semanticTokens/full" => async () =>
+	private Func<CancellationToken, Task<JsonNode?>>? AnswerLater(string method, JsonObject? parameters) =>
+		method switch
 		{
-			var uri = GetUri(parameters);
-			var (references, keywords) = await _workspace.GetTokensAsync(uri);
-			if (CellaProject.IsProjectFile(Protocol.ToPath(uri)))
-				return _workspace.GetText(uri) is { } project
-					? SemanticTokens.EncodeProject(project, SettingKeys.Find(project), references)
-					: null;
-			
-			return SemanticTokens.Encode(references, keywords);
-		},
-		"textDocument/hover" => () => HoverAsync(parameters),
-		"textDocument/definition" => () => FindDefinitionAsync(parameters),
-		"textDocument/references" => () => FindReferencesAsync(parameters),
-		"textDocument/completion" => () => CompleteAsync(parameters),
-		"textDocument/signatureHelp" => () => HelpSignatureAsync(parameters),
-		"cella/visibleGlobals" => () => FindVisibleGlobalsAsync(parameters),
-		"cella/valueAt" => () => FindValueAsync(parameters),
-		"cella/runnables" => async () => new JsonArray([
-			..(await _workspace.GetRunnablesAsync(GetUri(parameters))).Select(JsonNode (runnable) => new JsonObject
+			"textDocument/semanticTokens/full" => async ct =>
 			{
-				["name"] = string.Join('.', runnable.Function.Symbol.QualifiedName.Select(static part => part.Name)),
-				["range"] = Protocol.ToRange(runnable.Name),
-				["main"] = runnable.IsMain
-			})
-		]),
-		_ => null
-	};
-	
-	private async Task<JsonNode?> HoverAsync(JsonObject? parameters) => await FindAsync(parameters) is { } hovered
-		? new JsonObject
-		{
-			["contents"] = new JsonObject
-			{
-				["kind"] = hoversPlainText ? "plaintext" : "markdown",
-				["value"] = hoversPlainText ? hovered.Description : $"```cella\n{hovered.Description}\n```"
+				var uri = GetUri(parameters);
+				var (references, keywords) = await _workspace.GetTokensAsync(uri, ct);
+				if (CellaProject.IsProjectFile(Protocol.ToPath(uri)))
+					return _workspace.GetText(uri) is { } project
+						? SemanticTokens.EncodeProject(project, SettingKeys.Find(project), references)
+						: null;
+				
+				return SemanticTokens.Encode(references, keywords);
 			},
-			["range"] = Protocol.ToRange(hovered.Location)
-		}
-		: null;
+			"textDocument/hover" => ct => HoverAsync(parameters, ct),
+			"textDocument/definition" => ct => FindDefinitionAsync(parameters, ct),
+			"textDocument/references" => ct => FindReferencesAsync(parameters, ct),
+			"textDocument/completion" => ct => CompleteAsync(parameters, ct),
+			"textDocument/signatureHelp" => ct => HelpSignatureAsync(parameters, ct),
+			"cella/visibleGlobals" => ct => FindVisibleGlobalsAsync(parameters, ct),
+			"cella/valueAt" => ct => FindValueAsync(parameters, ct),
+			"cella/runnables" => async ct => new JsonArray([
+				..(await _workspace.GetRunnablesAsync(GetUri(parameters), ct)).Select(JsonNode (runnable) =>
+					new JsonObject
+					{
+						["name"] = string.Join('.',
+							runnable.Function.Symbol.QualifiedName.Select(static part => part.Name)),
+						["range"] = Protocol.ToRange(runnable.Name),
+						["main"] = runnable.IsMain
+					})
+			]),
+			_ => null
+		};
 	
-	private async Task<JsonNode?> FindDefinitionAsync(JsonObject? parameters) =>
-		(await FindAsync(parameters))?.Declaration is { } declaration
-			? new JsonArray(new JsonObject
+	private async Task<JsonNode?> HoverAsync(JsonObject? parameters, CancellationToken ct) =>
+		await FindAsync(parameters, ct) is { } hovered
+			? new JsonObject
 			{
-				["uri"] = _workspace.UriOf(declaration.Source.FilePath),
-				["range"] = Protocol.ToRange(declaration)
-			})
+				["contents"] = new JsonObject
+				{
+					["kind"] = hoversPlainText ? "plaintext" : "markdown",
+					["value"] = hoversPlainText ? hovered.Description : $"```cella\n{hovered.Description}\n```"
+				},
+				["range"] = Protocol.ToRange(hovered.Location)
+			}
 			: null;
 	
-	private async Task<JsonNode?> FindReferencesAsync(JsonObject? parameters)
+	private async Task<JsonNode?> FindDefinitionAsync(JsonObject? parameters, CancellationToken ct) =>
+		await FindAsync(parameters, ct) is { Declaration: { } declaration } found
+			? new JsonArray([
+				..found.OverloadDeclarations.Prepend(declaration).Select(JsonNode (location) => new JsonObject
+				{
+					["uri"] = _workspace.UriOf(location.Source.FilePath),
+					["range"] = Protocol.ToRange(location)
+				})
+			])
+			: null;
+	
+	private async Task<JsonNode?> FindReferencesAsync(JsonObject? parameters, CancellationToken ct)
 	{
 		var position = parameters!["position"]!;
 		var usages = await _workspace.FindUsagesAsync(GetUri(parameters), (int)position["line"]!,
-			(int)position["character"]!, (bool?)parameters["context"]?["includeDeclaration"] ?? false);
+			(int)position["character"]!, (bool?)parameters["context"]?["includeDeclaration"] ?? false, ct);
 		
 		return new JsonArray([
 			..usages.Select(JsonNode (usage) => new JsonObject
@@ -195,7 +215,7 @@ public sealed class Server
 		]);
 	}
 	
-	private async Task<JsonNode?> CompleteAsync(JsonObject? parameters)
+	private async Task<JsonNode?> CompleteAsync(JsonObject? parameters, CancellationToken ct)
 	{
 		var uri = GetUri(parameters);
 		if (_workspace.GetText(uri) is not { } text)
@@ -204,10 +224,10 @@ public sealed class Server
 		var offset = GetOffset(text, parameters);
 		var inserted = Completion.FindNameStart(text, offset) < offset ? 0 : Completion.Placeholder.Length;
 		var probed = text.Insert(offset, Completion.Placeholder[..inserted]);
-		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset), text, inserted);
+		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset, ct), text, inserted);
 	}
 	
-	private async Task<JsonNode?> FindVisibleGlobalsAsync(JsonObject? parameters)
+	private async Task<JsonNode?> FindVisibleGlobalsAsync(JsonObject? parameters, CancellationToken ct)
 	{
 		var uri = GetUri(parameters);
 		if (_workspace.GetText(uri) is not { } text)
@@ -215,19 +235,19 @@ public sealed class Server
 		
 		var offset = Debugging.FindStatementStart(text, GetOffset(text, parameters));
 		var probed = text.Insert(offset, Completion.Placeholder + "\n");
-		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset);
+		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset, ct);
 		return probe?.Place == CompletionPlace.Name
 			? new JsonArray([..Debugging.DescribeGlobals(probe.Candidates)])
 			: new JsonArray();
 	}
 	
-	private async Task<JsonNode?> FindValueAsync(JsonObject? parameters)
+	private async Task<JsonNode?> FindValueAsync(JsonObject? parameters, CancellationToken ct)
 	{
 		var uri = GetUri(parameters);
 		if (_workspace.GetText(uri) is not { } text)
 			return null;
 		
-		var (references, _) = await _workspace.GetTokensAsync(uri);
+		var (references, _) = await _workspace.GetTokensAsync(uri, ct);
 		if (Debugging.FindValue(references, GetOffset(text, parameters)) is not { } value)
 			return null;
 		
@@ -235,7 +255,7 @@ public sealed class Server
 		if (value is not { Symbol: GlobalSymbol, Declaration: { } declaration })
 			return result;
 		
-		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), text, value.Location.Range.Start);
+		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), text, value.Location.Range.Start, ct);
 		result["global"] = probe?.Candidates
 			.Select(static candidate => candidate.Global)
 			.OfType<GlobalInfo>()
@@ -246,41 +266,46 @@ public sealed class Server
 		return result;
 	}
 	
-	private async Task<JsonNode?> HelpSignatureAsync(JsonObject? parameters)
+	private async Task<JsonNode?> HelpSignatureAsync(JsonObject? parameters, CancellationToken ct)
 	{
 		var uri = GetUri(parameters);
 		if (_workspace.GetText(uri) is not { } text)
 			return null;
 		
-		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), text, GetOffset(text, parameters));
+		var probe = await _workspace.ProbeAsync(Protocol.ToPath(uri), text, GetOffset(text, parameters), ct);
 		return probe?.Call is { } call ? Completion.ToSignatureHelp(call) : null;
 	}
 	
 	private static int GetOffset(string text, JsonObject? parameters) => Protocol.ToOffset(text,
 		(int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!);
 	
-	private async Task AnswerLaterAsync(JsonNode id, Func<Task<JsonNode?>> answer, CancellationToken ct)
+	private async Task AnswerLaterAsync(JsonNode id, string key, Func<CancellationToken, Task<JsonNode?>> answer,
+		CancellationTokenSource cancellation)
 	{
 		JsonObject response;
 		try
 		{
-			response = Protocol.Response(id, await answer());
+			response = Protocol.Response(id, await answer(cancellation.Token));
 		}
 		catch (OperationCanceledException)
 		{
-			response = Protocol.ErrorResponse(id, RequestCancelled, "The server is shutting down");
+			response = Protocol.ErrorResponse(id, RequestCancelled, "Cancelled");
 		}
 		catch (Exception exception)
 		{
 			response = Protocol.ErrorResponse(id, InternalError, exception.Message);
 		}
+		finally
+		{
+			_pending.TryRemove(key, out _);
+			cancellation.Dispose();
+		}
 		
 		try
 		{
-			await _connection.WriteAsync(response, ct);
+			await _connection.WriteAsync(response, CancellationToken.None);
 		}
-		catch (Exception exception) when (exception is IOException or ObjectDisposedException
-			                                  or OperationCanceledException)
+		catch (Exception exception) when (exception is IOException or ObjectDisposedException)
 		{
 		}
 	}
@@ -290,8 +315,8 @@ public sealed class Server
 	private string GetProjectText(JsonObject? parameters) =>
 		(string?)parameters?["text"] ?? _workspace.GetText(GetUri(parameters)) ?? "";
 	
-	private Task<SymbolReference?> FindAsync(JsonObject? parameters) => _workspace.FindAsync(GetUri(parameters),
-		(int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!);
+	private Task<SymbolReference?> FindAsync(JsonObject? parameters, CancellationToken ct) => _workspace.FindAsync(
+		GetUri(parameters), (int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!, ct);
 	
 	private static JsonObject Capabilities() => new()
 	{

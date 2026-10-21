@@ -20,9 +20,11 @@ import com.intellij.psi.PsiDocumentManager
 import org.eclipse.lsp4j.DocumentSymbolParams
 import org.eclipse.lsp4j.SemanticTokensParams
 import org.eclipse.lsp4j.TextDocumentIdentifier
+import java.util.concurrent.CompletableFuture
 
 class CellaSemanticHighlighter(private val project: Project, private val server: CellaServer) {
 	private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.semantic.highlighters")
+	private val pendingKey = Key.create<CompletableFuture<*>>("cella.semantic.pending")
 
 	companion object {
 		private val runnablesKey = Key.create<List<RunnableFunction>>("cella.runnables")
@@ -32,11 +34,16 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 	}
 	
 	fun request(document: Document, uri: String, version: Int) {
-		server.request { it.textDocumentService.semanticTokensFull(SemanticTokensParams(TextDocumentIdentifier(uri))) }
-			.thenAccept { tokens ->
-				val data = tokens?.data ?: return@thenAccept
-				ApplicationManager.getApplication().invokeLater({ apply(document, uri, version, data) }, project.disposed)
-			}
+		val pending = server.request {
+			it.textDocumentService.semanticTokensFull(SemanticTokensParams(TextDocumentIdentifier(uri)))
+		}
+		
+		document.getUserData(pendingKey)?.cancel(true)
+		document.putUserData(pendingKey, pending)
+		pending.thenAccept { tokens ->
+			val data = tokens?.data ?: return@thenAccept
+			ApplicationManager.getApplication().invokeLater({ apply(document, uri, version, data) }, project.disposed)
+		}
 	}
 	
 	private fun apply(document: Document, uri: String, version: Int, data: List<Int>) {

@@ -123,18 +123,21 @@ internal fun locate(uri: String, position: Position): CellaLocation? {
 	return CellaLocation(file, (lineStart + position.character).coerceAtMost(document.getLineEndOffset(position.line)))
 }
 
-internal fun definitionAt(project: Project, file: VirtualFile, document: Document, offset: Int): CellaLocation? {
+internal fun definitionsAt(project: Project, file: VirtualFile, document: Document, offset: Int): List<CellaLocation> {
 	val server = CellaServer.get(project)
 	val position = server.position(document, offset)
 	val result = server.await(server.request {
 		it.textDocumentService.definition(DefinitionParams(TextDocumentIdentifier(CellaServer.uriOf(file)), position))
-	}, 2000) ?: return null
+	}, 2000) ?: return emptyList()
 	
-	val (uri, start) = (if (result.isLeft) result.left.map { it.uri to it.range.start } else
-		result.right.map { it.targetUri to it.targetSelectionRange.start }).firstOrNull() ?: return null
+	val starts = if (result.isLeft) result.left.map { it.uri to it.range.start } else
+		result.right.map { it.targetUri to it.targetSelectionRange.start }
 	
-	return runReadActionBlocking { locate(uri, start) }
+	return runReadActionBlocking { starts.mapNotNull { (uri, start) -> locate(uri, start) } }
 }
+
+internal fun definitionAt(project: Project, file: VirtualFile, document: Document, offset: Int) =
+	definitionsAt(project, file, document, offset).firstOrNull()
 
 class CellaHoverAnnotator : Annotator {
 	override fun annotate(element: PsiElement, holder: AnnotationHolder) {
@@ -236,11 +239,12 @@ class CellaGotoDeclarationHandler : GotoDeclarationHandler {
 		val project = editor.project ?: return null
 		val file = source.containingFile?.virtualFile ?: return null
 		val start = if (isProjectString(source)) offset else source.textRange.startOffset
-		val location = definitionAt(project, file, editor.document, start) ?: return null
-		if (location.isAt(source))
+		val locations = definitionsAt(project, file, editor.document, start)
+		if (locations.isEmpty() || locations.first().isAt(source))
 			return null
 		
-		val target = PsiManager.getInstance(project).findFile(location.file)?.findElementAt(location.offset)
-		return target?.let { arrayOf(it) }
+		return locations.mapNotNull {
+			PsiManager.getInstance(project).findFile(it.file)?.findElementAt(it.offset)
+		}.toTypedArray().takeIf { it.isNotEmpty() }
 	}
 }
