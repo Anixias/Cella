@@ -43,8 +43,10 @@ ext
 	fflush: fun(stream: ptr) -> i32
 }
 
-panic: pub op(location: str) -> never
+panicHook: pub ext("cellaStdPanic") fun(locData: ptr[u8], locLength: usize) -> never
 {
+	val location = str(locData, locLength)
+	
 	fflush(null)
 	writeError("Panic at ")
 	writeError(location)
@@ -52,8 +54,12 @@ panic: pub op(location: str) -> never
 	crash()
 }
 
-panic: pub op(message: str, location: str) -> never
+panicMessageHook: pub ext("cellaStdPanicMsg") fun(msgData: ptr[u8], msgLength: usize, locData: ptr[u8],
+	locLength: usize) -> never
 {
+	val location = str(locData, locLength)
+	val message = str(msgData, msgLength)
+	
 	fflush(null)
 	writeError("Panic at ")
 	writeError(location)

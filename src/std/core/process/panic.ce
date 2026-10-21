@@ -1,0 +1,15 @@
+﻿mod std.process
+
+pvt ext
+{
+	panicHook: ext("cellaStdPanic") fun(locData: ptr[u8], locLength: usize) -> never
+	panicMessageHook: ext("cellaStdPanicMsg") fun(msgData: ptr[u8], msgLength: usize, locData: ptr[u8],
+		locLength: usize) -> never
+}
+
+panic: pub op(location: str) -> never =>
+	panicHook(location.data, location.byteLength)
+
+// TODO allow fstr for messages
+panic: pub op(message: str, location: str) -> never =>
+	panicMessageHook(message.data, message.byteLength, location.data, location.byteLength)

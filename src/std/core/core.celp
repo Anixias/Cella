@@ -1,2 +1,4 @@
 OutputType = "StaticLibrary"
 StandardLibrary = "None"
+Prelude = ["std.process.panic"]
+Imports = ["std.process.panic"]
