@@ -57,11 +57,13 @@ private val hoverTokens = setOf(CellaToken.IDENTIFIER, CellaToken.BUILTIN_TYPE, 
 
 private val keywordTokens = setOf(CellaToken.CONTROL_KEYWORD, CellaToken.VALUE_KEYWORD, CellaToken.OPERATOR_KEYWORD)
 
+private val operatorKeywords = setOf("panic", "for", "in")
+
 private fun isKeywordName(element: PsiElement): Boolean {
 	if (CellaTokenTypes.tokenOf(element.node?.elementType) !in keywordTokens)
 		return false
 	
-	if (element.text == "panic")
+	if (element.text in operatorKeywords)
 		return true
 	
 	val previous = PsiTreeUtil.prevVisibleLeaf(element)?.node?.elementType

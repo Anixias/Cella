@@ -267,7 +267,7 @@ public sealed partial class FileParser
 			return null;
 		}
 		
-		if (!Match(ref index, TokenType.KeywordIn))
+		if (!Match(ref index, out var inKeyword, TokenType.KeywordIn))
 		{
 			ReportExpected(index, "'in'");
 			return null;
@@ -298,6 +298,8 @@ public sealed partial class FileParser
 		return ParseBody(ref index) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), binding, mode, source, rangeOperator, end, body, label)
 			{
+				Keyword = keyword,
+				In = inKeyword,
 				BindingMode = bindingMode
 			}
 			: null;

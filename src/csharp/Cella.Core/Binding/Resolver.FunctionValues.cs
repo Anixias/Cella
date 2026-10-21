@@ -320,8 +320,8 @@ public sealed partial class Resolver
 			return node;
 		
 		if (function.Symbol.Syntax is FunctionNode { When: not null })
-			return Error(node.Syntax, "Cannot use 'when' functions as values",
-				NativeSymbols.Invalid);
+			return Retain(node, Error(node.Syntax, "Cannot use 'when' functions as values",
+				NativeSymbols.Invalid));
 		
 		TrackFunctionUse(function, node.Syntax);
 		return new ResolvedFunctionReferenceExpressionNode(function, type, node.Syntax);
@@ -331,15 +331,16 @@ public sealed partial class Resolver
 	{
 		var group = node.Group;
 		if (group.Functions is not [var function])
-			return Error(node.Syntax, $"Reference to '{group.FunctionName}' is ambiguous", NativeSymbols.Invalid);
+			return Retain(node, Error(node.Syntax, $"Reference to '{group.FunctionName}' is ambiguous",
+				NativeSymbols.Invalid));
 		
 		if (GetOpenTypeParameters(function) is { IsEmpty: false } open)
-			return Error(node.Syntax, ReportInferenceFailure(new() { Missing = open }, group.FunctionName,
-				node.Syntax.SourceLocation), NativeSymbols.Invalid);
+			return Retain(node, Error(node.Syntax, ReportInferenceFailure(new() { Missing = open }, group.FunctionName,
+				node.Syntax.SourceLocation), NativeSymbols.Invalid));
 		
 		if (function.Symbol.Syntax is FunctionNode { When: not null })
-			return Error(node.Syntax, "Cannot use 'when' functions as values",
-				NativeSymbols.Invalid);
+			return Retain(node, Error(node.Syntax, "Cannot use 'when' functions as values",
+				NativeSymbols.Invalid));
 		
 		TrackFunctionUse(function, node.Syntax);
 		return new ResolvedFunctionReferenceExpressionNode(function, GetNaturalType(function), node.Syntax);
@@ -399,7 +400,7 @@ public sealed partial class Resolver
 		    InferFunctionValue(only, type) is { } result &&
 		    ReportConstraintViolation(GetOpenTypeParameters(only), result.Arguments,
 			    _ => node.Syntax.SourceLocation, only) is { } violation)
-			return Error(node.Syntax, violation, target);
+			return Retain(node, Error(node.Syntax, violation, target));
 		
 		var message = group.Functions switch
 		{
@@ -407,6 +408,6 @@ public sealed partial class Resolver
 			_ => $"No overload of '{group.FunctionName}' matches '{target.Name}'"
 		};
 		
-		return Error(node.Syntax, message, target);
+		return Retain(node, Error(node.Syntax, message, target));
 	}
 }

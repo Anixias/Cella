@@ -141,7 +141,7 @@ public static class SemanticTokens
 		var (source, range) = reference.Location;
 		var text = reference.Location.GetText().ToString();
 		var isOperator = TokenTypeInfo.GetOperator(text) is not null &&
-			reference.Symbol is FunctionSymbol or MethodSymbol || IsPanicOperator(reference.Symbol);
+			reference.Symbol is FunctionSymbol or MethodSymbol || IsKeywordOperator(reference.Symbol);
 		
 		if (!isOperator && !IsName(text) && !NamesProjectEntry(reference, text) ||
 		    Classify(reference) is not var (kind, modifiers))
@@ -157,8 +157,10 @@ public static class SemanticTokens
 		return new Classified(reference.Location, kind, modifiers, false);
 	}
 	
-	private static bool IsPanicOperator(Symbol symbol) =>
-		symbol is FunctionSymbol { Syntax: FunctionNode { Identifier.Type: TokenType.KeywordPanic } };
+	private static bool IsKeywordOperator(Symbol symbol) => symbol is FunctionSymbol
+	{
+		Syntax: FunctionNode { Identifier.Type: TokenType.KeywordPanic or TokenType.KeywordIn or TokenType.KeywordFor }
+	};
 	
 	private static JsonArray Names(IEnumerable<string> names) =>
 		new([..names.Select(static name => JsonValue.Create(JsonNamingPolicy.CamelCase.ConvertName(name)))]);

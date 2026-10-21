@@ -2152,6 +2152,58 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesLoopOperatorsAndRejectedArguments()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 ext
+		                                 {
+		                                 	printf: fun(fmt: cstr, ...)
+		                                 }
+		                                 
+		                                 Items: rec
+		                                 {
+		                                 	count: i32
+		                                 	
+		                                 	in: op(self) -> Cursor => Cursor(self.count)
+		                                 }
+		                                 
+		                                 Cursor: rec
+		                                 {
+		                                 	left: i32
+		                                 	
+		                                 	for: op(mut self) -> bool
+		                                 	{
+		                                 		self.left -= 1
+		                                 		ret self.left >= 0
+		                                 	}
+		                                 	
+		                                 	*: op(self) -> str => "item"
+		                                 }
+		                                 
+		                                 show: fun(items: Items)
+		                                 {
+		                                 	for item in items
+		                                 		printf("%s", item)
+		                                 	val total = 1
+		                                 	val flag: bool = total
+		                                 }
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		Assert.Contains("29:1:3 method", tokens);
+		Assert.Contains("29:10:2 method", tokens);
+		Assert.Contains("29:13:5 parameter", tokens);
+		Assert.DoesNotContain(tokens, static token => token.StartsWith("29:13:5 method"));
+		Assert.Contains("30:15:4 variable readonly", tokens);
+		Assert.Contains("32:18:5 variable readonly", tokens);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task CompletesBareCasesForEnumTargets()
 	{
 		const string source = """

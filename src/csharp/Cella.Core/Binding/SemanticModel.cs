@@ -378,6 +378,11 @@ public sealed class SemanticModel
 				AddLocal(counter);
 				break;
 			
+			case ResolvedCursorForStatementNode { Syntax: ForStatementNode loop } n:
+				AddLoopOperator(loop.In, n.Cursor.Value, TokenType.KeywordIn);
+				AddLoopOperator(loop.Keyword, n.Step, TokenType.KeywordFor);
+				break;
+			
 			case ResolvedPattern pattern:
 				foreach (var binding in pattern.Bindings.Append(pattern.TypeBinding).OfType<LocalVariableSymbol>())
 					AddLocal(binding);
@@ -462,6 +467,13 @@ public sealed class SemanticModel
 				
 				break;
 		}
+	}
+	
+	private void AddLoopOperator(Token keyword, IResolvedExpressionNode call, TokenType kind)
+	{
+		if (call is ResolvedFunctionCallExpressionNode { Function: var info } &&
+		    info.Symbol.Syntax is FunctionNode { Identifier.Type: var type } && type == kind)
+			Add(keyword, info.Symbol, DescribeFunction(info));
 	}
 	
 	private void AddPatternNames(ResolvedPattern pattern)
@@ -572,7 +584,8 @@ public sealed class SemanticModel
 			: null;
 	
 	private static bool IsOperator(FunctionSymbol function) =>
-		function.Syntax is FunctionNode node && TokenTypeInfo.GetOperator(node.Identifier.Text) is not null;
+		function.Syntax is FunctionNode node && (TokenTypeInfo.GetOperator(node.Identifier.Text) is not null ||
+		                                         node.Identifier.Type is TokenType.KeywordIn or TokenType.KeywordFor);
 	
 	private static Token? FindName(IExpressionNode syntax) => syntax switch
 	{

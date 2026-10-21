@@ -100,7 +100,7 @@ public sealed partial class Resolver
 		if (FindPlaceOperator(receiver.Type, name, ParameterMode.Mut) is { } writer)
 		{
 			if (IsAmbiguousOperator(receiver.Type, writer))
-				return Error(call.Syntax, DescribeAmbiguousOperator(name, receiver.Type), place.Type);
+				return Retain(call, Error(call.Syntax, DescribeAmbiguousOperator(name, receiver.Type), place.Type));
 			
 			var info = InstantiateLike(GetFunctionInfo(writer, receiver.Type), call.Function);
 			TrackFunctionUse(info, call.Syntax);

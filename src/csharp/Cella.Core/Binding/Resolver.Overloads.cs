@@ -243,8 +243,8 @@ public sealed partial class Resolver
 				return arg;
 			
 			default:
-				return Error(arg.Syntax, $"Cannot pass '{arg.Type.Name}' values to variadic functions",
-					NativeSymbols.Invalid);
+				return Retain(arg, Error(arg.Syntax, $"Cannot pass '{arg.Type.Name}' values to variadic functions",
+					NativeSymbols.Invalid));
 		}
 	}
 	

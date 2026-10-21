@@ -279,7 +279,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 				.Split((char[])[' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
 		};
 		
-		return Error(node.Syntax, $"'{text}' doesn't return a value", type);
+		return Retain(node, Error(node.Syntax, $"'{text}' doesn't return a value", type));
 	}
 	
 	private TypeSymbol GetMemberType(MemberSymbol member) =>
@@ -287,6 +287,13 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	
 	private IEnumerable<string> GetVisibleSymbolNames() =>
 		CurrentResolutionContext.GetAllSymbols().Select(static s => s.Name).Distinct();
+	
+	private static ResolvedInvalidExpressionNode Retain(IResolvedExpressionNode discarded,
+		ResolvedInvalidExpressionNode error) => new(error.Syntax, error.Type)
+	{
+		Parts = [discarded],
+		NeedsTargetType = error.NeedsTargetType
+	};
 	
 	private ResolvedInvalidExpressionNode Error(IExpressionNode node, Diagnostic diagnostic, TypeSymbol? type)
 	{

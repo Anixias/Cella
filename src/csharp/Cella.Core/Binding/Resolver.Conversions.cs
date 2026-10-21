@@ -49,7 +49,7 @@ public sealed partial class Resolver
 			return ApplyUserConversion(source, userConversion, null, target);
 		
 		if (FindLendingConversion(source, target) is not null)
-			return Error(source.Syntax, "Cannot mutably borrow arguments implicitly", target);
+			return Retain(source, Error(source.Syntax, "Cannot mutably borrow arguments implicitly", target));
 		
 		if (IsDynTarget(target) && ConvertToDyn(source, target) is { } erased)
 			return erased;
@@ -58,27 +58,27 @@ public sealed partial class Resolver
 			return ReportFunctionMismatch(group, target);
 		
 		if (IsMovedFunctionParameter(source, target))
-			return Error(source.Syntax, "Cannot move read-only parameters", target);
+			return Retain(source, Error(source.Syntax, "Cannot move read-only parameters", target));
 		
 		if (HoldsDistinctClosures([source.Type, target]))
-			return Error(source.Syntax, "Cannot convert between 'own fun' closures", target);
+			return Retain(source, Error(source.Syntax, "Cannot convert between 'own fun' closures", target));
 		
 		if (TypePool.ContainsInvalid(source.Type) || TypePool.ContainsInvalid(target))
 			return new ResolvedInvalidExpressionNode(source.Syntax, target);
 		
 		if (target is BorrowType { IsMutable: true } mutTarget && source.Type == mutTarget.Target)
-			return Error(source.Syntax, "Cannot mutably borrow values implicitly", target);
+			return Retain(source, Error(source.Syntax, "Cannot mutably borrow values implicitly", target));
 		
 		if (source is ResolvedLiteralExpressionNode { Type: UntypedIntegerType untyped, Value: BigInteger value } &&
 		    target is IntegerType { IsSigned: var isSigned } && !(untyped.IsUnsigned && isSigned))
-			return Error(source.Syntax, $"'{value}' doesn't fit in '{target.Name}'", target);
+			return Retain(source, Error(source.Syntax, $"'{value}' doesn't fit in '{target.Name}'", target));
 		
 		if (DescribeLiteralMismatch(source, target) is { } literalMismatch)
-			return Error(source.Syntax, literalMismatch, target);
+			return Retain(source, Error(source.Syntax, literalMismatch, target));
 		
 		var from = DiagnosticReporter.DescribeType(source.Type);
-		return Error(source.Syntax, $"Cannot convert type '{from}' to '{DiagnosticReporter.DescribeType(target)}'",
-			target);
+		return Retain(source, Error(source.Syntax,
+			$"Cannot convert type '{from}' to '{DiagnosticReporter.DescribeType(target)}'", target));
 	}
 	
 	private IntegerType? SmallestFittingType(BigInteger value)

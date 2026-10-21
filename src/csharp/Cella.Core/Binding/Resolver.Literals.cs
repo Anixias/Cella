@@ -201,7 +201,7 @@ public sealed partial class Resolver
 				return MaterializeFunctionAsDefault(group);
 			
 			case UntypedUndefType:
-				return Error(node.Syntax, "Cannot use 'undef' outside variable initializers", null);
+				return Retain(node, Error(node.Syntax, "Cannot use 'undef' outside variable initializers", null));
 			
 			default:
 				return node;
