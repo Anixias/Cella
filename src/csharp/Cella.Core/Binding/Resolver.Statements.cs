@@ -43,7 +43,7 @@ public sealed partial class Resolver
 			return value switch
 			{
 				{ Type: NeverType } => new ResolvedReturnExpressionNode(value, node),
-				{ Type: InvalidType } => new ResolvedInvalidExpressionNode(node),
+				{ Type: InvalidType } => new ResolvedInvalidExpressionNode(node) { Parts = [value] },
 				_ => Error(node, $"Cannot return from {DiagnosticReporter.DescribeFunction(function.Symbol)}", null)
 			};
 		}
@@ -57,7 +57,7 @@ public sealed partial class Resolver
 		
 		var discarded = VisitDiscarded(expression);
 		if (IsInvalid(discarded))
-			return new ResolvedInvalidExpressionNode(node);
+			return new ResolvedInvalidExpressionNode(node) { Parts = [discarded] };
 		
 		if (discarded.Type is NeverType)
 			return new ResolvedReturnExpressionNode(discarded, node);

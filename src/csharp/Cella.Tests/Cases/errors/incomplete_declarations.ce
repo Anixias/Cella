@@ -1,0 +1,52 @@
+mod test
+
+ext
+{
+	hook: fun(data: ptr[u8], lo)
+	typeless: fun(data: ptr[u8], lo:, size: usize)
+	unclosed: fun(data: ptr[u8], lo: ptr[u8)
+}
+
+panic: pub op(location: str)
+
+add: fun(a: i32, b) -> i32
+{
+	val c = a + b
+	ret c
+}
+
+double: fun(a: i32) -> => a + a
+
+limit: val i32
+pending: val i32 =
+
+Point: rec
+{
+	x: i32
+	y:
+	scale: fun(imm self, factor) -> i32 => self.x
+	shift: fun(imm self) -> i32
+	new: op(x: i32, y)
+	{
+		self.x = x
+	}
+}
+
+Payload: enum
+{
+	none
+	some(value: )
+}
+
+first[T: ]: fun(imm a: T) -> i32 => 0
+
+none: fun -> Payload => Payload.none
+
+main: fun -> i32
+{
+	hook(undef, 1)
+	typeless(undef, 1, 2)
+	unclosed(undef, undef)
+	val p = Point(1, 2)
+	ret add(1, 2) + double(3) + limit + pending + p.scale(2) + p.shift() + first(1)
+}

@@ -14,10 +14,15 @@ Error at statement_recovery.ce:7:13
 7 │ val c = 3 +* 4
                ╘═╛ Cannot dereference type 'integer literal'
 
-Error at statement_recovery.ce:9:2
+Error at statement_recovery.ce:8:7
+7 │ val c = 3 +* 4
 8 │ if a >
-9 │ {
-    ^ Expected an expression
+         ^ Expected an expression
+
+Error at statement_recovery.ce:10:11
+ 9 │ {
+10 │     val d = ]
+                 ^ Expected an expression
 
 Error at statement_recovery.ce:18:10
 17 │ {

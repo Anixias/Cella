@@ -57,7 +57,8 @@ public sealed partial class Resolver
 			var resultCost = 0;
 			Conversion? resultConversion = null;
 			
-			if (target is not null && candidate.ReturnType != target && candidate.ReturnType is not NeverType)
+			if (target is not null && candidate.ReturnType != target &&
+			    candidate.ReturnType is not (NeverType or InvalidType))
 			{
 				var (cost, conversion) = candidate.ReturnType == NativeSymbols.Void
 					? (0, null)

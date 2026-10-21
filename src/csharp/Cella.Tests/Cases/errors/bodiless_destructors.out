@@ -3,6 +3,11 @@ Error at bodiless_destructors.ce:7:1
 7 │ }
     ^ Expected '{'
 
+Error at bodiless_destructors.ce:14:8
+13 │ 
+14 │ Other: impl
+            ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
 Error at bodiless_destructors.ce:17:1
 16 │     drop: op
 17 │ }

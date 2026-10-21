@@ -81,7 +81,7 @@ public sealed partial class FileParser
 			         !Peek(index, TokenType.KeywordRef))
 			{
 				ReportExpected(index, "a constraint");
-				return false;
+				return Peek(index, TokenType.OpCloseBracket) || Peek(index, TokenType.OpComma);
 			}
 			else if (ParseConstraintType(ref index) is { } trait)
 				traits.Add(trait);

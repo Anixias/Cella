@@ -73,11 +73,11 @@ public sealed partial class Resolver
 		_typePool.SizeChecks.Clear();
 	}
 	
-	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body!);
+	public IResolvedDeclarationNode Visit(ConstructorNode node) => ResolveFunction(node, node.Body);
 	
-	public IResolvedDeclarationNode Visit(DestructorNode node) => ResolveFunction(node, node.Body!);
+	public IResolvedDeclarationNode Visit(DestructorNode node) => ResolveFunction(node, node.Body);
 	
-	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body!);
+	public IResolvedDeclarationNode Visit(FunctionNode node) => ResolveFunction(node, node.Body);
 	
 	private IEnumerable<IResolvedDeclarationNode> VisitFunctionMember(FunctionNode node)
 	{
@@ -88,7 +88,7 @@ public sealed partial class Resolver
 		return ResolveQuestionDeclaration(function) is { } declaration ? [declaration] : [];
 	}
 	
-	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode body)
+	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode? body)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
 		var info = _signatures.GetFunctionInfo(function);
@@ -105,7 +105,7 @@ public sealed partial class Resolver
 		if (node is FunctionNode { Identifier.Type: TokenType.KeywordPanic } panic)
 			ReportPanicDeclaration(panic, info);
 		
-		var resolvedBody = Containment?.HasBrokenSyntax(node) == true ? null : InferLocals(() => VisitNode(body));
+		var resolvedBody = body is null ? null : InferLocals(() => VisitNode(body));
 		Containment?.Exit();
 		_resolutionContexts.Pop();
 		

@@ -387,7 +387,12 @@ public sealed partial class FileParser
 				index = caseStart;
 			
 			if (ParseEnumCase(ref index, matchedType) is not { } enumCase)
-				return false;
+			{
+				if (ResyncMember(ref index, caseStart))
+					return false;
+				
+				continue;
+			}
 			
 			if (block is { } caseBlock)
 				Report(enumCase.Identifier, $"Cannot declare '{caseBlock.Text}' cases");
@@ -523,23 +528,30 @@ public sealed partial class FileParser
 				return false;
 			}
 			
+			var errors = Diagnostics.ErrorCount;
+			ITypeNode type;
 			if (!Match(ref index, TokenType.OpColon))
 			{
-				ReportExpected(index, "':' and a type");
-				return false;
+				ReportMissing(index, "':' and a type");
+				type = MissingType(index);
+			}
+			else
+			{
+				if (Tokens[index].Text == "req" && StartsMemberType(index + 1))
+					Report(Tokens[index++], "Cannot declare required fields in enums");
+				
+				type = ParseRecoveredType(ref index);
 			}
 			
-			if (Tokens[index].Text == "req" && StartsMemberType(index + 1))
-				Report(Tokens[index++], "Cannot declare required fields in enums");
-			
-			payload.Add(new FieldNode(fieldName, ParseType(ref index), []));
+			payload.Add(new FieldNode(fieldName, type, []));
+			SkipBrokenParameter(ref index, errors);
 		} while (MatchSeparator(ref index, TokenType.OpCloseParen));
 		
 		if (Match(ref index, TokenType.OpCloseParen))
 			return true;
 		
 		ReportExpected(index, "',' or ')'", openParen);
-		return false;
+		return EndsParameters(index) || StartsLine(index) && StartsEnumItem(index, false);
 	}
 	
 	private bool ParseMatchedPayload(ref int index, Token openParen, ITypeNode matchedType, List<FieldNode> payload)

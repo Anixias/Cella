@@ -99,7 +99,8 @@ public sealed partial class Resolver
 				if (_typePool.ResolveMember(owner, name) is FieldSymbol field && CanAccess(owner, field.Visibility))
 					yield return new(field);
 				
-				if (GetPropertyMember(owner, name) is { } property && CanAccess(owner, property))
+				if ((GetPropertyMember(owner, name) ?? _typePool.ResolveMember(owner, name) as PropertySymbol) is
+				    { } property && CanAccess(owner, property))
 					yield return new(property);
 				
 				foreach (var method in FindFunctions(owner, name)

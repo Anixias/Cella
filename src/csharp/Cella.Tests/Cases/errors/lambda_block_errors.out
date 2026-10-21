@@ -3,9 +3,9 @@ Error at lambda_block_errors.ce:7:11
 7 │     val x = )
                 ^ Expected an expression
 
-Error at lambda_block_errors.ce:19:2
+Error at lambda_block_errors.ce:18:9
+17 │ {
 18 │     ret a +
-19 │ }
-     ^ Expected an expression
+               ^ Expected an expression
 
 [compilation failed]

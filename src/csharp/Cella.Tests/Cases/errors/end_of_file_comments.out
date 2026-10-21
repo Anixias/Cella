@@ -3,9 +3,9 @@ Error at end_of_file_comments.ce:4:1
 4 │ {
     ^ Expected '}' to close this '{'
 
-Error at end_of_file_comments.ce:5:13
+Error at end_of_file_comments.ce:5:12
 4 │ {
 5 │     val x = 1 +
-                   ^ Expected an expression
+                  ^ Expected an expression
 
 [compilation failed]

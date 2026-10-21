@@ -641,6 +641,7 @@ public sealed partial class Resolver
 	private IEnumerable<string> GetMemberNames(TypeSymbol type) =>
 		(type is RecordSymbol record ? record.Members.Select(static member => member.Name) : [])
 		.Concat(type is FStrType fstr ? fstr.Parts.Select(static part => part.Name) : [])
+		.Concat(_typePool.GetMembers(type).Select(static member => member.Name))
 		.Concat(type.OriginalDefinition is NamedTypeSymbol named
 			? named.Properties.Select(static property => property.Name)
 			: [])

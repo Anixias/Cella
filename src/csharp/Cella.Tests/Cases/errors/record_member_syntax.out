@@ -33,10 +33,10 @@ Error at record_member_syntax.ce:48:3
 48 │     x:
           ^ Expected a type
 
-Error at record_member_syntax.ce:55:2
-54 │ v: prop
-55 │ {
-     ^ Expected a type
+Error at record_member_syntax.ce:54:5
+53 │ {
+54 │     v: prop
+            ╘══╛ Expected a type
 
 Error at record_member_syntax.ce:62:2
 61 │ {

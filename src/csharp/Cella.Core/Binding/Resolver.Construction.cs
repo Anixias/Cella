@@ -358,7 +358,8 @@ public sealed partial class Resolver
 				return Error(node, ReportHiddenMember(node.SourceLocation, "new",
 					hidden.Select(static info => info.Symbol)), recovery);
 			
-			if (ReportArgumentModes(candidates, args, target))
+			if (ReportArgumentModes(candidates, args, target) ||
+			    candidates.Any(static candidate => candidate.ParameterTypes.Any(static type => type is InvalidType)))
 				return new ResolvedInvalidExpressionNode(node, recovery);
 			
 			if (targetType is EnumSymbol { IsMatch: true } matchEnum && args is [var only] &&

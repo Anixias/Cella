@@ -178,7 +178,7 @@ public sealed partial class FileParser
 				? new(identifier, modifiers.Tokens, null, null, [accessor]) { Visibility = modifiers.Visibility }
 				: null;
 		
-		var type = ParseType(ref index);
+		var type = ParseValueType(ref index);
 		var accessors = new List<FunctionNode>();
 		if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 		{
@@ -238,7 +238,7 @@ public sealed partial class FileParser
 			return null;
 		
 		var isGetter = keyword.Type == TokenType.KeywordGet;
-		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
+		var returnType = Match(ref index, TokenType.OpArrow) ? ParseRecoveredType(ref index) : null;
 		if (isGetter && parameters.Count > 0)
 			Report(parameters[0].SourceLocation, "Getters cannot take parameters");
 		else if (!isGetter && parameters.Count != 1)
@@ -257,16 +257,20 @@ public sealed partial class FileParser
 			body = ParseExpressionBody(ref index, resultType is null);
 		else if (Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			body = ParseBlockStatement(ref index, openBrace);
-		else if (allowsMissingBodies)
+		else
+		{
+			if (!allowsMissingBodies)
+			{
+				ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=>' or '{'");
+				if (!EndsDeclaration(index))
+					return null;
+			}
+			
 			return new(keyword, modifiers, receiver, parameters, resultType, null, false)
 			{
 				Extent = Span(keyword, Tokens[index - 1]),
 				Visibility = visibility
 			};
-		else
-		{
-			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=>' or '{'");
-			return null;
 		}
 		
 		return body is null
@@ -312,15 +316,18 @@ public sealed partial class FileParser
 				return null;
 			}
 			
+			var errors = Diagnostics.ErrorCount;
 			if (Match(ref index, TokenType.OpColon))
-				parameters.Add(new(mode, name, ParseType(ref index), null));
+				parameters.Add(new(mode, name, ParseRecoveredType(ref index), null));
 			else if (propertyType is not null)
 				parameters.Add(new(mode, name, propertyType, null));
 			else
 			{
-				ReportExpected(index, "':' and a type");
-				return null;
+				ReportMissing(index, "':' and a type");
+				parameters.Add(new(mode, name, MissingType(index), null));
 			}
+			
+			SkipBrokenParameter(ref index, errors);
 		} while (MatchSeparator(ref index, TokenType.OpCloseParen));
 		
 		if (Match(ref index, TokenType.OpCloseParen))
@@ -408,9 +415,11 @@ public sealed partial class FileParser
 			return ParseFunction(ref index, newKeyword, modifiers, false, []);
 		
 		var parametersStart = index;
+		var errorsBefore = Diagnostics.ErrorCount;
 		if (ParseParameters(ref index) is not { } parameters)
 			return null;
 		
+		var parameterErrors = Diagnostics.ErrorCount - errorsBefore;
 		ReportEmptyParentheses(parametersStart, index);
 		RejectReturnType(ref index, "Constructors");
 		RejectWhen(ref index, "constructors");
@@ -420,14 +429,19 @@ public sealed partial class FileParser
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 		{
-			if (allowsMissingBodies)
-				return new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
-				{
-					Visibility = modifiers.Visibility
-				};
+			if (!allowsMissingBodies)
+			{
+				if (parameterErrors == 0)
+					ReportExpected(index, "'{'");
+				
+				if (!EndsDeclaration(index))
+					return null;
+			}
 			
-			ReportExpected(index, "'{'");
-			return null;
+			return new ConstructorNode(newKeyword, modifiers.Tokens, parameters, null, newKeyword.SourceLocation)
+			{
+				Visibility = modifiers.Visibility
+			};
 		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
@@ -500,7 +514,7 @@ public sealed partial class FileParser
 			return;
 		
 		Report(arrow, $"{kind} cannot return values");
-		ParseType(ref index);
+		ParseRecoveredType(ref index);
 	}
 	
 	private void RejectWhen(ref int index, string kind)
@@ -564,11 +578,14 @@ public sealed partial class FileParser
 		RejectWhen(ref index, "destructors");
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 		{
-			if (allowsMissingBodies)
-				return new(dropKeyword, null, dropKeyword.SourceLocation);
+			if (!allowsMissingBodies)
+			{
+				ReportExpected(index, "'{'");
+				if (!EndsDeclaration(index))
+					return null;
+			}
 			
-			ReportExpected(index, "'{'");
-			return null;
+			return new(dropKeyword, null, dropKeyword.SourceLocation);
 		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
@@ -583,13 +600,7 @@ public sealed partial class FileParser
 	private FieldNode? ParseField(ref int index, Token identifier, DeclarationModifiers modifiers)
 	{
 		var tokens = modifiers.Tokens.Concat(ParseFieldModifiers(ref index));
-		if (!IsOnSameLine(index))
-		{
-			ReportMissing(index, "a type");
-			return null;
-		}
-		
-		var type = ParseType(ref index);
+		var type = ParseValueType(ref index);
 		if (IsOnSameLine(index) && Peek(index, TokenType.OpEqual))
 		{
 			Report(Tokens[index], "Cannot give fields initial values");

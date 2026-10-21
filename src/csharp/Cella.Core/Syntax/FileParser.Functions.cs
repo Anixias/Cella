@@ -12,18 +12,17 @@ public sealed partial class FileParser
 		// When this is called, the identifier and fun keyword are already consumed
 		// Caller is expected to resync in case of errors
 		
+		var errorsBefore = Diagnostics.ErrorCount;
 		if (ParseFunctionSignature(ref index, false, true) is not { } signature)
 			return null;
 		
 		var (receiver, parameters, returnType, _) = signature;
 		WhenClause? when = null;
-		if (IsOnSameLine(index) && Match(ref index, out var whenKeyword, TokenType.KeywordWhen))
-		{
-			if (ParseCondition(ref index) is not { } condition)
-				return null;
-			
+		if (IsOnSameLine(index) && Match(ref index, out var whenKeyword, TokenType.KeywordWhen) &&
+		    ParseCondition(ref index) is { } condition)
 			when = new(whenKeyword, condition);
-		}
+		
+		var headerErrors = Diagnostics.ErrorCount - errorsBefore;
 		
 		if (MatchOnLine(ref index, TokenType.OpFatArrow))
 		{
@@ -42,18 +41,23 @@ public sealed partial class FileParser
 		
 		if (!Match(ref index, out var openBraceToken, TokenType.OpOpenBrace))
 		{
-			if (allowsMissingBodies)
-				return new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
-				{
-					Extent = Span(identifier, Tokens[index - 1]),
-					Visibility = modifiers.Visibility,
-					TypeParameters = [..typeParameters],
-					When = when,
-					ExternalName = externalName
-				};
+			if (!allowsMissingBodies)
+			{
+				if (headerErrors == 0)
+					ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=>' or '{'");
+				
+				if (!EndsDeclaration(index))
+					return null;
+			}
 			
-			ReportExpected(IsOnSameLine(index) ? index : index - 1, "'=>' or '{'");
-			return null;
+			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
+			{
+				Extent = Span(identifier, Tokens[index - 1]),
+				Visibility = modifiers.Visibility,
+				TypeParameters = [..typeParameters],
+				When = when,
+				ExternalName = externalName
+			};
 		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)
@@ -69,28 +73,77 @@ public sealed partial class FileParser
 		};
 	}
 	
+	private bool EndsDeclaration(int index) => !IsOnSameLine(index) || Peek(index, TokenType.OpCloseBrace);
+	
+	private bool EndsParameters(int index) =>
+		AtEnd(index) || Peek(index, TokenType.OpCloseBrace) || StartsDeclarationOnLine(index);
+	
+	private int SkipExpressionBody(int start)
+	{
+		var braces = 0;
+		var i = start;
+		for (; !AtEnd(i); i++)
+		{
+			if (braces == 0 && (Peek(i, TokenType.OpCloseBrace) || i > start && StartsDeclarationOnLine(i)))
+				break;
+			
+			if (Peek(i, TokenType.OpOpenBrace))
+				braces++;
+			else if (Peek(i, TokenType.OpCloseBrace))
+				braces--;
+		}
+		
+		return i;
+	}
+	
 	private IStatementNode? ParseExpressionBody(ref int index, bool discardsValue)
 	{
 		if (discardsValue && Match(ref index, out var matchToken, TokenType.KeywordMatch))
 			return ParseMatchStatement(ref index, matchToken);
 		
-		var expression = ParseExpression(ref index);
-		return new ExpressionStatementNode(discardsValue
-			? expression
-			: new ReturnExpressionNode(expression.SourceLocation, expression));
+		var start = index;
+		var errorsBefore = Diagnostics.ErrorCount;
+		IStatementNode body;
+		try
+		{
+			var expression = ParseExpression(ref index);
+			body = new ExpressionStatementNode(discardsValue
+				? expression
+				: new ReturnExpressionNode(expression.SourceLocation, expression));
+		}
+		catch (ParseException e)
+		{
+			AddParseError(e);
+			index = SkipExpressionBody(start);
+			body = new BrokenStatementNode(Span(Tokens[start], Tokens[Math.Max(index - 1, start)]), null, false);
+		}
+		
+		ReportLexicalErrors(start, index);
+		if (Diagnostics.ErrorCount == errorsBefore)
+			return body;
+		
+		_brokenStatements.Add(body);
+		attributedErrors += Diagnostics.ErrorCount - errorsBefore;
+		return body;
 	}
 	
 	private GlobalNode? ParseGlobal(ref int index, Token identifier, DeclarationModifiers modifiers, Token keyword,
 		bool isExternal = false, Token? externalName = null)
 	{
-		var type = ParseType(ref index);
+		var type = ParseValueType(ref index);
 		IExpressionNode? initializer = null;
 		if (MatchOnLine(ref index, TokenType.OpEqual))
-			initializer = ParseExpression(ref index);
+		{
+			if (StartsValue(index))
+				initializer = ParseExpression(ref index);
+			else
+				ReportExpected(index - 1, "an expression");
+		}
 		else if (!allowsMissingBodies || keyword.Type != TokenType.KeywordConst)
 		{
 			Report(type.SourceLocation, "Expected '=' and an initial value");
-			return null;
+			if (!EndsDeclaration(index))
+				return null;
 		}
 		
 		return new(identifier, keyword, type, initializer)
@@ -102,6 +155,45 @@ public sealed partial class FileParser
 			ExternalName = externalName
 		};
 	}
+	
+	private ITypeNode ParseValueType(ref int index)
+	{
+		if (!IsOnSameLine(index))
+		{
+			ReportMissing(index, "a type");
+			return MissingType(index);
+		}
+		
+		var errors = Diagnostics.ErrorCount;
+		var type = ParseRecoveredType(ref index);
+		if (Diagnostics.ErrorCount > errors)
+			SkipBrokenType(ref index);
+		
+		return type;
+	}
+	
+	private void SkipBrokenType(ref int index)
+	{
+		var depth = 0;
+		for (; IsOnSameLine(index); index++)
+		{
+			switch (Tokens[index].Type)
+			{
+				case TokenType.OpEqual or TokenType.OpComma or TokenType.OpCloseBrace when depth == 0:
+					return;
+				
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+					depth++;
+					break;
+				
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket:
+					depth = Math.Max(depth - 1, 0);
+					break;
+			}
+		}
+	}
+	
+	private bool StartsValue(int index) => IsOnSameLine(index) || !AtEnd(index) && !StartsDeclarationOnLine(index);
 	
 	private static bool IsExternalIdentifier(string name) =>
 		!char.IsAsciiDigit(name[0]) && name.All(static c => char.IsAsciiLetterOrDigit(c) || c == '_');
@@ -179,7 +271,7 @@ public sealed partial class FileParser
 		
 		if (Match(ref index, out var keyword, _externalBindingKeywords))
 		{
-			var type = ParseType(ref index);
+			var type = ParseValueType(ref index);
 			if (Match(ref index, out var equals, TokenType.OpEqual))
 			{
 				Report(equals, "Cannot initialize values in 'ext' blocks");
@@ -254,7 +346,8 @@ public sealed partial class FileParser
 			if (!Match(ref index, TokenType.OpCloseParen))
 			{
 				ReportExpected(index, "',' or ')'", openParen);
-				return null;
+				if (!EndsParameters(index))
+					return null;
 			}
 		}
 		
@@ -282,7 +375,7 @@ public sealed partial class FileParser
 		
 		ReportEmptyParentheses(start, index);
 		
-		var returnType = Match(ref index, TokenType.OpArrow) ? ParseType(ref index) : null;
+		var returnType = Match(ref index, TokenType.OpArrow) ? ParseRecoveredType(ref index) : null;
 		return (receiver, parameters, returnType, isVariadic);
 	}
 	
@@ -307,10 +400,12 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		var errors = Diagnostics.ErrorCount;
 		if (ParseParameter(ref index) is not { } firstParameter)
 			return null;
 		
 		result.Add(firstParameter);
+		SkipBrokenParameter(ref index, errors);
 		
 		while (MatchSeparator(ref index, TokenType.OpCloseParen))
 		{
@@ -320,10 +415,12 @@ public sealed partial class FileParser
 				break;
 			}
 			
+			errors = Diagnostics.ErrorCount;
 			if (ParseParameter(ref index) is not { } parameter)
 				return null;
 			
 			result.Add(parameter);
+			SkipBrokenParameter(ref index, errors);
 		}
 		
 		return result;
@@ -351,18 +448,65 @@ public sealed partial class FileParser
 		
 		if (!Match(ref index, TokenType.OpColon))
 		{
-			ReportExpected(index, "':' and a type");
-			return null;
+			ReportMissing(index, "':' and a type");
+			return new(mode, identifier, MissingType(index), null) { Ellipsis = ellipsis };
 		}
 		
 		RejectBuiltInName(identifier);
 		
-		var type = ParseType(ref index);
+		var type = ParseRecoveredType(ref index);
 		
 		if (!Match(ref index, TokenType.OpEqual))
 			return new(mode, identifier, type, null) { Ellipsis = ellipsis };
 		
 		var defaultValue = ParseExpression(ref index);
 		return new(mode, identifier, type, defaultValue) { Ellipsis = ellipsis };
+	}
+	
+	private void SkipBrokenParameter(ref int index, int errors)
+	{
+		if (Diagnostics.ErrorCount == errors)
+			return;
+		
+		var depth = 0;
+		for (var i = index; !AtEnd(i) && (i == index || !StartsDeclarationOnLine(i)); i++)
+		{
+			switch (Tokens[i].Type)
+			{
+				case TokenType.OpComma or TokenType.OpCloseParen when depth == 0:
+					index = i;
+					return;
+				
+				case TokenType.OpOpenParen or TokenType.OpOpenBracket:
+					depth++;
+					break;
+				
+				case TokenType.OpCloseParen or TokenType.OpCloseBracket:
+					depth = Math.Max(depth - 1, 0);
+					break;
+				
+				case TokenType.OpOpenBrace or TokenType.OpCloseBrace or TokenType.OpFatArrow when depth == 0:
+					return;
+			}
+		}
+	}
+	
+	private ITypeNode ParseRecoveredType(ref int index)
+	{
+		try
+		{
+			return ParseType(ref index);
+		}
+		catch (ParseException e)
+		{
+			AddParseError(e);
+			return MissingType(index);
+		}
+	}
+	
+	private MissingTypeNode MissingType(int index)
+	{
+		var (source, range) = Tokens[index - 1].SourceLocation;
+		return new(new(source, new TextRange(range.End, range.End)));
 	}
 }

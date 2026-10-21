@@ -643,6 +643,41 @@ public sealed class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesDeclarationsBeingTyped()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 ext
+		                                 {
+		                                 	hook: fun(data: ptr[u8], lo) -> never
+		                                 }
+		                                 
+		                                 panic: pub op(location: str) -> never => hook(location.data, location.byteLengt)
+		                                 
+		                                 Point: rec
+		                                 {
+		                                 	x: i32
+		                                 	scale: fun(imm self, factor) -> i32 => self.x
+		                                 }
+		                                 
+		                                 main: fun -> i32 => Point(1).scale(2)
+		                                 
+		                                 """);
+		
+		Assert.Contains("4:1:4 function declaration", tokens);
+		Assert.Contains("4:26:2 parameter declaration", tokens);
+		Assert.Contains("7:41:4 function", tokens);
+		Assert.Contains("7:46:8 parameter", tokens);
+		Assert.Contains("7:55:4 property", tokens);
+		Assert.Contains("7:61:8 parameter", tokens);
+		Assert.Contains("12:22:6 parameter declaration", tokens);
+		Assert.Contains("12:45:1 property", tokens);
+		Assert.Contains("15:29:5 method", tokens);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ClassifiesOperatorsConstantsAndTypeArguments()
 	{
 		Assert.Equal(
@@ -1184,6 +1219,27 @@ public sealed class LanguageServerTests : IAsyncDisposable
 			"while p.x < 2 // match retries\n\t{\n\t\tp.|\n\t}"));
 		
 		Assert.Equal(["length", "shift", "x"], looped.Keys.Order());
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesBuiltInMembersInFailedCalls()
+	{
+		await InitializeAsync();
+		await SetTextAsync("""
+		                   mod test
+		                   
+		                   ext
+		                   {
+		                   	hook: fun(data: ptr[u8], length: usize) -> never
+		                   }
+		                   
+		                   panic: pub op(location: str) -> never => hook(location.data, location.)
+		                   
+		                   """);
+		
+		var members = ItemsOf(await AskAsync("textDocument/completion", 7, 70));
+		Assert.Equal(["byteLength", "data"], members.Keys.Order());
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

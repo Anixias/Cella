@@ -350,6 +350,9 @@ public sealed partial class Resolver
 		return new ResolvedUndefExpressionNode(type, node);
 	}
 	
+	public IResolvedExpressionNode Visit(MissingExpressionNode node) =>
+		new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+	
 	public IResolvedExpressionNode Visit(SizeOfExpressionNode node) => ResolveLayout(node, node.Target, false);
 	
 	public IResolvedExpressionNode Visit(AlignOfExpressionNode node) => ResolveLayout(node, node.Target, true);

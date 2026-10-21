@@ -1,0 +1,72 @@
+Error at incomplete_declarations.ce:5:29
+4 │ {
+5 │     hook: fun(data: ptr[u8], lo)
+                                   ^ Expected ':' and a type
+
+Error at incomplete_declarations.ce:6:34
+5 │ hook: fun(data: ptr[u8], lo)
+6 │ typeless: fun(data: ptr[u8], lo:, size: usize)
+                                    ^ Expected a type
+
+Error at incomplete_declarations.ce:7:41
+6 │ typeless: fun(data: ptr[u8], lo:, size: usize)
+7 │ unclosed: fun(data: ptr[u8], lo: ptr[u8)
+                                           ^ Expected ']'
+                                           | To match the '[' on line 7
+
+Error at incomplete_declarations.ce:10:28
+ 9 │ 
+10 │ panic: pub op(location: str)
+                                ^ Expected '=>' or '{'
+
+Error at incomplete_declarations.ce:12:19
+11 │ 
+12 │ add: fun(a: i32, b) -> i32
+                       ^ Expected ':' and a type
+
+Error at incomplete_declarations.ce:18:24
+17 │ 
+18 │ double: fun(a: i32) -> => a + a
+                            ╘╛ Expected a type
+
+Error at incomplete_declarations.ce:20:12
+19 │ 
+20 │ limit: val i32
+                ╘═╛ Expected '=' and an initial value
+
+Error at incomplete_declarations.ce:21:18
+20 │ limit: val i32
+21 │ pending: val i32 =
+                      ^ Expected an expression
+
+Error at incomplete_declarations.ce:26:3
+25 │ x: i32
+26 │ y:
+      ^ Expected a type
+
+Error at incomplete_declarations.ce:27:29
+26 │ y:
+27 │ scale: fun(imm self, factor) -> i32 => self.x
+                                ^ Expected ':' and a type
+
+Error at incomplete_declarations.ce:28:26
+27 │ scale: fun(imm self, factor) -> i32 => self.x
+28 │ shift: fun(imm self) -> i32
+                             ╘═╛ Expected '=>' or '{'
+
+Error at incomplete_declarations.ce:29:19
+28 │ shift: fun(imm self) -> i32
+29 │ new: op(x: i32, y)
+                      ^ Expected ':' and a type
+
+Error at incomplete_declarations.ce:38:14
+37 │ none
+38 │ some(value: )
+                 ^ Expected a type
+
+Error at incomplete_declarations.ce:41:10
+40 │ 
+41 │ first[T: ]: fun(imm a: T) -> i32 => 0
+              ^ Expected a constraint
+
+[compilation failed]

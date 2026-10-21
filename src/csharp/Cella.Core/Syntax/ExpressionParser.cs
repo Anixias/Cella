@@ -212,7 +212,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		if (IsNextNewline(index) || !Match(ref index, out var op, _assignmentOps))
 			return left;
 		
-		var right = ParseExpression(ref index);
+		var right = ParseRight(ref index, ParseExpression);
 		return Binary(left, op, right);
 	}
 	
@@ -269,7 +269,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseLogicalAnd(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpBarBar))
 		{
-			var right = ParseLogicalAnd(ref index);
+			var right = ParseRight(ref index, ParseLogicalAnd);
 			node = Binary(node, op, right);
 		}
 		
@@ -281,7 +281,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseEquality(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersandAmpersand))
 		{
-			var right = ParseEquality(ref index);
+			var right = ParseRight(ref index, ParseEquality);
 			node = Binary(node, op, right);
 		}
 		
@@ -296,7 +296,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, _equalityOps))
 		{
 			ops.Add(op);
-			operands.Add(ParseIs(ref index));
+			operands.Add(ParseRight(ref index, ParseIs));
 		}
 		
 		return Chain(operands, ops);
@@ -534,7 +534,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!IsNextNewline(index) && Match(ref index, out var op, _comparisonOps))
 		{
 			ops.Add(op);
-			operands.Add(ParseBitwiseOr(ref index));
+			operands.Add(ParseRight(ref index, ParseBitwiseOr));
 		}
 		
 		return Chain(operands, ops);
@@ -545,7 +545,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseBitwiseXor(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpBar))
 		{
-			var right = ParseBitwiseXor(ref index);
+			var right = ParseRight(ref index, ParseBitwiseXor);
 			node = Binary(node, op, right);
 		}
 		
@@ -557,7 +557,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseBitwiseAnd(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpHat))
 		{
-			var right = ParseBitwiseAnd(ref index);
+			var right = ParseRight(ref index, ParseBitwiseAnd);
 			node = Binary(node, op, right);
 		}
 		
@@ -569,7 +569,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseShift(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, TokenType.OpAmpersand))
 		{
-			var right = ParseShift(ref index);
+			var right = ParseRight(ref index, ParseShift);
 			node = Binary(node, op, right);
 		}
 		
@@ -581,7 +581,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseAdditive(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, _shiftOps))
 		{
-			var right = ParseAdditive(ref index);
+			var right = ParseRight(ref index, ParseAdditive);
 			node = Binary(node, op, right);
 		}
 		
@@ -593,7 +593,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseMultiplicative(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, _additiveOps))
 		{
-			var right = ParseMultiplicative(ref index);
+			var right = ParseRight(ref index, ParseMultiplicative);
 			node = Binary(node, op, right);
 		}
 		
@@ -605,7 +605,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		var node = ParseUnary(ref index);
 		while (!IsNextNewline(index) && Match(ref index, out var op, _multiplicativeOps))
 		{
-			var right = ParseUnary(ref index);
+			var right = ParseRight(ref index, ParseUnary);
 			node = Binary(node, op, right);
 		}
 		
@@ -647,8 +647,33 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		return new UnaryOpExpressionNode(op, operand, Span(op.SourceLocation, Extent(operand)));
 	}
 	
-	private IExpressionNode ParseOperand(ref int index) =>
-		AtEnd(index) || IsNextNewline(index) ? throw Expected(index - 1, "an expression") : ParseUnary(ref index);
+	private IExpressionNode ParseOperand(ref int index)
+	{
+		if (!AtEnd(index) && !IsNextNewline(index))
+			return ParseUnary(ref index);
+		
+		if (!CanRecover)
+			throw Expected(index - 1, "an expression");
+		
+		return MissingOperand(index);
+	}
+	
+	private IExpressionNode ParseRight(ref int index, ParseStep<IExpressionNode> parse) =>
+		CanRecover && (IsNextNewline(index)
+			? !CanStartExpression(index) || Peek(index + 1, TokenType.OpColon)
+			: EndsOperand(index))
+			? MissingOperand(index)
+			: parse(ref index);
+	
+	private bool EndsOperand(int index) =>
+		AtEnd(index) || Tokens[index].Type is TokenType.OpCloseParen or TokenType.OpCloseBracket or TokenType.OpComma;
+	
+	private MissingExpressionNode MissingOperand(int index)
+	{
+		Recover(Expected(StartsLine(index) || AtEnd(index) ? index - 1 : index, "an expression").Diagnostic);
+		var (source, range) = Tokens[index - 1].SourceLocation;
+		return new(new(source, new TextRange(range.End, range.End)));
+	}
 	
 	private AtomicExpressionNode ParseAtomic(ref int index, Token keyword)
 	{
@@ -1123,9 +1148,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 						break;
 					}
 					
-					if (IsNextNewline(index) && CanRecover)
+					if (CanRecover && (IsNextNewline(index) || EndsOperand(index)))
 					{
-						Recover(Expected(index - 1, "a name after '.'").Diagnostic);
+						Recover(Expected(IsNextNewline(index) ? index - 1 : index, "a name after '.'").Diagnostic);
 						var (dotSource, dotRange) = dot.SourceLocation;
 						var missing = new Token(TokenType.Identifier,
 							new SourceLocation(dotSource, new TextRange(dotRange.End, dotRange.End)), "");
@@ -1190,7 +1215,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
 		{
 			if (AtEnd(index))
-				throw Expected(index, "')'", openParen);
+				return RecoverUnclosed(index, "')'", target, arguments, openParen);
 			
 			if (arguments.Count > 0)
 			{
@@ -1218,7 +1243,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		List<IExpressionNode> arguments, Token openParen)
 	{
 		var error = Expected(index, expected, openParen);
-		if (!StartsLine(index))
+		if (!StartsLine(index) && !AtEnd(index))
 			throw error;
 		
 		Recover(error.Diagnostic);
