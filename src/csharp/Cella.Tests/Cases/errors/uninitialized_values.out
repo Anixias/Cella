@@ -1,12 +1,27 @@
+Hint at uninitialized_values.ce:22:1
+21 │ 
+22 │ numbers: fun -> i32
+     ╘═════╛ 'numbers' is never used
+
 Error at uninitialized_values.ce:25:2
 24 │ var n: i32 = undef
 25 │ n += 1
      ^ Cannot use uninitialized values
 
+Hint at uninitialized_values.ce:31:1
+30 │ 
+31 │ sometimes: fun(flag: bool) -> i32
+     ╘═══════╛ 'sometimes' is never used
+
 Error at uninitialized_values.ce:37:15
 36 │ 
 37 │ ret show(imm b)
                   ^ Cannot use uninitialized values
+
+Hint at uninitialized_values.ce:40:1
+39 │ 
+40 │ fields: fun -> i32
+     ╘════╛ 'fields' is never used
 
 Error at uninitialized_values.ce:44:22
 43 │ pair.left = make(1)

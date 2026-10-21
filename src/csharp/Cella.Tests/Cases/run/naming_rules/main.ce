@@ -1,0 +1,25 @@
+mod test
+
+MAX_COUNT: const i32 = 3
+minCount: const i32 = 1
+
+point_shape: rec
+{
+	XValue: i32
+}
+
+testAddition: fun -> i32 => 0
+
+testaddition: fun -> i32 => 0
+
+Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
+
+main: fun -> i32
+{
+	val Total = Make_Point(MAX_COUNT).XValue
+	for Item in 0..Total
+	{
+	}
+
+	ret testAddition() + testaddition() + minCount
+}

@@ -3,6 +3,21 @@ Error at generic_static_borrows.ce:17:12
 17 │ last: var Slot[T] = Slot[T].empty
                ╘═════╛ Cannot store borrows in static variables
 
+Hint at generic_static_borrows.ce:18:2
+17 │ last: var Slot[T] = Slot[T].empty
+18 │ count: var i32 = 0
+     ╘═══╛ 'count' is never used
+
+Hint at generic_static_borrows.ce:19:2
+18 │ count: var i32 = 0
+19 │ pointer: var ptr[T] = null
+     ╘═════╛ 'pointer' is never used
+
+Hint at generic_static_borrows.ce:25:2
+24 │ value: T
+25 │ last: var Slot[T] = Slot[T].empty
+     ╘══╛ 'last' is never used
+
 Error at generic_static_borrows.ce:31:10
 30 │ var local = 42
 31 │ Bounded[View].last = Slot[View].full(View(imm local))

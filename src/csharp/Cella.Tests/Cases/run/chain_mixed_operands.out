@@ -1,3 +1,13 @@
+Hint at chain_mixed_operands.ce:30:1
+29 │ 
+30 │ Low: val bool = i32(-1) < u32(1) < u64(2)
+     ╘═╛ 'Low' doesn't match {camelCase}
+
+Hint at chain_mixed_operands.ce:31:1
+30 │ Low: val bool = i32(-1) < u32(1) < u64(2)
+31 │ High: val bool = i32(-1) > u32(1) > u64(0)
+     ╘══╛ 'High' doesn't match {camelCase}
+
 Hint at chain_mixed_operands.ce:35:6
 34 │ {
 35 │     var neg: i32 = -1

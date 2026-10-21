@@ -8,15 +8,30 @@ Error at self_references.ce:23:16
 23 │     self.alias = mut self.value
                       ╘════════════╛ Cannot store borrows of values in themselves
 
+Hint at self_references.ce:45:1
+44 │ 
+45 │ storeBorrow: fun
+     ╘═════════╛ 'storeBorrow' is never used
+
 Error at self_references.ce:49:15
 48 │ var pair = Pair(1, mut spare, mut spare)
 49 │ pair.alias = mut pair.value
                   ╘════════════╛ Cannot store borrows of values in themselves
 
+Hint at self_references.ce:53:1
+52 │ 
+53 │ storeStoredBorrow: fun
+     ╘═══════════════╛ 'storeStoredBorrow' is never used
+
 Error at self_references.ce:58:15
 57 │ val inner = mut pair.value
 58 │ pair.alias = inner
                   ╘═══╛ Cannot store borrows of values in themselves
+
+Hint at self_references.ce:61:1
+60 │ 
+61 │ storeThroughBorrow: fun
+     ╘════════════════╛ 'storeThroughBorrow' is never used
 
 Error at self_references.ce:66:17
 65 │ val target = mut pair
@@ -28,20 +43,40 @@ Error at self_references.ce:67:17
 67 │ target.other = mut target.value
                     ╘══════════════╛ Cannot store borrows of values in themselves
 
+Hint at self_references.ce:70:1
+69 │ 
+70 │ storeInMutParameter: fun(mut pair: Pair)
+     ╘═════════════════╛ 'storeInMutParameter' is never used
+
 Error at self_references.ce:72:15
 71 │ {
 72 │     pair.alias = mut pair.value
                       ╘════════════╛ Cannot store borrows of values in themselves
+
+Hint at self_references.ce:75:1
+74 │ 
+75 │ storeInOwnParameter: fun(own pair: Pair) -> Pair
+     ╘═════════════════╛ 'storeInOwnParameter' is never used
 
 Error at self_references.ce:77:15
 76 │ {
 77 │     pair.alias = mut pair.value
                       ╘════════════╛ Cannot store borrows of values in themselves
 
+Hint at self_references.ce:81:1
+80 │ 
+81 │ replaceWhole: fun
+     ╘══════════╛ 'replaceWhole' is never used
+
 Error at self_references.ce:85:9
 84 │ var pair = Pair(1, mut spare, mut spare)
 85 │ pair = Pair(2, mut pair.value, mut spare)
             ╘════════════════════════════════╛ Cannot store borrows of values in themselves
+
+Hint at self_references.ce:88:1
+87 │ 
+88 │ linkElements: fun
+     ╘══════════╛ 'linkElements' is never used
 
 Hint at self_references.ce:90:6
 89 │ {
@@ -52,6 +87,11 @@ Error at self_references.ce:92:18
 91 │ var nodes = [Node(1, spare), Node(2, spare)]
 92 │ nodes[0].link = imm nodes[1].value
                      ╘════════════════╛ Cannot store borrows of values in themselves
+
+Hint at self_references.ce:95:1
+94 │ 
+95 │ linkPayload: fun
+     ╘═════════╛ 'linkPayload' is never used
 
 Error at self_references.ce:98:16
 97 │ var holder = Holder(5, Link.none)

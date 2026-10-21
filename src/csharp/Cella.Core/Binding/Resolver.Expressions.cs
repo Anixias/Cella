@@ -424,12 +424,17 @@ public sealed partial class Resolver
 			case VarExpressionNode variable:
 				if (context.Resolve(variable.Identifier.Text) is LocalVariableSymbol local)
 					MarkUsed(local);
+				else
+					MarkUsed(context.Resolve(variable.Identifier.Text));
 				
 				return true;
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
-				if (context.ResolveMember(module, access.Member.Text) is not null)
+				if (context.ResolveMember(module, access.Member.Text) is { } member)
+				{
+					MarkUsed(member);
 					return true;
+				}
 				
 				Diagnostics.Add(context.ReportUndefinedMember(access.Member.SourceLocation, module,
 					access.Member.Text));
@@ -454,13 +459,17 @@ public sealed partial class Resolver
 	private bool HasMember(TypeSymbol type, Token member)
 	{
 		if (type.GetStaticField(member.Text) is { } global)
+		{
+			MarkUsed(global);
 			return IsAccessibleMember(type, member, global.Visibility);
+		}
 		
 		if (GetPropertyMember(type, member.Text) is { } property)
 			return IsAccessibleMember(type, member, property.Visibility);
 		
 		if (GetMethods(type, member.Text).Select(static method => method.Function).ToList() is [_, ..] functions)
 		{
+			functions.ForEach(MarkUsed);
 			if (functions.Any(function => CanAccess(type, function)))
 				return true;
 			

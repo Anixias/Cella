@@ -1,3 +1,23 @@
+Hint at concrete_impl_targets.ce:44:5
+43 │ 
+44 │ Box[i32]: impl Show
+         ╘═╛ 'i32' doesn't match {PascalCase}
+
+Hint at concrete_impl_targets.ce:49:5
+48 │ 
+49 │ Box[f64]: impl Show
+         ╘═╛ 'f64' doesn't match {PascalCase}
+
+Hint at concrete_impl_targets.ce:64:6
+63 │ 
+64 │ Pair[i32, i32]: impl
+          ╘═╛ 'i32' doesn't match {PascalCase}
+
+Hint at concrete_impl_targets.ce:64:11
+63 │ 
+64 │ Pair[i32, i32]: impl
+               ╘═╛ 'i32' doesn't match {PascalCase}
+
 9 100 9 100
 40 40 40 5 7
 [exit code 0]

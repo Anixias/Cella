@@ -1,3 +1,28 @@
+Hint at value_parameter_operators.ce:19:5
+18 │ 
+19 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+        ^ 'N' doesn't match {camelCase}
+
+Hint at value_parameter_operators.ce:28:4
+27 │ 
+28 │ +[N: const usize]: op(a: Total, values: array[i32, N]) -> Total
+       ^ 'N' doesn't match {camelCase}
+
+Hint at value_parameter_operators.ce:37:5
+36 │ 
+37 │ +=[N: const usize]: op(mut self, values: array[i32, N])
+        ^ 'N' doesn't match {camelCase}
+
+Hint at value_parameter_operators.ce:48:5
+47 │ 
+48 │ [][N: const usize]: op(imm self, at: array[usize, N]) -> imm[i32] => imm self.cells[at[0] * 3 + at[N - 1]]
+        ^ 'N' doesn't match {camelCase}
+
+Hint at value_parameter_operators.ce:49:5
+48 │ [][N: const usize]: op(imm self, at: array[usize, N]) -> imm[i32] => imm self.cells[at[0] * 3 + at[N - 1]]
+49 │ [][N: const usize]: op(mut self, at: array[usize, N]) -> mut[i32] => mut self.cells[at[0] * 3 + at[N - 1]]
+        ^ 'N' doesn't match {camelCase}
+
 views 6 15
 operators 21 7 7
 [exit code 0]

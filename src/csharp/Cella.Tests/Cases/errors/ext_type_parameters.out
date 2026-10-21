@@ -23,6 +23,16 @@ Error at ext_type_parameters.ce:20:31
 20 │ pairs[T]: fun(f: ext fun[Pair[T] -> i32]) -> i32 => 0
                                    ^ Cannot use 'T' in 'ext' signatures
 
+Hint at ext_type_parameters.ce:22:1
+21 │ 
+22 │ sized[N: const usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 => 0
+     ╘═══╛ 'sized' is never used
+
+Hint at ext_type_parameters.ce:22:7
+21 │ 
+22 │ sized[N: const usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 => 0
+           ^ 'N' doesn't match {camelCase}
+
 Error at ext_type_parameters.ce:24:9
 23 │ 
 24 │ both[T: ext + drop]: fun(own value: T) -> i32 => 0

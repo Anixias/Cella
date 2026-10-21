@@ -13,6 +13,11 @@ Error at main.ce:7:1
 7 │ tool: pvt fun -> i32 => 2
     ╘══╛ 'tool' is declared more than once with the same signature
 
+Hint at main.ce:9:1
+8 │ 
+9 │ shared: pvt fun(value: i32) -> i32 => value
+    ╘════╛ 'shared' is never used
+
 Error at main.ce:11:1
 10 │ 
 11 │ main: pvt fun -> i32 => 0
@@ -22,6 +27,11 @@ Error at other.ce:3:1
 2 │ 
 3 │ helper: fun -> i32 => 2
     ╘════╛ 'helper' is declared more than once with the same signature
+
+Hint at other.ce:5:1
+4 │ 
+5 │ shared: fun(value: str) -> i32 => 0
+    ╘════╛ 'shared' is never used
 
 Error at other.ce:7:1
 6 │ 

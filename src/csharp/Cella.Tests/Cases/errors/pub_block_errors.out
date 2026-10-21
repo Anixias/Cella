@@ -8,6 +8,11 @@ Error at pub_block_errors.ce:11:2
 11 │     pub
          ╘═╛ Cannot use 'pub' in 'pvt' blocks
 
+Hint at pub_block_errors.ce:13:3
+12 │ {
+13 │     other: fun -> i32 => 2
+         ╘═══╛ 'other' is never used
+
 Error at pub_block_errors.ce:19:2
 18 │ {
 19 │     pub

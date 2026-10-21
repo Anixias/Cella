@@ -1,8 +1,23 @@
+Hint at owned_match_moves.ce:20:1
+19 │ take: fun(own buffer: Buffer) -> i32 => buffer.id
+20 │ touch: fun(mut buffer: Buffer)
+     ╘═══╛ 'touch' is never used
+
+Hint at owned_match_moves.ce:24:1
+23 │ 
+24 │ used: fun -> i32
+     ╘══╛ 'used' is never used
+
 Error at owned_match_moves.ce:33:8
 32 │ 
 33 │ match effect
            ╘════╛ Cannot use moved values
                 | Moved on line 27
+
+Hint at owned_match_moves.ce:40:1
+39 │ 
+40 │ parameter: fun(imm effect: Effect) -> i32
+     ╘═══════╛ 'parameter' is never used
 
 Error at owned_match_moves.ce:42:12
 41 │ {

@@ -13,6 +13,16 @@ Error at pattern_syntax.ce:13:7
 13 │     ret x
              ^ Symbol 'x' not found in this scope
 
+Hint at pattern_syntax.ce:18:1
+17 │ 
+18 │ named: fun -> i32 => takes(Option[i32].none)
+     ╘═══╛ 'named' is never used
+
+Hint at pattern_syntax.ce:20:1
+19 │ 
+20 │ nested: fun -> i32
+     ╘════╛ 'nested' is never used
+
 Error at pattern_syntax.ce:32:12
 31 │ var e = E.hit(1)
 32 │ match own mut e

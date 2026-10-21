@@ -13,4 +13,9 @@ Error at main.ce:6:37
 6 │ qualified: fun -> i32 => halt.panic "halt"
                                         ╘════╛ 'panic' doesn't accept a message
 
+Hint at main.ce:7:1
+6 │ qualified: fun -> i32 => halt.panic "halt"
+7 │ bare: fun -> i32 => halt.panic
+    ╘══╛ 'bare' is never used
+
 [compilation failed]

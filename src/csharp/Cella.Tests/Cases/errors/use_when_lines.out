@@ -3,6 +3,16 @@ Error at bare.ce:2:5
 2 │ use when
         ╘══╛ Expected a flag
 
+Hint at bare.ce:4:1
+3 │ 
+4 │ first: fun -> i32 => 0
+    ╘═══╛ 'first' is never used
+
+Hint at continued.ce:5:1
+4 │ 
+5 │ third: fun -> i32 => 0
+    ╘═══╛ 'third' is never used
+
 Error at main.ce:2:16
 1 │ mod test
 2 │ use when debug release
@@ -12,5 +22,10 @@ Error at parens.ce:2:13
 1 │ mod test
 2 │ use when ((((
                 ^ Expected a flag
+
+Hint at parens.ce:4:1
+3 │ 
+4 │ second: fun -> i32 => 0
+    ╘════╛ 'second' is never used
 
 [compilation failed]

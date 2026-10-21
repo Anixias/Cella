@@ -1,0 +1,10 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+
+[Lints]
+Naming = "Warning"
+
+[Naming]
+Constants = "{SCREAMING_CASE}"
+Functions = "{camelCase}|test{PascalCase}"
+Types = "{PascalCase}Kind|{PascalCase}"

@@ -3,6 +3,11 @@ Error at conversion_writes.ce:12:33
 12 │ as: op(self) -> imm[Sprite] => imm self.sprite
                                     ╘═════════════╛ Cannot return borrows of copied parameters
 
+Hint at conversion_writes.ce:18:1
+17 │ 
+18 │ read: fun(handle: Handle)
+     ╘══╛ 'read' is never used
+
 Error at conversion_writes.ce:20:11
 19 │ {
 20 │     heal(mut handle)

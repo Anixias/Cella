@@ -1,32 +1,67 @@
+Hint at value_parameter_declarations.ce:8:6
+7 │ 
+8 │ grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] => undef
+         ^ 'N' doesn't match {camelCase}
+
 Error at value_parameter_declarations.ce:8:64
 7 │ 
 8 │ grow[N: const usize]: fun(values: array[i32, N]) -> array[i32, N + 1] => undef
                                                                    ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
+
+Hint at value_parameter_declarations.ce:10:9
+ 9 │ 
+10 │ Doubled[N: const usize]: rec
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_declarations.ce:12:20
 11 │ {
 12 │     items: array[i32, N * 2]
                            ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
+Hint at value_parameter_declarations.ce:15:8
+14 │ 
+15 │ Signed[N: const i32]: rec
+            ^ 'N' doesn't match {camelCase}
+
 Error at value_parameter_declarations.ce:17:20
 16 │ {
 17 │     items: array[i32, N]
                            ^ Cannot convert type 'i32' to 'usize'
+
+Hint at value_parameter_declarations.ce:20:8
+19 │ 
+20 │ Floaty[N: const f64]: rec
+            ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_declarations.ce:20:17
 19 │ 
 20 │ Floaty[N: const f64]: rec
                      ╘═╛ Value parameters need an integer type
 
+Hint at value_parameter_declarations.ce:25:10
+24 │ 
+25 │ Lettered[N: const char]: rec
+              ^ 'N' doesn't match {camelCase}
+
 Error at value_parameter_declarations.ce:25:19
 24 │ 
 25 │ Lettered[N: const char]: rec
                        ╘══╛ Value parameters need an integer type
 
+Hint at value_parameter_declarations.ce:34:4
+33 │ 
+34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
+       ^ 'N' doesn't match {camelCase}
+
 Error at value_parameter_declarations.ce:34:4
 33 │ 
 34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
        ^ Cannot infer 'N' from the operands of '+'
+
+Hint at value_parameter_declarations.ce:35:5
+34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
+35 │ [][N: const usize]: op(self, i: usize) -> i32 => 0
+        ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_declarations.ce:35:5
 34 │ +[N: const usize]: op(a: Vector, b: Vector) -> Vector => a
@@ -38,6 +73,11 @@ Error at value_parameter_declarations.ce:38:1
 38 │ array[T]: impl Eq
      ╘═══╛ 'array' takes 2 generic arguments
 
+Hint at value_parameter_declarations.ce:48:7
+47 │ 
+48 │ array[N: const usize, T]: impl Sized
+           ^ 'N' doesn't match {camelCase}
+
 Error at value_parameter_declarations.ce:48:7
 47 │ 
 48 │ array[N: const usize, T]: impl Sized
@@ -48,10 +88,25 @@ Error at value_parameter_declarations.ce:48:23
 48 │ array[N: const usize, T]: impl Sized
                            ^ 'T' is not a constant
 
+Hint at value_parameter_declarations.ce:53:10
+52 │ 
+53 │ array[T, N: const i32]: impl Sized
+              ^ 'N' doesn't match {camelCase}
+
 Error at value_parameter_declarations.ce:53:10
 52 │ 
 53 │ array[T, N: const i32]: impl Sized
               ^ Cannot convert type 'i32' to 'usize'
+
+Hint at value_parameter_declarations.ce:58:9
+57 │ 
+58 │ Ring[T, N: const usize]: rec
+             ^ 'N' doesn't match {camelCase}
+
+Hint at value_parameter_declarations.ce:63:6
+62 │ 
+63 │ Ring[N: const usize, T]: impl Sized
+          ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_declarations.ce:63:6
 62 │ 

@@ -24,10 +24,10 @@ Error at enum_syntax.ce:33:11
 33 │     fighter ret 1
                  ╘═╛ Expected '=>'
 
-Error at enum_syntax.ce:42:3
-41 │ match Role.fighter
-42 │     fighter => ret 1
-         ╘═════╛ Expected '{'
+Error at enum_syntax.ce:41:13
+40 │ {
+41 │     match Role.fighter
+                    ╘═════╛ Expected '{'
 
 Error at enum_syntax.ce:42:11
 41 │ match Role.fighter

@@ -1,17 +1,47 @@
+Hint at template_borrows.ce:40:1
+39 │ 
+40 │ make: fun(x: i32) -> fstr[Display] => "{x}"
+     ╘══╛ 'make' is never used
+
 Error at template_borrows.ce:40:39
 39 │ 
 40 │ make: fun(x: i32) -> fstr[Display] => "{x}"
                                            ╘═══╛ Cannot return borrows of unstored values
+
+Hint at template_borrows.ce:42:1
+41 │ 
+42 │ makeLocal: fun -> fstr[Display]
+     ╘═══════╛ 'makeLocal' is never used
 
 Error at template_borrows.ce:45:6
 44 │ val local = 5
 45 │ ret "{local}"
          ╘═══════╛ Cannot return borrows of local variables
 
+Hint at template_borrows.ce:48:1
+47 │ 
+48 │ fromStr: fun(text: str) -> fstr[Display] => text
+     ╘═════╛ 'fromStr' is never used
+
 Error at template_borrows.ce:48:45
 47 │ 
 48 │ fromStr: fun(text: str) -> fstr[Display] => text
                                                  ╘══╛ Cannot return borrows of copied parameters
+
+Hint at template_borrows.ce:50:1
+49 │ 
+50 │ plain: fun -> fstr[Display] => "plain"
+     ╘═══╛ 'plain' is never used
+
+Hint at template_borrows.ce:52:1
+51 │ 
+52 │ pass: fun(text: fstr[Display]) -> fstr[Display] => text
+     ╘══╛ 'pass' is never used
+
+Hint at template_borrows.ce:54:1
+53 │ 
+54 │ fill: fun(mut message: Message, count: i32)
+     ╘══╛ 'fill' is never used
 
 Error at template_borrows.ce:56:17
 55 │ {

@@ -25,6 +25,13 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 	
 	protected static string DescribeReservedWord(Token token) => $"'{token.Text}' is a keyword";
 	
+	protected bool StartsMemberDeclaration(int index) =>
+		index > 0 && !AtEnd(index + 2) && Tokens[index].Line != Tokens[index - 1].Line &&
+		Tokens[index].Text is [var first, ..] && (char.IsLetter(first) || first == '_') &&
+		Peek(index + 1, TokenType.OpColon) && Tokens[index + 2].Line == Tokens[index].Line &&
+		TokenSets.MemberKinds.Contains(Tokens[index + 2].Text) &&
+		!(Tokens[index + 2].Type == TokenType.KeywordFun && Peek(index + 3, TokenType.OpOpenBracket));
+	
 	protected void EnsureStack(int index)
 	{
 		if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())

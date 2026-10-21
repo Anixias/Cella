@@ -1,3 +1,18 @@
+Hint at numeric_extras.ce:8:1
+7 │ 
+8 │ Code: const u32 = 'A'u32
+    ╘══╛ 'Code' doesn't match {camelCase}
+
+Hint at numeric_extras.ce:9:1
+8 │ Code: const u32 = 'A'u32
+9 │ Letter: const char = char(Code + 1)
+    ╘════╛ 'Letter' doesn't match {camelCase}
+
+Hint at numeric_extras.ce:10:1
+ 9 │ Letter: const char = char(Code + 1)
+10 │ Lengths: const array[u8, usize('C' - 'A')] = [1, 2]
+     ╘═════╛ 'Lengths' doesn't match {camelCase}
+
 1701411834604692 -6
 3402823669209 455
 65 B 2

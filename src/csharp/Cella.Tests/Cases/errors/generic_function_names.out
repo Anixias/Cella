@@ -3,6 +3,11 @@ Error at generic_function_names.ce:3:5
 3 │ Box[T]: rec
         ^ Type parameter 'T' is declared more than once
 
+Hint at generic_function_names.ce:7:2
+6 │ 
+7 │ map[T]: fun(imm self) -> i32 => 0
+    ╘═╛ 'map' is never used
+
 Error at generic_function_names.ce:7:6
 6 │ 
 7 │ map[T]: fun(imm self) -> i32 => 0

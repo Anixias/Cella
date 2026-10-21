@@ -3,4 +3,9 @@ Error at main.ce:15:13
 15 │ Box[T: Eq]: pub impl
                  ╘═╛ Cannot declare 'pub' members
 
+Hint at main.ce:22:2
+21 │ {
+22 │     equalTo: fun(imm self, imm value: T) -> bool => self.value == value
+         ╘═════╛ 'equalTo' is never used
+
 [compilation failed]

@@ -1,2 +1,7 @@
+Hint at unicode_identifiers.ce:13:6
+12 │ val 変数 = 3
+13 │ val Δx = 4
+         ╘╛ 'Δx' doesn't match {camelCase}
+
 1 2 3 4 5
 [exit code 0]

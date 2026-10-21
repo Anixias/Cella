@@ -3,6 +3,11 @@ Error at dereference_writes.ce:30:23
 30 │ own *self.pointer = buffer
                          ╘════╛ Cannot move 'Buffer' values implicitly
 
+Hint at dereference_writes.ce:60:1
+59 │ 
+60 │ writeShared: fun(mut shared: Shared)
+     ╘═════════╛ 'writeShared' is never used
+
 Error at dereference_writes.ce:62:2
 61 │ {
 62 │     shared.id = 5
@@ -18,10 +23,20 @@ Error at dereference_writes.ce:64:13
 64 │ addTen(mut shared.id)
                 ╘═══════╛ 'Shared' has no writable '*'
 
+Hint at dereference_writes.ce:67:1
+66 │ 
+67 │ writeValue: fun -> i32
+     ╘════════╛ 'writeValue' is never used
+
 Error at dereference_writes.ce:70:2
 69 │ val boxed = BufferBox(Buffer(1))
 70 │ boxed.id = 2
      ╘═══╛ Cannot mutably borrow values
+
+Hint at dereference_writes.ce:74:1
+73 │ 
+74 │ moveOut: fun(imm boxed: BufferBox) -> i32
+     ╘═════╛ 'moveOut' is never used
 
 Error at dereference_writes.ce:76:23
 75 │ {

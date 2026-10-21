@@ -287,13 +287,40 @@ public sealed class Server
 			Protocol.ToOffset(text, (int)range["start"]!["line"]!, (int)range["start"]!["character"]!),
 			Protocol.ToOffset(text, (int)range["end"]!["line"]!, (int)range["end"]!["character"]!));
 		
+		var uri = GetUri(parameters);
+		var expanded = new List<Diagnostic>();
+		foreach (var diagnostic in diagnostics)
+			expanded.Add(CodeActions.Touches(diagnostic, requested)
+				? await ExpandRenamesAsync(uri, diagnostic, ct)
+				: diagnostic);
+		
 		return new JsonArray([
-			..CodeActions.FromDiagnostics(diagnostics, requested, _workspace.UriOf),
+			..CodeActions.FromDiagnostics(expanded, requested, _workspace.UriOf),
 			..file is null
 				? []
 				: Refactorings.Find(file, requested).Select(fix =>
 					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf))
 		]);
+	}
+	
+	private async Task<Diagnostic> ExpandRenamesAsync(string uri, Diagnostic diagnostic, CancellationToken ct)
+	{
+		if (diagnostic.Fixes.All(static fix => fix.Rename is null))
+			return diagnostic;
+		
+		var (line, character) = Protocol.ToLineCharacter(diagnostic.SourceLocation.Source,
+			diagnostic.SourceLocation.Range.Start);
+		
+		var usages = await _workspace.FindUsagesAsync(uri, line, character, true, ct);
+		return diagnostic with
+		{
+			Fixes =
+			[
+				..diagnostic.Fixes.Select(fix => fix.Rename is { } name && usages.Count > 0
+					? fix with { Edits = [..usages.Select(usage => new TextEdit(usage, name))] }
+					: fix)
+			]
+		};
 	}
 	
 	private async Task<JsonNode?> PrepareRenameAsync(JsonObject? parameters, CancellationToken ct)

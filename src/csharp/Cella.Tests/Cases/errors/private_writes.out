@@ -1,3 +1,18 @@
+Hint at game.ce:12:2
+11 │ 
+12 │ reset: fun(mut self)
+     ╘═══╛ 'reset' is never used
+
+Hint at game.ce:57:1
+56 │ 
+57 │ touch: fun
+     ╘═══╛ 'touch' is never used
+
+Hint at main.ce:10:1
+ 9 │ 
+10 │ writes: fun
+     ╘════╛ 'writes' is never used
+
 Error at main.ce:13:6
 12 │ var box = Box.make()
 13 │ box.limit = 1
@@ -43,6 +58,11 @@ Error at main.ce:25:12
 25 │ match box.shape
                ╘═══╛ 'shape' is read-only outside its type
 
+Hint at main.ce:31:1
+30 │ 
+31 │ moves: fun
+     ╘═══╛ 'moves' is never used
+
 Error at main.ce:34:22
 33 │ var box = Box.make()
 34 │ val taken = own box.inner
@@ -53,10 +73,20 @@ Error at main.ce:35:26
 35 │ val copied: Inner = box.inner
                              ╘═══╛ 'inner' is read-only outside its type
 
+Hint at main.ce:38:1
+37 │ 
+38 │ modules: fun
+     ╘═════╛ 'modules' is never used
+
 Error at main.ce:41:10
 40 │ var counter = Counter()
 41 │ counter.total = 1
              ╘═══╛ 'total' is read-only outside its module
+
+Hint at main.ce:44:1
+43 │ 
+44 │ builds: fun -> Plain => Plain(1, 2, 3)
+     ╘════╛ 'builds' is never used
 
 Error at main.ce:44:34
 43 │ 
@@ -67,5 +97,10 @@ Error at main.ce:44:37
 43 │ 
 44 │ builds: fun -> Plain => Plain(1, 2, 3)
                                          ^ 'fixed' is read-only outside its type
+
+Hint at main.ce:46:1
+45 │ 
+46 │ defaults: fun -> Plain => Plain()
+     ╘══════╛ 'defaults' is never used
 
 [compilation failed]

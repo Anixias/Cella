@@ -1,8 +1,18 @@
+Hint at generic_record_moves.ce:7:2
+6 │ 
+7 │ copy: fun(own self) -> T
+    ╘══╛ 'copy' is never used
+
 Error at generic_record_moves.ce:11:7
 10 │ val second = own first
 11 │ ret first
          ╘═══╛ Cannot use moved values
              | Moved on line 10
+
+Hint at generic_record_moves.ce:14:2
+13 │ 
+14 │ store: fun(mut self, own value: T)
+     ╘═══╛ 'store' is never used
 
 Error at generic_record_moves.ce:16:20
 15 │ {

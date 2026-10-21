@@ -4,6 +4,9 @@ namespace Cella.Core.Syntax;
 
 internal static class TokenSets
 {
+	public static readonly HashSet<string> MemberKinds =
+		["fun", "op", "prop", "get", "set", "rec", "enum", "union", "trait", "impl"];
+	
 	public static readonly HashSet<TokenType> ParameterModes =
 		[TokenType.KeywordMut, TokenType.KeywordOwn, TokenType.KeywordImm];
 	

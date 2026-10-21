@@ -1,3 +1,8 @@
+Hint at checks_in_statements.ce:14:1
+13 │ 
+14 │ check: fun -> i32
+     ╘═══╛ 'check' is never used
+
 Error at checks_in_statements.ce:17:6
 16 │ var count = 3
 17 │ if @make().x == null

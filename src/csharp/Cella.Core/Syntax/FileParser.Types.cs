@@ -224,7 +224,17 @@ public sealed partial class FileParser
 			
 			var start = index;
 			var window = OpenErrorWindow(index);
-			var member = ParseMember(ref index, block);
+			IDeclarationNode? member;
+			try
+			{
+				member = ParseMember(ref index, block);
+			}
+			catch (ParseException e) when (!e.IsNesting)
+			{
+				AddParseError(e);
+				member = null;
+			}
+			
 			RecordSyntaxErrors(member, window, index);
 			if (member is not null)
 			{

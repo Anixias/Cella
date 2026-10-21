@@ -1,3 +1,8 @@
+Hint at borrow_writes.ce:26:1
+25 │ 
+26 │ first: fun(mut point: Point) -> imm[i32] => make()
+     ╘═══╛ 'first' is never used
+
 Error at borrow_writes.ce:26:45
 25 │ 
 26 │ first: fun(mut point: Point) -> imm[i32] => make()

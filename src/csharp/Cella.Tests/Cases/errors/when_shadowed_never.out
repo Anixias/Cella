@@ -1,3 +1,8 @@
+Hint at when_shadowed_never.ce:3:1
+2 │ 
+3 │ never: rec
+    ╘═══╛ 'never' doesn't match {PascalCase}
+
 Error at when_shadowed_never.ce:8:14
 7 │ 
 8 │ make: fun -> never when release

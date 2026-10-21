@@ -1,3 +1,13 @@
+Hint at dereference_borrows.ce:13:2
+12 │ 
+13 │ bump: fun(mut self)
+     ╘══╛ 'bump' is never used
+
+Hint at dereference_borrows.ce:48:1
+47 │ 
+48 │ outlive: fun -> i32
+     ╘═════╛ 'outlive' is never used
+
 Hint at dereference_borrows.ce:50:6
 49 │ {
 50 │     var boxed = BufferBox(Buffer(1))
@@ -8,6 +18,11 @@ Error at dereference_borrows.ce:53:6
 53 │ ret view
          ╘══╛ Cannot use borrows of moved values
             | Moved on line 52
+
+Hint at dereference_borrows.ce:56:1
+55 │ 
+56 │ escape: fun -> imm[i32]
+     ╘════╛ 'escape' is never used
 
 Hint at dereference_borrows.ce:58:6
 57 │ {

@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Cella.Compiler.Linking;
+using Cella.Core.Analysis;
 using Cella.Diagnostics;
 
 namespace Cella.Compiler.Projects;
@@ -13,6 +14,7 @@ public enum SettingKind
 	TextList,
 	Flags,
 	Lints,
+	Naming,
 	References
 }
 
@@ -44,6 +46,10 @@ public static class ProjectSchema
 		new(nameof(CellaProject.Lints), "Lints", SettingKind.Lints, true, null)
 		{
 			Choices = [..Enum.GetNames<LintLevel>()]
+		},
+		new(nameof(CellaProject.Naming), "Naming", SettingKind.Naming, false, null)
+		{
+			Choices = [..Enum.GetNames<NamingCategory>()]
 		},
 		new(nameof(CellaProject.Imports), "Imports", SettingKind.TextList, false, null),
 		new(nameof(CellaProject.Prelude), "Prelude", SettingKind.TextList, false, null),

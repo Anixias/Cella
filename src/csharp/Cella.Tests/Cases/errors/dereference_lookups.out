@@ -1,3 +1,8 @@
+Hint at dereference_lookups.ce:7:2
+6 │ 
+7 │ bump: fun(mut self)
+    ╘══╛ 'bump' is never used
+
 Error at dereference_lookups.ce:39:45
 38 │ 
 39 │ deep: fun(imm outer: Outer) -> i32 => outer.id

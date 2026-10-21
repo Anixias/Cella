@@ -1,3 +1,8 @@
+Hint at borrowed_moves.ce:27:1
+26 │ 
+27 │ parameters: fun(imm buffer: Buffer, imm holder: Holder, n: i32) -> i32
+     ╘════════╛ 'parameters' is never used
+
 Error at borrowed_moves.ce:29:11
 28 │ {
 29 │     ret take(buffer) + take(holder.buffer) + takeNumber(own n)
@@ -8,15 +13,30 @@ Error at borrowed_moves.ce:29:26
 29 │     ret take(buffer) + take(holder.buffer) + takeNumber(own n)
                                  ╘═══════════╛ Cannot move read-only parameters
 
+Hint at borrowed_moves.ce:32:1
+31 │ 
+32 │ returned: fun(imm buffer: Buffer) -> Buffer
+     ╘══════╛ 'returned' is never used
+
 Error at borrowed_moves.ce:34:6
 33 │ {
 34 │     ret buffer
              ╘════╛ Cannot move read-only parameters
 
+Hint at borrowed_moves.ce:37:1
+36 │ 
+37 │ bindings: fun(imm effect: Effect) -> i32
+     ╘══════╛ 'bindings' is never used
+
 Error at borrowed_moves.ce:41:32
 40 │ {
 41 │     hold(val buffer) => ret take(buffer)
                                       ╘════╛ Cannot move pattern bindings
+
+Hint at borrowed_moves.ce:47:1
+46 │ 
+47 │ mutBindings: fun(mut effect: Effect) -> i32
+     ╘═════════╛ 'mutBindings' is never used
 
 Error at borrowed_moves.ce:51:32
 50 │ {

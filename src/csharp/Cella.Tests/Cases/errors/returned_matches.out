@@ -1,12 +1,27 @@
+Hint at returned_matches.ce:29:2
+28 │ 
+29 │ orElse: fun(imm self, imm fallback: Buffer) -> imm[Buffer] => match self
+     ╘════╛ 'orElse' is never used
+
 Error at returned_matches.ce:32:12
 31 │ held(val buffer) => buffer
 32 │ empty => fallback
               ╘══════╛ Cannot return borrows of parameters other than 'self'
 
+Hint at returned_matches.ce:40:1
+39 │ 
+40 │ pick: fun(imm effect: Effect, own fallback: Buffer) -> imm[Buffer] => match effect
+     ╘══╛ 'pick' is never used
+
 Error at returned_matches.ce:43:10
 42 │ hold(val buffer) => buffer
 43 │ else => imm fallback
              ╘══════════╛ Cannot return borrows of 'own' parameters
+
+Hint at returned_matches.ce:46:1
+45 │ 
+46 │ every: fun(imm effect: Effect, own a: Buffer, own b: Buffer) -> imm[Buffer] => match effect
+     ╘═══╛ 'every' is never used
 
 Error at returned_matches.ce:48:22
 47 │ {
@@ -18,10 +33,20 @@ Error at returned_matches.ce:49:10
 49 │ else => imm b
              ╘═══╛ Cannot return borrows of 'own' parameters
 
+Hint at returned_matches.ce:52:1
+51 │ 
+52 │ nested: fun(imm outer: Effect, imm inner: Effect, own fallback: Buffer) -> imm[Buffer] => match outer
+     ╘════╛ 'nested' is never used
+
 Error at returned_matches.ce:58:11
 57 │ hold(val buffer) => buffer
 58 │ else => imm fallback
              ╘══════════╛ Cannot return borrows of 'own' parameters
+
+Hint at returned_matches.ce:62:1
+61 │ 
+62 │ called: fun(imm effect: Effect) -> mut[i32]
+     ╘════╛ 'called' is never used
 
 Error at returned_matches.ce:67:23
 66 │ {
@@ -33,6 +58,11 @@ Error at returned_matches.ce:68:11
 68 │ else => kills(mut stats)
              ╘══════════════╛ Cannot return borrows of local variables
 
+Hint at returned_matches.ce:72:1
+71 │ 
+72 │ copied: fun(imm effect: Effect, x: i32) -> imm[i32] => match effect
+     ╘════╛ 'copied' is never used
+
 Error at returned_matches.ce:74:22
 73 │ {
 74 │     count(val value) => imm value
@@ -43,10 +73,20 @@ Error at returned_matches.ce:75:10
 75 │ else => imm x
              ╘═══╛ Cannot return borrows of copied parameters
 
+Hint at returned_matches.ce:78:1
+77 │ 
+78 │ owned: fun(imm fallback: Buffer) -> imm[Buffer] => match make()
+     ╘═══╛ 'owned' is never used
+
 Error at returned_matches.ce:80:22
 79 │ {
 80 │     hold(val buffer) => buffer
                              ╘════╛ Cannot return borrows of local variables
+
+Hint at returned_matches.ce:84:1
+83 │ 
+84 │ stored: fun(imm effect: Effect, own fallback: Buffer) -> imm[Buffer]
+     ╘════╛ 'stored' is never used
 
 Error at returned_matches.ce:91:6
 90 │ }

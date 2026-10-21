@@ -1,22 +1,52 @@
+Hint at match_enum_values.ce:22:1
+21 │ 
+22 │ checked: val Socket = valid(-1)
+     ╘═════╛ 'checked' is never used
+
 Error at match_enum_values.ce:22:29
 21 │ 
 22 │ checked: val Socket = valid(-1)
                                  ╘╛ 'Socket.valid' can't hold -1
+
+Hint at match_enum_values.ce:23:1
+22 │ checked: val Socket = valid(-1)
+23 │ nothing: val Nullable[ptr] = some(null)
+     ╘═════╛ 'nothing' is never used
 
 Error at match_enum_values.ce:23:35
 22 │ checked: val Socket = valid(-1)
 23 │ nothing: val Nullable[ptr] = some(null)
                                        ╘══╛ 'Nullable[ptr].some' can't hold null
 
+Hint at match_enum_values.ce:24:1
+23 │ nothing: val Nullable[ptr] = some(null)
+24 │ oddly: val Parity = odd(2)
+     ╘═══╛ 'oddly' is never used
+
 Error at match_enum_values.ce:24:25
 23 │ nothing: val Nullable[ptr] = some(null)
 24 │ oddly: val Parity = odd(2)
                              ^ 'Parity.odd' can't hold 2
 
+Hint at match_enum_values.ce:25:1
+24 │ oddly: val Parity = odd(2)
+25 │ evenly: val Parity = other(2)
+     ╘════╛ 'evenly' is never used
+
 Error at match_enum_values.ce:25:28
 24 │ oddly: val Parity = odd(2)
 25 │ evenly: val Parity = other(2)
                                 ^ 'Parity.other' can't hold 2
+
+Hint at match_enum_values.ce:26:1
+25 │ evenly: val Parity = other(2)
+26 │ fine: val Parity = odd(3)
+     ╘══╛ 'fine' is never used
+
+Hint at match_enum_values.ce:27:1
+26 │ fine: val Parity = odd(3)
+27 │ spare: val Parity = other(4)
+     ╘═══╛ 'spare' is never used
 
 Error at match_enum_values.ce:31:28
 30 │ {

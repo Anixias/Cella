@@ -1,8 +1,18 @@
+Hint at binding_reassignments.ce:49:1
+48 │ 
+49 │ loops: fun
+     ╘═══╛ 'loops' is never used
+
 Error at binding_reassignments.ce:56:18
 55 │ box = TextureBox(Texture(3))
 56 │ printf("%d\n", inside.id)
                     ╘════╛ Cannot use borrows of reassigned values
                          | Reassigned on line 55
+
+Hint at binding_reassignments.ce:60:1
+59 │ 
+60 │ fields: fun
+     ╘════╛ 'fields' is never used
 
 Error at binding_reassignments.ce:67:18
 66 │ holder.box = TextureBox(Texture(6))
@@ -10,17 +20,32 @@ Error at binding_reassignments.ce:67:18
                     ╘════╛ Cannot use borrows of reassigned values
                          | Reassigned on line 66
 
+Hint at binding_reassignments.ce:71:1
+70 │ 
+71 │ matches: fun
+     ╘═════╛ 'matches' is never used
+
 Error at binding_reassignments.ce:80:19
 79 │ box = TextureBox(Texture(8))
 80 │ printf("%d\n", inside.id)
                     ╘════╛ Cannot use borrows of reassigned values
                          | Reassigned on line 79
 
+Hint at binding_reassignments.ce:86:1
+85 │ 
+86 │ payloads: fun
+     ╘══════╛ 'payloads' is never used
+
 Error at binding_reassignments.ce:96:20
 95 │ slot = Slot.empty
 96 │ printf("%d\n", box.id)
                     ╘═╛ Cannot use borrows of reassigned values
                       | Reassigned on line 95
+
+Hint at binding_reassignments.ce:103:1
+102 │ 
+103 │ captures: fun
+      ╘══════╛ 'captures' is never used
 
 Error at binding_reassignments.ce:110:18
 109 │ held = TextureBox(Texture(11))

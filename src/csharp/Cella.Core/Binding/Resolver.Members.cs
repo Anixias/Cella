@@ -193,6 +193,7 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode ResolveTypeConstant(IExpressionNode node, TypeConstantUse use)
 	{
+		MarkUsed(use.Constant);
 		if (TypePool.ContainsTypeParameters(use) && FindGenericCaller(CurrentResolutionContext) is { } caller)
 			AddTypeConstantUse(caller, use);
 		
@@ -658,8 +659,14 @@ public sealed partial class Resolver
 	private MethodSymbol[] FindStatics(TypeSymbol type, string name) =>
 		[..FindFunctions(type, name).Where(static function => !function.HasReceiver)];
 	
-	private MethodSymbol[] FindFunctions(TypeSymbol type, string name) =>
-		[..GetMethods(type, name).Where(static method => !method.Function.IsConversion)];
+	private MethodSymbol[] FindFunctions(TypeSymbol type, string name)
+	{
+		MethodSymbol[] methods = [..GetMethods(type, name).Where(static method => !method.Function.IsConversion)];
+		foreach (var method in methods)
+			MarkUsed(method);
+		
+		return methods;
+	}
 	
 	private FieldSymbol? FindField(TypeSymbol type, string name) =>
 		_typePool.ResolveMember(GetMemberOwner(type, name), name) as FieldSymbol;

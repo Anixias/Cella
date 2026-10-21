@@ -3,12 +3,27 @@ Error at game.ce:3:1
 3 │ geometry: fun -> i32 => 1
     ╘══════╛ 'game.geometry' is both a module and a member of 'game'
 
+Hint at game.ce:3:1
+2 │ 
+3 │ geometry: fun -> i32 => 1
+    ╘══════╛ 'geometry' is never used
+
 Error at game\geometry.ce:1:5
 1 │ mod game.geometry
         ╘═══════════╛ 'game.geometry' is both a module and a member of 'game'
 
+Hint at game\geometry.ce:3:1
+2 │ 
+3 │ area: fun -> i32 => 2
+    ╘══╛ 'area' is never used
+
 Error at game\shapes.ce:1:5
 1 │ mod game.geometry
         ╘═══════════╛ 'game.geometry' is both a module and a member of 'game'
+
+Hint at game\shapes.ce:3:1
+2 │ 
+3 │ perimeter: fun -> i32 => 3
+    ╘═══════╛ 'perimeter' is never used
 
 [compilation failed]

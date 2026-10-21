@@ -8,6 +8,11 @@ Hint at generic_call_mismatches.ce:4:42
 4 │ pick[T]: fun(own a: T, own b: T) -> T => own a
                                              ╘═╛ Redundant 'own'
 
+Hint at generic_call_mismatches.ce:5:5
+4 │ pick[T]: fun(own a: T, own b: T) -> T => own a
+5 │ sum[N: const usize]: fun(values: array[i32, N]) -> i32 => 0
+        ^ 'N' doesn't match {camelCase}
+
 Error at generic_call_mismatches.ce:10:17
  9 │ val small: u8 = 1
 10 │ val a = sum[4]([1, 2, 3])

@@ -48,6 +48,11 @@ Error at member_block_declarations.ce:44:9
 44 │ Box[T]: impl
              ╘══╛ Cannot declare 'impl' blocks that add no bounds
 
+Hint at member_block_declarations.ce:51:2
+50 │ {
+51 │     twice: fun(self) -> i32 => 2
+         ╘═══╛ 'twice' is never used
+
 Error at member_block_declarations.ce:59:6
 58 │ 
 59 │ Wrap[T: Eq]: impl

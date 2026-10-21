@@ -873,7 +873,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		Token? mode = Match(ref index, out var modeKeyword, TokenType.KeywordMut) ? modeKeyword : null;
 		var value = ParseExpression(ref index);
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
-			throw Expected(index, "'{'");
+		{
+			if (!CanRecover || !AtEnd(index) && Tokens[index].Line == Tokens[index - 1].Line)
+				throw Expected(index, "'{'");
+			
+			Recover(Expected(index - 1, "'{'").Diagnostic);
+			var (start, end) = keyword.SourceLocation;
+			return new MatchExpressionNode(keyword, mode, value, [], new(start, end.Join(value.SourceLocation.Range)));
+		}
 		
 		var arms = new List<MatchExpressionArmNode>();
 		var closeBrace = ParseMatchArms(ref index, openBrace, arms);

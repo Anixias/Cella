@@ -13,6 +13,11 @@ Error at match_value_errors.ce:25:5
 25 │ 2, 5 => 2
         ^ '5' is matched more than once
 
+Hint at match_value_errors.ce:29:1
+28 │ 
+29 │ Five: const i32 = 5
+     ╘══╛ 'Five' doesn't match {camelCase}
+
 Error at match_value_errors.ce:33:2
 32 │ {
 33 │     5 => 1
@@ -42,6 +47,11 @@ Error at match_value_errors.ce:52:2
 51 │ {
 52 │     Point(1) => 1
          ╘══════╛ No operation defined for '==' between 'Point' and 'Point'
+
+Hint at match_value_errors.ce:56:1
+55 │ 
+56 │ exact: fun(f: f32) -> i32 => match f
+     ╘═══╛ 'exact' is never used
 
 Warning at match_value_errors.ce:58:2
 57 │ {

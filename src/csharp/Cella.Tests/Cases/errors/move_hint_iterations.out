@@ -1,3 +1,8 @@
+Hint at move_hint_iterations.ce:22:1
+21 │ 
+22 │ loopUse: fun -> i32
+     ╘═════╛ 'loopUse' is never used
+
 Error at move_hint_iterations.ce:27:12
 26 │ {
 27 │     show(imm a)
@@ -10,12 +15,22 @@ Error at move_hint_iterations.ce:28:12
               ^ Cannot use moved values
               | Moved here in an earlier iteration
 
+Hint at move_hint_iterations.ce:34:1
+33 │ 
+34 │ branches: fun(flag: bool) -> i32
+     ╘══════╛ 'branches' is never used
+
 Error at move_hint_iterations.ce:42:16
 41 │ 
 42 │ ret showP(imm p)
                    ^ Cannot use partly moved values
                    | Moved on line 38
                    | Moved on line 40
+
+Hint at move_hint_iterations.ce:45:1
+44 │ 
+45 │ maybe: fun(flag: bool) -> i32
+     ╘═══╛ 'maybe' is never used
 
 Error at move_hint_iterations.ce:51:15
 50 │ 

@@ -18,6 +18,11 @@ Error at duplicate_declarations.ce:8:2
 8 │ abs: fun(value: i64) -> i64
     ╘═╛ 'ext' functions cannot be overloaded
 
+Hint at duplicate_declarations.ce:11:1
+10 │ 
+11 │ puts: fun(text: str) -> i32
+     ╘══╛ 'puts' is never used
+
 Error at duplicate_declarations.ce:16:1
 15 │ 
 16 │ Point: rec
@@ -63,6 +68,11 @@ Error at duplicate_declarations.ce:40:1
 40 │ Shape: rec
      ╘═══╛ 'Shape' is declared more than once in this module
 
+Hint at duplicate_declarations.ce:45:1
+44 │ 
+45 │ Shape: fun -> i32
+     ╘═══╛ 'Shape' doesn't match {camelCase}
+
 Error at duplicate_declarations.ce:45:1
 44 │ 
 45 │ Shape: fun -> i32
@@ -82,6 +92,11 @@ Error at duplicate_declarations.ce:60:1
 59 │ 
 60 │ value: fun -> i64
      ╘═══╛ 'value' overloads cannot differ only in return type
+
+Hint at duplicate_declarations.ce:65:1
+64 │ 
+65 │ value: fun(seed: i32) -> i32
+     ╘═══╛ 'value' is never used
 
 Error at duplicate_declarations.ce:70:1
 69 │ 

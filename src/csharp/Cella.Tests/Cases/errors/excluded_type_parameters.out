@@ -1,3 +1,8 @@
+Hint at excluded_type_parameters.ce:3:7
+2 │ 
+3 │ Sized[N: const i32]: enum { zero, big = N }
+          ^ 'N' doesn't match {camelCase}
+
 Error at excluded_type_parameters.ce:3:41
 2 │ 
 3 │ Sized[N: const i32]: enum { zero, big = N }

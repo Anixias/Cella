@@ -1,12 +1,27 @@
+Hint at redundant_new_bounds.ce:13:1
+12 │ 
+13 │ a[T: Empty]: rec
+     ^ 'a' doesn't match {PascalCase}
+
 Error at redundant_new_bounds.ce:18:20
 17 │ 
 18 │ a[T: Empty + new]: impl
                         ╘══╛ Cannot declare 'impl' blocks that add no bounds
 
+Hint at redundant_new_bounds.ce:23:1
+22 │ 
+23 │ b[T: Make]: rec
+     ^ 'b' doesn't match {PascalCase}
+
 Error at redundant_new_bounds.ce:28:24
 27 │ 
 28 │ b[T: Make + new(i32)]: impl
                             ╘══╛ Cannot declare 'impl' blocks that add no bounds
+
+Hint at redundant_new_bounds.ce:33:1
+32 │ 
+33 │ c[T: default]: rec
+     ^ 'c' doesn't match {PascalCase}
 
 Error at redundant_new_bounds.ce:38:22
 37 │ 

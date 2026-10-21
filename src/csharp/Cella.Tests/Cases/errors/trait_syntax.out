@@ -18,4 +18,9 @@ Error at trait_syntax.ce:20:1
 20 │ {
      ^ Expected a trait
 
+Hint at trait_syntax.ce:25:1
+24 │ 
+25 │ takesOther: fun(imm value: Other) -> i32 => 0
+     ╘════════╛ 'takesOther' is never used
+
 [compilation failed]

@@ -1,3 +1,8 @@
+Hint at method_returns.ce:42:2
+41 │ 
+42 │ pick: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy]
+     ╘══╛ 'pick' is never used
+
 Error at method_returns.ce:45:8
 44 │ if a.hp >= b.hp
 45 │     ret imm a
@@ -8,35 +13,75 @@ Error at method_returns.ce:46:7
 46 │ ret imm b
          ╘═══╛ Cannot return borrows of parameters other than 'self'
 
+Hint at method_returns.ce:49:2
+48 │ 
+49 │ count: fun(imm self, mut stats: Stats) -> mut[i32] => mut stats.kills
+     ╘═══╛ 'count' is never used
+
 Error at method_returns.ce:49:56
 48 │ 
 49 │ count: fun(imm self, mut stats: Stats) -> mut[i32] => mut stats.kills
                                                            ╘═════════════╛ Cannot return borrows of parameters other than 'self'
+
+Hint at method_returns.ce:51:2
+50 │ 
+51 │ pickStronger: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy] => stronger(imm a, imm b)
+     ╘══════════╛ 'pickStronger' is never used
 
 Error at method_returns.ce:51:75
 50 │ 
 51 │ pickStronger: fun(imm self, imm a: Enemy, imm b: Enemy) -> imm[Enemy] => stronger(imm a, imm b)
                                                                               ╘════════════════════╛ Cannot return borrows of parameters other than 'self'
 
+Hint at method_returns.ce:53:2
+52 │ 
+53 │ countKills: fun(imm self, mut stats: Stats) -> mut[i32] => kills(mut stats)
+     ╘════════╛ 'countKills' is never used
+
 Error at method_returns.ce:53:61
 52 │ 
 53 │ countKills: fun(imm self, mut stats: Stats) -> mut[i32] => kills(mut stats)
                                                                 ╘══════════════╛ Cannot return borrows of parameters other than 'self'
+
+Hint at method_returns.ce:55:2
+54 │ 
+55 │ leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] => other.leader()
+     ╘══════╛ 'leaderOf' is never used
 
 Error at method_returns.ce:55:63
 54 │ 
 55 │ leaderOf: fun(imm self, imm other: Referee) -> imm[Enemy] => other.leader()
                                                                   ╘════════════╛ Cannot return borrows of parameters other than 'self'
 
+Hint at method_returns.ce:57:2
+56 │ 
+57 │ keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] => imm enemy
+     ╘══╛ 'keep' is never used
+
 Error at method_returns.ce:57:57
 56 │ 
 57 │ keep: fun(imm self, own enemy: Enemy) -> imm[Enemy] => imm enemy
                                                             ╘═══════╛ Cannot return borrows of 'own' parameters
 
+Hint at method_returns.ce:68:2
+67 │ 
+68 │ get: fun(imm self) -> imm[i32] => imm self.x
+     ╘═╛ 'get' is never used
+
+Hint at method_returns.ce:70:2
+69 │ 
+70 │ take: fun(own self) -> imm[i32] => imm self.x
+     ╘══╛ 'take' is never used
+
 Error at method_returns.ce:70:37
 69 │ 
 70 │ take: fun(own self) -> imm[i32] => imm self.x
                                         ╘════════╛ Cannot return borrows of 'own' parameters
+
+Hint at method_returns.ce:78:2
+77 │ 
+78 │ orElse: fun(imm self, imm fallback: Buffer) -> imm[Buffer]
+     ╘════╛ 'orElse' is never used
 
 Error at method_returns.ce:83:17
 82 │ held(val buffer) => ret buffer

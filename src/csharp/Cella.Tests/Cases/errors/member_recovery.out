@@ -35,6 +35,11 @@ Error at member_recovery.ce:34:1
 34 │ {
      ^ Expected '}' to close this '{'
 
+Hint at member_recovery.ce:36:1
+35 │     ret x
+36 │ helper: fun -> i32 => 2
+     ╘════╛ 'helper' is never used
+
 Error at member_recovery.ce:40:5
 39 │ a: i32,
 40 │ b: ) -> i32

@@ -53,6 +53,11 @@ Error at main.ce:16:6
 16 │ ret limit
          ╘═══╛ 'limit' is private to its file
 
+Hint at memory.ce:18:1
+17 │ 
+18 │ cycle: fun
+     ╘═══╛ 'cycle' is never used
+
 Error at rules.ce:8:10
 7 │ val a = helper() + world.seed
 8 │ val b = tool()
@@ -77,5 +82,10 @@ Error at rules.ce:12:17
 11 │ val e = Color.red
 12 │ val f = nameOf(tool)
                     ╘══╛ 'tool' is private to its file
+
+Hint at world.ce:35:1
+34 │ 
+35 │ tool: pvt fun -> i32 => 2
+     ╘══╛ 'tool' is never used
 
 [compilation failed]

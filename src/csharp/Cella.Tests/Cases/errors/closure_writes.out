@@ -1,3 +1,8 @@
+Hint at closure_writes.ce:10:1
+ 9 │ 
+10 │ watch: fun(limit: i32) -> i32 => call(fun -> i32
+     ╘═══╛ 'watch' is never used
+
 Error at closure_writes.ce:12:2
 11 │ {
 12 │     limit = 2

@@ -1,3 +1,8 @@
+Hint at generic_static_faults.ce:8:7
+7 │ 
+8 │ Slots[N: const usize]: rec
+          ^ 'N' doesn't match {camelCase}
+
 [stderr]
 Panic at generic_static_faults.ce:11:21: division by zero
 [exit code 101]

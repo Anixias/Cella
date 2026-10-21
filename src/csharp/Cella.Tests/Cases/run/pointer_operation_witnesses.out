@@ -1,2 +1,17 @@
+Hint at pointer_operation_witnesses.ce:24:5
+23 │ 
+24 │ ptr[i32]: impl Diff
+         ╘═╛ 'i32' doesn't match {PascalCase}
+
+Hint at pointer_operation_witnesses.ce:26:5
+25 │ 
+26 │ ptr[i32]: impl Step
+         ╘═╛ 'i32' doesn't match {PascalCase}
+
+Hint at pointer_operation_witnesses.ce:28:5
+27 │ 
+28 │ ptr[i32]: impl Less
+         ╘═╛ 'i32' doesn't match {PascalCase}
+
 3 30 1
 [exit code 0]

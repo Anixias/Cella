@@ -1,3 +1,18 @@
+Hint at parametric_defaults.ce:14:7
+13 │ 
+14 │ count[N: const usize]: fun(extra: usize = N) -> usize => extra
+           ^ 'N' doesn't match {camelCase}
+
+Hint at parametric_defaults.ce:16:11
+15 │ 
+16 │ layout[T, N: const usize]: fun(imm x: T, extra: usize = N * sizeOf(T) + alignOf(T)) -> usize => extra
+               ^ 'N' doesn't match {camelCase}
+
+Hint at parametric_defaults.ce:20:7
+19 │ 
+20 │ relay[M: const usize]: fun -> usize => count[M]()
+           ^ 'M' doesn't match {camelCase}
+
 4 8 3 10
 108 7 2 3
 [exit code 0]

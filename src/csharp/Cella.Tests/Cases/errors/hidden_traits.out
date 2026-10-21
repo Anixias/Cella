@@ -3,4 +3,9 @@ Error at main.ce:3:17
 3 │ Point: rec impl Hidden
                     ╘════╛ 'Hidden' is private to its file
 
+Hint at main.ce:5:2
+4 │ {
+5 │     go: fun(imm self) -> i32 => 1
+        ╘╛ 'go' is never used
+
 [compilation failed]

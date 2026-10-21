@@ -242,8 +242,14 @@ public sealed partial class FileParser
 		
 		// Unknown declaration
 		index = kindIndex;
-		Report(Tokens[index], "Expected a declaration");
 		_droppedNames.Add(identifier);
+		if (!AtEnd(index) && !IsOnSameLine(index))
+		{
+			ReportExpected(index - 1, "a declaration");
+			return true;
+		}
+		
+		Report(Tokens[index], "Expected a declaration");
 		if (!AtEnd(index))
 			index++;
 		

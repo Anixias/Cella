@@ -1,7 +1,17 @@
+Hint at borrow_conversion_lifetimes.ce:19:1
+18 │ 
+19 │ bad: fun -> imm[Sprite]
+     ╘═╛ 'bad' is never used
+
 Error at borrow_conversion_lifetimes.ce:22:6
 21 │ val h = Handle(Sprite(1))
 22 │ ret h
          ^ Cannot return borrows of local variables
+
+Hint at borrow_conversion_lifetimes.ce:25:1
+24 │ 
+25 │ later: fun -> i32
+     ╘═══╛ 'later' is never used
 
 Hint at borrow_conversion_lifetimes.ce:27:6
 26 │ {

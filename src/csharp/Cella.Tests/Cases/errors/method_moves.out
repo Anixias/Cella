@@ -1,12 +1,27 @@
+Hint at method_moves.ce:24:2
+23 │ 
+24 │ take: fun(mut self) -> Buffer => own self.buffer
+     ╘══╛ 'take' is never used
+
 Error at method_moves.ce:24:39
 23 │ 
 24 │ take: fun(mut self) -> Buffer => own self.buffer
                                           ╘═════════╛ Cannot leave 'self' partly moved
 
+Hint at method_moves.ce:32:2
+31 │ 
+32 │ retarget: fun(mut self, other: str)
+     ╘══════╛ 'retarget' is never used
+
 Error at method_moves.ce:34:15
 33 │ {
 34 │     self.text = other
                      ╘═══╛ Cannot store new borrows in 'self'
+
+Hint at method_moves.ce:37:2
+36 │ 
+37 │ advance: fun(mut self)
+     ╘═════╛ 'advance' is never used
 
 Error at method_moves.ce:47:2
 46 │ unit.release()

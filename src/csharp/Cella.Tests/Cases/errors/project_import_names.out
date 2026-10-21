@@ -3,6 +3,11 @@ Hint at main.ce:3:9
 3 │ use lib.greet
             ╘═══╛ Redundant import
 
+Hint at other.ce:3:1
+2 │ 
+3 │ other: fun -> i32 => 1
+    ╘═══╛ 'other' is never used
+
 Error at test.celp:5:7
 4 │ Imports = [
 5 │     "lib.nothere",

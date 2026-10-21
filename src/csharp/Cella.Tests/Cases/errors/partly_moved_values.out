@@ -1,3 +1,8 @@
+Hint at partly_moved_values.ce:21:1
+20 │ 
+21 │ whole: fun -> Pair
+     ╘═══╛ 'whole' is never used
+
 Hint at partly_moved_values.ce:25:6
 24 │ val left = own pair.left
 25 │ val total = show(imm pair) + pair.right.id + left.id
@@ -15,6 +20,16 @@ Error at partly_moved_values.ce:26:6
          ╘══╛ Cannot use partly moved values
             | Moved on line 24
 
+Hint at partly_moved_values.ce:29:1
+28 │ 
+29 │ refilled: fun -> Pair
+     ╘══════╛ 'refilled' is never used
+
+Hint at partly_moved_values.ce:37:1
+36 │ 
+37 │ elements: fun(i: usize) -> i32
+     ╘══════╛ 'elements' is never used
+
 Hint at partly_moved_values.ce:39:6
 38 │ {
 39 │     var items = [make(1), make(2)]
@@ -25,6 +40,11 @@ Error at partly_moved_values.ce:41:6
 41 │ ret items[i].id + items[1].id + first.id
          ╘═════════╛ Cannot use partly moved values
                    | Moved on line 40
+
+Hint at partly_moved_values.ce:44:1
+43 │ 
+44 │ constant: fun -> i32
+     ╘══════╛ 'constant' is never used
 
 Error at partly_moved_values.ce:48:6
 47 │ val left = own pair.left

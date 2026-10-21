@@ -1,3 +1,8 @@
+Hint at open_generic_literal_errors.ce:3:5
+2 │ 
+3 │ sum[N: const usize]: fun(values: array[u8, N]) -> i32 => 0
+        ^ 'N' doesn't match {camelCase}
+
 Error at open_generic_literal_errors.ce:8:16
 7 │ val values = [100, 200, 250]
 8 │ ret sum([100, 300]) + sum(values)

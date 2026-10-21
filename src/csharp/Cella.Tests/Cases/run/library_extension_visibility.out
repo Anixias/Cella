@@ -1,2 +1,7 @@
+Hint at lib\lib.ce:11:2
+10 │ {
+11 │     internal: fun(imm self) -> i32 => 0
+         ╘══════╛ 'internal' is never used
+
 20 5
 [exit code 0]

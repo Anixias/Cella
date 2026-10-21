@@ -1,3 +1,8 @@
+Hint at own_operator_arguments.ce:19:1
+18 │ 
+19 │ show: fun(imm key: Key) -> i32 => 0
+     ╘══╛ 'show' is never used
+
 Error at own_operator_arguments.ce:25:12
 24 │ var k = Key(0)
 25 │ val a = t[own k]

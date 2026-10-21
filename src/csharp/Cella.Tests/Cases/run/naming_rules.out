@@ -1,0 +1,36 @@
+Warning at main.ce:4:1
+3 │ MAX_COUNT: const i32 = 3
+4 │ minCount: const i32 = 1
+    ╘══════╛ 'minCount' doesn't match {SCREAMING_CASE}
+
+Warning at main.ce:6:1
+5 │ 
+6 │ point_shape: rec
+    ╘═════════╛ 'point_shape' doesn't match {PascalCase}Kind|{PascalCase}
+
+Warning at main.ce:8:2
+7 │ {
+8 │     XValue: i32
+        ╘════╛ 'XValue' doesn't match {camelCase}
+
+Warning at main.ce:15:1
+14 │ 
+15 │ Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
+     ╘════════╛ 'Make_Point' doesn't match {camelCase}|test{PascalCase}
+
+Warning at main.ce:15:17
+14 │ 
+15 │ Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
+                     ╘═════╛ 'Start_X' doesn't match {camelCase}
+
+Warning at main.ce:19:6
+18 │ {
+19 │     val Total = Make_Point(MAX_COUNT).XValue
+             ╘═══╛ 'Total' doesn't match {camelCase}
+
+Warning at main.ce:20:6
+19 │ val Total = Make_Point(MAX_COUNT).XValue
+20 │ for Item in 0..Total
+         ╘══╛ 'Item' doesn't match {camelCase}
+
+[exit code 1]

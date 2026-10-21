@@ -1,5 +1,10 @@
 Error: The program has no 'main' function
 
+Hint at imports.ce:3:1
+2 │ 
+3 │ helper: fun -> i32 => 0
+    ╘════╛ 'helper' is never used
+
 Error at imports.ce:5:1
 4 │ 
 5 │ use test
@@ -9,6 +14,11 @@ Error at late.ce:3:5
 2 │ 
 3 │ mod late
         ╘══╛ Module name must precede all other declarations or imports
+
+Hint at main.ce:3:1
+2 │ 
+3 │ value: fun -> i32 => 0
+    ╘═══╛ 'value' is never used
 
 Error at missing.ce:1:1
 1 │ main: fun -> i32 => 0

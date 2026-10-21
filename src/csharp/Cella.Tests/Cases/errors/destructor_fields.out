@@ -1,3 +1,8 @@
+Hint at destructor_fields.ce:46:1
+45 │ 
+46 │ local: fun -> i32
+     ╘═══╛ 'local' is never used
+
 Error at destructor_fields.ce:49:19
 48 │ val holder = Holder(make(1), 2)
 49 │ val buffer = own holder.buffer
@@ -7,6 +12,11 @@ Error at destructor_fields.ce:50:18
 49 │ val buffer = own holder.buffer
 50 │ val count = own holder.count
                      ╘══════════╛ Cannot move fields out of values with destructors
+
+Hint at destructor_fields.ce:55:1
+54 │ 
+55 │ nested: fun -> i32
+     ╘════╛ 'nested' is never used
 
 Error at destructor_fields.ce:58:11
 57 │ val shell = Shell(Inner(make(1)), [make(2), make(3)])
@@ -18,9 +28,24 @@ Error at destructor_fields.ce:58:38
 58 │ ret take(shell.inner.buffer) + take(shell.items[0])
                                          ╘════════════╛ Cannot move fields out of values with destructors
 
+Hint at destructor_fields.ce:61:1
+60 │ 
+61 │ owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
+     ╘═══╛ 'owned' is never used
+
 Error at destructor_fields.ce:61:47
 60 │ 
 61 │ owned: fun(own holder: Holder) -> i32 => take(holder.buffer)
                                                    ╘═══════════╛ Cannot move fields out of values with destructors
+
+Hint at destructor_fields.ce:63:1
+62 │ 
+63 │ whole: fun -> i32
+     ╘═══╛ 'whole' is never used
+
+Hint at destructor_fields.ce:71:1
+70 │ 
+71 │ refilled: fun(mut holder: Holder) -> i32
+     ╘══════╛ 'refilled' is never used
 
 [compilation failed]

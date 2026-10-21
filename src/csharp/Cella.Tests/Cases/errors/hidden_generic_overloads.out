@@ -1,3 +1,13 @@
+Hint at a.ce:3:1
+2 │ 
+3 │ show[T]: pvt fun(imm x: T) -> i32 => 0
+    ╘══╛ 'show' is never used
+
+Hint at a.ce:4:1
+3 │ show[T]: pvt fun(imm x: T) -> i32 => 0
+4 │ showTwo[T]: pvt fun(imm x: T) -> i32 => 0
+    ╘═════╛ 'showTwo' is never used
+
 Error at main.ce:8:10
 7 │ {
 8 │     val a = show(1)

@@ -1,3 +1,8 @@
+Hint at missing_return_values.ce:5:1
+4 │ 
+5 │ answer: fun -> i32
+    ╘════╛ 'answer' is never used
+
 Error at missing_return_values.ce:7:2
 6 │ {
 7 │     ret

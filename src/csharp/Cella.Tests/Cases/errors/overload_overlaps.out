@@ -58,4 +58,24 @@ Error at overload_overlaps.ce:38:2
 38 │ new: op
      ╘═╛ 'Counter.new' overloads cannot accept the same arguments
 
+Hint at overload_overlaps.ce:43:1
+42 │ 
+43 │ distinct: fun(x: str) {}
+     ╘══════╛ 'distinct' is never used
+
+Hint at overload_overlaps.ce:44:1
+43 │ distinct: fun(x: str) {}
+44 │ distinct: fun(...xs: View[i32]) {}
+     ╘══════╛ 'distinct' is never used
+
+Hint at overload_overlaps.ce:46:1
+45 │ 
+46 │ typed: fun(a: i32, b: i32 = 0) {}
+     ╘═══╛ 'typed' is never used
+
+Hint at overload_overlaps.ce:47:1
+46 │ typed: fun(a: i32, b: i32 = 0) {}
+47 │ typed: fun(a: i32, b: str) {}
+     ╘═══╛ 'typed' is never used
+
 [compilation failed]

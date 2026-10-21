@@ -1,17 +1,37 @@
+Hint at closure_stores.ce:32:1
+31 │ 
+32 │ localIntoCapture: fun -> i32
+     ╘══════════════╛ 'localIntoCapture' is never used
+
 Error at closure_stores.ce:39:7
 38 │ val local = 9
 39 │ p = imm local
          ╘═══════╛ Cannot store borrows of local variables in captured variables
+
+Hint at closure_stores.ce:45:1
+44 │ 
+45 │ closureIntoCapture: fun -> i32
+     ╘════════════════╛ 'closureIntoCapture' is never used
 
 Error at closure_stores.ce:51:7
 50 │ {
 51 │     g = fun -> i32 => base
              ╘════════════════╛ Cannot store closures that capture variables in captured variables
 
+Hint at closure_stores.ce:57:1
+56 │ 
+57 │ parameterIntoCapture: fun -> i32
+     ╘══════════════════╛ 'parameterIntoCapture' is never used
+
 Error at closure_stores.ce:61:28
 60 │ var p: imm[i32] = imm zero
 61 │ val f = fun(x: i32) { p = imm x }
                                ╘═══╛ Cannot store borrows of parameters in captured variables
+
+Hint at closure_stores.ce:66:1
+65 │ 
+66 │ scopeEnded: fun -> i32
+     ╘════════╛ 'scopeEnded' is never used
 
 Error at closure_stores.ce:76:10
 75 │ 
@@ -19,15 +39,30 @@ Error at closure_stores.ce:76:10
              ╘════╛ Cannot use borrows of dropped values
                   | Dropped on line 74
 
+Hint at closure_stores.ce:79:1
+78 │ 
+79 │ retarget: fun(mut t: Token)
+     ╘══════╛ 'retarget' is never used
+
 Error at closure_stores.ce:83:10
 82 │ val local = str(@buffer[0], 2)
 83 │ val f = fun { t.text = local }
              ╘════════════════════╛ Cannot store new borrows in 'mut' parameters
 
+Hint at closure_stores.ce:87:1
+86 │ 
+87 │ returned: fun -> Token
+     ╘══════╛ 'returned' is never used
+
 Error at closure_stores.ce:94:6
 93 │ f()
 94 │ ret t
          ^ Cannot return borrows of local variables
+
+Hint at closure_stores.ce:97:1
+96 │ 
+97 │ lambdaParameterStore: fun -> i32
+     ╘══════════════════╛ 'lambdaParameterStore' is never used
 
 Hint at closure_stores.ce:99:6
 98 │ {
@@ -44,17 +79,32 @@ Error at closure_stores.ce:103:48
 103 │ apply(mut t, fun(mut tt: Tally) { tt.count = imm local })
                                                    ╘═══════╛ Cannot store new borrows in 'mut' parameters
 
+Hint at closure_stores.ce:109:1
+108 │ 
+109 │ nested: fun -> i32
+      ╘════╛ 'nested' is never used
+
 Error at closure_stores.ce:118:6
 117 │ 
 118 │ ret p
           ^ Cannot use borrows of dropped values
           | Dropped on line 116
 
+Hint at closure_stores.ce:121:1
+120 │ 
+121 │ reassigned: fun -> i32
+      ╘════════╛ 'reassigned' is never used
+
 Error at closure_stores.ce:127:6
 126 │ call(replace)
 127 │ ret inside.id
           ╘════╛ Cannot use borrows of reassigned values
                | Reassigned on line 126
+
+Hint at closure_stores.ce:130:1
+129 │ 
+130 │ caseChanged: fun -> i32
+      ╘═════════╛ 'caseChanged' is never used
 
 Error at closure_stores.ce:139:8
 138 │ reset()

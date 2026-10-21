@@ -3,6 +3,11 @@ Error at constant_context_overflow.ce:7:18
 7 │     data: array[u8, kb * 64]
                         ╘═════╛ Multiplication overflows 'u16'
 
+Hint at constant_context_overflow.ce:10:6
+ 9 │ 
+10 │ Ring[N: const u8]: rec
+          ^ 'N' doesn't match {camelCase}
+
 Error at constant_context_overflow.ce:18:6
 17 │ a = 0
 18 │ b = u8(200) + 100

@@ -1,3 +1,8 @@
+Hint at value_parameter_element_moves.ce:18:6
+17 │ 
+18 │ swap[N: const usize]: fun(mut items: array[Item, N], own item: Item) -> i32
+          ^ 'N' doesn't match {camelCase}
+
 drop 1
 1
 3 2

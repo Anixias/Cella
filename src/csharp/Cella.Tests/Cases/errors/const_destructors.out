@@ -1,7 +1,17 @@
+Hint at const_destructors.ce:10:1
+ 9 │ 
+10 │ Handle: const Buffer = Buffer(1)
+     ╘════╛ 'Handle' doesn't match {camelCase}
+
 Error at const_destructors.ce:10:15
  9 │ 
 10 │ Handle: const Buffer = Buffer(1)
                    ╘════╛ Cannot store values with destructors in constants
+
+Hint at const_destructors.ce:14:2
+13 │ {
+14 │     Spare: const Buffer = Buffer(2)
+         ╘═══╛ 'Spare' doesn't match {camelCase}
 
 Error at const_destructors.ce:14:15
 13 │ {

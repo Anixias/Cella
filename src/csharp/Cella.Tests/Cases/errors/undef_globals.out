@@ -3,10 +3,20 @@ Error at undef_globals.ce:3:29
 3 │ buffer: var array[u8, 16] = undef
                                 ╘═══╛ Cannot use 'undef' on module variables
 
+Hint at undef_globals.ce:4:1
+3 │ buffer: var array[u8, 16] = undef
+4 │ limit: val i32 = undef
+    ╘═══╛ 'limit' is never used
+
 Error at undef_globals.ce:4:18
 3 │ buffer: var array[u8, 16] = undef
 4 │ limit: val i32 = undef
                      ╘═══╛ Cannot use 'undef' on module values
+
+Hint at undef_globals.ce:8:2
+7 │ {
+8 │     count: var i32 = undef
+        ╘═══╛ 'count' is never used
 
 Error at undef_globals.ce:8:19
 7 │ {

@@ -3,6 +3,11 @@ Error at array_sizes.ce:5:9
 5 │     items: array[u64, 2305843009213693952]
                ╘═════════════════════════════╛ 'array[u64, 2305843009213693952]' is too large
 
+Hint at array_sizes.ce:8:9
+7 │ 
+8 │ Ring[T, N: const usize]: rec
+            ^ 'N' doesn't match {camelCase}
+
 Error at array_sizes.ce:13:18
 12 │ 
 13 │ take: fun(items: array[u8, 9223372036854775808]) {}

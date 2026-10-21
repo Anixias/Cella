@@ -1,3 +1,8 @@
+Hint at method_receivers.ce:26:2
+25 │ 
+26 │ heal: fun(imm self)
+     ╘══╛ 'heal' is never used
+
 Error at method_receivers.ce:28:3
 27 │ {
 28 │     self.restore(1)
@@ -7,6 +12,11 @@ Error at method_receivers.ce:29:3
 28 │ self.restore(1)
 29 │ self.hp = 0
      ╘═════╛ Cannot reassign read-only parameters
+
+Hint at method_receivers.ce:33:1
+32 │ 
+33 │ restoreCopy: fun(imm unit: Unit)
+     ╘═════════╛ 'restoreCopy' is never used
 
 Error at method_receivers.ce:35:2
 34 │ {

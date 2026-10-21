@@ -14,16 +14,31 @@ Hint at redundant_markers.ce:42:11
 42 │ texture: req Texture
               ╘═╛ Redundant 'req'
 
+Hint at redundant_markers.ce:53:1
+52 │ 
+53 │ within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool => low < value || value == low
+     ╘════╛ 'within' is never used
+
 Hint at redundant_markers.ce:53:11
 52 │ 
 53 │ within[T: Eq + Ord]: fun(imm value: T, imm low: T) -> bool => low < value || value == low
                ╘╛ Redundant 'Eq'
                 | Required by 'Ord'
 
+Hint at redundant_markers.ce:55:1
+54 │ 
+55 │ look: fun(imm texture: Texture) -> i32
+     ╘══╛ 'look' is never used
+
 Hint at redundant_markers.ce:57:13
 56 │ {
 57 │     val same = imm texture
                     ╘═╛ Redundant 'imm'
+
+Hint at redundant_markers.ce:61:1
+60 │ 
+61 │ give: fun(own texture: Texture) -> Texture
+     ╘══╛ 'give' is never used
 
 Hint at redundant_markers.ce:63:6
 62 │ {

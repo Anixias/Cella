@@ -53,10 +53,25 @@ Error at hidden_signature_types.ce:44:15
 44 │ make: fun -> Node => Node(1)
                   ╘══╛ 'Node' is less visible than 'make'
 
+Hint at hidden_signature_types.ce:45:2
+44 │ make: fun -> Node => Node(1)
+45 │ peek: mod fun(secret: Secret) -> i32 => 0
+     ╘══╛ 'peek' is never used
+
+Hint at hidden_signature_types.ce:46:2
+45 │ peek: mod fun(secret: Secret) -> i32 => 0
+46 │ inner: pvt fun(node: Node) -> i32 => 0
+     ╘═══╛ 'inner' is never used
+
 Error at hidden_signature_types.ce:52:13
 51 │ empty
 52 │ leaf(node: Node)
                 ╘══╛ 'Node' is less visible than 'Tree'
+
+Hint at hidden_signature_types.ce:59:2
+58 │ 
+59 │ make: fun -> Node => Node(1)
+     ╘══╛ 'make' is never used
 
 Error at hidden_signature_types.ce:64:8
 63 │ {
@@ -77,6 +92,16 @@ Error at hidden_signature_types.ce:72:23
 71 │ 
 72 │ expose: mod fun(node: Node) -> i32 => node.value
                            ╘══╛ 'Node' is less visible than 'expose'
+
+Hint at hidden_signature_types.ce:74:1
+73 │ 
+74 │ keep: pvt fun(node: Node) -> i32 => node.value
+     ╘══╛ 'keep' is never used
+
+Hint at hidden_signature_types.ce:76:1
+75 │ 
+76 │ share: mod fun(secret: Secret) -> i32 => secret.code
+     ╘═══╛ 'share' is never used
 
 Error at hidden_signature_types.ce:78:25
 77 │ 

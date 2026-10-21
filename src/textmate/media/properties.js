@@ -103,7 +103,7 @@
 		for (const [title, names] of groups) {
 			const extra = title === "Application"
 				? settings.settings.filter(setting => !grouped.has(setting.name) &&
-					!["flags", "lints", "references"].includes(setting.kind)).map(setting => setting.name)
+					["choice", "boolean", "version", "textList", "text"].includes(setting.kind)).map(setting => setting.name)
 				: [];
 
 			section(title, names.concat(extra));

@@ -3,6 +3,11 @@ Error at when_block_syntax_recovery.ce:5:19
 5 │     f: fun -> i32 => )
                          ^ Expected an expression
 
+Hint at when_block_syntax_recovery.ce:7:2
+6 │ 
+7 │ g: fun -> i32 => 1
+    ^ 'g' is never used
+
 Error at when_block_syntax_recovery.ce:9:19
 8 │ 
 9 │ k: fun -> i32 => ]

@@ -1,3 +1,8 @@
+Hint at non_generic_type_arguments.ce:6:2
+5 │ x: i32
+6 │ n: var i32 = 3
+    ^ 'n' is never used
+
 Error at non_generic_type_arguments.ce:17:10
 16 │ {
 17 │     val b = Point[u8](1)

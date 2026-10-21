@@ -64,6 +64,16 @@ Error at variadic_declarations.ce:53:18
 53 │ compare: ext fun(...values: View[i32]) -> i32 => 0
                       ╘═╛ Cannot take variadic parameters in 'ext' functions
 
+Hint at variadic_declarations.ce:54:1
+53 │ compare: ext fun(...values: View[i32]) -> i32 => 0
+54 │ same: fun(values: View[i32]) {}
+     ╘══╛ 'same' is never used
+
+Hint at variadic_declarations.ce:55:1
+54 │ same: fun(values: View[i32]) {}
+55 │ same: fun(...values: View[i32]) {}
+     ╘══╛ 'same' is never used
+
 Error at variadic_declarations.ce:57:1
 56 │ 
 57 │ main: fun(...args: View[str]) -> i32 => 0

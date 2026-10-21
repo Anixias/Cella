@@ -95,7 +95,7 @@ class CellaPropertiesDialog(private val project: Project, private val loaded: Lo
 	}
 
 	private val settings = loaded.settings
-	private val schema = settings.settings.filter { it.kind !in setOf("flags", "lints", "references") }
+	private val schema = settings.settings.filter { it.kind in setOf("choice", "boolean", "version", "textList", "text") }
 	private val grouped = setOf("OutputType", "AssemblyName", "CellaVersion", "StandardLibrary", "Referenceable",
 		"BoundsChecks", "OverflowChecks", "DebugInfo", "SystemLinkPreference", "Imports", "Prelude")
 	private val values = linkedMapOf<String?, MutableMap<String, Any>>()

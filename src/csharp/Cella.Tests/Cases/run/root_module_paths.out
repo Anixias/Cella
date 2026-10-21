@@ -1,2 +1,7 @@
+Hint at main.ce:7:1
+6 │ }
+7 │ geometry: rec { x: i32 }
+    ╘══════╛ 'geometry' doesn't match {PascalCase}
+
 4 4 3 20
 [exit code 0]

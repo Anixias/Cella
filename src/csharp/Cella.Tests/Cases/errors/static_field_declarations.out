@@ -18,6 +18,11 @@ Error at static_field_declarations.ce:13:16
 13 │ secret: const Node = Node(1)
                    ╘══╛ 'Node' is less visible than 'secret'
 
+Hint at static_field_declarations.ce:14:2
+13 │ secret: const Node = Node(1)
+14 │ hidden: pvt const Node = Node(2)
+     ╘════╛ 'hidden' is never used
+
 Error at static_field_declarations.ce:15:2
 14 │ hidden: pvt const Node = Node(2)
 15 │ cycle: const i32 = cycle + 1

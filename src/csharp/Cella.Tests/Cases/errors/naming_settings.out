@@ -1,0 +1,5 @@
+<case>\test.celp: Unknown setting 'Kinds' in [Naming]
+<case>\test.celp: '{camelcase}' is not a valid 'Functions' in [Naming]
+<case>\test.celp: 'Fields' in [Naming] must be a string
+<case>\test.celp: 'my_{camelCase}{PascalCase}' is not a valid 'Locals' in [Naming]
+[compilation failed]

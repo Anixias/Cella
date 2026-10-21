@@ -1,3 +1,8 @@
+Hint at raw_filling.ce:38:1
+37 │ 
+38 │ moved: fun -> i32
+     ╘═══╛ 'moved' is never used
+
 Hint at raw_filling.ce:42:6
 41 │ val c = own b
 42 │ val p = @b
@@ -9,6 +14,11 @@ Error at raw_filling.ce:42:11
               ^ Cannot use moved values
               | Moved on line 41
 
+Hint at raw_filling.ce:46:1
+45 │ 
+46 │ unassigned: fun -> i32
+     ╘════════╛ 'unassigned' is never used
+
 Hint at raw_filling.ce:49:6
 48 │ var r: R
 49 │ val p = @r
@@ -18,6 +28,11 @@ Error at raw_filling.ce:49:11
 48 │ var r: R
 49 │ val p = @r
               ^ Cannot use uninitialized values
+
+Hint at raw_filling.ce:53:1
+52 │ 
+53 │ later: fun -> i32
+     ╘═══╛ 'later' is never used
 
 Hint at raw_filling.ce:56:6
 55 │ val v: i32
@@ -29,6 +44,11 @@ Error at raw_filling.ce:56:11
 56 │ val p = @v
               ^ Cannot use uninitialized values
 
+Hint at raw_filling.ce:60:1
+59 │ 
+60 │ borrowed: fun -> i32
+     ╘══════╛ 'borrowed' is never used
+
 Error at raw_filling.ce:63:11
 62 │ var n: i32 = undef
 63 │ bump(mut n)
@@ -39,15 +59,30 @@ Error at raw_filling.ce:64:6
 64 │ ret n
          ^ Cannot use uninitialized values
 
+Hint at raw_filling.ce:67:1
+66 │ 
+67 │ sometimes: fun(flag: bool) -> i32
+     ╘═══════╛ 'sometimes' is never used
+
 Error at raw_filling.ce:73:6
 72 │ 
 73 │ ret x
          ^ Cannot use uninitialized values
 
+Hint at raw_filling.ce:76:1
+75 │ 
+76 │ looped: fun(n: usize) -> i32
+     ╘════╛ 'looped' is never used
+
 Error at raw_filling.ce:82:6
 81 │ 
 82 │ ret buf[0]
          ╘════╛ Cannot use uninitialized values
+
+Hint at raw_filling.ce:85:1
+84 │ 
+85 │ field: fun -> i32
+     ╘═══╛ 'field' is never used
 
 Error at raw_filling.ce:89:18
 88 │ fill(@pair.left)

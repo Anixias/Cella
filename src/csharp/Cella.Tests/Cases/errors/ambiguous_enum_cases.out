@@ -1,3 +1,8 @@
+Hint at ambiguous_enum_cases.ce:17:1
+16 │ some: fun(value: i32) -> Option[i32] => Option.some(value)
+17 │ blue: val Team = Team.red
+     ╘══╛ 'blue' is never used
+
 Error at ambiguous_enum_cases.ce:22:20
 21 │ val none = Option[i32].some(1)
 22 │ val picked = pick(none)

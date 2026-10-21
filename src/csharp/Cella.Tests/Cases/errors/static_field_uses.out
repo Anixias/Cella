@@ -1,3 +1,13 @@
+Hint at static_field_uses.ce:6:2
+5 │ hp: i32
+6 │ maxHp: val i32 = 50
+    ╘═══╛ 'maxHp' is never used
+
+Hint at static_field_uses.ce:8:2
+7 │ label: pvt val i32 = 7
+8 │ handler: val fun[i32 -> i32] = twice
+    ╘═════╛ 'handler' is never used
+
 Error at static_field_uses.ce:11:33
 10 │ twice: pvt fun(value: i32) -> i32 => value * 2
 11 │ read: fun(self) -> i32 => self.maxHp

@@ -1,3 +1,13 @@
+Hint at private_members.ce:12:2
+11 │ 
+12 │ make: fun -> Box => Box(1)
+     ╘══╛ 'make' is never used
+
+Hint at private_members.ce:15:2
+14 │ peek: pvt fun(self) -> i32 => self.value
+15 │ read: fun(self) -> i32 => self.peek() + Box.secret()
+     ╘══╛ 'read' is never used
+
 Error at private_members.ce:42:36
 41 │ 
 42 │ reads: fun(box: Box) -> i32 => box.value

@@ -1,3 +1,8 @@
+Hint at borrowed_declaration_moves.ce:42:1
+41 │ 
+42 │ typed: fun(imm texture: Texture)
+     ╘═══╛ 'typed' is never used
+
 Error at borrowed_declaration_moves.ce:44:22
 43 │ {
 44 │     val same: Texture = texture
@@ -8,11 +13,21 @@ Error at borrowed_declaration_moves.ce:45:18
 45 │ val moved = own texture
                      ╘═════╛ Cannot move read-only parameters
 
+Hint at borrowed_declaration_moves.ce:48:1
+47 │ 
+48 │ reassigned: fun -> i32
+     ╘════════╛ 'reassigned' is never used
+
 Error at borrowed_declaration_moves.ce:53:6
 52 │ texture = Texture(5)
 53 │ ret viewed.id
          ╘════╛ Cannot use borrows of reassigned values
               | Reassigned on line 52
+
+Hint at borrowed_declaration_moves.ce:56:1
+55 │ 
+56 │ leak: fun -> imm[Texture]
+     ╘══╛ 'leak' is never used
 
 Error at borrowed_declaration_moves.ce:60:6
 59 │ val inside = *held

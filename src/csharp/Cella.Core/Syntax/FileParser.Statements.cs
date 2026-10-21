@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -256,7 +257,7 @@ public sealed partial class FileParser
 			return null;
 		}
 		
-		return ParseStatement(ref index) is { } body
+		return ParseBody(ref index) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), binding, mode, source, rangeOperator, end, body, label)
 			{
 				BindingMode = bindingMode
@@ -273,7 +274,7 @@ public sealed partial class FileParser
 		}
 		
 		var condition = ParseExpression(ref index);
-		return ParseStatement(ref index) is { } body
+		return ParseBody(ref index) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), condition, body, label)
 			: null;
 	}
@@ -299,13 +300,54 @@ public sealed partial class FileParser
 		return new(SpanLoop(keyword, label, condition.SourceLocation), body, condition, label);
 	}
 	
+	private IStatementNode? ParseBody(ref int index)
+	{
+		var start = index;
+		var attributedBefore = attributedErrors;
+		var attempt = new List<Diagnostic>();
+		var outer = Diagnostics.Redirect(attempt);
+		IStatementNode? body = null;
+		ParseException? failure = null;
+		try
+		{
+			body = ParseStatement(ref index);
+		}
+		catch (ParseException e) when (!e.IsNesting)
+		{
+			failure = e;
+		}
+		finally
+		{
+			Diagnostics.Redirect(outer);
+		}
+		
+		var keepsAttempt = body is not null || Peek(start, TokenType.OpOpenBrace) ||
+		                   Peek(start, TokenType.OpCloseBrace) || AtEnd(start);
+		
+		if (keepsAttempt)
+		{
+			Diagnostics.AddRange(attempt);
+			if (body is not null || Peek(start, TokenType.OpOpenBrace))
+				return failure is null ? body : throw failure;
+			
+			if (failure is not null)
+				AddParseError(failure);
+		}
+		else
+			attributedErrors = attributedBefore;
+		
+		index = start;
+		var (source, range) = Tokens[start - 1].SourceLocation;
+		return new BrokenStatementNode(new(source, new(range.End, range.End)), null, false);
+	}
+	
 	private bool StartsBody(int index) => !IsOnSameLine(index) || Peek(index, TokenType.OpOpenBrace);
 	
 	private void ReportMissing(int index, string expected) =>
 		ReportExpected(IsOnSameLine(index) ? index : index - 1, expected);
 	
 	private LoopStatementNode? ParseLoopStatement(ref int index, Token keyword, Token? label) =>
-		ParseStatement(ref index) is { } body ? new(SpanLoop(keyword, label, body.SourceLocation), body, label) : null;
+		ParseBody(ref index) is { } body ? new(SpanLoop(keyword, label, body.SourceLocation), body, label) : null;
 	
 	private IfStatementNode? ParseIfStatement(ref int index, Token ifToken)
 	{
@@ -323,7 +365,7 @@ public sealed partial class FileParser
 			}
 			
 			var condition = ParseExpression(ref index);
-			if (ParseStatement(ref index) is not { } then)
+			if (ParseBody(ref index) is not { } then)
 				return null;
 			
 			arms.Add((keyword, condition, then));
@@ -333,7 +375,7 @@ public sealed partial class FileParser
 			if (Match(ref index, out keyword, TokenType.KeywordIf))
 				continue;
 			
-			if (ParseStatement(ref index) is not { } last)
+			if (ParseBody(ref index) is not { } last)
 				return null;
 			
 			@else = last;
@@ -358,8 +400,15 @@ public sealed partial class FileParser
 		var value = ParseExpression(ref index);
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 		{
-			ReportExpected(index, "'{'");
-			return null;
+			if (IsOnSameLine(index))
+			{
+				ReportExpected(index, "'{'");
+				return null;
+			}
+			
+			ReportExpected(index - 1, "'{'");
+			var (start, end) = matchToken.SourceLocation;
+			return new(new(start, end.Join(value.SourceLocation.Range)), mode, value, []);
 		}
 		
 		var arms = new List<MatchArmNode>();

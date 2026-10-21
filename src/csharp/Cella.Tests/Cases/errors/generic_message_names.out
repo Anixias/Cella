@@ -3,6 +3,16 @@ Error at generic_message_names.ce:6:32
 6 │ deep: get(imm self) -> i32 => Box[ptr[T]](null).deep
                                   ╘════════════════════╛ Instantiating 'Box.deep' never ends
 
+Hint at generic_message_names.ce:9:7
+8 │ 
+9 │ count[N: const i32]: fun -> i32 => N
+          ^ 'N' doesn't match {camelCase}
+
+Hint at generic_message_names.ce:11:7
+10 │ 
+11 │ twice[N: const i32]: fun -> i32 => count[N - 1]()
+           ^ 'N' doesn't match {camelCase}
+
 Error at generic_message_names.ce:11:42
 10 │ 
 11 │ twice[N: const i32]: fun -> i32 => count[N - 1]()

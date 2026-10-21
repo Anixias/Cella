@@ -1,3 +1,13 @@
+Hint at mut_conversions.ce:14:5
+13 │ 
+14 │ as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
+        ^ 'N' doesn't match {camelCase}
+
+Hint at mut_conversions.ce:28:5
+27 │ 
+28 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+        ^ 'N' doesn't match {camelCase}
+
 Error at mut_conversions.ce:41:7
 40 │ var four: array[i32, 4] = [1, 2, 3, 4]
 41 │ fill(three, 7)

@@ -1,3 +1,8 @@
+Hint at parameter_writes.ce:24:1
+23 │ 
+24 │ readOnly: fun(p: Point, n: i32, values: array[i32, 2])
+     ╘══════╛ 'readOnly' is never used
+
 Error at parameter_writes.ce:26:2
 25 │ {
 26 │     p.x = 5
@@ -27,6 +32,11 @@ Error at parameter_writes.ce:31:13
 30 │ damage(mut p.x, 1)
 31 │ damage(mut values[1], 1)
                 ╘═══════╛ Cannot mutably borrow read-only parameters
+
+Hint at parameter_writes.ce:34:1
+33 │ 
+34 │ owned: fun(own p: Point, own n: i32)
+     ╘═══╛ 'owned' is never used
 
 Error at parameter_writes.ce:43:13
 42 │ {

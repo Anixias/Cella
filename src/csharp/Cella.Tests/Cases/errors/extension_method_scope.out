@@ -15,6 +15,21 @@ Error at main.ce:8:39
 8 │ hiddenModule: fun(x: i32) -> i32 => x.inner()
                                           ╘═══╛ Type 'i32' has no member 'inner'
 
+Hint at main.ce:9:1
+8 │ hiddenModule: fun(x: i32) -> i32 => x.inner()
+9 │ duplicate: fun(x: i32) -> i32 => x.twice()
+    ╘═══════╛ 'duplicate' is never used
+
+Hint at mathx.ce:7:2
+6 │ twice: fun(imm self) -> i32 => self * 2
+7 │ secret: pvt fun(imm self) -> i32 => 1
+    ╘════╛ 'secret' is never used
+
+Hint at mathx.ce:8:2
+7 │ secret: pvt fun(imm self) -> i32 => 1
+8 │ inner: mod fun(imm self) -> i32 => 2
+    ╘═══╛ 'inner' is never used
+
 Error at other.ce:3:38
 2 │ 
 3 │ notImported: fun(x: i32) -> i32 => x.clamp(0, 10)

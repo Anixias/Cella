@@ -1,3 +1,8 @@
+Hint at moved_values.ce:16:1
+15 │ 
+16 │ again: fun -> Buffer
+     ╘═══╛ 'again' is never used
+
 Error at moved_values.ce:20:7
 19 │ take(own a)
 20 │ take(a)
@@ -16,11 +21,21 @@ Error at moved_values.ce:22:6
          ^ Cannot use moved values
          | Moved on line 20
 
+Hint at moved_values.ce:25:1
+24 │ 
+25 │ sometimes: fun(flag: bool) -> i32
+     ╘═══════╛ 'sometimes' is never used
+
 Error at moved_values.ce:31:6
 30 │ 
 31 │ ret a.id
          ╘══╛ Cannot use moved values
             | Moved on line 29
+
+Hint at moved_values.ce:34:1
+33 │ 
+34 │ repeated: fun -> i32
+     ╘══════╛ 'repeated' is never used
 
 Error at moved_values.ce:39:17
 38 │ for _ in 0..3
@@ -33,11 +48,21 @@ Error at moved_values.ce:39:17
                        ^ Cannot use moved values
                        | Moved here in an earlier iteration
 
+Hint at moved_values.ce:44:1
+43 │ 
+44 │ reassigned: fun -> i32
+     ╘════════╛ 'reassigned' is never used
+
 Error at moved_values.ce:50:6
 49 │ val c = own (a = make(3))
 50 │ ret a.id + b.id + c.id
          ╘══╛ Cannot use moved values
             | Moved on line 49
+
+Hint at moved_values.ce:53:1
+52 │ 
+53 │ constant: fun -> i32
+     ╘══════╛ 'constant' is never used
 
 Error at moved_values.ce:57:6
 56 │ take(own a)

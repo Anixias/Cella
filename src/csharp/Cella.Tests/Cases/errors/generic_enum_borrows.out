@@ -1,7 +1,17 @@
+Hint at generic_enum_borrows.ce:8:2
+7 │ 
+8 │ put: fun(mut self, own value: T)
+    ╘═╛ 'put' is never used
+
 Error at generic_enum_borrows.ce:10:10
  9 │ {
 10 │     self = Option.some(own value)
                 ╘════════════════════╛ Cannot store new borrows in 'self'
+
+Hint at generic_enum_borrows.ce:14:1
+13 │ 
+14 │ leak: fun -> Option[imm[i32]]
+     ╘══╛ 'leak' is never used
 
 Error at generic_enum_borrows.ce:17:6
 16 │ val local = 5

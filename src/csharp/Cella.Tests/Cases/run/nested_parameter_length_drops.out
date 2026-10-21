@@ -1,3 +1,8 @@
+Hint at nested_parameter_length_drops.ce:22:7
+21 │ 
+22 │ maybe[N: const usize]: fun(own values: array[array[Token, 3], N], deep: bool)
+           ^ 'N' doesn't match {camelCase}
+
 kept
 drop 6
 drop 5

@@ -1,12 +1,27 @@
+Hint at own_closure_moves.ce:24:1
+23 │ 
+24 │ show: fun(imm texture: Texture)
+     ╘══╛ 'show' is never used
+
 Error at own_closure_moves.ce:26:39
 25 │ {
 26 │     val shown = own fun { printf("%d\n", texture.id) }
                                               ╘═════╛ Cannot move read-only parameters
 
+Hint at own_closure_moves.ce:30:1
+29 │ 
+30 │ bump: fun(mut count: i32) -> i32
+     ╘══╛ 'bump' is never used
+
 Error at own_closure_moves.ce:34:3
 33 │ {
 34 │     count += 1
          ╘═══╛ Cannot leave 'mut' parameters moved
+
+Hint at own_closure_moves.ce:41:1
+40 │ 
+41 │ adder: fun(bonus: i32) -> ref fun[i32 -> i32]
+     ╘═══╛ 'adder' is never used
 
 Error at own_closure_moves.ce:43:6
 42 │ {

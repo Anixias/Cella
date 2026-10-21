@@ -1,2 +1,32 @@
+Hint at bool_constant_folding.ce:8:1
+7 │ 
+8 │ Enabled: const bool = true
+    ╘═════╛ 'Enabled' doesn't match {camelCase}
+
+Hint at bool_constant_folding.ce:9:1
+8 │ Enabled: const bool = true
+9 │ Disabled: const bool = !Enabled
+    ╘══════╛ 'Disabled' doesn't match {camelCase}
+
+Hint at bool_constant_folding.ce:10:1
+ 9 │ Disabled: const bool = !Enabled
+10 │ Mixed: const bool = Enabled && !Disabled || Disabled
+     ╘═══╛ 'Mixed' doesn't match {camelCase}
+
+Hint at bool_constant_folding.ce:11:1
+10 │ Mixed: const bool = Enabled && !Disabled || Disabled
+11 │ Neither: const bool = Disabled || Disabled && Enabled
+     ╘═════╛ 'Neither' doesn't match {camelCase}
+
+Hint at bool_constant_folding.ce:12:1
+11 │ Neither: const bool = Disabled || Disabled && Enabled
+12 │ Same: const bool = Enabled == !Disabled
+     ╘══╛ 'Same' doesn't match {camelCase}
+
+Hint at bool_constant_folding.ce:13:1
+12 │ Same: const bool = Enabled == !Disabled
+13 │ Different: const bool = Enabled != Disabled
+     ╘═══════╛ 'Different' doesn't match {camelCase}
+
 1 0 1 1 0
 [exit code 0]

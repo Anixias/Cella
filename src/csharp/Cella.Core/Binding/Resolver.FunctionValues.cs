@@ -184,6 +184,8 @@ public sealed partial class Resolver
 	{
 		if (symbol is LocalVariableSymbol used)
 			MarkUsed(used);
+		else
+			MarkUsed(symbol);
 		
 		switch (symbol)
 		{
@@ -245,13 +247,21 @@ public sealed partial class Resolver
 		}
 	}
 	
-	private FunctionSymbol[] GetFunctions(Symbol? symbol) => symbol switch
+	private FunctionSymbol[] GetFunctions(Symbol? symbol)
 	{
-		FunctionSymbol f => [f],
-		AmbiguousSymbol a when a.Candidates.All(static c => c is FunctionSymbol) =>
-			RemoveShadowedImports([..a.Candidates.Cast<FunctionSymbol>()]),
-		_ => []
-	};
+		FunctionSymbol[] functions = symbol switch
+		{
+			FunctionSymbol f => [f],
+			AmbiguousSymbol a when a.Candidates.All(static c => c is FunctionSymbol) =>
+				RemoveShadowedImports([..a.Candidates.Cast<FunctionSymbol>()]),
+			_ => []
+		};
+		
+		foreach (var function in functions)
+			MarkUsed(function);
+		
+		return functions;
+	}
 	
 	private FunctionSymbol[] RemoveShadowedImports(FunctionSymbol[] functions)
 	{

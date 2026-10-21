@@ -1,3 +1,18 @@
+Hint at mut_conversion_borrows.ce:14:5
+13 │ 
+14 │ as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
+        ^ 'N' doesn't match {camelCase}
+
+Hint at mut_conversion_borrows.ce:17:1
+16 │ 
+17 │ fill: fun(values: Span[i32], value: i32) {}
+     ╘══╛ 'fill' is never used
+
+Hint at mut_conversion_borrows.ce:21:1
+20 │ 
+21 │ local: fun -> Span[i32]
+     ╘═══╛ 'local' is never used
+
 Error at mut_conversion_borrows.ce:24:6
 23 │ var items = [1, 2]
 24 │ ret keep(mut items)

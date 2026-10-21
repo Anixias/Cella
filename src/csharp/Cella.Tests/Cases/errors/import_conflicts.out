@@ -34,6 +34,16 @@ Error at other.ce:6:1
     ╘═══╛ 'limit' is ambiguous
         | Also imported from 'geometry'
 
+Hint at other.ce:6:1
+5 │ Point: rec { z: i32 }
+6 │ limit: val i32 = 3
+    ╘═══╛ 'limit' is never used
+
+Hint at other.ce:7:1
+6 │ limit: val i32 = 3
+7 │ area: rec { z: i32 }
+    ╘══╛ 'area' doesn't match {PascalCase}
+
 Error at other.ce:7:1
 6 │ limit: val i32 = 3
 7 │ area: rec { z: i32 }

@@ -1,27 +1,57 @@
+Hint at str_pointer_sources.ce:13:1
+12 │ 
+13 │ sliceData: fun -> str
+     ╘═══════╛ 'sliceData' is never used
+
 Error at str_pointer_sources.ce:17:6
 16 │ val whole = str(@buffer[0], 3)
 17 │ ret str(whole.data + 1, 2)
          ╘════════════════════╛ Cannot return borrows of local variables
+
+Hint at str_pointer_sources.ce:20:1
+19 │ 
+20 │ prefixData: fun -> str
+     ╘════════╛ 'prefixData' is never used
 
 Error at str_pointer_sources.ce:24:6
 23 │ val whole = str(@buffer[0], 3)
 24 │ ret str(whole.data, 2)
          ╘════════════════╛ Cannot return borrows of local variables
 
+Hint at str_pointer_sources.ce:27:1
+26 │ 
+27 │ offsetLocal: fun -> str
+     ╘═════════╛ 'offsetLocal' is never used
+
 Error at str_pointer_sources.ce:32:6
 31 │ val q = p + 1
 32 │ ret str(q, 1)
          ╘═══════╛ Cannot return borrows of local variables
+
+Hint at str_pointer_sources.ce:35:1
+34 │ 
+35 │ offsetAddress: fun -> str
+     ╘═══════════╛ 'offsetAddress' is never used
 
 Error at str_pointer_sources.ce:38:6
 37 │ var buffer = [u8(65), u8(66), u8(67)]
 38 │ ret str(@buffer[0] + 1, 2)
          ╘════════════════════╛ Cannot return borrows of local variables
 
+Hint at str_pointer_sources.ce:41:1
+40 │ 
+41 │ reassigned: fun -> str
+     ╘════════╛ 'reassigned' is never used
+
 Error at str_pointer_sources.ce:46:6
 45 │ p = @buffer[0]
 46 │ ret str(p, 1)
          ╘═══════╛ Cannot return borrows of local variables
+
+Hint at str_pointer_sources.ce:49:1
+48 │ 
+49 │ recordField: fun -> str
+     ╘═════════╛ 'recordField' is never used
 
 Error at str_pointer_sources.ce:53:6
 52 │ val r = Raw(@buffer[0])

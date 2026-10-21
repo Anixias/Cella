@@ -1,3 +1,8 @@
+Hint at top_level_recovery_stray_paren.ce:3:1
+2 │ 
+3 │ f: fun -> i32 => 1)
+    ^ 'f' is never used
+
 Error at top_level_recovery_stray_paren.ce:3:19
 2 │ 
 3 │ f: fun -> i32 => 1)

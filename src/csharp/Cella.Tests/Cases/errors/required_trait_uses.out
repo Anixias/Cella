@@ -5,6 +5,11 @@ Error at required_trait_uses.ce:24:45
                                                           | Candidate on line 5
                                                           | Candidate on line 10
 
+Hint at required_trait_uses.ce:26:1
+25 │ 
+26 │ pick[T: Shape]: fun(imm value: T) -> i32 => Named(value).name() + Shape(value).name()
+     ╘══╛ 'pick' is never used
+
 Error at required_trait_uses.ce:30:50
 29 │ 
 30 │ fromNamed[T: Named]: fun(imm value: T) -> f64 => needsShape(value)

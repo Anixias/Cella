@@ -13,6 +13,11 @@ Error at type_values.ce:27:10
 27 │     val a = Box[i32]
                  ╘══════╛ Cannot use types as values
 
+Hint at type_values.ce:31:1
+30 │ 
+31 │ array_type: fun -> i32
+     ╘════════╛ 'array_type' doesn't match {camelCase}
+
 Error at type_values.ce:33:10
 32 │ {
 33 │     val a = array[i32, 3]

@@ -90,7 +90,10 @@ public static class ProjectRequests
 		if ((string?)edit["setting"] is { } name)
 		{
 			var setting = ProjectSchema.Find(name);
-			if (setting is null or { Kind: SettingKind.Flags or SettingKind.Lints or SettingKind.References } ||
+			if (setting is null or
+			    {
+				    Kind: SettingKind.Flags or SettingKind.Lints or SettingKind.Naming or SettingKind.References
+			    } ||
 			    condition is not null && !setting.IsConditional)
 				throw new CelpEditException($"Can't set '{name}' here");
 			
@@ -195,7 +198,8 @@ public static class ProjectRequests
 	{
 		var values = new JsonObject();
 		foreach (var setting in ProjectSchema.Settings.Where(static setting =>
-			         setting.Kind is not (SettingKind.Flags or SettingKind.Lints or SettingKind.References)))
+			         setting.Kind is not (SettingKind.Flags or SettingKind.Lints or SettingKind.Naming
+				         or SettingKind.References)))
 		{
 			var value = document.GetValue(table.Add(new CelpKey(setting.Name)));
 			values[setting.Name] = value switch

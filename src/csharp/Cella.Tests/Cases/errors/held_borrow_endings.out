@@ -1,3 +1,8 @@
+Hint at held_borrow_endings.ce:26:1
+25 │ 
+26 │ holderSourceMoved: fun -> i32
+     ╘═══════════════╛ 'holderSourceMoved' is never used
+
 Hint at held_borrow_endings.ce:28:6
 27 │ {
 28 │     var a = Text(1)
@@ -8,6 +13,11 @@ Error at held_borrow_endings.ce:32:6
 32 │ ret r.t.id
          ^ Cannot use borrows of moved values
          | Moved on line 31
+
+Hint at held_borrow_endings.ce:35:1
+34 │ 
+35 │ holderRepointed: fun -> i32
+     ╘═════════════╛ 'holderRepointed' is never used
 
 Hint at held_borrow_endings.ce:37:6
 36 │ {
@@ -25,6 +35,11 @@ Error at held_borrow_endings.ce:45:6
          ^ Cannot use borrows of dropped values
          | Dropped on line 43
 
+Hint at held_borrow_endings.ce:48:1
+47 │ 
+48 │ closureViewScope: fun -> i32
+     ╘══════════════╛ 'closureViewScope' is never used
+
 Hint at held_borrow_endings.ce:50:6
 49 │ {
 50 │     var y = 0
@@ -41,11 +56,21 @@ Error at held_borrow_endings.ce:58:6
          ^ Cannot use borrows of dropped values
          | Dropped on line 56
 
+Hint at held_borrow_endings.ce:61:1
+60 │ 
+61 │ closureViewMoved: fun -> i32
+     ╘══════════════╛ 'closureViewMoved' is never used
+
 Error at held_borrow_endings.ce:67:6
 66 │ consume(own text)
 67 │ ret f()
          ^ Cannot use borrows of moved values
          | Moved on line 66
+
+Hint at held_borrow_endings.ce:70:1
+69 │ 
+70 │ closureOfClosure: fun -> i32
+     ╘══════════════╛ 'closureOfClosure' is never used
 
 Error at held_borrow_endings.ce:76:6
 75 │ consume(own text)

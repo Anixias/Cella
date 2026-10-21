@@ -1,7 +1,17 @@
+Hint at static_field_writes.ce:15:2
+14 │ origin: val Unit = Unit(0)
+15 │ clock: val i32 = now()
+     ╘═══╛ 'clock' is never used
+
 Error at static_field_writes.ce:15:19
 14 │ origin: val Unit = Unit(0)
 15 │ clock: val i32 = now()
                       ╘═══╛ The initial value of 'clock' must be a constant
+
+Hint at static_field_writes.ce:20:1
+19 │ 
+20 │ writes: fun
+     ╘════╛ 'writes' is never used
 
 Error at static_field_writes.ce:22:2
 21 │ {

@@ -1,22 +1,52 @@
+Hint at unreachable_anchors.ce:8:1
+7 │ 
+8 │ loopBreak: fun -> i32
+    ╘═══════╛ 'loopBreak' is never used
+
 Warning at unreachable_anchors.ce:13:3
 12 │ break
 13 │ printf("dead1\n")
      ^ Unreachable code
+
+Hint at unreachable_anchors.ce:19:1
+18 │ 
+19 │ deadIf: fun(c: bool) -> i32
+     ╘════╛ 'deadIf' is never used
 
 Warning at unreachable_anchors.ce:22:2
 21 │ ret 0
 22 │ if c
      ^ Unreachable code
 
+Hint at unreachable_anchors.ce:26:1
+25 │ 
+26 │ deadWhile: fun(c: bool) -> i32
+     ╘═══════╛ 'deadWhile' is never used
+
 Warning at unreachable_anchors.ce:29:2
 28 │ ret 0
 29 │ while c
      ^ Unreachable code
 
+Hint at unreachable_anchors.ce:33:1
+32 │ 
+33 │ deadLoop: fun -> i32
+     ╘══════╛ 'deadLoop' is never used
+
 Warning at unreachable_anchors.ce:36:2
 35 │ ret 0
 36 │ loop
      ^ Unreachable code
+
+Hint at unreachable_anchors.ce:42:1
+41 │ 
+42 │ outerBreak: fun -> i32
+     ╘════════╛ 'outerBreak' is never used
+
+Hint at unreachable_anchors.ce:56:1
+55 │ 
+56 │ compound: fun -> i32
+     ╘══════╛ 'compound' is never used
 
 Warning at unreachable_anchors.ce:60:2
 59 │ ret total

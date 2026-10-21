@@ -43,10 +43,20 @@ Error at record_member_syntax.ce:62:2
 62 │     self: i32
          ╘══╛ 'self' is a keyword
 
+Hint at record_member_syntax.ce:68:2
+67 │ x: i32
+68 │ s: var i32 = undef
+     ^ 's' is never used
+
 Error at record_member_syntax.ce:68:15
 67 │ x: i32
 68 │ s: var i32 = undef
                   ╘═══╛ Cannot use 'undef' on static variables
+
+Hint at record_member_syntax.ce:71:1
+70 │ 
+71 │ g: var i32 = undef
+     ^ 'g' is never used
 
 Error at record_member_syntax.ce:71:14
 70 │ 

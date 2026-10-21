@@ -1,3 +1,8 @@
+Hint at other.ce:7:1
+6 │ limit: val i32 = 3
+7 │ hidden: pvt fun -> i32 => 4
+    ╘════╛ 'hidden' is never used
+
 1 2
 10 3 100
 5 6 3

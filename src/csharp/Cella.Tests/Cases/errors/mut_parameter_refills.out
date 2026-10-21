@@ -1,22 +1,47 @@
+Hint at mut_parameter_refills.ce:31:1
+30 │ 
+31 │ whole: fun(mut buffer: Buffer)
+     ╘═══╛ 'whole' is never used
+
 Error at mut_parameter_refills.ce:33:11
 32 │ {
 33 │     take(own buffer)
                   ╘════╛ Cannot leave 'mut' parameters moved
+
+Hint at mut_parameter_refills.ce:36:1
+35 │ 
+36 │ field: fun(mut pair: Pair) -> i32
+     ╘═══╛ 'field' is never used
 
 Error at mut_parameter_refills.ce:38:16
 37 │ {
 38 │     val old = own pair.left
                        ╘═══════╛ Cannot leave 'mut' parameters partly moved
 
+Hint at mut_parameter_refills.ce:42:1
+41 │ 
+42 │ early: fun(mut buffer: Buffer, flag: bool) -> i32
+     ╘═══╛ 'early' is never used
+
 Error at mut_parameter_refills.ce:44:16
 43 │ {
 44 │     val old = own buffer
                        ╘════╛ Cannot leave 'mut' parameters moved
 
+Hint at mut_parameter_refills.ce:52:1
+51 │ 
+52 │ swap: fun(mut pair: Pair)
+     ╘══╛ 'swap' is never used
+
 Error at mut_parameter_refills.ce:68:12
 67 │ self.buffer = make(id)
 68 │ keep(own self)
               ╘══╛ Cannot leave 'self' moved
+
+Hint at mut_parameter_refills.ce:72:1
+71 │ 
+72 │ implicit: fun(mut buffer: Buffer)
+     ╘══════╛ 'implicit' is never used
 
 Error at mut_parameter_refills.ce:74:21
 73 │ {

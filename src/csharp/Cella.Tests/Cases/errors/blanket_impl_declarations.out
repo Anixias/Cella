@@ -3,15 +3,30 @@ Error at blanket_impl_declarations.ce:23:11
 23 │ [T]: impl Size
                ╘══╛ 'T' needs 'Size.size'
 
+Hint at blanket_impl_declarations.ce:27:2
+26 │ {
+27 │     extra: fun(imm self) -> i32 => 0
+         ╘═══╛ 'extra' is never used
+
 Error at blanket_impl_declarations.ce:30:5
 29 │ 
 30 │ [T, U]: impl Describe
          ^ Blanket impls take one type parameter
 
+Hint at blanket_impl_declarations.ce:35:2
+34 │ 
+35 │ [i32]: impl Describe
+      ╘═╛ 'i32' doesn't match {PascalCase}
+
 Error at blanket_impl_declarations.ce:35:2
 34 │ 
 35 │ [i32]: impl Describe
       ╘═╛ Expected a type parameter
+
+Hint at blanket_impl_declarations.ce:40:2
+39 │ 
+40 │ [N: const usize]: impl Describe
+      ^ 'N' doesn't match {camelCase}
 
 Error at blanket_impl_declarations.ce:40:2
 39 │ 

@@ -1,3 +1,8 @@
+Hint at earlier_iteration_hints.ce:16:1
+15 │ 
+16 │ oneLine: fun
+     ╘═════╛ 'oneLine' is never used
+
 Error at earlier_iteration_hints.ce:19:27
 18 │ val a = N(1)
 19 │ for i in 0..3 { show(imm a)  val t = take(own a) }
@@ -15,6 +20,11 @@ Error at earlier_iteration_hints.ce:19:48
                                                    ^ Cannot use moved values
                                                    | Moved here in an earlier iteration
 
+Hint at earlier_iteration_hints.ce:22:1
+21 │ 
+22 │ multiLine: fun
+     ╘═══════╛ 'multiLine' is never used
+
 Hint at earlier_iteration_hints.ce:27:7
 26 │ {
 27 │     val r = both(imm a.id,
@@ -25,6 +35,11 @@ Error at earlier_iteration_hints.ce:27:20
 27 │     val r = both(imm a.id,
                           ╘══╛ Cannot use moved values
                              | Moved on line 28
+
+Hint at earlier_iteration_hints.ce:33:1
+32 │ 
+33 │ nested: fun
+     ╘════╛ 'nested' is never used
 
 Hint at earlier_iteration_hints.ce:40:8
 39 │ {

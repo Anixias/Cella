@@ -9,6 +9,16 @@ Error at question_operator_bodies.ce:23:56
                                                            ╘════╛ Cannot use moved values
                                                                 | Moved on line 23
 
+Hint at question_operator_bodies.ce:55:1
+54 │ 
+55 │ one: fun -> i32
+     ╘═╛ 'one' is never used
+
+Hint at question_operator_bodies.ce:62:1
+61 │ 
+62 │ two: fun -> i32
+     ╘═╛ 'two' is never used
+
 Error at question_operator_bodies.ce:72:11
 71 │ val p = Plain(1)
 72 │ val x = p?

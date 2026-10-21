@@ -1,3 +1,13 @@
+Hint at new_constraint_syntax.ce:3:1
+2 │ 
+3 │ first[T: new]: fun -> i32 => 0
+    ╘═══╛ 'first' is never used
+
+Hint at new_constraint_syntax.ce:5:1
+4 │ 
+5 │ second[T: new + copy]: fun -> i32 => 0
+    ╘════╛ 'second' is never used
+
 Error at new_constraint_syntax.ce:7:14
 6 │ 
 7 │ third[T: new(3)]: fun -> i32 = 0

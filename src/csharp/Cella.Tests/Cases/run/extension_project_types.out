@@ -1,1 +1,6 @@
+Hint at mathx.ce:13:1
+12 │ 
+13 │ helper: fun(imm p: Point) -> i32 => p.x
+     ╘════╛ 'helper' is never used
+
 [exit code 0]

@@ -1,21 +1,56 @@
+Hint at never_operands_dead.ce:24:1
+23 │ 
+24 │ unary: fun(n: i32) -> i32
+     ╘═══╛ 'unary' is never used
+
 Warning at never_operands_dead.ce:27:2
 26 │ printf("%d\n", -(ret n))
 27 │ ret 0
      ^ Unreachable code
+
+Hint at never_operands_dead.ce:30:1
+29 │ 
+30 │ binary: fun -> i32
+     ╘════╛ 'binary' is never used
 
 Warning at never_operands_dead.ce:33:2
 32 │ printf("%d\n", exit(2) + exit(3))
 33 │ ret 0
      ^ Unreachable code
 
+Hint at never_operands_dead.ce:36:1
+35 │ 
+36 │ declared: fun -> i32
+     ╘══════╛ 'declared' is never used
+
+Hint at never_operands_dead.ce:41:1
+40 │ 
+41 │ call: fun -> i32 => show(exit(8))
+     ╘══╛ 'call' is never used
+
+Hint at never_operands_dead.ce:43:1
+42 │ 
+43 │ loopOver: fun -> i32
+     ╘══════╛ 'loopOver' is never used
+
 Warning at never_operands_dead.ce:49:2
 48 │ 
 49 │ ret 0
      ^ Unreachable code
 
+Hint at never_operands_dead.ce:52:1
+51 │ 
+52 │ hole: fun(n: i32) -> i32
+     ╘══╛ 'hole' is never used
+
 Warning at never_operands_dead.ce:55:2
 54 │ printf("%s\n", "a{ret n}b")
 55 │ ret 0
      ^ Unreachable code
+
+Hint at never_operands_dead.ce:58:1
+57 │ 
+58 │ voidReturn: fun
+     ╘════════╛ 'voidReturn' is never used
 
 [exit code 0]

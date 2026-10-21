@@ -1,2 +1,6 @@
+Hint at upper.ce:1:5
+1 │ mod Shapes
+        ╘════╛ 'Shapes' doesn't match {camelCase}
+
 1 2
 [exit code 0]

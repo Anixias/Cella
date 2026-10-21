@@ -1,3 +1,13 @@
+Hint at generic_local_constants.ce:3:7
+2 │ 
+3 │ inner[M: const usize]: fun -> usize => M
+          ^ 'M' doesn't match {camelCase}
+
+Hint at generic_local_constants.ce:5:9
+4 │ 
+5 │ shifted[N: const usize]: fun -> usize
+            ^ 'N' doesn't match {camelCase}
+
 Error at generic_local_constants.ce:8:12
 7 │ const n = N + 1
 8 │ ret inner[n]()

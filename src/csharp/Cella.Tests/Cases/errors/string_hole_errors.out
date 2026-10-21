@@ -19,4 +19,9 @@ Error at string_hole_errors.ce:14:38
 14 │ operand: fun(n: i32) => printf("{n + }\n")
                                           ^ Expected an expression
 
+Hint at string_hole_errors.ce:16:1
+15 │ 
+16 │ escaped: fun => printf("\{%d}\n", 5)
+     ╘═════╛ 'escaped' is never used
+
 [compilation failed]

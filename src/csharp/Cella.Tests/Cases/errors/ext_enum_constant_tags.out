@@ -1,3 +1,8 @@
+Hint at ext_enum_constant_tags.ce:16:1
+15 │ 
+16 │ high: val Format = Format(300)
+     ╘══╛ 'high' is never used
+
 Error at ext_enum_constant_tags.ce:16:20
 15 │ 
 16 │ high: val Format = Format(300)

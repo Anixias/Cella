@@ -1,3 +1,8 @@
+Hint at binding_write_after_reassignment.ce:17:2
+16 │ 
+17 │ clear: fun(mut self)
+     ╘═══╛ 'clear' is never used
+
 Error at binding_write_after_reassignment.ce:24:5
 23 │ self = Effect.none
 24 │ b = Buffer(3)

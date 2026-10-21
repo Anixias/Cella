@@ -5,4 +5,9 @@ Error at never_argument_ties.ce:35:6
          | Candidate on line 26
          | Candidate on line 27
 
+Hint at never_argument_ties.ce:38:1
+37 │ 
+38 │ unobserved: fun -> i32 => g(1, abort())
+     ╘════════╛ 'unobserved' is never used
+
 [compilation failed]

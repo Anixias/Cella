@@ -53,4 +53,9 @@ Error at bad_enums.ce:42:1
 42 │ Point: enum
      ╘═══╛ 'Point' is declared more than once in this module
 
+Hint at bad_enums.ce:47:1
+46 │ 
+47 │ current: var Team = Team.blue
+     ╘═════╛ 'current' is never used
+
 [compilation failed]

@@ -3,6 +3,11 @@ Error at range_bound_fits.ce:8:14
 8 │ for b in 0..256
                 ╘═╛ '256' doesn't fit in 'u8'
 
+Hint at range_bound_fits.ce:14:1
+13 │ 
+14 │ negative: fun(n: usize) -> i32
+     ╘══════╛ 'negative' is never used
+
 Error at range_bound_fits.ce:27:11
 26 │ var sum = 0
 27 │ for i in -1..2

@@ -1,7 +1,17 @@
+Hint at constant_overflow.ce:3:1
+2 │ 
+3 │ limit: const u8 = u8(200) + 100
+    ╘═══╛ 'limit' is never used
+
 Error at constant_overflow.ce:3:19
 2 │ 
 3 │ limit: const u8 = u8(200) + 100
                       ╘═══════════╛ Addition overflows 'u8'
+
+Hint at constant_overflow.ce:7:2
+6 │ {
+7 │     low: const i8 = i8(-100) - 100
+        ╘═╛ 'low' is never used
 
 Error at constant_overflow.ce:7:18
 6 │ {

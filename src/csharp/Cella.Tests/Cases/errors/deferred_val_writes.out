@@ -1,8 +1,18 @@
+Hint at deferred_val_writes.ce:16:1
+15 │ 
+16 │ twice: fun -> i32
+     ╘═══╛ 'twice' is never used
+
 Error at deferred_val_writes.ce:20:2
 19 │ x = 1
 20 │ x = 2
      ^ Cannot reassign values
      | Assigned on line 19
+
+Hint at deferred_val_writes.ce:24:1
+23 │ 
+24 │ branches: fun(flag: bool) -> i32
+     ╘══════╛ 'branches' is never used
 
 Error at deferred_val_writes.ce:30:2
 29 │ 
@@ -10,27 +20,52 @@ Error at deferred_val_writes.ce:30:2
      ^ Cannot reassign values
      | Assigned on line 28
 
+Hint at deferred_val_writes.ce:34:1
+33 │ 
+34 │ looped: fun -> i32
+     ╘════╛ 'looped' is never used
+
 Error at deferred_val_writes.ce:38:3
 37 │ for _ in 0..3
 38 │     x = 1
          ^ Cannot reassign values
          | Assigned here in an earlier iteration
 
+Hint at deferred_val_writes.ce:43:1
+42 │ 
+43 │ unread: fun -> i32
+     ╘════╛ 'unread' is never used
+
 Error at deferred_val_writes.ce:46:6
 45 │ val x: i32
 46 │ ret x
          ^ Cannot use uninitialized values
+
+Hint at deferred_val_writes.ce:49:1
+48 │ 
+49 │ maybe: fun(flag: bool) -> i32
+     ╘═══╛ 'maybe' is never used
 
 Error at deferred_val_writes.ce:55:6
 54 │ 
 55 │ ret x
          ^ Cannot use uninitialized values
 
+Hint at deferred_val_writes.ce:58:1
+57 │ 
+58 │ moved: fun -> i32
+     ╘═══╛ 'moved' is never used
+
 Error at deferred_val_writes.ce:63:2
 62 │ take(own b)
 63 │ b = make(2)
      ^ Cannot reassign values
      | Assigned on line 61
+
+Hint at deferred_val_writes.ce:67:1
+66 │ 
+67 │ order: fun -> i32
+     ╘═══╛ 'order' is never used
 
 Error at deferred_val_writes.ce:70:11
 69 │ val x: i32

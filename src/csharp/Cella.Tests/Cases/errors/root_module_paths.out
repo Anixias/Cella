@@ -3,6 +3,11 @@ Error at root_module_paths.ce:3:28
 3 │ missing: fun -> i32 => mod.nowhere.value()
                                ╘═════╛ Module 'nowhere' not found
 
+Hint at root_module_paths.ce:5:1
+4 │ 
+5 │ value: fun -> i32 => mod.test.answer()
+    ╘═══╛ 'value' is never used
+
 Error at root_module_paths.ce:11:13
 10 │ {
 11 │     val x: mod.nowhere.Thing = undef

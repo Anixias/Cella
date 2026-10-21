@@ -1,7 +1,17 @@
+Hint at unreachable_after_endless.ce:8:1
+7 │ 
+8 │ f3: fun -> i32
+    ╘╛ 'f3' is never used
+
 Warning at unreachable_after_endless.ce:11:2
 10 │ while true {}
 11 │ printf("z\n")
      ^ Unreachable code
+
+Hint at unreachable_after_endless.ce:14:1
+13 │ 
+14 │ f4: fun -> i32
+     ╘╛ 'f4' is never used
 
 Warning at unreachable_after_endless.ce:17:2
 16 │ loop {}

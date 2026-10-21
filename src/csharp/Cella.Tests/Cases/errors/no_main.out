@@ -1,3 +1,8 @@
 Error: The program has no 'main' function
 
+Hint at no_main.ce:3:1
+2 │ 
+3 │ helper: fun -> i32
+    ╘════╛ 'helper' is never used
+
 [compilation failed]

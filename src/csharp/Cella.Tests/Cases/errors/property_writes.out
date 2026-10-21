@@ -1,3 +1,8 @@
+Hint at property_writes.ce:24:1
+23 │ 
+24 │ writes: fun(unit: Unit)
+     ╘════╛ 'writes' is never used
+
 Error at property_writes.ce:26:2
 25 │ {
 26 │     unit.health = 1

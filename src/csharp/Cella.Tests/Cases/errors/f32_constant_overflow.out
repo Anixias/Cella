@@ -1,3 +1,8 @@
+Hint at f32_constant_overflow.ce:3:1
+2 │ 
+3 │ big: val f32 = f32(1e300)
+    ╘═╛ 'big' is never used
+
 Error at f32_constant_overflow.ce:3:16
 2 │ 
 3 │ big: val f32 = f32(1e300)

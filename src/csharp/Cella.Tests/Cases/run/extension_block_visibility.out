@@ -1,2 +1,7 @@
+Hint at other.ce:3:1
+2 │ 
+3 │ sameModule: fun(x: i32) -> i32 => x.twice() + x.half() + x.shared()
+    ╘════════╛ 'sameModule' is never used
+
 13 47
 [exit code 0]

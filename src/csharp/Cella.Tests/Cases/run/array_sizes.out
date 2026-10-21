@@ -1,3 +1,8 @@
+Hint at array_sizes.ce:20:1
+19 │ 
+20 │ last: fun(data: ptr[array[u8, 5000000000]]) -> u8 => (*data)[4999999999]
+     ╘══╛ 'last' is never used
+
 600000000 8000000000000 9223372036854775807
 1 4 5 3 2 0 
 [exit code 0]

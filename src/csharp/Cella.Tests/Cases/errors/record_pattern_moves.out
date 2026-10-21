@@ -1,3 +1,8 @@
+Hint at record_pattern_moves.ce:25:1
+24 │ 
+25 │ destructor: fun -> i32
+     ╘════════╛ 'destructor' is never used
+
 Hint at record_pattern_moves.ce:27:6
 26 │ {
 27 │     var h = Holder(Name(1))
@@ -8,10 +13,20 @@ Error at record_pattern_moves.ce:30:14
 30 │     Holder(own name) => {}
                     ╘══╛ Cannot move fields out of values with destructors
 
+Hint at record_pattern_moves.ce:36:1
+35 │ 
+36 │ borrowed: fun(imm p: Pair) -> i32
+     ╘══════╛ 'borrowed' is never used
+
 Error at record_pattern_moves.ce:40:12
 39 │ {
 40 │     Pair(own first) => {}
                   ╘═══╛ Cannot move read-only parameters
+
+Hint at record_pattern_moves.ce:46:1
+45 │ 
+46 │ usedAfter: fun -> i32
+     ╘═══════╛ 'usedAfter' is never used
 
 Hint at record_pattern_moves.ce:48:6
 47 │ {

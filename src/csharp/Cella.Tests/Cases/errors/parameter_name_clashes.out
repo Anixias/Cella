@@ -1,7 +1,17 @@
+Hint at parameter_name_clashes.ce:3:3
+2 │ 
+3 │ f[N: const usize]: fun(N: usize) -> usize => N
+      ^ 'N' doesn't match {camelCase}
+
 Error at parameter_name_clashes.ce:3:3
 2 │ 
 3 │ f[N: const usize]: fun(N: usize) -> usize => N
       ^ 'N' is declared more than once
+
+Hint at parameter_name_clashes.ce:3:24
+2 │ 
+3 │ f[N: const usize]: fun(N: usize) -> usize => N
+                           ^ 'N' doesn't match {camelCase}
 
 Error at parameter_name_clashes.ce:3:24
 2 │ 
@@ -13,9 +23,19 @@ Error at parameter_name_clashes.ce:5:3
 5 │ g[T]: fun(T: i32) -> i32 => T
       ^ 'T' is declared more than once
 
+Hint at parameter_name_clashes.ce:5:11
+4 │ 
+5 │ g[T]: fun(T: i32) -> i32 => T
+              ^ 'T' doesn't match {camelCase}
+
 Error at parameter_name_clashes.ce:5:11
 4 │ 
 5 │ g[T]: fun(T: i32) -> i32 => T
               ^ 'T' is declared more than once
+
+Hint at parameter_name_clashes.ce:7:1
+6 │ 
+7 │ h[T]: fun(imm value: T, count: i32) -> i32 => count
+    ^ 'h' is never used
 
 [compilation failed]

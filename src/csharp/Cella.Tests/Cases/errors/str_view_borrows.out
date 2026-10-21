@@ -1,3 +1,8 @@
+Hint at str_view_borrows.ce:29:1
+28 │ 
+29 │ local: fun -> str
+     ╘═══╛ 'local' is never used
+
 Error at str_view_borrows.ce:33:6
 32 │ buffer[0] = 65
 33 │ ret str(@buffer[0], 1)

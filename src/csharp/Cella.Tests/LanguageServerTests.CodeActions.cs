@@ -278,6 +278,16 @@ public sealed partial class LanguageServerTests
 	}
 	
 	[Fact]
+	public async Task RenamesNamesThatBreakNamingRules()
+	{
+		Assert.Equal("mod test\n\nmakeValue: fun -> i32 => 1\n\nmain: fun -> i32 => makeValue()\n",
+			await FixAsync("mod test\n\nmake_‸value: fun -> i32 => 1\n\nmain: fun -> i32 => make_value()\n",
+				"Rename to 'makeValue'"));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task RenamesSymbolsEverywhere()
 	{
 		const string source =
@@ -300,6 +310,41 @@ public sealed partial class LanguageServerTests
 		Assert.Null((await RequestAtCursorAsync("textDocument/prepareRename",
 			"mod test\n\nmain: fun -> i3‸2 => 1 + 2\n"))["result"]);
 		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Theory]
+	[InlineData("mod test\n\nBuffer: rec\n{\n\tsize: usize\n\n\tlength: get(self) -> usize => self.size\n\n" +
+	            "\tcount: prop usize\n\t{\n\t\tget(self) => self.size\n\t\tset(mut self, value) => self.size = value\n\t}\n}\n\n" +
+	            "main: fun -> i32\n{\n\tvar buffer = Buffer(3)\n\tbuffer.count = 4\n\tret i32(buffer.length + buffer.count)\n}\n",
+		"6:1:6 property declaration|8:1:5 property declaration|18:8:5 property|19:16:6 property|19:32:5 property")]
+	[InlineData("mod test\n\ncheck: fun(start: i32, finish: i32)\n{\n\tif start > finish\n}\n",
+		"4:4:5 parameter|4:12:6 parameter")]
+	[InlineData("mod test\n\ncheck: fun(start: i32, finish: i32)\n{\n\twhile start > finish\n\tval x =\n}\n",
+		"4:7:5 parameter|4:15:6 parameter")]
+	[InlineData("mod test\n\nView: rec\n{\n\tlength: usize\n\n\tslice: fun(self, start: usize,\n\n" +
+	            "\tfirst: fun(self) -> usize => self.length\n}\n",
+		"2:0:4 struct declaration|6:1:5 method declaration|6:18:5 parameter declaration|8:1:5 method declaration")]
+	[InlineData("mod test\n\nView: rec\n{\n\tlength: usize\n\n\tslice: fun(self) -> View[\n\n" +
+	            "\tfirst: fun(self) -> usize => self.length\n}\n",
+		"6:1:5 method declaration|8:1:5 method declaration")]
+	[InlineData("mod test\n\nslice:\n\nhelper: fun(start: i32) -> i32 => start\n", "4:0:6 function declaration")]
+	[InlineData("mod test\n\nShape: enum\n{\n\tcircle\n}\n\nmatching: fun(shape: Shape)\n{\n\tmatch shape\n}\n",
+		"9:7:5 parameter")]
+	public async Task ClassifiesNamesInUnfinishedCode(string source, string expected)
+	{
+		var tokens = await ClassifyAsync(source);
+		foreach (var token in expected.Split('|'))
+			Assert.Contains(token, tokens);
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task LeavesUnknownTypesUnclassified()
+	{
+		var tokens = await ClassifyAsync("mod test\n\nmake: fun -> Cursor[i32] => 0\n");
+		Assert.DoesNotContain(tokens, static token => token.StartsWith("2:13:", StringComparison.Ordinal));
 		Assert.Equal(0, await ShutDownAsync());
 	}
 }

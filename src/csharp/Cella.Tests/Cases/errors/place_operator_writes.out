@@ -1,3 +1,18 @@
+Hint at game.ce:15:2
+14 │ 
+15 │ bump: fun(mut self)
+     ╘══╛ 'bump' is never used
+
+Hint at game.ce:29:2
+28 │ 
+29 │ clear: fun(mut self)
+     ╘═══╛ 'clear' is never used
+
+Hint at game.ce:53:1
+52 │ 
+53 │ touch: fun(mut board: Board)
+     ╘═══╛ 'touch' is never used
+
 Error at main.ce:12:2
 11 │ {
 12 │     handle.value = 1

@@ -1,3 +1,8 @@
+Hint at operator_mutation.ce:13:1
+12 │ 
+13 │ bump: fun(p: Point)
+     ╘══╛ 'bump' is never used
+
 Error at operator_mutation.ce:15:2
 14 │ {
 15 │     p += Point(1)

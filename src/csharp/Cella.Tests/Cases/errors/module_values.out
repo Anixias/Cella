@@ -1,3 +1,13 @@
+Hint at game\geometry.ce:3:1
+2 │ 
+3 │ area: fun -> i32 => 2
+    ╘══╛ 'area' is never used
+
+Hint at game\physics.ce:3:1
+2 │ 
+3 │ speed: val i32 = 1
+    ╘═══╛ 'speed' is never used
+
 Error at main.ce:5:11
 4 │ {
 5 │     geometry.missing()

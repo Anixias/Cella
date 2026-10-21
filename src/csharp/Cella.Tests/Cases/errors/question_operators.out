@@ -27,4 +27,9 @@ Error at question_operators.ce:45:6
 45 │ ret x?
          ╘╛ Cannot use '?' on 'i32'
 
+Hint at question_operators.ce:48:1
+47 │ 
+48 │ unused: fun -> Result[i32, i32] => Result.ok(Broken.held(1)?)
+     ╘════╛ 'unused' is never used
+
 [compilation failed]

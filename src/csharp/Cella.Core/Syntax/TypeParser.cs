@@ -46,9 +46,17 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 			return qualified ?? (ITypeNode)new IdentifierTypeNode(identifier);
 		}
 		
+		if (StartsMemberDeclaration(index))
+			throw ExpectedClose(index, openBracket);
+		
 		var args = new List<IGenericArgumentNode> { ParseGenericArgument(ref index) };
 		while (MatchSeparator(ref index, TokenType.OpCloseBracket))
+		{
+			if (StartsMemberDeclaration(index))
+				throw ExpectedClose(index, openBracket);
+			
 			args.Add(ParseGenericArgument(ref index));
+		}
 		
 		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
 			throw ExpectedClose(index, openBracket);

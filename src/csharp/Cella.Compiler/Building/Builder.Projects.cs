@@ -44,7 +44,12 @@ public sealed partial class Builder
 			? [..await ParseImportList(project, nameof(CellaProject.Prelude), flags, new DiagnosticList(), ct)]
 			: [];
 		
-		var diagnostics = new List<DiagnosticList> { parseDiagnostics };
+		var naming = new NamingChecker(NamingRules.Create(project.Project.Naming));
+		var diagnostics = new List<DiagnosticList>
+		{
+			parseDiagnostics,
+			new(files.SelectMany(naming.Check))
+		};
 		
 		if (files.Length == 0)
 		{
@@ -205,6 +210,7 @@ public sealed partial class Builder
 		}
 		
 		containment.AddDeclarations(resolvedFiles);
+		diagnostics.Add(new(resolver.FindUnusedDeclarations(resolvedFiles, containment)));
 		
 		// Phase 4: Type checking
 		{

@@ -347,7 +347,7 @@ public sealed partial class FileParser
 			parameters.AddRange(parameterList);
 			if (!Match(ref index, TokenType.OpCloseParen))
 			{
-				ReportExpected(index, "',' or ')'", openParen);
+				ReportExpected(StartsMemberDeclaration(index) ? index - 1 : index, "',' or ')'", openParen);
 				if (!EndsParameters(index))
 					return null;
 			}
@@ -406,6 +406,9 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		if (StartsMemberDeclaration(index))
+			return result;
+		
 		var errors = Diagnostics.ErrorCount;
 		if (ParseParameter(ref index) is not { } firstParameter)
 			return null;
@@ -420,6 +423,9 @@ public sealed partial class FileParser
 				isVariadic = true;
 				break;
 			}
+			
+			if (StartsMemberDeclaration(index))
+				break;
 			
 			errors = Diagnostics.ErrorCount;
 			if (ParseParameter(ref index) is not { } parameter)
@@ -499,6 +505,12 @@ public sealed partial class FileParser
 	
 	private ITypeNode ParseRecoveredType(ref int index)
 	{
+		if (!IsOnSameLine(index))
+		{
+			ReportMissing(index, "a type");
+			return MissingType(index);
+		}
+		
 		try
 		{
 			return ParseType(ref index);

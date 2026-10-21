@@ -1,3 +1,8 @@
+Hint at a.ce:3:1
+2 │ 
+3 │ show: pvt fun(x: i32) -> i32 => x
+    ╘══╛ 'show' is never used
+
 Error at main.ce:6:10
 5 │ var k = 3
 6 │ val u = game.Thing(@k)

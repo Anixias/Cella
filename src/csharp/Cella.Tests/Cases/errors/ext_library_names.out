@@ -18,6 +18,11 @@ Error at suffix.ce:3:5
 3 │ ext("user32"u8)
         ╘════════╛ Expected a library name
 
+Hint at template.ce:3:1
+2 │ 
+3 │ name: val i32 = 1
+    ╘══╛ 'name' is never used
+
 Error at template.ce:5:5
 4 │ 
 5 │ ext("{name}")

@@ -1,3 +1,13 @@
+Hint at bad_globals.ce:8:1
+7 │ 
+8 │ record: var Point = Point()
+    ╘════╛ 'record' is never used
+
+Hint at bad_globals.ce:9:1
+8 │ record: var Point = Point()
+9 │ items: var array[i32, 2] = [1, 2]
+    ╘═══╛ 'items' is never used
+
 Error at bad_globals.ce:10:26
  9 │ items: var array[i32, 2] = [1, 2]
 10 │ negative: val array[i32, -1] = []

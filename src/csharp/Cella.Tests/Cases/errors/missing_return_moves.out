@@ -1,3 +1,8 @@
+Hint at missing_return_moves.ce:11:1
+10 │ 
+11 │ f: fun(c: bool) -> i32
+     ^ 'f' is never used
+
 Error at missing_return_moves.ce:11:1
 10 │ 
 11 │ f: fun(c: bool) -> i32

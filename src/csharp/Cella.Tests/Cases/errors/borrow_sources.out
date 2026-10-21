@@ -1,3 +1,8 @@
+Hint at borrow_sources.ce:69:1
+68 │ 
+69 │ useAfterMove: fun
+     ╘══════════╛ 'useAfterMove' is never used
+
 Hint at borrow_sources.ce:71:6
 70 │ {
 71 │     var buffer = Buffer(1)
@@ -20,6 +25,11 @@ Error at borrow_sources.ce:75:29
                                 ╘══╛ Cannot use borrows of moved values
                                    | Moved on line 74
 
+Hint at borrow_sources.ce:78:1
+77 │ 
+78 │ useAfterMoveIntoCall: fun
+     ╘══════════════════╛ 'useAfterMoveIntoCall' is never used
+
 Hint at borrow_sources.ce:81:13
 80 │ val bat = Enemy(Buffer(3), 7)
 81 │ val name = imm bat.name
@@ -30,6 +40,11 @@ Error at borrow_sources.ce:83:17
 83 │ printf("%d\n", name.id)
                     ╘══╛ Cannot use borrows of moved values
                        | Moved on line 82
+
+Hint at borrow_sources.ce:86:1
+85 │ 
+86 │ useAfterScope: fun
+     ╘═══════════╛ 'useAfterScope' is never used
 
 Hint at borrow_sources.ce:88:6
 87 │ {
@@ -42,6 +57,11 @@ Error at borrow_sources.ce:94:17
                     ╘═════╛ Cannot use borrows of dropped values
                           | Dropped on line 93
 
+Hint at borrow_sources.ce:97:1
+96 │ 
+97 │ useAfterReassign: fun
+     ╘══════════════╛ 'useAfterReassign' is never used
+
 Hint at borrow_sources.ce:100:14
  99 │ var buffer = Buffer(1)
 100 │ val first = imm buffer
@@ -52,6 +72,11 @@ Error at borrow_sources.ce:102:17
 102 │ printf("%d\n", first.id)
                      ╘═══╛ Cannot use borrows of reassigned values
                          | Reassigned on line 101
+
+Hint at borrow_sources.ce:105:1
+104 │ 
+105 │ useAfterIteration: fun
+      ╘═══════════════╛ 'useAfterIteration' is never used
 
 Hint at borrow_sources.ce:107:6
 106 │ {
@@ -64,11 +89,21 @@ Error at borrow_sources.ce:112:18
                          ╘══╛ Cannot use borrows of dropped values
                             | Dropped on line 116 in an earlier iteration
 
+Hint at borrow_sources.ce:119:1
+118 │ 
+119 │ useBindingAfterReassign: fun
+      ╘═════════════════════╛ 'useBindingAfterReassign' is never used
+
 Error at borrow_sources.ce:127:19
 126 │ effect = Effect.none
 127 │ printf("%d\n", buffer.id)
                      ╘═══════╛ Cannot use borrows of reassigned values
                              | Reassigned on line 126
+
+Hint at borrow_sources.ce:133:1
+132 │ 
+133 │ useRecordAfterMove: fun
+      ╘════════════════╛ 'useRecordAfterMove' is never used
 
 Hint at borrow_sources.ce:136:6
 135 │ var count = 1
@@ -86,6 +121,11 @@ Error at borrow_sources.ce:139:2
       ╘═════════╛ Cannot use borrows of moved values
                 | Moved on line 137
 
+Hint at borrow_sources.ce:142:1
+141 │ 
+142 │ useResultAfterMove: fun
+      ╘════════════════╛ 'useResultAfterMove' is never used
+
 Hint at borrow_sources.ce:146:6
 145 │ val total = mut kills(mut stats)
 146 │ val moved = own stats
@@ -96,6 +136,11 @@ Error at borrow_sources.ce:147:2
 147 │ total += 1
       ╘═══╛ Cannot use borrows of moved values
           | Moved on line 146
+
+Hint at borrow_sources.ce:150:1
+149 │ 
+150 │ dropAfterMove: fun
+      ╘═══════════╛ 'dropAfterMove' is never used
 
 Hint at borrow_sources.ce:154:6
 153 │ val scope = Scope(mut depth)
@@ -109,10 +154,20 @@ Error at borrow_sources.ce:155:1
       | 'scope' is dropped here
       | Moved on line 154
 
+Hint at borrow_sources.ce:157:1
+156 │ 
+157 │ useTemporary: fun
+      ╘══════════╛ 'useTemporary' is never used
+
 Error at borrow_sources.ce:159:22
 158 │ {
 159 │     val holder = Holder(make(3))
                               ╘═════╛ Cannot borrow unstored values
+
+Hint at borrow_sources.ce:163:1
+162 │ 
+163 │ useThroughBorrow: fun
+      ╘══════════════╛ 'useThroughBorrow' is never used
 
 Hint at borrow_sources.ce:165:6
 164 │ {
@@ -145,6 +200,11 @@ Error at borrow_sources.ce:174:27
 174 │ printf("%d %d\n", inner, counter)
                                ╘═════╛ Cannot use borrows of moved values
                                      | Moved on line 173
+
+Hint at borrow_sources.ce:177:1
+176 │ 
+177 │ storeThroughBorrow: fun
+      ╘════════════════╛ 'storeThroughBorrow' is never used
 
 Hint at borrow_sources.ce:184:6
 183 │ target = Tally(mut y, 1)

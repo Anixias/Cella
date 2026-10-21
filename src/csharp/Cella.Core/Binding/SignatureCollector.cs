@@ -227,6 +227,10 @@ public sealed partial class SignatureCollector
 		return new(name, _symbolTable, _builder.Build(), entryPoint);
 	}
 	
+	public bool IsWitness(FunctionSymbol function) => _witnessMembers.Contains(function);
+	
+	public bool IsWitness(GlobalSymbol constant) => _witnessConstants.Contains(constant);
+	
 	public bool IsLocal(Symbol symbol) =>
 		_declarations.ContainsKey(symbol) || symbol is FunctionSymbol function && _lambdas.Contains(function);
 	

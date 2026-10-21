@@ -170,7 +170,8 @@ public sealed class SemanticModel
 	private void Add(SourceLocation location, Symbol symbol, string description, IEnumerable<Symbol>? overloads = null)
 	{
 		var path = location.Source.FilePath;
-		if (path.Length == 0 || !location.Range.IsValid || symbol is LocalVariableSymbol { IsSynthesized: true })
+		if (path.Length == 0 || !location.Range.IsValid ||
+		    symbol is InvalidType or LocalVariableSymbol { IsSynthesized: true })
 			return;
 		
 		if (!_references.TryGetValue(path, out var references))
@@ -288,10 +289,18 @@ public sealed class SemanticModel
 				
 				break;
 			
+			case ResolvedFunctionCallExpressionNode { Function.Symbol.Property: { } property } n:
+				Add(FindAccessorName(n.Syntax), property, DescribeProperty(property));
+				break;
+			
 			case ResolvedFunctionCallExpressionNode { IsConversion: false } n:
 				Add(FindCallName(n.Syntax, n.Function.Symbol) ?? FindDereferenceDot(n), n.Function.Symbol,
 					DescribeFunction(n.Function));
 				
+				break;
+			
+			case ResolvedPropertyAssignmentExpressionNode { Setter.Symbol.Property: { } property } n:
+				Add(FindAccessorName(n.Syntax), property, DescribeProperty(property));
 				break;
 			
 			case ResolvedFunctionReferenceExpressionNode n:
@@ -315,7 +324,7 @@ public sealed class SemanticModel
 				break;
 			
 			case ResolvedPropertyExpressionNode n:
-				Add(FindName(n.Syntax), n.Property, $"{n.Property.Name}: prop {TypeName(n.Type)}");
+				Add(FindName(n.Syntax), n.Property, DescribeProperty(n.Property));
 				break;
 			
 			case ResolvedEnumCaseExpressionNode n:
@@ -380,6 +389,7 @@ public sealed class SemanticModel
 						Add(fieldNode.Identifier, field, $"{field.Name}: {fieldNode.Type.SourceLocation.GetText()}");
 				}
 				
+				AddProperties(n.Symbol.Properties);
 				break;
 			
 			case ResolvedEnumNode n:
@@ -388,6 +398,7 @@ public sealed class SemanticModel
 				foreach (var enumCase in n.Symbol.Cases)
 					Add(enumCase.Node.Identifier, enumCase, DescribeCase(n.Symbol, enumCase));
 				
+				AddProperties(n.Symbol.Properties);
 				break;
 			
 			case ResolvedTraitNode n:
@@ -412,11 +423,14 @@ public sealed class SemanticModel
 				foreach (var constant in n.Symbol.Constants)
 					AddGlobal(constant, _globals?.Invoke(constant));
 				
+				AddProperties(n.Symbol.Properties);
 				break;
 			
 			case ResolvedImplNode n:
 				foreach (var constant in n.Symbol.Constants)
 					AddGlobal(constant, _globals?.Invoke(constant));
+				
+				AddProperties(n.Symbol.Properties);
 				
 				break;
 		}
@@ -430,6 +444,32 @@ public sealed class SemanticModel
 		if (info?.Initializer is { } initializer)
 			Walk(initializer);
 	}
+	
+	private void AddProperties(IEnumerable<PropertySymbol> properties)
+	{
+		foreach (var property in properties)
+		{
+			if (property.Node is { } node)
+				Add(node.Identifier, property, DescribeProperty(property));
+		}
+	}
+	
+	private string DescribeProperty(PropertySymbol property)
+	{
+		var type = (property.Getter, property.Setter) switch
+		{
+			(FunctionAccessor { Function: var getter }, _) when _functions?.Invoke(getter) is { } info =>
+				info.Signature.ReturnType,
+			(_, FunctionAccessor { Function: var setter }) when _functions?.Invoke(setter) is { } info =>
+				info.Signature.GetDeclaredType(info.Signature.ParameterTypes.Length - 1),
+			_ => null
+		};
+		
+		return type is null ? $"{property.Name}: prop" : $"{property.Name}: prop {TypeName(type)}";
+	}
+	
+	private static Token? FindAccessorName(IExpressionNode syntax) =>
+		FindName(syntax is BinaryOpExpressionNode assignment ? assignment.Left : syntax);
 	
 	private void AddLocal(LocalVariableSymbol local) =>
 		Add(local.Identifier, local, DescribeVariable(local, local.Type));

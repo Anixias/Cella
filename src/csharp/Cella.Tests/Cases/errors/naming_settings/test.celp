@@ -1,0 +1,11 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+
+[Naming]
+Kinds = "{PascalCase}"
+Functions = "{camelcase}"
+Fields = 1
+Locals = "my_{camelCase}{PascalCase}"
+
+[When.debug]
+Naming = { Types = "{PascalCase}" }

@@ -1,3 +1,18 @@
+Hint at lib\std\core\span.ce:17:2
+16 │ // TODO Accept ranges like v[a..b]
+17 │ slice: fun(self, start: usize, end: usize) -> Span[T]
+     ╘═══╛ 'slice' is never used
+
+Hint at lib\std\core\view.ce:17:2
+16 │ // TODO Accept ranges like v[a..b]
+17 │ slice: fun(self, start: usize, end: usize) -> View[T]
+     ╘═══╛ 'slice' is never used
+
+Hint at lib\std\os\mem\mem.ce:30:2
+29 │ 
+30 │ unbox: fun(own self) -> T
+     ╘═══╛ 'unbox' is never used
+
 Hint at prelude_panic.ce:3:17
 2 │ 
 3 │ use std.process.panic

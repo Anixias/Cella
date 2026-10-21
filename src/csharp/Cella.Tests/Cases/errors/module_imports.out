@@ -1,3 +1,13 @@
+Hint at game\physics.ce:3:1
+2 │ 
+3 │ speed: val i32 = 1
+    ╘═══╛ 'speed' is never used
+
+Hint at geometry.ce:3:1
+2 │ 
+3 │ area: fun(w: i32, h: i32) -> i32 => w * h
+    ╘══╛ 'area' is never used
+
 Error at main.ce:3:14
 2 │ 
 3 │ use geometry.missing

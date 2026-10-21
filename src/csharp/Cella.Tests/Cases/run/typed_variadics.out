@@ -1,3 +1,8 @@
+Hint at typed_variadics.ce:19:5
+18 │ 
+19 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+        ^ 'N' doesn't match {camelCase}
+
 0 5 10
 % has % hp: Ada 30
 none:

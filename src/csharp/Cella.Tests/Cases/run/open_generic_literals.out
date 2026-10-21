@@ -1,3 +1,18 @@
+Hint at open_generic_literals.ce:19:5
+18 │ 
+19 │ sum[N: const usize]: fun(values: array[u8, N]) -> i32
+         ^ 'N' doesn't match {camelCase}
+
+Hint at open_generic_literals.ce:27:7
+26 │ 
+27 │ total[N: const usize]: fun(values: array[f32, N]) -> f32
+           ^ 'N' doesn't match {camelCase}
+
+Hint at open_generic_literals.ce:35:7
+34 │ 
+35 │ boxes[N: const usize]: fun(values: array[Box[i64], N]) -> i64
+           ^ 'N' doesn't match {camelCase}
+
 550 4.000000 3
 1 1 1 2.500000
 [exit code 0]

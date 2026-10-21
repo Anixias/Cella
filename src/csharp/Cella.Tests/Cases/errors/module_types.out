@@ -1,3 +1,8 @@
+Hint at geometry.ce:8:1
+7 │ 
+8 │ area: fun(w: i32, h: i32) -> i32 => w * h
+    ╘══╛ 'area' is never used
+
 Error at main.ce:3:15
 2 │ 
 3 │ first: fun(p: geometry) -> i32 => 0

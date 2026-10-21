@@ -1,3 +1,8 @@
+Hint at parenthesized_atomics.ce:5:1
+4 │ 
+5 │ loadAssigned: fun
+    ╘══════════╛ 'loadAssigned' is never used
+
 Error at parenthesized_atomics.ce:8:3
 7 │ val p: ptr[i32] = @target
 8 │ (atomic *p) = 5

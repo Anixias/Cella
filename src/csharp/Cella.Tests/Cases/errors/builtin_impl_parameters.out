@@ -1,7 +1,22 @@
+Hint at builtin_impl_parameters.ce:8:5
+7 │ 
+8 │ ptr[N: const usize]: impl Named
+        ^ 'N' doesn't match {camelCase}
+
 Error at builtin_impl_parameters.ce:8:5
 7 │ 
 8 │ ptr[N: const usize]: impl Named
         ^ 'N' is not a type
+
+Hint at builtin_impl_parameters.ce:13:10
+12 │ 
+13 │ array[T, N: const usize]: impl Named
+              ^ 'N' doesn't match {camelCase}
+
+Hint at builtin_impl_parameters.ce:18:7
+17 │ 
+18 │ array[M: const usize, T]: impl Named
+           ^ 'M' doesn't match {camelCase}
 
 Error at builtin_impl_parameters.ce:18:7
 17 │ 

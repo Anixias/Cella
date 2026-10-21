@@ -14,6 +14,11 @@ Error at main.ce:7:9
 7 │     width: Missing
                ╘═════╛ Type 'Missing' not found in this scope
 
+Hint at main.ce:10:2
+ 9 │ 
+10 │ area: fun(imm self) -> i32 => self.width * self.height
+     ╘══╛ 'area' is never used
+
 Error at main.ce:11:37
 10 │ area: fun(imm self) -> i32 => self.width * self.height
 11 │ perimeter: fun(imm self) -> i32 => self.height + false
@@ -24,6 +29,11 @@ Error at main.ce:14:22
 14 │ describe: fun(shape: Unknown) -> i32 => shape.size + 1
                           ╘═════╛ Type 'Unknown' not found in this scope
 
+Hint at main.ce:16:1
+15 │ 
+16 │ leak: fun -> i32
+     ╘══╛ 'leak' is never used
+
 Error at main.ce:19:6
 18 │ val x: i32
 19 │ ret x
@@ -33,5 +43,10 @@ Error at main.ce:22:1
 21 │ 
 22 │ i32: rec { value: u8 }
      ╘═╛ Cannot use 'i32' as a name
+
+Hint at main.ce:22:1
+21 │ 
+22 │ i32: rec { value: u8 }
+     ╘═╛ 'i32' doesn't match {PascalCase}
 
 [compilation failed]

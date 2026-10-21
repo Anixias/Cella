@@ -1,2 +1,7 @@
+Hint at lib\lib.ce:10:5
+ 9 │ 
+10 │ sum[N: const usize]: pub fun(values: array[i32, N]) -> i32
+         ^ 'N' doesn't match {camelCase}
+
 11 6 7 3
 [exit code 0]

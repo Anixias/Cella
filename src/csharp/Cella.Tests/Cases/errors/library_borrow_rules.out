@@ -1,3 +1,13 @@
+Hint at main.ce:9:1
+8 │ 
+9 │ reassigned: fun -> i32
+    ╘════════╛ 'reassigned' is never used
+
+Hint at main.ce:17:1
+16 │ 
+17 │ moved: fun -> i32
+     ╘═══╛ 'moved' is never used
+
 Error at main.ce:22:6
 21 │ consume(own bag)
 22 │ ret view.value

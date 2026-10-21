@@ -1,3 +1,8 @@
+Hint at loop_variable_moves.ce:41:1
+40 │ 
+41 │ walk: fun(imm countdown: Countdown) -> i32
+     ╘══╛ 'walk' is never used
+
 Error at loop_variable_moves.ce:44:11
 43 │ var total = 0
 44 │ for x in countdown

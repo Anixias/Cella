@@ -1,2 +1,6 @@
+Hint at upper.ce:1:5
+1 │ mod Geometry
+        ╘══════╛ 'Geometry' doesn't match {camelCase}
+
 1 2
 [exit code 0]

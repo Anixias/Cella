@@ -47,6 +47,11 @@ Error at top_level_declaration_forms.ce:23:1
 23 │ pvt helper: fun -> i32 => 1
      ╘═╛ Expected '{' after 'pvt'
 
+Hint at top_level_declaration_forms.ce:23:5
+22 │ 
+23 │ pvt helper: fun -> i32 => 1
+         ╘════╛ 'helper' is never used
+
 Error at top_level_declaration_forms.ce:30:8
 29 │ 
 30 │ count: pvt set var i32 = 0
@@ -61,6 +66,16 @@ Error at top_level_declaration_forms.ce:39:2
 38 │ {
 39 │     use other
          ╘═╛ Imports must precede all other declarations
+
+Hint at top_level_declaration_forms.ce:40:2
+39 │ use other
+40 │ a: fun -> i32 => 1
+     ^ 'a' is never used
+
+Hint at top_level_declaration_forms.ce:43:1
+42 │ 
+43 │ f: fun -> i32 => 1)
+     ^ 'f' is never used
 
 Error at top_level_declaration_forms.ce:43:19
 42 │ 

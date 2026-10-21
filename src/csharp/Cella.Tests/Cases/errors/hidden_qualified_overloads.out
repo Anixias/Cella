@@ -1,3 +1,8 @@
+Hint at a.ce:3:1
+2 │ 
+3 │ show: pvt fun(x: i32) -> i32 => 0
+    ╘══╛ 'show' is never used
+
 Error at main.ce:5:21
 4 │ 
 5 │ main: fun -> i32 => test.show(1)

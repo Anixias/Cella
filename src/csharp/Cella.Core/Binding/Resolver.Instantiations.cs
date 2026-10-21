@@ -20,6 +20,7 @@ public sealed partial class Resolver
 	
 	private void TrackFunctionUse(FunctionInfo info, IExpressionNode syntax)
 	{
+		MarkUsed(info.Symbol);
 		if ((!_signatures.IsLocal(info.Symbol) || info.File?.Module != CurrentResolutionContext.File.Module) &&
 		    _importedFunctions.TryAdd(info.Symbol, info))
 			Journal(() => _importedFunctions.Remove(info.Symbol));

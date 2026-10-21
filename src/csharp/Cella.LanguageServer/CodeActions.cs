@@ -59,7 +59,7 @@ public static class CodeActions
 		return new JsonObject { ["changes"] = changes };
 	}
 	
-	private static bool Touches(Diagnostic diagnostic, TextRange requested) =>
+	public static bool Touches(Diagnostic diagnostic, TextRange requested) =>
 		Touches(diagnostic.SourceLocation.Range, requested) ||
 		diagnostic.UnnecessaryLocation is { } unnecessary && Touches(unnecessary.Range, requested);
 	

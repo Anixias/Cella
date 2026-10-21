@@ -22,35 +22,70 @@ Error at req_fields.ce:64:2
      ╘═╛ Cannot leave fields uninitialized
        | 'handler' is partly initialized
 
+Hint at req_fields.ce:81:1
+80 │ 
+81 │ unset: fun -> i32
+     ╘═══╛ 'unset' is never used
+
 Error at req_fields.ce:84:15
 83 │ var file: File
 84 │ ret describe(file)
                   ╘══╛ Cannot use uninitialized values
+
+Hint at req_fields.ce:87:1
+86 │ 
+87 │ flagsOnly: fun -> i32
+     ╘═══════╛ 'flagsOnly' is never used
 
 Error at req_fields.ce:91:15
 90 │ file.flags = 1
 91 │ ret describe(file)
                   ╘══╛ Cannot use partly initialized values
 
+Hint at req_fields.ce:94:1
+93 │ 
+94 │ readHandle: fun -> i32
+     ╘════════╛ 'readHandle' is never used
+
 Error at req_fields.ce:97:6
 96 │ var file: File
 97 │ ret file.handle
          ╘═════════╛ Cannot use uninitialized values
+
+Hint at req_fields.ce:100:1
+ 99 │ 
+100 │ ownerCount: fun -> i32
+      ╘════════╛ 'ownerCount' is never used
 
 Error at req_fields.ce:104:20
 103 │ owner.count = 1
 104 │ ret describeOwner(owner)
                         ╘═══╛ Cannot use partly initialized values
 
+Hint at req_fields.ce:107:1
+106 │ 
+107 │ countOnly: fun -> i32
+      ╘═══════╛ 'countOnly' is never used
+
 Error at req_fields.ce:111:21
 110 │ holder.count = 1
 111 │ ret describeHolder(holder)
                          ╘════╛ Cannot use partly initialized values
 
+Hint at req_fields.ce:114:1
+113 │ 
+114 │ readDefault: fun -> i32
+      ╘═════════╛ 'readDefault' is never used
+
 Error at req_fields.ce:117:6
 116 │ var holder: PointHolder
 117 │ ret holder.pos.x
           ╘══════════╛ Cannot use uninitialized values
+
+Hint at req_fields.ce:120:1
+119 │ 
+120 │ movedPart: fun -> i32
+      ╘═══════╛ 'movedPart' is never used
 
 Error at req_fields.ce:126:21
 125 │ holder.pos.x = 3

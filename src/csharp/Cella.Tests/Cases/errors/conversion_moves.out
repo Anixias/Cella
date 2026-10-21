@@ -1,3 +1,8 @@
+Hint at conversion_moves.ce:50:1
+49 │ 
+50 │ local: fun -> str
+     ╘═══╛ 'local' is never used
+
 Error at conversion_moves.ce:53:6
 52 │ val name = String("local")
 53 │ ret name

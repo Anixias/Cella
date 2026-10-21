@@ -1,2 +1,7 @@
+Hint at bounded_conversion_inference.ce:24:5
+23 │ 
+24 │ as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
+        ^ 'N' doesn't match {camelCase}
+
 1 0 0
 [exit code 0]

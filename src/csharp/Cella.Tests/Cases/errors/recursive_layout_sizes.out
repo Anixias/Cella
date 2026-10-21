@@ -3,4 +3,9 @@ Error at recursive_layout_sizes.ce:5:12
 5 │     children: array[Tree, 2]
                   ╘════════════╛ Field 'children' of type 'array[Tree, 2]' causes a cycle in the memory layout
 
+Hint at recursive_layout_sizes.ce:8:1
+7 │ 
+8 │ measure: fun(a: ptr[Tree], b: ptr[Tree]) -> isize
+    ╘═════╛ 'measure' is never used
+
 [compilation failed]

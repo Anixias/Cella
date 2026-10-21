@@ -1,8 +1,33 @@
+Hint at parameter_length_moves.ce:16:9
+15 │ 
+16 │ takeAll[N: const usize]: fun(own values: array[Token, N])
+             ^ 'N' doesn't match {camelCase}
+
+Hint at parameter_length_moves.ce:20:1
+19 │ 
+20 │ twice[N: const usize]: fun(own values: array[Token, N])
+     ╘═══╛ 'twice' is never used
+
+Hint at parameter_length_moves.ce:20:7
+19 │ 
+20 │ twice[N: const usize]: fun(own values: array[Token, N])
+           ^ 'N' doesn't match {camelCase}
+
 Error at parameter_length_moves.ce:23:11
 22 │ take(own values[0])
 23 │ take(own values[0])
               ╘═══════╛ Cannot use moved values
                       | Moved on line 22
+
+Hint at parameter_length_moves.ce:26:1
+25 │ 
+26 │ peek[N: const usize]: fun(own values: array[Token, N]) -> i32
+     ╘══╛ 'peek' is never used
+
+Hint at parameter_length_moves.ce:26:6
+25 │ 
+26 │ peek[N: const usize]: fun(own values: array[Token, N]) -> i32
+          ^ 'N' doesn't match {camelCase}
 
 Error at parameter_length_moves.ce:29:6
 28 │ take(own values[0])
@@ -10,11 +35,31 @@ Error at parameter_length_moves.ce:29:6
          ╘══════════╛ Cannot use moved values
                     | Moved on line 28
 
+Hint at parameter_length_moves.ce:32:1
+31 │ 
+32 │ both[N: const usize]: fun(own values: array[Token, N])
+     ╘══╛ 'both' is never used
+
+Hint at parameter_length_moves.ce:32:6
+31 │ 
+32 │ both[N: const usize]: fun(own values: array[Token, N])
+          ^ 'N' doesn't match {camelCase}
+
 Error at parameter_length_moves.ce:35:14
 34 │ take(own values[0])
 35 │ takeAll(own values)
                  ╘════╛ Cannot use partly moved values
                       | Moved on line 34
+
+Hint at parameter_length_moves.ce:38:1
+37 │ 
+38 │ steal[N: const usize]: fun(mut values: array[Token, N])
+     ╘═══╛ 'steal' is never used
+
+Hint at parameter_length_moves.ce:38:7
+37 │ 
+38 │ steal[N: const usize]: fun(mut values: array[Token, N])
+           ^ 'N' doesn't match {camelCase}
 
 Error at parameter_length_moves.ce:40:11
 39 │ {

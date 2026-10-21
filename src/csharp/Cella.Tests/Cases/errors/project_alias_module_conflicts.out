@@ -1,2 +1,7 @@
 <case>\test.celp: 'geo' names a project reference and a module
+Hint at local_geo.ce:3:1
+2 │ 
+3 │ x: fun -> i32 => 1
+    ^ 'x' is never used
+
 [compilation failed]

@@ -1,12 +1,27 @@
+Hint at never_ends.ce:8:1
+7 │ 
+8 │ falls: fun(n: i32) -> never
+    ╘═══╛ 'falls' is never used
+
 Error at never_ends.ce:8:1
 7 │ 
 8 │ falls: fun(n: i32) -> never
     ╘═══╛ 'falls' can reach its end
 
+Hint at never_ends.ce:16:1
+15 │ 
+16 │ breaks: fun -> never
+     ╘════╛ 'breaks' is never used
+
 Error at never_ends.ce:16:1
 15 │ 
 16 │ breaks: fun -> never
      ╘════╛ 'breaks' can reach its end
+
+Hint at never_ends.ce:24:1
+23 │ 
+24 │ empty: fun -> never
+     ╘═══╛ 'empty' is never used
 
 Error at never_ends.ce:24:1
 23 │ 

@@ -3,6 +3,11 @@ Error at question_operator_flow.ce:11:11
 11 │ none => break
              ╘═══╛ Cannot use 'break' outside loops
 
+Hint at question_operator_flow.ce:15:1
+14 │ 
+15 │ loops: fun -> Option[i32]
+     ╘═══╛ 'loops' is never used
+
 Hint at question_operator_flow.ce:19:7
 18 │ {
 19 │     val x = Option.some(1)?

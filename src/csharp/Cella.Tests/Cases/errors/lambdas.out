@@ -3,6 +3,11 @@ Error at lambdas.ce:7:66
 7 │ transform[T, U]: fun(imm value: T, f: fun[imm T -> U]) -> U => f(value)
                                                                      ╘═══╛ Cannot borrow arguments implicitly
 
+Hint at lambdas.ce:14:2
+13 │ 
+14 │ add: fun(self, x: i32) -> i32 => apply(fun(y) => y + self.count, x)
+     ╘═╛ 'add' is never used
+
 Error at lambdas.ce:35:18
 34 │ 
 35 │ val loose = fun(x) => x

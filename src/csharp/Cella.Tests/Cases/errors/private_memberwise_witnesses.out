@@ -1,3 +1,8 @@
+Hint at private_memberwise_witnesses.ce:8:2
+7 │ 
+8 │ sum: fun(imm self) -> i32 => self.left + self.right
+    ╘═╛ 'sum' is never used
+
 Error at private_memberwise_witnesses.ce:19:46
 18 │ 
 19 │ main: fun -> i32 => make[Open]().left + make[Pair]().sum()

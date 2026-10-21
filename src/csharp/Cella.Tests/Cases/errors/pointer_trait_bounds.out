@@ -1,3 +1,8 @@
+Hint at pointer_trait_bounds.ce:8:5
+7 │ 
+8 │ ptr[f32]: impl Hash
+        ╘═╛ 'f32' doesn't match {PascalCase}
+
 Error at pointer_trait_bounds.ce:18:10
 17 │ val p: ptr[f64] = null
 18 │ ret i32(hashOf(imm p))

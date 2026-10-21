@@ -8,6 +8,11 @@ Error at main.ce:18:46
 18 │ outside: fun(x: i32) -> i32 => x.twice() + x.half()
                                                   ╘══╛ Type 'i32' has no member 'half'
 
+Hint at other.ce:3:1
+2 │ 
+3 │ sameModule: fun(x: i32) -> i32 => x.twice() + x.half() + x.shared()
+    ╘════════╛ 'sameModule' is never used
+
 Error at other.ce:4:36
 3 │ sameModule: fun(x: i32) -> i32 => x.twice() + x.half() + x.shared()
 4 │ otherFile: fun(x: i32) -> i32 => x.third()

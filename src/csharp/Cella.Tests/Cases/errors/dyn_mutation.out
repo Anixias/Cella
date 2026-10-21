@@ -1,3 +1,8 @@
+Hint at dyn_mutation.ce:20:1
+19 │ 
+20 │ describe: fun(imm shape: dyn[Shape]) -> f64
+     ╘══════╛ 'describe' is never used
+
 Error at dyn_mutation.ce:22:2
 21 │ {
 22 │     shape.scale(2.0)

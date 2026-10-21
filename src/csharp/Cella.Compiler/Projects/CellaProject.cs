@@ -3,6 +3,7 @@ using System.Text;
 using Cella.Compiler.Linking;
 using Cella.Core.Syntax;
 using Cella.Core.Text;
+using Cella.Core.Analysis;
 using Cella.Diagnostics;
 using CsToml;
 using CsToml.Error;
@@ -32,6 +33,7 @@ public sealed partial class CellaProject
 		[var name] => _settingNames.Contains(name),
 		[nameof(Lints), var lint] => Diagnostics.Lints.Find(lint) is not null,
 		[nameof(When), _, nameof(Lints), var lint] => Diagnostics.Lints.Find(lint) is not null,
+		[nameof(Naming), var category] => Enum.GetNames<NamingCategory>().Contains(category),
 		[nameof(ProjectReferences), var name] => IsReferenceSetting(name),
 		[nameof(When), _, nameof(ProjectReferences), var name] => IsReferenceSetting(name),
 		[nameof(When), _, var name] => _whenSettingNames.Contains(name),
@@ -76,6 +78,9 @@ public sealed partial class CellaProject
 	
 	[TomlValueOnSerialized]
 	public Dictionary<string, string>? Lints { get; init; }
+	
+	[TomlValueOnSerialized]
+	public Dictionary<string, string>? Naming { get; init; }
 	
 	[TomlValueOnSerialized]
 	public List<string>? Imports { get; init; }
@@ -214,6 +219,10 @@ public sealed partial class CellaProject
 					CheckLints(value, condition, path, errors);
 					break;
 				
+				case nameof(Naming):
+					CheckNaming(value, path, errors);
+					break;
+				
 				case nameof(Imports) or nameof(Prelude) when !IsStringList(value):
 					errors.Add(ProjectDiagnostic.In(path, $"'{name}' must be a list of strings"));
 					break;
@@ -307,6 +316,27 @@ public sealed partial class CellaProject
 				errors.Add(ProjectDiagnostic.In(path, $"'{lint}' in {table} must be a string"));
 			else if (!Enum.GetNames<LintLevel>().Contains(setting.GetString()))
 				errors.Add(ProjectDiagnostic.In(path, $"'{setting.GetString()}' is not a valid '{lint}' in {table}"));
+		}
+	}
+	
+	private static void CheckNaming(TomlDocumentNode value, string path, List<ProjectDiagnostic> errors)
+	{
+		if (!value.HasNodeOnly)
+		{
+			errors.Add(ProjectDiagnostic.In(path, "[Naming] must be a table"));
+			return;
+		}
+		
+		foreach (var (key, setting) in value)
+		{
+			var category = key.ToString()!;
+			if (!Enum.GetNames<NamingCategory>().Contains(category))
+				errors.Add(ProjectDiagnostic.In(path, $"Unknown setting '{category}' in [Naming]"));
+			else if (setting.ValueType != TomlValueType.String)
+				errors.Add(ProjectDiagnostic.In(path, $"'{category}' in [Naming] must be a string"));
+			else if (NamingPattern.Parse(setting.GetString()) is null)
+				errors.Add(ProjectDiagnostic.In(path,
+					$"'{setting.GetString()}' is not a valid '{category}' in [Naming]"));
 		}
 	}
 	
@@ -412,6 +442,7 @@ public sealed partial class CellaProject
 			],
 			Flags = Flags,
 			Lints = MergeLints(path, matching, errors),
+			Naming = Naming,
 			Imports = Imports,
 			Prelude = Prelude,
 			ImportEntries = ImportEntries

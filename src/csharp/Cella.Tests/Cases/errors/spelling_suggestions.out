@@ -4,4 +4,9 @@ Error at spelling_suggestions.ce:8:17
                     ╘══╛ Trait 'Shap' not found in this scope
                        | Did you mean 'Shape'?
 
+Hint at spelling_suggestions.ce:13:2
+12 │ 
+13 │ area: fun(imm self) -> i32 => 0
+     ╘══╛ 'area' is never used
+
 [compilation failed]

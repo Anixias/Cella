@@ -1,3 +1,13 @@
+Hint at witness_constraints.ce:13:6
+12 │ plain[U]: fun(imm self, imm value: U) -> i32
+13 │ cap[N: const usize]: fun(imm self) -> usize
+         ^ 'N' doesn't match {camelCase}
+
+Hint at witness_constraints.ce:14:8
+13 │ cap[N: const usize]: fun(imm self) -> usize
+14 │ other[N: const usize]: fun(imm self) -> usize
+           ^ 'N' doesn't match {camelCase}
+
 Error at witness_constraints.ce:21:2
 20 │ 
 21 │ keep[V: copy]: fun(self, value: V) -> V => value
@@ -17,6 +27,11 @@ Error at witness_constraints.ce:24:2
 23 │ plain[V: noref]: fun(self, imm value: V) -> i32 => 2
 24 │ cap[M: const u8]: fun(self) -> usize => 3
      ╘═╛ 'cap' doesn't match 'Apply.cap'
+
+Hint at witness_constraints.ce:24:6
+23 │ plain[V: noref]: fun(self, imm value: V) -> i32 => 2
+24 │ cap[M: const u8]: fun(self) -> usize => 3
+         ^ 'M' doesn't match {camelCase}
 
 Error at witness_constraints.ce:25:2
 24 │ cap[M: const u8]: fun(self) -> usize => 3

@@ -1,21 +1,46 @@
+Hint at loop_stores.ce:7:2
+6 │ 
+7 │ fill: fun(mut self, other: str)
+    ╘══╛ 'fill' is never used
+
 Error at loop_stores.ce:10:8
  9 │ for mut w in self.items
 10 │     w = other
              ╘═══╛ Cannot store new borrows in 'self'
+
+Hint at loop_stores.ce:20:1
+19 │ 
+20 │ replaceAll: fun(mut words: array[str, 2], other: str)
+     ╘════════╛ 'replaceAll' is never used
 
 Error at loop_stores.ce:23:7
 22 │ for mut w in words
 23 │     w = other
              ╘═══╛ Cannot store new borrows in 'mut' parameters
 
+Hint at loop_stores.ce:26:1
+25 │ 
+26 │ replaceFirst: fun(mut words: array[str, 2], other: str)
+     ╘══════════╛ 'replaceFirst' is never used
+
 Error at loop_stores.ce:31:14
 30 │ {
 31 │     words[0] = other
                     ╘═══╛ Cannot store new borrows in 'mut' parameters
 
+Hint at loop_stores.ce:36:1
+35 │ 
+36 │ fillSlots: fun(mut slots: array[Slot, 2], other: str)
+     ╘═══════╛ 'fillSlots' is never used
+
 Error at loop_stores.ce:42:23
 41 │ {
 42 │     text(val s) => s = other
                             ╘═══╛ Cannot store new borrows in 'mut' parameters
+
+Hint at loop_stores.ce:48:1
+47 │ 
+48 │ fillStatic: fun(mut words: array[str, 2])
+     ╘════════╛ 'fillStatic' is never used
 
 [compilation failed]

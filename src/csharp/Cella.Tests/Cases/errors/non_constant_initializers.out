@@ -3,20 +3,45 @@ Error at non_constant_initializers.ce:10:21
 10 │ random: const i32 = rand()
                          ╘════╛ The initial value of 'random' must be a constant
 
+Hint at non_constant_initializers.ce:11:1
+10 │ random: const i32 = rand()
+11 │ copied: const i32 = counter
+     ╘════╛ 'copied' is never used
+
 Error at non_constant_initializers.ce:11:21
 10 │ random: const i32 = rand()
 11 │ copied: const i32 = counter
                          ╘═════╛ The initial value of 'copied' must be a constant
+
+Hint at non_constant_initializers.ce:12:1
+11 │ copied: const i32 = counter
+12 │ address: const ptr[i32] = @counter
+     ╘═════╛ 'address' is never used
 
 Error at non_constant_initializers.ce:12:27
 11 │ copied: const i32 = counter
 12 │ address: const ptr[i32] = @counter
                                ╘══════╛ The initial value of 'address' must be a constant
 
+Hint at non_constant_initializers.ce:13:1
+12 │ address: const ptr[i32] = @counter
+13 │ quotient: const i32 = 1 / (limit - 5)
+     ╘══════╛ 'quotient' is never used
+
 Error at non_constant_initializers.ce:13:28
 12 │ address: const ptr[i32] = @counter
 13 │ quotient: const i32 = 1 / (limit - 5)
                                 ╘═══════╛ Division by zero
+
+Hint at non_constant_initializers.ce:14:1
+13 │ quotient: const i32 = 1 / (limit - 5)
+14 │ dependent: const i32 = random + 1
+     ╘═══════╛ 'dependent' is never used
+
+Hint at non_constant_initializers.ce:23:1
+22 │ 
+23 │ chosen: const i32 = match Mode.slow(3) { fast => 4, slow(val factor) => rand() + factor }
+     ╘════╛ 'chosen' is never used
 
 Error at non_constant_initializers.ce:23:21
 22 │ 

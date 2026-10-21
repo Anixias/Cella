@@ -1,3 +1,18 @@
+Hint at lib\lib.ce:8:1
+7 │ 
+8 │ helper: fun -> i32 => 1
+    ╘════╛ 'helper' is never used
+
+Hint at lib\lib.ce:9:1
+8 │ helper: fun -> i32 => 1
+9 │ inner: mod fun -> i32 => 2
+    ╘═══╛ 'inner' is never used
+
+Hint at lib\lib.ce:10:1
+ 9 │ inner: mod fun -> i32 => 2
+10 │ secret: pvt fun -> i32 => 3
+     ╘════╛ 'secret' is never used
+
 Error at main.ce:5:25
 4 │ 
 5 │ main: fun -> i32 => lib.helper() + lib.inner() + lib.secret()

@@ -1,3 +1,13 @@
+Hint at record_patterns.ce:81:1
+80 │ 
+81 │ Origin: const Point = Point(0, 3)
+     ╘════╛ 'Origin' doesn't match {camelCase}
+
+Hint at record_patterns.ce:82:1
+81 │ Origin: const Point = Point(0, 3)
+82 │ Check: const i32 = match Origin { Point(x: 0, val y) => y, else => 9 }
+     ╘═══╛ 'Check' doesn't match {camelCase}
+
 0 107 203 6
 -1 10 10003 5 99
 low 9

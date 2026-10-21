@@ -1,27 +1,62 @@
+Hint at view_records.ce:8:2
+7 │ 
+8 │ offsetRef: fun(mut self) -> mut[usize] => mut self.offset
+    ╘═══════╛ 'offsetRef' is never used
+
 Error at view_records.ce:8:44
 7 │ 
 8 │ offsetRef: fun(mut self) -> mut[usize] => mut self.offset
                                               ╘═════════════╛ Cannot return borrows of view records
+
+Hint at view_records.ce:10:2
+ 9 │ 
+10 │ itself: fun(mut self) -> mut[Lexer] => mut self
+     ╘════╛ 'itself' is never used
 
 Error at view_records.ce:10:41
  9 │ 
 10 │ itself: fun(mut self) -> mut[Lexer] => mut self
                                             ╘══════╛ Cannot return borrows of view records
 
+Hint at view_records.ce:12:2
+11 │ 
+12 │ current: fun(mut self) -> imm[i32] => imm self.items[self.offset]
+     ╘═════╛ 'current' is never used
+
+Hint at view_records.ce:19:2
+18 │ 
+19 │ itself: fun(mut self) -> mut[Window] => mut self
+     ╘════╛ 'itself' is never used
+
 Error at view_records.ce:19:42
 18 │ 
 19 │ itself: fun(mut self) -> mut[Window] => mut self
                                              ╘══════╛ Cannot return borrows of view records
+
+Hint at view_records.ce:26:2
+25 │ 
+26 │ startRef: fun(mut self) -> mut[usize]
+     ╘══════╛ 'startRef' is never used
 
 Error at view_records.ce:30:38
 29 │ {
 30 │     from(val items, val start) => ret mut start
                                            ╘═══════╛ Cannot return borrows of view records
 
+Hint at view_records.ce:51:1
+50 │ 
+51 │ offsetOf: fun(mut lexer: Lexer) -> mut[usize] => mut lexer.offset
+     ╘══════╛ 'offsetOf' is never used
+
 Error at view_records.ce:51:50
 50 │ 
 51 │ offsetOf: fun(mut lexer: Lexer) -> mut[usize] => mut lexer.offset
                                                       ╘══════════════╛ Cannot return borrows of view records
+
+Hint at view_records.ce:53:1
+52 │ 
+53 │ countOf: fun(mut items: array[i32, 6]) -> mut[i32]
+     ╘═════╛ 'countOf' is never used
 
 Error at view_records.ce:56:6
 55 │ var counter = Counter(items, 0, Guard())

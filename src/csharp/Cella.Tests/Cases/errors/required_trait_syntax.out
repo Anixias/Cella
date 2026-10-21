@@ -18,6 +18,11 @@ Error at required_trait_syntax.ce:13:1
 13 │ {
      ^ Expected a constraint
 
+Hint at required_trait_syntax.ce:18:1
+17 │ 
+18 │ constrained[T: Trailing + Empty]: fun(imm value: T) -> i32 => 0
+     ╘═════════╛ 'constrained' is never used
+
 Error at required_trait_syntax.ce:20:12
 19 │ 
 20 │ Ord: trait impl Eq

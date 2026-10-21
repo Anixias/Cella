@@ -18,4 +18,19 @@ Error at rules.ce:3:19
 3 │ peek: fun(hidden: Hidden) -> i32 => 0
                       ╘════╛ 'Hidden' is private to its file
 
+Hint at rules.ce:5:1
+4 │ 
+5 │ share: mod fun(secret: Secret) -> i32 => secret.code
+    ╘═══╛ 'share' is never used
+
+Hint at world.ce:18:1
+17 │ 
+18 │ helper: mod fun -> i32 => 1
+     ╘════╛ 'helper' is never used
+
+Hint at world.ce:20:1
+19 │ 
+20 │ tool: pvt fun -> i32 => 2
+     ╘══╛ 'tool' is never used
+
 [compilation failed]

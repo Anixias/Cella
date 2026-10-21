@@ -43,6 +43,11 @@ Error at new_constraint_declarations.ce:24:20
 24 │ fourth[T: new(U) + new(U), U]: fun -> i32 => 0
                         ╘════╛ 'new(U)' is required more than once
 
+Hint at new_constraint_declarations.ce:26:1
+25 │ 
+26 │ fifth[T: new(U) + new(V), U, V]: fun -> i32 => 0
+     ╘═══╛ 'fifth' is never used
+
 Error at new_constraint_declarations.ce:28:14
 27 │ 
 28 │ sixth[T: new(Missing) + new(Other)]: fun -> i32 => 0
@@ -79,6 +84,11 @@ Error at new_constraint_declarations.ce:36:18
 35 │ 
 36 │ tenth[T: new(own dyn[Shape])]: fun -> i32 => 0
                       ╘════════╛ Cannot use 'dyn[Shape]' by value
+
+Hint at new_constraint_declarations.ce:38:1
+37 │ 
+38 │ eleventh[T: new(dyn[Shape])]: fun -> i32 => 0
+     ╘══════╛ 'eleventh' is never used
 
 Error at new_constraint_declarations.ce:40:17
 39 │ 

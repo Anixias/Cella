@@ -1,12 +1,27 @@
+Hint at borrowed_declarations.ce:16:1
+15 │ 
+16 │ pass: fun(imm texture: Texture) -> Texture
+     ╘══╛ 'pass' is never used
+
 Error at borrowed_declarations.ce:19:6
 18 │ val same = texture
 19 │ ret same
          ╘══╛ Cannot move borrowed values
 
+Hint at borrowed_declarations.ce:22:1
+21 │ 
+22 │ consume: fun(imm texture: Texture)
+     ╘═════╛ 'consume' is never used
+
 Error at borrowed_declarations.ce:25:7
 24 │ val same = texture
 25 │ take(same)
           ╘══╛ Cannot move borrowed values
+
+Hint at borrowed_declarations.ce:28:1
+27 │ 
+28 │ change: fun(imm texture: Texture)
+     ╘════╛ 'change' is never used
 
 Error at borrowed_declarations.ce:31:2
 30 │ var same = texture

@@ -1,3 +1,8 @@
+Hint at globals.ce:3:1
+2 │ 
+3 │ value: val i32 = 1;
+    ╘═══╛ 'value' is never used
+
 Error at globals.ce:3:19
 2 │ 
 3 │ value: val i32 = 1;

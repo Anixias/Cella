@@ -8,4 +8,9 @@ Error at static_field_syntax.ce:10:9
 10 │     value: pvt set val i32 = 1
                 ╘═════╛ Cannot use 'pvt set' on 'val' fields
 
+Hint at static_field_syntax.ce:15:2
+14 │ {
+15 │     value: mod set var i32 = 0
+         ╘═══╛ 'value' is never used
+
 [compilation failed]
