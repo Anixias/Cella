@@ -1,0 +1,13 @@
+mod alpha
+
+Limited: pub trait req copy
+{
+	limit: const Self
+}
+
+i32: impl Limited
+{
+	limit: const i32 = 1
+}
+
+first: pub fun -> i32 => i32.limit

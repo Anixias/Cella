@@ -540,9 +540,11 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				DiagnosticsAt(inactive.Source.FilePath).Add(Protocol.ToInactiveLsp(inactive));
 		}
 		
-		var current = new HashSet<string>(byFile.Keys, Protocol.PathComparer);
-		foreach (var (path, diagnostics) in byFile)
-			await PublishAsync(path, diagnostics, opened);
+		var current = new HashSet<string>(byFile.Keys.Where(path => Contains(root, path) || opened.ContainsKey(path)),
+			Protocol.PathComparer);
+		
+		foreach (var path in current)
+			await PublishAsync(path, byFile[path], opened);
 		
 		foreach (var path in _published.GetValueOrDefault(root, []).Where(path => !current.Contains(path)))
 			await PublishAsync(path, [], opened);

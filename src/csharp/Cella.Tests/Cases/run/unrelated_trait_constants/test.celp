@@ -1,0 +1,6 @@
+OutputType = "Executable"
+StandardLibrary = "None"
+SystemLinkPreference = "Dynamic"
+
+[[ProjectReferences]]
+Path = 'a/a.celp'
