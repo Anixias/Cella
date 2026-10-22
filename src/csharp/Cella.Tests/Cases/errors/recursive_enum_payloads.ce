@@ -1,0 +1,15 @@
+mod test
+
+List: enum
+{
+	end
+	link(value: i32, next: List)
+}
+
+Tree: rec
+{
+	value: i32
+	left: Tree
+}
+
+main: fun -> i32 => 0

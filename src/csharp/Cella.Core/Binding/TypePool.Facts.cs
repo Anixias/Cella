@@ -53,14 +53,17 @@ public sealed partial class TypePool
 	
 	private bool OwnsConcretely(TypeSymbol type, HashSet<TypeSymbol> path)
 	{
-		if (type is InvalidType or TypeParameterSymbol)
-			return false;
-		
-		if (!ContainsTypeParameters(type) || type is not (NamedTypeSymbol or ArrayType))
-			return !IsCopy(type);
-		
-		if (type is RecordSymbol { IsOwn: true } or RecordSymbol { HasDestructor: true } or EnumSymbol { IsOwn: true })
-			return true;
+		switch (type)
+		{
+			case InvalidType or TypeParameterSymbol:
+				return false;
+			
+			case RecordSymbol { IsOwn: true } or RecordSymbol { HasDestructor: true } or EnumSymbol { IsOwn: true }:
+				return true;
+			
+			case not (NamedTypeSymbol or ArrayType):
+				return !ContainsTypeParameters(type) && !IsCopy(type);
+		}
 		
 		var definition = type is NamedTypeSymbol named ? named.Definition : type;
 		if (!path.Add(definition))

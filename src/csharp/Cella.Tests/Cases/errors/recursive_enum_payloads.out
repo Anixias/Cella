@@ -1,0 +1,11 @@
+Error at recursive_enum_payloads.ce:6:25
+5 │ end
+6 │ link(value: i32, next: List)
+                           ╘══╛ Payload 'next' of type 'List' causes a cycle in the memory layout
+
+Error at recursive_enum_payloads.ce:12:8
+11 │ value: i32
+12 │ left: Tree
+           ╘══╛ Field 'left' of type 'Tree' causes a cycle in the memory layout
+
+[compilation failed]
