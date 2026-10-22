@@ -1,0 +1,8 @@
+﻿mod std.math
+
+use std.num.Number
+
+abs[T: Number]: pub fun(imm x: T) -> T => T.abs(imm x)
+min[T: Number]: pub fun(imm a: T, imm b: T) -> T => T.min(imm a, imm b)
+max[T: Number]: pub fun(imm a: T, imm b: T) -> T => T.max(imm a, imm b)
+clamp[T: Number]: pub fun(imm x: T, imm min: T, imm max: T) -> T => T.clamp(imm x, imm min, imm max)

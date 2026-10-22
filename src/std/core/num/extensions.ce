@@ -45,8 +45,8 @@ Number: pub trait req Additive + Multiplicative + Ord
 		ret greater
 	}
 	
-	max: fun(imm a: Self, imm b: Self) -> Self
 	min: fun(imm a: Self, imm b: Self) -> Self
+	max: fun(imm a: Self, imm b: Self) -> Self
 	clamp: fun(imm x: Self, imm min: Self, imm max: Self) -> Self
 	abs: fun(imm x: Self) -> Self
 }
