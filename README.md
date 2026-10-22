@@ -154,7 +154,7 @@ BoundsChecks = false
 
 `CellaVersion` pins the version that builds the project. Without a pin, the newest installed version builds it. `cella +0.1.0 build` uses another installed version for one command.
 
-`OutputType` is `Executable`, `WindowedExecutable`, `SharedLibrary` or `StaticLibrary`. Other settings are `AssemblyName`, `SystemLinkPreference`, `BoundsChecks`, `OverflowChecks`, `DebugInfo`, `Referenceable`, `Flags`, `Imports`, `Prelude` and `StandardLibrary`. Output goes to the project's `bin` folder.
+`OutputType` is `Executable`, `WindowedExecutable`, `SharedLibrary` or `StaticLibrary`. Other settings are `AssemblyName`, `SystemLinkPreference`, `BoundsChecks`, `OverflowChecks`, `DebugInfo`, `Referenceable`, `Flags`, `Lints`, `Naming`, `Imports`, `Prelude` and `StandardLibrary`. Output goes to the project's `bin` folder.
 
 Every project references the standard library. Set `StandardLibrary = "Core"` to use only the part that doesn't need an operating system, or `"None"` to leave it out.
 

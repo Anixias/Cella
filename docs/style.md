@@ -22,7 +22,7 @@ The standard library follows these rules, and they are the expected default for 
 
 ## Types and traits
 
-- **Built-in types keep their lowercase names:** `i32`, `f64`, `bool`, `str`, `cstr`, `ptr[T]`, `array[T, length]`, `view[T]`.
+- **Built-in types keep their lowercase names:** `i32`, `f64`, `bool`, `str`, `cstr`, `ptr[T]`, `array[T, length]`.
 - **Every other type is PascalCase,** standard library included: `List`, `Option`, `String`, `Enemy`.
 - **Traits are bare capability or role words in PascalCase:** `Hash`, `Eq`, `Ord`, `Display`, `Iterator`, `Shape`. Abbreviations are fine, as the keywords are abbreviated too. No `-able` adjectives (`Hashable`) and no `I` prefix (`IShape`).
 - **Built-in constraints stay lowercase keywords:** `copy`, `noref`, `default`, `ext`, `atomic`.
@@ -107,7 +107,7 @@ Ring[T, capacity: const usize]: rec
 - **Module path segments are short lowercase words,** camelCase when a segment needs several: `game.worldGen`, `std.collections`. Prefer a deeper path to a long segment. No underscores or hyphens.
 - **Source files are camelCase and named for their main content:** `worldGen.ce`. The file name is not part of the module path. **Module paths should usually follow the folder structure:** a file in `game/worldGen/` declares `mod game.worldGen`. This is a best practice, not a hard rule, since a folder sometimes only groups files.
 - **Project names are camelCase,** so the project, its root module and its output share one spelling: `gameServer.celp`, `mod gameServer`, `gameServer.exe`.
-- **In the standard library,** the root module `std` declares nothing itself, and `panic` lives in `std.process` beside `exit`, `abort` and `args`.
+- **In the standard library,** `panic` lives in `std.process` beside `exit`, `abort` and `args`.
 
 ## Acronyms and numbers
 
@@ -223,7 +223,7 @@ Group by kind first, then put the most visible first within each group, then bre
 A trait's members go in the group of their kind.
 
 ```cella
-Buffer: pub rec
+Buffer: pub own rec
 {
 	maxLength: const i32 = 64
 
@@ -267,7 +267,7 @@ Buffer: pub rec
 }
 ```
 
-**Receiver mode, the last tie-breaker:** copy (bare `self`), then `imm`, then `mut`, then `own`. A member that only looks at its instance comes before one that changes it, and one that consumes it comes last. Static members have no instance, which is why their groups come first.
+**Receiver mode, the last tie-breaker:** by value (bare `self`), then `imm`, then `mut`. A member that takes its instance by value comes first, and of the borrowing ones, one that only looks at its instance comes before one that changes it. Static members have no instance, which is why their groups come first.
 
 - A `prop` with both accessors is placed by its getter's mode.
 - An operator is placed by its first operand's mode, as in `==: op(imm a: Buffer, imm b: Buffer)`.
@@ -286,6 +286,8 @@ Inventory: rec
 
 	first: fun(self) -> i32 => self.items[0]
 
+	release: fun(self) -> ptr[i32] => self.items
+
 	total: fun(imm self) -> i32
 	{
 		var sum = 0
@@ -300,7 +302,5 @@ Inventory: rec
 		self.items[self.count] = item
 		self.count += 1
 	}
-
-	release: fun(own self) -> ptr[i32] => self.items
 }
 ```
