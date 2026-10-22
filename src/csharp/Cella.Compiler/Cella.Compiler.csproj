@@ -21,8 +21,11 @@
   </Target>
 
   <ItemGroup>
-    <None Include="..\..\std\**\*" Exclude="..\..\std\tests\**;..\..\std\**\bin\**;..\..\std\**\obj\**"
-          Link="lib\std\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"
+    <None Include="..\..\std\core\**\*" Exclude="..\..\std\core\**\bin\**;..\..\std\core\**\obj\**"
+          Link="lib\std\core\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" Visible="false"/>
+    <None Include="..\..\std\os\**\*" Exclude="..\..\std\os\**\bin\**;..\..\std\os\**\obj\**"
+          Link="lib\std\os\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" Visible="false"/>
   </ItemGroup>
 
