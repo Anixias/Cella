@@ -21,6 +21,7 @@ public static class Completion
 		Class = 7,
 		Interface = 8,
 		Module = 9,
+		Reference = 18,
 		Property = 10,
 		Enum = 13,
 		Keyword = 14,
@@ -52,7 +53,20 @@ public static class Completion
 	
 	private static readonly string[] _topLevelKeywords = ["mod", "use", "ext", "pub", "pvt"];
 	
+	private static readonly HashSet<string> _completionKeywords =
+		["ret", "if", "while", "match", "in", "is", "panic", "drop", "imm", "mut", "own", "break", "cont"];
+	
 	public static bool IsNameCharacter(char c) => char.IsLetterOrDigit(c) || c == '_';
+	
+	public static bool FollowsCompletionKeyword(string text, int offset)
+	{
+		var end = offset;
+		while (end > 0 && text[end - 1] is ' ' or '\t')
+			end--;
+		
+		var start = FindNameStart(text, end);
+		return end < offset && _completionKeywords.Contains(text[start..end]);
+	}
 	
 	public static int FindNameStart(string text, int offset)
 	{
@@ -72,7 +86,7 @@ public static class Completion
 				.Distinct(),
 			(CompletionPlace.Name, _) => _expressionKeywords,
 			(CompletionPlace.Type, _) => _typeKeywords,
-			(CompletionPlace.Member or CompletionPlace.Trait, _) => [],
+			(CompletionPlace.Member or CompletionPlace.Trait or CompletionPlace.Label, _) => [],
 			(_, CompletionSite.Declaration) => _declarationKeywords,
 			(_, CompletionSite.TopLevel) => _topLevelKeywords,
 			_ => []
@@ -315,6 +329,7 @@ public static class Completion
 		TypeSymbol { OriginalDefinition: RecordSymbol } => ItemKind.Class,
 		TypeSymbol { OriginalDefinition: EnumSymbol } => ItemKind.Enum,
 		ModulePathSymbol => ItemKind.Module,
+		LabelSymbol => ItemKind.Reference,
 		MethodSymbol => ItemKind.Method,
 		FunctionSymbol => ItemKind.Function,
 		_ => ItemKind.Keyword

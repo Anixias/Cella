@@ -243,6 +243,9 @@ class CellaParameterInfoHandler : ParameterInfoHandler<PsiElement, SignatureInfo
 	}
 }
 
+private val completionKeywords =
+	setOf("ret", "if", "while", "match", "in", "is", "panic", "drop", "imm", "mut", "own", "break", "cont")
+
 class CellaTypedHandler : TypedHandlerDelegate() {
 	override fun checkAutoPopup(charTyped: Char, project: Project, editor: Editor, file: PsiFile): Result {
 		if (file.language != CellaLanguage)
@@ -250,9 +253,26 @@ class CellaTypedHandler : TypedHandlerDelegate() {
 		
 		when (charTyped) {
 			'.' -> AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+			' ' -> if (followsCompletionKeyword(editor, file))
+				AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
 			'(' -> AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
 		}
 		
 		return Result.CONTINUE
+	}
+	
+	private fun followsCompletionKeyword(editor: Editor, file: PsiFile): Boolean {
+		val offset = editor.caretModel.offset
+		val text = editor.document.charsSequence
+		var start = offset
+		while (start > 0 && (text[start - 1].isLetterOrDigit() || text[start - 1] == '_'))
+			start--
+		
+		val word = text.subSequence(start, offset).toString()
+		if (word !in completionKeywords)
+			return false
+		
+		val element = file.findElementAt(offset - 1) ?: return true
+		return element.text == word
 	}
 }

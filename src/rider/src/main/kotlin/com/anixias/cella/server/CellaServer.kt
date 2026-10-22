@@ -20,6 +20,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
@@ -96,7 +97,8 @@ class CellaServer(private val project: Project) : Disposable {
 		val process: Process,
 		val server: CellaLanguageServer,
 		val legend: SemanticTokensLegend?,
-		val supportsProjects: Boolean)
+		val supportsProjects: Boolean,
+		val libraryRoots: List<String>)
 	
 	private val sender = AppExecutorUtil.createBoundedApplicationPoolExecutor("Cella language server", 1)
 	private val documents = ConcurrentHashMap<String, Pair<Document, Int>>()
@@ -268,6 +270,9 @@ class CellaServer(private val project: Project) : Disposable {
 	
 	fun versionOf(uri: String) = documents[uri]?.second
 	
+	fun isLibraryFile(file: VirtualFile) =
+		connection?.libraryRoots?.any { FileUtil.isAncestor(it, file.path, false) } == true
+	
 	private fun activeConfiguration(): JsonObject {
 		val selected = RunManager.getInstance(project).selectedConfiguration?.configuration as? CellaRunConfiguration
 		return JsonObject().apply {
@@ -355,7 +360,9 @@ class CellaServer(private val project: Project) : Disposable {
 			hasReportedProblem = false
 			val experimental = result.capabilities.experimental as? JsonObject
 			val supportsProjects = experimental?.get("projects")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
-			Connection(process, server, result.capabilities.semanticTokensProvider?.legend, supportsProjects)
+			val libraryRoots = experimental?.get("libraryRoots")?.takeIf { it.isJsonArray }?.asJsonArray
+				?.mapNotNull { root -> root.takeIf { it.isJsonPrimitive }?.asString }.orEmpty()
+			Connection(process, server, result.capabilities.semanticTokensProvider?.legend, supportsProjects, libraryRoots)
 				.also { connection = it }
 		} catch (exception: Exception) {
 			log.warn("Couldn't start ${command.joinToString(" ")}", exception)

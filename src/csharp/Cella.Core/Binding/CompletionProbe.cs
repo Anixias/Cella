@@ -9,7 +9,8 @@ public enum CompletionPlace
 	Name,
 	Member,
 	Type,
-	Trait
+	Trait,
+	Label
 }
 
 public enum CompletionSite

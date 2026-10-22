@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
+using Cella.Compiler.Building;
 using Cella.Compiler.Projects;
 using Cella.Core.Binding;
 using Cella.Core.Symbols;
@@ -239,6 +240,10 @@ public sealed class Server
 			return null;
 		
 		var offset = GetOffset(text, parameters);
+		if ((string?)parameters?["context"]?["triggerCharacter"] == " " &&
+		    !Completion.FollowsCompletionKeyword(text, offset))
+			return new JsonObject { ["isIncomplete"] = false, ["items"] = new JsonArray() };
+		
 		var inserted = Completion.FindNameStart(text, offset) < offset ? 0 : Completion.Placeholder.Length;
 		var probed = text.Insert(offset, Completion.Placeholder[..inserted]);
 		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset, ct), text, inserted);
@@ -416,6 +421,21 @@ public sealed class Server
 	private Task<SymbolReference?> FindAsync(JsonObject? parameters, CancellationToken ct) => _workspace.FindAsync(
 		GetUri(parameters), (int)parameters!["position"]!["line"]!, (int)parameters["position"]!["character"]!, ct);
 	
+	private static JsonArray FindLibraryRoots()
+	{
+		var installation = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory));
+		IEnumerable<string> versions = installation is not null && Directory.Exists(installation)
+			? Directory.EnumerateDirectories(installation).Select(static version => Path.Combine(version, "lib", "std"))
+			: [];
+		
+		return new JsonArray([
+			..versions.Prepend(Builder.StandardLibraryDirectory)
+				.Where(Directory.Exists)
+				.Distinct(Protocol.PathComparer)
+				.Select(static root => JsonValue.Create(root))
+		]);
+	}
+	
 	private static JsonObject Capabilities() => new()
 	{
 		["capabilities"] = new JsonObject
@@ -428,7 +448,7 @@ public sealed class Server
 			{
 				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite)
 			},
-			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".") },
+			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".", " ") },
 			["signatureHelpProvider"] = new JsonObject
 			{
 				["triggerCharacters"] = new JsonArray("(", ","),
@@ -445,7 +465,7 @@ public sealed class Server
 				["change"] = FullSync,
 				["save"] = new JsonObject { ["includeText"] = false }
 			},
-			["experimental"] = new JsonObject { ["projects"] = true }
+			["experimental"] = new JsonObject { ["projects"] = true, ["libraryRoots"] = FindLibraryRoots() }
 		},
 		["serverInfo"] = new JsonObject { ["name"] = "cella-lsp", ["version"] = SemanticVersion.Current.ToString() }
 	};

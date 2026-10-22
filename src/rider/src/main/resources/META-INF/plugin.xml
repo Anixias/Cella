@@ -60,6 +60,7 @@
 		<codeInsight.parameterInfo language="Cella"
 		                           implementationClass="com.anixias.cella.server.CellaParameterInfoHandler"/>
 		<typedHandler implementation="com.anixias.cella.server.CellaTypedHandler"/>
+		<writingAccessProvider implementation="com.anixias.cella.server.CellaLibraryWritingAccess"/>
 		<intentionMenuContributor implementation="com.anixias.cella.server.CellaIntentionMenuContributor"/>
 		<renameHandler implementation="com.anixias.cella.server.CellaRenameHandler"/>
 		

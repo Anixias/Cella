@@ -2204,6 +2204,75 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task CompletesAfterSpacesOnlyFollowingCompletionKeywords()
+	{
+		var capabilities = await InitializeAsync();
+		Assert.Contains(" ", ((JsonArray)capabilities["completionProvider"]!["triggerCharacters"]!)
+			.Select(static character => (string)character!));
+		
+		Assert.IsType<JsonArray>(capabilities["experimental"]!["libraryRoots"]);
+		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("ret |")).Keys);
+		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("if |")).Keys);
+		Assert.Empty(ItemsOf(await CompleteAfterSpaceAsync("val total = q |")));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesLabelsAfterBreakAndCont()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	outer: for i in 0..3
+		                      	{
+		                      		inner: for j in 0..3
+		                      		{
+		                      			JUMP
+		                      		}
+		                      	}
+		                      	
+		                      	for k in 0..3
+		                      	{
+		                      		PLAIN
+		                      	}
+		                      	
+		                      	ret 0
+		                      }
+		                      
+		                      """;
+		
+		await InitializeAsync();
+		Assert.Equal(["inner", "outer"], ItemsOf(await CompleteTextAfterSpaceAsync(
+			source.Replace("JUMP", "break |").Replace("PLAIN", "break"))).Keys.Order());
+		
+		Assert.Equal(["inner", "outer"], ItemsOf(await CompleteTextAfterSpaceAsync(
+			source.Replace("JUMP", "cont |").Replace("PLAIN", "break"))).Keys.Order());
+		
+		Assert.Empty(ItemsOf(await CompleteTextAfterSpaceAsync(
+			source.Replace("JUMP", "break").Replace("PLAIN", "break |"))));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	private Task<JsonNode?> CompleteAfterSpaceAsync(string line) =>
+		CompleteTextAfterSpaceAsync(CompletionSource.Replace("CURSOR", line));
+	
+	private async Task<JsonNode?> CompleteTextAfterSpaceAsync(string text)
+	{
+		var offset = text.IndexOf('|');
+		text = text.Remove(offset, 1);
+		await SetTextAsync(text);
+		var parameters = Position(text[..offset].Count(static c => c == '\n'),
+			offset - (text.LastIndexOf('\n', offset - 1) + 1));
+		
+		parameters["textDocument"]!["uri"] = SourceUri;
+		parameters["context"] = new JsonObject { ["triggerKind"] = 2, ["triggerCharacter"] = " " };
+		return (await ReadResponseAsync(await RequestAsync("textDocument/completion", parameters)))["result"];
+	}
+	
+	[Fact]
 	public async Task CompletesBareCasesForEnumTargets()
 	{
 		const string source = """

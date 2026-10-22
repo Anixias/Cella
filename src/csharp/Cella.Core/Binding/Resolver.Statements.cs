@@ -88,6 +88,11 @@ public sealed partial class Resolver
 			return (null, Error(node, "Expected a label", null, labelNode));
 		
 		var name = varExpr.Identifier.Text;
+		if (Probe?.Covers(varExpr.Identifier) == true)
+			Probe.Capture(CompletionPlace.Label, (CurrentScope?.GetLabels() ?? [])
+				.DistinctBy(static label => label.Name)
+				.Select(static label => new CompletionCandidate(label)), null);
+		
 		if (CurrentScope?.ResolveLabel(name) is { } label)
 			return (label, null);
 		

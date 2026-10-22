@@ -30,6 +30,8 @@ public sealed class Scope(Scope? parent = null)
 	
 	public IEnumerable<string> GetLabelNames() => GetChain().SelectMany(static scope => scope._labels.Keys);
 	
+	public IEnumerable<LabelSymbol> GetLabels() => GetChain().SelectMany(static scope => scope._labels.Values);
+	
 	private IEnumerable<Scope> GetChain()
 	{
 		for (var scope = this; scope is not null; scope = scope.Parent)

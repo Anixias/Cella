@@ -60,10 +60,28 @@ async function activate(context) {
 
 	try {
 		await client.start();
+		const libraryRoots = client.initializeResult?.capabilities?.experimental?.libraryRoots ?? [];
+		const protectLibrary = editor => {
+			if (editor && isInLibrary(editor.document.uri, libraryRoots))
+				vscode.commands.executeCommand("workbench.action.files.setActiveEditorReadonlyInSession");
+		};
+
+		context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(protectLibrary));
+		protectLibrary(vscode.window.activeTextEditor);
 		await projects.refresh();
 	} catch (error) {
 		vscode.window.showErrorMessage(`Couldn't start the Cella language server '${server.command}': ${error.message}`);
 	}
+}
+
+function isInLibrary(uri, roots) {
+	if (uri.scheme !== "file")
+		return false;
+
+	return roots.some(root => {
+		const relative = path.relative(root, uri.fsPath);
+		return relative.length > 0 && !relative.startsWith("..") && !path.isAbsolute(relative);
+	});
 }
 
 function deactivate() {
