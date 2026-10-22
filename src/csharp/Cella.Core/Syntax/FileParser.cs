@@ -80,7 +80,7 @@ public sealed partial class FileParser
 	private static readonly HashSet<TokenType> _lifecycleKeywords = [TokenType.KeywordNew, TokenType.KeywordDrop];
 	
 	private static readonly HashSet<string> _bodyDeclarationWords =
-		["fun", "val", "var", "rec", "enum", "union", "trait", "impl", "ext", "pub", "mod", "pvt", "ref"];
+		["fun", "val", "var", "const", "rec", "enum", "union", "trait", "impl", "ext", "pub", "mod", "pvt", "ref"];
 	
 	private static readonly HashSet<string> _declarationKinds =
 		["fun", "val", "var", "rec", "enum", "union", "trait", "impl", "op", "prop"];
@@ -90,8 +90,6 @@ public sealed partial class FileParser
 	private static readonly HashSet<string> _nestedKinds = ["rec", "enum", "union", "trait", "impl"];
 	
 	private static readonly HashSet<string> _declarationBlockWords = ["ext", "pub", "pvt", "mod", "when"];
-	
-	private static readonly HashSet<string> _declarationModifierWords = ["pub", "pvt", "mod", "ref", "own", "ext"];
 	
 	private readonly HashSet<IStatementNode> _brokenStatements = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _brokenDeclarations = new(ReferenceEqualityComparer.Instance);

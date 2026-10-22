@@ -9,6 +9,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.FileStatusListener
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
@@ -78,20 +79,36 @@ class CellaProjectModel(private val project: Project) : Disposable {
 		private set
 
 	init {
-		project.messageBus.connect(this).subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
+		val connection = project.messageBus.connect(this)
+		connection.subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
 			override fun after(events: List<VFileEvent>) {
 				if (events.any { it.path.endsWith(".celp", ignoreCase = true) })
 					refresh()
-
+				
 				if (events.any { it !is VFileContentChangeEvent })
 					updateExplorer()
 			}
 		})
+		
+		connection.subscribe(FileStatusListener.TOPIC, object : FileStatusListener {
+			override fun fileStatusesChanged() = updateStatuses()
+			
+			override fun fileStatusChanged(virtualFile: VirtualFile) = updateStatuses()
+		})
 	}
-
+	
 	private fun updateExplorer() {
 		explorerAlarm.cancelAllRequests()
 		explorerAlarm.addRequest({ CellaExplorer.tryGetInstance(project)?.updateFromRoot(true) }, 300)
+	}
+	
+	private fun updateStatuses() {
+		explorerAlarm.cancelAllRequests()
+		explorerAlarm.addRequest({
+			CellaExplorer.tryGetInstance(project)?.updateFromRoot(true)
+			if (projects.isNotEmpty())
+				SolutionExplorerViewPane.tryGetInstance(project)?.updateFromRoot(true)
+		}, 300)
 	}
 
 	fun find(celp: Path): CellaProjectInfo? {

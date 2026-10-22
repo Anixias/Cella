@@ -179,7 +179,7 @@ public sealed partial class Resolver
 		var trait = (TraitSymbol)_symbolTable.DeclarationSymbols[node];
 		GetDynMembers(trait);
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = trait.Self, Trait = trait });
-		var members = node.Members.SelectMany(VisitBodyMember).ToList();
+		var members = node.Members.SelectMany(VisitTraitMember).ToList();
 		_resolutionContexts.Pop();
 		return new ResolvedTraitNode(trait, members, node);
 	}
@@ -189,15 +189,22 @@ public sealed partial class Resolver
 		var impl = (ImplSymbol)_symbolTable.DeclarationSymbols[node];
 		var target = _signatures.GetImplTarget(impl);
 		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = target, ImplBlock = impl });
-		var members = node.Members.SelectMany(VisitBodyMember).ToList();
+		var members = node.Members.SelectMany(VisitImplMember).ToList();
 		_resolutionContexts.Pop();
 		return new ResolvedImplNode(impl, target, members, node);
 	}
 	
-	private IEnumerable<IResolvedDeclarationNode> VisitBodyMember(IDeclarationNode member) => member switch
+	private IEnumerable<IResolvedDeclarationNode> VisitTraitMember(IDeclarationNode member) => member switch
 	{
 		PropertyNode property => property.Accessors.Where(static a => a.Body is not null).Select(a => VisitNode(a)),
 		FunctionNode { Body: not null } function => VisitFunctionMember(function),
+		_ => []
+	};
+	
+	private IEnumerable<IResolvedDeclarationNode> VisitImplMember(IDeclarationNode member) => member switch
+	{
+		PropertyNode property => property.Accessors.Select(accessor => VisitNode(accessor)),
+		FunctionNode function => VisitFunctionMember(function),
 		_ => []
 	};
 }

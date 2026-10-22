@@ -82,10 +82,9 @@ Error at top_level_declaration_forms.ce:43:19
 43 │ f: fun -> i32 => 1)
                        ^ Unexpected token
 
-Error at top_level_declaration_forms.ce:47:5
-46 │ 
-47 │ main: fun -> i32 => 0
-         ^ Expected ')'
-         | To match the '(' on line 45
+Error at top_level_declaration_forms.ce:45:23
+44 │ 
+45 │ broken: fun -> i32 => (
+                           ^ Expected an expression
 
 [compilation failed]

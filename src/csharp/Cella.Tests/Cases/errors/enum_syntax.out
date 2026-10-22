@@ -8,11 +8,11 @@ Error at enum_syntax.ce:11:9
 11 │     hit(i32)
                 ^ Expected ':' and a type
 
-Error at enum_syntax.ce:17:1
+Error at enum_syntax.ce:16:15
+15 │ {
 16 │     mend(amount: i32
-17 │ }
-     ^ Expected ',' or ')'
-     | To match the '(' on line 16
+                      ╘═╛ Expected ',' or ')'
+                        | To match the '(' on line 16
 
 Error at enum_syntax.ce:26:2
 25 │ {

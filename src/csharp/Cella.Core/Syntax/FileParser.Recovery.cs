@@ -120,9 +120,9 @@ public sealed partial class FileParser
 	}
 	
 	private bool StartsDeclarationInBody(int index) =>
-		Tokens[index].Type == TokenType.Identifier && Peek(index + 1, TokenType.OpColon) && !AtEnd(index + 2) &&
-		_bodyDeclarationWords.Contains(Tokens[index + 2].Text) && Tokens[index].Line != Tokens[index - 1].Line &&
-		IsOnSameLine(index + 2);
+		Tokens[index].Type == TokenType.Identifier && Tokens[index].Line != Tokens[index - 1].Line &&
+		FindDeclarationColon(index) is { } colon && !AtEnd(colon + 1) && IsOnSameLine(colon + 1) &&
+		_bodyDeclarationWords.Contains(Tokens[colon + 1].Text);
 	
 	private void SkipDeclaration(ref int index, int start, bool insideBlock = false)
 	{
@@ -420,7 +420,10 @@ public sealed partial class FileParser
 				(open.TryPeek(out var inner) ? inner.Lines : candidates).Add((i, open.Count == 0, groups));
 		}
 		
-		candidates.AddRange(open.Where(static inner => inner.HoldsCode).SelectMany(static inner => inner.Lines));
+		candidates.AddRange(open.SelectMany(inner => inner.HoldsCode
+			? inner.Lines
+			: inner.Lines.Where(line => StartsNestedDeclaration(line.Item1))));
+		
 		return FirstCut(candidates, test);
 	}
 	
@@ -430,14 +433,40 @@ public sealed partial class FileParser
 		while (header > 0 && !StartsLine(header))
 			header--;
 		
-		if (_declarationBlockWords.Contains(Tokens[header].Text))
-			return true;
+		return _declarationBlockWords.Contains(Tokens[header].Text) || DeclaresNestedKind(header);
+	}
+	
+	private bool StartsNestedDeclaration(int index) =>
+		Tokens[index].Text == "use" && !Peek(index + 1, TokenType.OpColon) &&
+		!Peek(index + 1, TokenType.OpOpenBracket) || DeclaresNestedKind(index);
+	
+	private bool StartsBracketedDeclaration(int index) =>
+		Tokens[index].Type == TokenType.Identifier && Peek(index + 1, TokenType.OpOpenBracket) &&
+		FindDeclaredKind(index) is { } kind &&
+		(TokenSets.MemberKinds.Contains(Tokens[kind].Text) || _bodyDeclarationWords.Contains(Tokens[kind].Text));
+	
+	private bool DeclaresNestedKind(int header) =>
+		FindDeclaredKind(header) is { } kind && _nestedKinds.Contains(Tokens[kind].Text);
+	
+	private int? FindDeclaredKind(int header)
+	{
+		if (FindDeclarationColon(header) is not { } colon)
+			return null;
 		
-		var colon = header + 1;
+		var kind = colon + 1;
+		while (!AtEnd(kind) && IsOnSameLine(kind) && TokenSets.MemberModifiers.Contains(Tokens[kind].Text))
+			kind++;
+		
+		return !AtEnd(kind) && IsOnSameLine(kind) ? kind : null;
+	}
+	
+	private int? FindDeclarationColon(int header)
+	{
+		var colon = Tokens[header].Type == TokenType.OpOpenBracket ? header : header + 1;
 		if (Peek(colon, TokenType.OpOpenBracket))
 		{
 			var depth = 0;
-			for (; colon < brace; colon++)
+			for (; !AtEnd(colon) && (colon == header || IsOnSameLine(colon)); colon++)
 			{
 				if (Peek(colon, TokenType.OpOpenBracket))
 					depth++;
@@ -445,17 +474,13 @@ public sealed partial class FileParser
 					break;
 			}
 			
+			if (depth != 0)
+				return null;
+			
 			colon++;
 		}
 		
-		if (!Peek(colon, TokenType.OpColon))
-			return false;
-		
-		var kind = colon + 1;
-		while (kind < brace && _declarationModifierWords.Contains(Tokens[kind].Text))
-			kind++;
-		
-		return kind < brace && _nestedKinds.Contains(Tokens[kind].Text);
+		return !AtEnd(colon) && IsOnSameLine(colon) && Peek(colon, TokenType.OpColon) ? colon : null;
 	}
 	
 	private static int? FirstCut(List<(int Index, bool IsOutside, int Groups)> candidates, CutTest test) =>
@@ -465,8 +490,8 @@ public sealed partial class FileParser
 			.FirstOrDefault();
 	
 	private bool StartsDeclarationCut(int index, bool isOutside, int groups) =>
-		StartsMemberDeclaration(index) || StartsDeclarationInBody(index) ||
-		isOutside && groups <= 0 && StartsDeclarationOnLine(index);
+		StartsMemberDeclaration(index) || StartsDeclarationInBody(index) || StartsNestedDeclaration(index) ||
+		StartsBracketedDeclaration(index) || isOutside && groups <= 0 && StartsDeclarationOnLine(index);
 	
 	private bool StartsStatementCut(int index)
 	{

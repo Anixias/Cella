@@ -15,7 +15,7 @@ public sealed partial class FileParser
 			if (AtEnd(index))
 			{
 				ReportUnclosed(openBrace);
-				return false;
+				return true;
 			}
 			
 			if (!SeparateMember(ref index, ref errorsBefore, "declaration"))

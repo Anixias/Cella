@@ -1,4 +1,6 @@
-﻿using System.Numerics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
 
@@ -11,6 +13,10 @@ public sealed class ResolvedLiteralExpressionNode(TypeSymbol type, object? value
 	public object? Value { get; } = value;
 	public IExpressionNode Syntax { get; } = syntax;
 	public UntypedType? UntypedSource { get; init; }
+	
+	[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global",
+		Justification = "Read by the semantic model's walk over resolved nodes")]
+	public ImmutableArray<IResolvedExpressionNode> Parts { get; init; } = [];
 	
 	public BigInteger? IntegerValue => Value switch
 	{

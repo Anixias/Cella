@@ -673,10 +673,29 @@ public sealed partial class Resolver
 		.Concat(type.OriginalDefinition is NamedTypeSymbol named
 			? named.Properties.Select(static property => property.Name)
 			: [])
-		.Concat(_typePool.GetMemberBlocks(type.OriginalDefinition)
-			.SelectMany(static block => block.Functions.Select(static method => method.Name)
-				.Concat(block.Properties.Select(static property => property.Name))))
+		.Concat(_typePool.GetMemberBlocks(type.OriginalDefinition).SelectMany(GetBlockMemberNames))
+		.Concat(GetTraitMemberNames(type))
 		.Distinct();
+	
+	private IEnumerable<string> GetTraitMemberNames(TypeSymbol type)
+	{
+		var (traits, impls) = type switch
+		{
+			DynType dyn => (GetDynTraits(dyn).Select(static trait => trait.Trait), []),
+			TypeParameterSymbol parameter => (_typePool.GetBounds(parameter).Select(static trait => trait.Trait),
+				GetActiveMemberBlocks(parameter)),
+			_ => (GetVisibleConformances(type).Select(static conformance => conformance.Trait),
+				GetImpls(GetVisibleConformances(type), type))
+		};
+		
+		return traits.SelectMany(static trait => trait.Functions.Select(static method => method.Name)
+				.Concat(trait.Properties.Select(static property => property.Name)))
+			.Concat(impls.SelectMany(GetBlockMemberNames));
+	}
+	
+	private static IEnumerable<string> GetBlockMemberNames(ImplSymbol block) => block.Functions
+		.Select(static method => method.Name)
+		.Concat(block.Properties.Select(static property => property.Name));
 	
 	private MethodSymbol[] FindStatics(TypeSymbol type, string name) =>
 		[..FindFunctions(type, name).Where(static function => !function.HasReceiver)];

@@ -8,12 +8,6 @@ Error at missing_syntax_parts.ce:7:13
 7 │     val a = (1 +
                    ^ Expected an expression
 
-Error at missing_syntax_parts.ce:8:1
-7 │     val a = (1 +
-8 │ }
-    ^ Expected ')'
-    | To match the '(' on line 7
-
 Error at missing_syntax_parts.ce:12:9
 11 │ {
 12 │     var x: = 1

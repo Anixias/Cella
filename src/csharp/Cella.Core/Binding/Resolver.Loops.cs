@@ -376,7 +376,12 @@ public sealed partial class Resolver
 	}
 	
 	private static ForHeader InvalidHeader(ForStatementNode node, LocalVariableSymbol? binding) =>
-		new(binding, (_, _) => new ResolvedInvalidStatementNode(node));
+		new(binding, (body, _) => new ResolvedInvalidStatementNode(node)
+		{
+			Parts = binding is null
+				? [body]
+				: [body, new ResolvedLoopVariable(binding, new ResolvedInvalidExpressionNode(node.Source))]
+		});
 	
 	private LocalVariableSymbol? CreateLoopBinding(Token token, TypeSymbol type, bool isBorrow, bool isMut) =>
 		token.Text == "_"

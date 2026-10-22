@@ -167,10 +167,10 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	
 	private bool IsNextNewline(int next)
 	{
-		if (bracketDepth > 0 || AtEnd(next - 1) || next >= Tokens.Length)
+		if (AtEnd(next - 1) || next >= Tokens.Length)
 			return false;
 		
-		return Tokens[next - 1].Line != Tokens[next].Line;
+		return bracketDepth > 0 ? StartsMemberDeclaration(next) : Tokens[next - 1].Line != Tokens[next].Line;
 	}
 	
 	public BlockParser? ParseBlock { get; init; }
@@ -459,6 +459,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		Token closeParen;
 		while (!Match(ref index, out closeParen, TokenType.OpCloseParen))
 		{
+			if (CanRecover && StartsLine(index) && (AtEnd(index) || Peek(index, TokenType.OpCloseBrace) ||
+			                                        StartsArm(index)))
+			{
+				Recover(Expected(index - 1, "')'", openParen).Diagnostic);
+				closeParen = Tokens[index - 1];
+				break;
+			}
+			
 			if (AtEnd(index))
 				throw Expected(index, "')'", openParen);
 			
@@ -503,6 +511,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	private PatternNode ParseBinding(ref int index)
 	{
 		Token? mode = Match(ref index, out var modeToken, _bindingModes) ? modeToken : null;
+		if (mode is not null && IsNextNewline(index))
+			throw Expected(index - 1, "a name or '_'");
+		
 		if (!Match(ref index, out var name, TokenType.Identifier))
 			throw Expected(index, mode is null ? "',' or ')'" : "a name or '_'");
 		
@@ -664,6 +675,16 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			? MissingOperand(index)
 			: parse(ref index);
 	
+	public static bool EndsIncomplete(IExpressionNode expression) => expression switch
+	{
+		MissingExpressionNode => true,
+		BinaryOpExpressionNode binary => EndsIncomplete(binary.Right),
+		UnaryOpExpressionNode unary => EndsIncomplete(unary.Operand),
+		ChainedExpressionNode chained => EndsIncomplete(chained.Operands[^1]),
+		AccessExpressionNode access => access.Member.Text.Length == 0,
+		_ => false
+	};
+	
 	private bool StopsOperand(int index) =>
 		EndsOperand(index) || Peek(index, TokenType.OpCloseBrace) || ContinuesExpression(Tokens[index].Type);
 	
@@ -737,14 +758,24 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
 			// Parenthesized Expression
-			node = CanRecover && Peek(index, TokenType.OpCloseParen)
+			node = CanRecover && (Peek(index, TokenType.OpCloseParen) || StartsLine(index) &&
+				(!CanStartExpression(index) || StartsMemberDeclaration(index)))
 				? MissingOperand(index)
 				: InBrackets(ref index, ParseExpression);
 			
-			if (!Match(ref index, out var parenthesisClose, TokenType.OpCloseParen))
-				throw Expected(index, "')'", openParen);
-			
-			_extents[node] = Span(openParen.SourceLocation, parenthesisClose.SourceLocation);
+			if (Match(ref index, out var parenthesisClose, TokenType.OpCloseParen))
+				_extents[node] = Span(openParen.SourceLocation, parenthesisClose.SourceLocation);
+			else
+			{
+				var error = Expected(index, "')'", openParen);
+				if (!CanRecover || !StartsLine(index) && !AtEnd(index))
+					throw error;
+				
+				if (!EndsIncomplete(node))
+					Recover(error.Diagnostic);
+				
+				_extents[node] = Span(openParen.SourceLocation, Tokens[index - 1].SourceLocation);
+			}
 		}
 		else if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
 		{
@@ -761,10 +792,15 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 				var values = new List<IExpressionNode> { InBrackets(ref index, ParseExpression) };
 				
 				while (MatchSeparator(ref index, TokenType.OpCloseBracket))
+				{
+					if (EndsUnclosedLine(index))
+						break;
+					
 					values.Add(InBrackets(ref index, ParseExpression));
+				}
 				
 				if (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
-					throw Expected(index, "',' or ']'", openBracket);
+					closeBracket = RecoverUnclosedBracket(index, "',' or ']'", openBracket);
 				
 				range = range.Join(closeBracket.SourceLocation.Range);
 				node = new ArrayExpressionNode(values, new(source, range));
@@ -901,7 +937,13 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			if (Match(ref index, out var when, TokenType.KeywordWhen))
 				ParseWhenArms(ref index, when, arms);
 			else if (AtEnd(index) || TokenSets.StatementKeywords.Contains(Tokens[index].Type))
-				throw Expected(index, "'}'", openBrace);
+			{
+				if (!CanRecover)
+					throw Expected(index, "'}'", openBrace);
+				
+				Recover(Expected(index, "'}'", openBrace).Diagnostic);
+				return Tokens[index - 1];
+			}
 			else if (!CanRecover)
 				arms.Add(WithDepth(ref index, 0, ParseMatchArm));
 			else
@@ -1164,8 +1206,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 				if (Match(ref index, out var qualifiedPanic, TokenType.KeywordPanic))
 					return ParsePanic(ref index, qualifiedPanic, target);
 				
-				if (!Match(ref index, out var member, TokenType.Identifier) &&
-				    !MatchOperatorName(ref index, out member))
+				Token member;
+				if (IsNextNewline(index) && !IsNextNewline(startIndex) ||
+				    !Match(ref index, out member, TokenType.Identifier) && !MatchOperatorName(ref index, out member))
 				{
 					if (IsNextNewline(startIndex))
 					{
@@ -1251,7 +1294,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 					continue;
 			}
 			
-			if (StartsLine(index) && !CanStartExpression(index))
+			if (StartsLine(index) && (!CanStartExpression(index) || StartsMemberDeclaration(index)))
 				return RecoverUnclosed(index, "')'", target, arguments, openParen);
 			
 			arguments.Add(InBrackets(ref index, ParseArgument));
@@ -1298,13 +1341,22 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		Token closeBracket;
 		while (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
 		{
+			if (EndsUnclosedLine(index))
+			{
+				closeBracket = RecoverUnclosedBracket(index, "']'", openBracket);
+				break;
+			}
+			
 			if (AtEnd(index))
 				throw Expected(index, "']'", openBracket);
 			
 			if (arguments.Count > 0)
 			{
 				if (!Match(ref index, out var comma, TokenType.OpComma))
-					throw Expected(index, "',' or ']'", openBracket);
+				{
+					closeBracket = RecoverUnclosedBracket(index, "',' or ']'", openBracket);
+					break;
+				}
 				
 				if (RejectTrailingComma(index, comma, TokenType.OpCloseBracket))
 					continue;
@@ -1316,6 +1368,20 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		range = range.Join(closeBracket.SourceLocation.Range);
 		
 		return new(target, arguments, new(source, range));
+	}
+	
+	private bool EndsUnclosedLine(int index) =>
+		CanRecover && StartsLine(index) && (AtEnd(index) || !CanStartExpression(index) ||
+		                                    StartsMemberDeclaration(index));
+	
+	private Token RecoverUnclosedBracket(int index, string expected, Token openBracket)
+	{
+		var error = Expected(index, expected, openBracket);
+		if (!CanRecover || !StartsLine(index) && !AtEnd(index))
+			throw error;
+		
+		Recover(error.Diagnostic);
+		return Tokens[index - 1];
 	}
 	
 	private ParseException Expected(int index, string expected, Token? opener = null)

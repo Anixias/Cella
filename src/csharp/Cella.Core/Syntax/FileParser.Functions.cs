@@ -343,6 +343,12 @@ public sealed partial class FileParser
 			
 			if (receiver is not null && !Match(ref index, TokenType.OpComma))
 			{
+				if (!IsOnSameLine(index))
+				{
+					ReportExpected(index - 1, "',' or ')'", openParen);
+					return parameters;
+				}
+				
 				if (Peek(index, TokenType.OpColon))
 					Report(Tokens[index], "Cannot declare a type for 'self'");
 				else
@@ -355,14 +361,19 @@ public sealed partial class FileParser
 			    Match(ref index, TokenType.OpCloseParen))
 				return parameters;
 			
+			var errors = Diagnostics.ErrorCount;
 			if (ParseParameterList(ref index, allowVariadic, out isVariadic) is not { } parameterList)
 				return null;
 			
 			parameters.AddRange(parameterList);
 			if (!Match(ref index, TokenType.OpCloseParen))
 			{
-				ReportExpected(StartsMemberDeclaration(index) ? index - 1 : index, "',' or ')'", openParen);
-				if (!EndsParameters(index))
+				var ends = EndsParameterLine(index);
+				if (!ends || Diagnostics.ErrorCount == errors)
+					ReportExpected(ends || StartsMemberDeclaration(index) ? index - 1 : index,
+						parameters.Count > 0 ? "',' or ')'" : "')'", openParen);
+				
+				if (!ends && !EndsParameters(index))
 					return null;
 			}
 		}
@@ -423,12 +434,12 @@ public sealed partial class FileParser
 			return null;
 		}
 		
-		if (StartsMemberDeclaration(index))
+		if (StartsMemberDeclaration(index) || EndsParameterLine(index))
 			return result;
 		
 		var errors = Diagnostics.ErrorCount;
 		if (ParseParameter(ref index) is not { } firstParameter)
-			return null;
+			return EndsParameterLine(index) ? result : null;
 		
 		result.Add(firstParameter);
 		SkipBrokenParameter(ref index, errors);
@@ -441,12 +452,12 @@ public sealed partial class FileParser
 				break;
 			}
 			
-			if (StartsMemberDeclaration(index))
+			if (StartsMemberDeclaration(index) || EndsParameterLine(index))
 				break;
 			
 			errors = Diagnostics.ErrorCount;
 			if (ParseParameter(ref index) is not { } parameter)
-				return null;
+				return EndsParameterLine(index) ? result : null;
 			
 			result.Add(parameter);
 			SkipBrokenParameter(ref index, errors);
@@ -454,6 +465,10 @@ public sealed partial class FileParser
 		
 		return result;
 	}
+	
+	private bool EndsParameterLine(int index) =>
+		!IsOnSameLine(index) && (AtEnd(index) || Tokens[index].Type is TokenType.OpOpenBrace or
+			TokenType.OpCloseBrace or TokenType.OpFatArrow or TokenType.OpArrow || StartsMemberDeclaration(index));
 	
 	private ParameterNode? ParseParameter(ref int index)
 	{
@@ -463,9 +478,11 @@ public sealed partial class FileParser
 		
 		Token? ellipsis = Match(ref index, out var dots, TokenType.OpDotDotDot) ? dots : null;
 		
-		if (!Match(ref index, out var identifier, TokenType.Identifier))
+		if (mode is not null && !IsOnSameLine(index) || !Match(ref index, out var identifier, TokenType.Identifier))
 		{
-			if (IsReservedWord(index))
+			if (!IsOnSameLine(index))
+				ReportMissing(index, "a parameter name");
+			else if (IsReservedWord(index))
 				Report(Tokens[index], DescribeReservedWord(Tokens[index]));
 			else if (mode is { } named && ellipsis is null && Peek(index, TokenType.OpColon))
 				Report(named, DescribeReservedWord(named));

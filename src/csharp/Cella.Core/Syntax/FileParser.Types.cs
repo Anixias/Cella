@@ -200,7 +200,7 @@ public sealed partial class FileParser
 			if (AtEnd(index))
 			{
 				ReportUnclosed(openBrace);
-				return false;
+				return true;
 			}
 			
 			if (!SeparateMember(ref index, ref errorsBefore, "member"))
@@ -366,7 +366,7 @@ public sealed partial class FileParser
 			if (AtEnd(index))
 			{
 				ReportUnclosed(openBrace);
-				return false;
+				return true;
 			}
 			
 			if (!SeparateMember(ref index, ref errorsBefore, "member"))
@@ -591,6 +591,12 @@ public sealed partial class FileParser
 	{
 		do
 		{
+			if (EndsPayloadLine(index))
+			{
+				ReportExpected(index - 1, "')'", openParen);
+				return true;
+			}
+			
 			if (!Match(ref index, out var fieldName, TokenType.Identifier))
 			{
 				ReportExpected(index, "a payload name");
@@ -619,9 +625,13 @@ public sealed partial class FileParser
 		if (Match(ref index, TokenType.OpCloseParen))
 			return true;
 		
-		ReportExpected(index, "',' or ')'", openParen);
+		ReportExpected(StartsLine(index) ? index - 1 : index, "',' or ')'", openParen);
 		return EndsParameters(index) || StartsLine(index) && StartsEnumItem(index, false);
 	}
+	
+	private bool EndsPayloadLine(int index) =>
+		StartsLine(index) && (AtEnd(index) || Tokens[index].Type != TokenType.Identifier ||
+		                      !Peek(index + 1, TokenType.OpColon) || StartsMemberDeclaration(index));
 	
 	private bool ParseMatchedPayload(ref int index, Token openParen, ITypeNode matchedType, List<FieldNode> payload)
 	{

@@ -3,10 +3,11 @@ Error at visibility_syntax.ce:5:10
 5 │     broken: 5
                 ^ Expected a declaration
 
-Error at visibility_syntax.ce:11:1
+Error at visibility_syntax.ce:10:17
+ 9 │ {
 10 │     unfinished: fun(
-11 │ }
-     ^ Expected a parameter name
+                        ^ Expected ')'
+                        | To match the '(' on line 10
 
 Error at visibility_syntax.ce:13:8
 12 │ 

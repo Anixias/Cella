@@ -3,10 +3,9 @@ Error at top_level_recovery_colon_in_pvt.ce:5:9
 5 │     helper fun -> i32 = 1
                ╘═╛ Expected ':' after 'helper'
 
-Error at top_level_recovery_colon_in_pvt.ce:10:5
- 9 │ 
-10 │ main: fun -> i32 => 0
-         ^ Expected ')'
-         | To match the '(' on line 8
+Error at top_level_recovery_colon_in_pvt.ce:8:23
+7 │ 
+8 │ second: fun -> i32 => (
+                          ^ Expected an expression
 
 [compilation failed]

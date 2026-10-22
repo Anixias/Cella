@@ -11,6 +11,8 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 	private static readonly Dictionary<string, TokenType> _externalKeywords =
 		new[] { TokenType.KeywordExt }.ToDictionary(static t => t.Representation);
 	
+	public Action<Diagnostic>? ReportRecovered { get; init; }
+	
 	public override ITypeNode Parse(ref int index) => ParseType(ref index);
 	
 	private ITypeNode ParseType(ref int index)
@@ -46,20 +48,33 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 			return qualified ?? (ITypeNode)new IdentifierTypeNode(identifier);
 		}
 		
-		if (StartsMemberDeclaration(index))
-			throw ExpectedClose(index, openBracket);
-		
-		var args = new List<IGenericArgumentNode> { ParseGenericArgument(ref index) };
-		while (MatchSeparator(ref index, TokenType.OpCloseBracket))
+		var args = new List<IGenericArgumentNode>();
+		Token closeBracket;
+		while (true)
 		{
+			if (EndsTypeLine(index))
+			{
+				ReportRecovered!(ExpectedClose(index, openBracket).Diagnostic);
+				if (args.Count == 0)
+					return qualified ?? (ITypeNode)new IdentifierTypeNode(identifier);
+				
+				closeBracket = Tokens[index - 1];
+				break;
+			}
+			
 			if (StartsMemberDeclaration(index))
 				throw ExpectedClose(index, openBracket);
 			
 			args.Add(ParseGenericArgument(ref index));
+			if (MatchSeparator(ref index, TokenType.OpCloseBracket))
+				continue;
+			
+			if (Match(ref index, out closeBracket, TokenType.OpCloseBracket))
+				break;
+			
+			if (!EndsTypeLine(index))
+				throw ExpectedClose(index, openBracket);
 		}
-		
-		if (!Match(ref index, out var closeBracket, TokenType.OpCloseBracket))
-			throw ExpectedClose(index, openBracket);
 		
 		var (source, range) = identifier.SourceLocation;
 		range = range.Join(closeBracket.SourceLocation.Range);
@@ -103,6 +118,11 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 			? openBracket
 			: throw Expected(index, "'['");
 	}
+	
+	private bool EndsTypeLine(int index) =>
+		ReportRecovered is not null && StartsLine(index) &&
+		(AtEnd(index) || Tokens[index].Type is TokenType.OpOpenBrace or TokenType.OpCloseBrace or
+			TokenType.OpFatArrow or TokenType.OpArrow or TokenType.OpEqual || StartsMemberDeclaration(index));
 	
 	private ParseException ExpectedClose(int index, Token openBracket)
 	{

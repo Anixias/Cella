@@ -1,4 +1,5 @@
-﻿using Cella.Core.Syntax.Nodes;
+﻿using System.Collections.Immutable;
+using Cella.Core.Syntax.Nodes;
 
 namespace Cella.Core.Binding.Nodes;
 
@@ -13,4 +14,5 @@ public partial interface IResolvedStatementNodeVisitor;
 public sealed class ResolvedInvalidStatementNode(IStatementNode syntax) : IResolvedStatementNode
 {
 	public IStatementNode Syntax { get; } = syntax;
+	public ImmutableArray<object> Parts { get; init; } = [];
 }

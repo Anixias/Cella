@@ -53,6 +53,10 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 			: index + 1;
 		
 		var kind = colon + 1;
+		while (!AtEnd(kind) && Tokens[kind].Line == Tokens[index].Line &&
+		       TokenSets.MemberModifiers.Contains(Tokens[kind].Text))
+			kind++;
+		
 		return Peek(colon, TokenType.OpColon) && !AtEnd(kind) && Tokens[kind].Line == Tokens[index].Line &&
 		       TokenSets.MemberKinds.Contains(Tokens[kind].Text) &&
 		       !(Tokens[kind].Type == TokenType.KeywordFun && Peek(kind + 1, TokenType.OpOpenBracket));

@@ -8,9 +8,9 @@ Error at top_level_recovery_stray_in_pvt.ce:6:2
 6 │ +
     ^ Unexpected token
 
-Error at top_level_recovery_stray_in_pvt.ce:8:1
-7 │     b: fun -> i32 => (
-8 │ }
-    ^ Expected an expression
+Error at top_level_recovery_stray_in_pvt.ce:7:19
+6 │ +
+7 │ b: fun -> i32 => (
+                     ^ Expected an expression
 
 [compilation failed]

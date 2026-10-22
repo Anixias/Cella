@@ -1451,7 +1451,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		await InitializeAsync();
 		var items = await CompleteInAsync("""
 		                                  mod test
-
+		                                  
 		                                  Floaty: trait req copy
 		                                  {
 		                                  	unit: const Self
@@ -1459,61 +1459,137 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                  	lower: fun(imm a: Self, imm b: Self) -> Self
 		                                  	twice: fun(imm x: Self) -> bool => |
 		                                  }
-
+		                                  
 		                                  """);
-
+		
 		Assert.Contains("unit", items.Keys);
 		Assert.Contains("isNan", items.Keys);
 		Assert.Contains("lower", items.Keys);
-
+		
 		items = await CompleteInAsync("""
 		                              mod test
-
+		                              
 		                              Floaty: trait req copy
 		                              {
 		                              	isNan: fun(imm x: Self) -> bool
 		                              	lower: fun(imm a: Self, imm b: Self) -> Self
 		                              }
-
+		                              
 		                              f32: impl Floaty
 		                              {
 		                              	limit: const f32 = 1
-
+		                              
 		                              	lower: fun(a: f32, b: f32) -> f32
 		                              	{
 		                              		if a == b
 		                              			ret match |
-
+		                              
 		                              		ret a
 		                              	}
-
+		                              
 		                              	isNan: fun(x: f32) -> bool => x != x
 		                              }
-
+		                              
 		                              """);
-
+		
 		Assert.Contains("limit", items.Keys);
 		Assert.Contains("isNan", items.Keys);
 		Assert.Contains("lower", items.Keys);
-
+		
 		items = await CompleteInAsync("""
 		                              mod test
-
+		                              
 		                              Point: rec
 		                              {
 		                              	x: i32
-
+		                              
 		                              	origin: fun -> Point => Point(x: 0)
 		                              	nearest: fun -> i32 => |
 		                              }
-
+		                              
 		                              """);
-
+		
 		Assert.Contains("origin", items.Keys);
 		Assert.DoesNotContain("x", items.Keys);
 		Assert.Equal(0, await ShutDownAsync());
 	}
-
+	
+	[Theory]
+	[InlineData("main: fun -> f32 => f32.|\n", "lower", "scaled")]
+	[InlineData("main: fun -> f32\n{\n\tval a: f32 = 1\n\tret a.|\n}\n", "scaled", "lower")]
+	[InlineData("twice[T: Floaty]: fun(x: T) -> T => x.|\n", "scaled", "lower")]
+	[InlineData("twice[T: Floaty]: fun(x: T) -> T => T.|\n", "lower", "scaled")]
+	public async Task CompletesTraitMembersThroughTypesAndValues(string tail, string offered, string absent)
+	{
+		await InitializeAsync();
+		var items = await CompleteInAsync("mod test\n\nFloaty: trait req copy\n{\n" +
+		                                  "\tlower: fun(imm a: Self, imm b: Self) -> Self\n" +
+		                                  "\tscaled: fun(imm self) -> Self\n}\n\n" +
+		                                  "f32: impl Floaty\n{\n\tlower: fun(a: f32, b: f32) -> f32 => a\n" +
+		                                  "\tscaled: fun(imm self) -> f32 => self\n}\n\n" + tail);
+		
+		Assert.Contains(offered, items.Keys);
+		Assert.DoesNotContain(absent, items.Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Theory]
+	[InlineData("mod test\n\nPoint: rec\n{\n\tx: i32\n\nShape: trait\n{\n\tarea: fun(imm self) -> f32\n}\n",
+		"4:1:1 ", "6:0:5 ", "8:1:4 ")]
+	[InlineData("mod test\n\nclamp: fun(x: f32, low\n{\n\tret x\n}\n", "2:0:5 ", "2:11:1 ", "2:19:3 ", "4:5:1 ")]
+	[InlineData(
+		"mod test\n\nmain: fun -> i32\n{\n\tval v: i32 = 1\n\tif v ==\n\tvar box: i32 = 2\n\tv.\n\tbox += 1\n\tret box\n}\n",
+		"7:1:1 ", "8:1:3 ", "9:5:3 ")]
+	[InlineData(
+		"mod test\n\nmain: fun -> i32\n{\n\tvar total: i32 = 0\n\tfor i in 0..\n\t\ttotal += i\n\tret total\n}\n",
+		"5:5:1 ", "6:11:1 ", "7:5:5 ")]
+	[InlineData("mod test\n\nShape: enum\n{\n\tcircle(radius: f32)\n\tpoint\n}\n\n" +
+	            "area: fun(s: Shape) -> f32 => match s\n{\n\tcircle(val r\n\tpoint => 0\n}\n", "11:1:5 ")]
+	[InlineData("mod test\n\nHolder[T]: trait\n{\n\tlimit: fun(self) -> T\n}\n\nBox: rec\n{\n\tcurrent: i64\n}\n\n" +
+	            "Box: impl Holder[\n{\n\tlimit: fun(self) -> i64 => self.current\n}\n", "14:1:5 ", "14:33:7 ")]
+	[InlineData("mod test\n\nfirst: fun -> i32\n{\n\tval a: i32 = 1\n\nsecond: fun -> i32 => 2\n",
+		"2:0:5 ", "4:5:1 ", "6:0:6 ")]
+	[InlineData("mod test\n\nShape: enum\n{\n\tcircle(\n\tsquare(side: f32)\n\tpoint\n}\n", "5:1:6 ", "5:8:4 ",
+		"6:1:5 ")]
+	public async Task ClassifiesNamesInIncompleteCode(string source, params string[] expected)
+	{
+		var tokens = await ClassifyAsync(source);
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesBodylessImplMembersAndLayoutTargets()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 f32: impl
+		                                 {
+		                                 	clamp: fun(imm x: f32, imm low: f32) -> f32
+		                                 	bits: get(imm self) -> u32
+		                                 }
+		                                 
+		                                 show[T]: fun(value: T) -> usize
+		                                 {
+		                                 	val n: str = nameOf(T)
+		                                 	val m: str = nameOf(value)
+		                                 	ret sizeOf(value)
+		                                 }
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		string[] expected = ["4:1:5 ", "4:16:1 ", "4:28:3 ", "5:1:4 ", "10:21:1 ", "11:21:5 ", "12:12:5 "];
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	[Fact]
 	public async Task OrdersCompletionsByScopeThenProject()
 	{

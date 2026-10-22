@@ -327,6 +327,13 @@ public sealed class SemanticModel
 				Add(FindName(n.Syntax), n.Function.Symbol, DescribeFunction(n.Function));
 				break;
 			
+			case ResolvedFunctionGroupExpressionNode { Group.Functions: [var first, ..] functions } n when
+				FindName(n.Syntax) is { } groupName:
+				Add(groupName.SourceLocation, first.Symbol, string.Join('\n', functions.Select(DescribeFunction)),
+					functions.Skip(1).Select(static function => function.Symbol));
+				
+				break;
+			
 			case ResolvedQuestionExpressionNode { Syntax: QuestionExpressionNode question } n:
 				Add(question.Op, n.Operator, DescribeFunction(n.Info));
 				break;
@@ -379,7 +386,9 @@ public sealed class SemanticModel
 				break;
 			
 			case ResolvedCursorForStatementNode { Syntax: ForStatementNode loop } n:
-				AddLoopOperator(loop.In, n.Cursor.Value, TokenType.KeywordIn);
+				if (loop.In is { } inKeyword)
+					AddLoopOperator(inKeyword, n.Cursor.Value, TokenType.KeywordIn);
+				
 				AddLoopOperator(loop.Keyword, n.Step, TokenType.KeywordFor);
 				break;
 			

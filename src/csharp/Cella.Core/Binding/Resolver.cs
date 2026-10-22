@@ -182,6 +182,10 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		var isBroken = Containment?.Enter(node) == true;
 		var visited = _visited.Count;
 		var result = ((IStatementNodeVisitor<IResolvedStatementNode>)this).Visit(node);
+		if (RecordName is not null && result is ResolvedInvalidStatementNode invalid && _visited.Count > visited)
+			result = new ResolvedInvalidStatementNode(invalid.Syntax)
+				{ Parts = [..invalid.Parts, .._visited.Skip(visited)] };
+		
 		_visited.RemoveRange(visited, _visited.Count - visited);
 		if (isBroken)
 			Containment!.Exit();
@@ -261,7 +265,8 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private IResolvedExpressionNode VisitDiscarded(IExpressionNode node)
 	{
 		_expectations.Push(new(null, false));
-		var result = ((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node);
+		var visited = _visited.Count;
+		var result = KeepVisitedParts(((IExpressionNodeVisitor<IResolvedExpressionNode>)this).Visit(node), visited);
 		_expectations.Pop();
 		return result is ResolvedInterpolatedStringExpressionNode ? MaterializeAsDefault(result) : result;
 	}

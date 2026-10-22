@@ -16,7 +16,7 @@ public sealed class ForStatementNode
 {
 	public SourceLocation SourceLocation { get; } = sourceLocation;
 	public Token Keyword { get; init; }
-	public Token In { get; init; }
+	public Token? In { get; init; }
 	public Token Binding { get; } = binding;
 	public Token? Mode { get; } = mode;
 	public Token? BindingMode { get; init; }

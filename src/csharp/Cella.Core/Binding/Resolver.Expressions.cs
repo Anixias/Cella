@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Immutable;
+using System.Text;
 using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
@@ -75,13 +76,18 @@ public sealed partial class Resolver
 				: ResolvePropertyUse(node, node.Member.SourceLocation, property, target.Type, target);
 		
 		if (resolutionContext.TypePool.ResolveMember(target.Type, memberName) is not { } member)
-			return Error(node, FindFunctions(target.Type, memberName) switch
+		{
+			var functions = FindFunctions(target.Type, memberName);
+			foreach (var function in functions)
+				RecordName?.Invoke(node.Member, function.Function);
+			
+			return Retain(target, Error(node, functions switch
 			{
 				[] => DescribeMissingMember(target.Type, memberName),
-				var functions when functions.Any(static function => function.HasReceiver) =>
-					"Cannot use methods as values",
+				_ when functions.Any(static function => function.HasReceiver) => "Cannot use methods as values",
 				_ => "Cannot use static functions through values"
-			}, CurrentTargetType, node.Member.SourceLocation);
+			}, CurrentTargetType, node.Member.SourceLocation));
+		}
 		
 		if (member is FieldSymbol field && !CanAccess(target.Type, field.Visibility))
 			return Error(node, DiagnosticReporter.ReportHidden(node.Member.SourceLocation, memberName, field.Visibility,
@@ -360,11 +366,13 @@ public sealed partial class Resolver
 	private IResolvedExpressionNode ResolveLayout(IExpressionNode node, IExpressionNode targetNode, bool isAlignment)
 	{
 		TypeSymbol target;
+		ImmutableArray<IResolvedExpressionNode> parts = [];
 		if (CurrentResolutionContext.TryResolveExpressionAsType(targetNode) is { } type)
 			target = RequireTypeArguments(type, targetNode);
 		else
 		{
 			var value = Decay(MaterializeAsDefault(VisitNode(targetNode)));
+			parts = [value];
 			if (value.Type is DynType)
 			{
 				var borrow = _typePool.GetBorrowType(value.Type, false);
@@ -380,17 +388,17 @@ public sealed partial class Resolver
 		
 		if (TypePool.ContainsTypeParameters(target))
 			return isAlignment
-				? new ResolvedAlignOfExpressionNode(target, node)
-				: new ResolvedSizeOfExpressionNode(target, node);
+				? new ResolvedAlignOfExpressionNode(target, node) { Parts = parts }
+				: new ResolvedSizeOfExpressionNode(target, node) { Parts = parts };
 		
 		if (target is NeverType)
 			return Error(node, $"'{target.Name}' has no {(isAlignment ? "alignment" : "size")}", CurrentTargetType);
 		
 		if (IsInvalid(target) || _typePool.SizeTable.TryGetSize(target) is not { } size)
-			return new ResolvedInvalidExpressionNode(node);
+			return new ResolvedInvalidExpressionNode(node) { Parts = parts };
 		
 		var bits = isAlignment ? size.CountAlignmentBits(_pointerBitSize) : size.CountBits(_pointerBitSize);
-		return new ResolvedLiteralExpressionNode(NativeSymbols.UIntSize, (bits + 7) / 8, node);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UIntSize, (bits + 7) / 8, node) { Parts = parts };
 	}
 	
 	public IResolvedExpressionNode Visit(TypeExpressionNode node) =>
@@ -398,8 +406,18 @@ public sealed partial class Resolver
 	
 	public IResolvedExpressionNode Visit(NameOfExpressionNode node)
 	{
-		if (!IsDefinedName(node.Name))
-			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		var named = new List<Symbol>();
+		var parts = new List<IResolvedExpressionNode>();
+		var defined = IsDefinedName(node.Name, named, parts);
+		if (RecordName is { } record && FindNamedToken(node.Name) is { } token)
+		{
+			foreach (var symbol in named.SelectMany(static symbol =>
+				         symbol is AmbiguousSymbol ambiguous ? ambiguous.Candidates : [symbol]))
+				record(token, symbol);
+		}
+		
+		if (!defined)
+			return new ResolvedInvalidExpressionNode(node, CurrentTargetType) { Parts = [..parts] };
 		
 		var name = node.Name switch
 		{
@@ -408,10 +426,17 @@ public sealed partial class Resolver
 			_ => throw new InvalidOperationException()
 		};
 		
-		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, name, node);
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, name, node) { Parts = [..parts] };
 	}
 	
-	private bool IsDefinedName(IExpressionNode name)
+	private static Token? FindNamedToken(IExpressionNode name) => name switch
+	{
+		AccessExpressionNode access => access.Member,
+		VarExpressionNode variable => variable.Identifier,
+		_ => null
+	};
+	
+	private bool IsDefinedName(IExpressionNode name, List<Symbol> named, List<IResolvedExpressionNode> parts)
 	{
 		var context = CurrentResolutionContext;
 		switch (name)
@@ -427,12 +452,16 @@ public sealed partial class Resolver
 				else
 					MarkUsed(context.Resolve(variable.Identifier.Text));
 				
+				if (context.Resolve(variable.Identifier.Text) is { } resolved)
+					named.Add(resolved);
+				
 				return true;
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
 				if (context.ResolveMember(module, access.Member.Text) is { } member)
 				{
 					MarkUsed(member);
+					named.Add(member);
 					return true;
 				}
 				
@@ -442,34 +471,46 @@ public sealed partial class Resolver
 				return false;
 			
 			case AccessExpressionNode access when context.TryResolveExpressionAsType(access.Target) is { } type:
-				return type is EnumSymbol enumType && enumType.GetStaticField(access.Member.Text) is null &&
-				       GetPropertyMember(enumType, access.Member.Text) is null
-					? FindCase(enumType, access.Member) is not null
-					: HasMember(type, access.Member);
+				if (type is not EnumSymbol enumType || enumType.GetStaticField(access.Member.Text) is not null ||
+				    GetPropertyMember(enumType, access.Member.Text) is not null)
+					return HasMember(type, access.Member, named);
+				
+				if (FindCase(enumType, access.Member) is not { } enumCase)
+					return false;
+				
+				named.Add(enumCase);
+				return true;
 			
 			case AccessExpressionNode access:
 				var target = Decay(VisitNode(access.Target, null));
-				return !IsInvalid(target) && HasMember(GetMemberOwner(target.Type, access.Member.Text), access.Member);
+				parts.Add(target);
+				return !IsInvalid(target) &&
+				       HasMember(GetMemberOwner(target.Type, access.Member.Text), access.Member, named);
 			
 			default:
 				return false;
 		}
 	}
 	
-	private bool HasMember(TypeSymbol type, Token member)
+	private bool HasMember(TypeSymbol type, Token member, List<Symbol> named)
 	{
 		if (type.GetStaticField(member.Text) is { } global)
 		{
 			MarkUsed(global);
+			named.Add(global);
 			return IsAccessibleMember(type, member, global.Visibility);
 		}
 		
 		if (GetPropertyMember(type, member.Text) is { } property)
+		{
+			named.Add(property);
 			return IsAccessibleMember(type, member, property.Visibility);
+		}
 		
 		if (GetMethods(type, member.Text).Select(static method => method.Function).ToList() is [_, ..] functions)
 		{
 			functions.ForEach(MarkUsed);
+			named.AddRange(functions);
 			if (functions.Any(function => CanAccess(type, function)))
 				return true;
 			
@@ -477,7 +518,11 @@ public sealed partial class Resolver
 			return false;
 		}
 		
-		switch (_typePool.ResolveMember(type, member.Text))
+		var resolved = _typePool.ResolveMember(type, member.Text);
+		if (resolved is not null)
+			named.Add(resolved);
+		
+		switch (resolved)
 		{
 			case FieldSymbol field when !CanAccess(type, field.Visibility):
 				Diagnostics.Add(DiagnosticReporter.ReportHidden(member.SourceLocation, member.Text, field.Visibility,

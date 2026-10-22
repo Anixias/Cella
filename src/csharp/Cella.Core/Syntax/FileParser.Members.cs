@@ -208,7 +208,7 @@ public sealed partial class FileParser
 				if (AtEnd(index))
 				{
 					ReportUnclosed(openBrace);
-					return null;
+					break;
 				}
 				
 				if (!SeparateMember(ref index, ref errorsBefore, "accessor"))
@@ -318,6 +318,12 @@ public sealed partial class FileParser
 		if (Match(ref index, TokenType.OpCloseParen))
 			return (receiver, parameters);
 		
+		if (EndsParameterLine(index))
+		{
+			ReportExpected(index - 1, "',' or ')'", openParen);
+			return (receiver, parameters);
+		}
+		
 		if (receiver is not null && !Match(ref index, TokenType.OpComma))
 		{
 			ReportExpected(index, "',' or ')'", openParen);
@@ -331,6 +337,12 @@ public sealed partial class FileParser
 		do
 		{
 			Token? mode = Match(ref index, out var keyword, TokenSets.ParameterModes) ? keyword : null;
+			if (!IsOnSameLine(index))
+			{
+				ReportMissing(index, "a parameter name");
+				return (receiver, parameters);
+			}
+			
 			if (!Match(ref index, out var name, TokenType.Identifier))
 			{
 				if (IsReservedWord(index))
@@ -357,6 +369,12 @@ public sealed partial class FileParser
 		
 		if (Match(ref index, TokenType.OpCloseParen))
 			return (receiver, parameters);
+		
+		if (!IsOnSameLine(index))
+		{
+			ReportExpected(index - 1, "',' or ')'", openParen);
+			return (receiver, parameters);
+		}
 		
 		ReportExpected(index, "',' or ')'", openParen);
 		return null;

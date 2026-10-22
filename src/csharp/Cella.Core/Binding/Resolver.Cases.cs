@@ -32,6 +32,9 @@ public sealed partial class Resolver
 		if (enumCase is null || arguments.Length != payloadTypes.Length || call is not null && payloadTypes.IsEmpty)
 		{
 			var values = arguments.Select(argument => VisitNode(argument, null)).ToArray();
+			if (enumCase is not null)
+				RecordName?.Invoke(name, enumCase);
+			
 			if (enumCase is not null && !AnyInvalid(values))
 				Diagnostics.Add(ReportPayloadCount(node.SourceLocation, enumType, enumCase));
 			

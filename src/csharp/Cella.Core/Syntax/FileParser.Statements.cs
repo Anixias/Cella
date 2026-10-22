@@ -37,16 +37,11 @@ public sealed partial class FileParser
 	{
 		while (!Match(ref index, out close, TokenType.OpCloseBrace))
 		{
-			if (AtEnd(index))
+			if (AtEnd(index) || StartsDeclarationInBody(index) || StartsMemberDeclaration(index))
 			{
 				ReportUnclosed(open);
-				return false;
-			}
-			
-			if (StartsDeclarationInBody(index))
-			{
-				ReportUnclosed(open);
-				return false;
+				close = Tokens[index - 1];
+				return true;
 			}
 			
 			var start = index;
@@ -273,15 +268,15 @@ public sealed partial class FileParser
 		
 		if (!Match(ref index, out var inKeyword, TokenType.KeywordIn))
 		{
-			ReportExpected(index, "'in'");
-			return null;
+			ReportMissing(index, "'in'");
+			return IsOnSameLine(index) ? null : IncompleteFor(ref index, keyword, label, binding, bindingMode, null);
 		}
 		
 		Token? mode = Match(ref index, out var mut, TokenType.KeywordMut) ? mut : null;
 		if (StartsBody(index))
 		{
 			ReportMissing(index, "an expression");
-			return null;
+			return IncompleteFor(ref index, keyword, label, binding, bindingMode, inKeyword);
 		}
 		
 		var source = ParseExpression(ref index);
@@ -289,7 +284,16 @@ public sealed partial class FileParser
 		if (rangeOperator is not null && StartsBody(index))
 		{
 			ReportMissing(index, "an expression");
-			return null;
+			var missingEnd = Missing(index);
+			return ParseIncompleteBody(ref index) is { } rangeBody
+				? new(SpanLoop(keyword, label, rangeBody.SourceLocation), binding, mode, source, rangeOperator,
+					missingEnd, rangeBody, label)
+				{
+					Keyword = keyword,
+					In = inKeyword,
+					BindingMode = bindingMode
+				}
+				: null;
 		}
 		
 		var end = rangeOperator is null ? null : ParseExpression(ref index);
@@ -309,16 +313,59 @@ public sealed partial class FileParser
 			: null;
 	}
 	
+	private ForStatementNode? IncompleteFor(ref int index, Token keyword, Token? label, Token binding,
+		Token? bindingMode, Token? inKeyword)
+	{
+		var source = Missing(index);
+		return ParseIncompleteBody(ref index) is { } body
+			? new(SpanLoop(keyword, label, body.SourceLocation), binding, null, source, null, null, body, label)
+			{
+				Keyword = keyword,
+				In = inKeyword,
+				BindingMode = bindingMode
+			}
+			: null;
+	}
+	
+	private IStatementNode? ParseIncompleteBody(ref int index) =>
+		AtEnd(index) || Peek(index, TokenType.OpCloseBrace) || StartsDeclarationStatement(index)
+			? EmptyBody(index)
+			: ParseBody(ref index);
+	
+	private MissingExpressionNode Missing(int index)
+	{
+		var (source, range) = Tokens[index - 1].SourceLocation;
+		return new(new(source, new TextRange(range.End, range.End)));
+	}
+	
+	private BlockStatementNode EmptyBody(int index)
+	{
+		var (source, range) = Tokens[index - 1].SourceLocation;
+		return new(new(source, new TextRange(range.End, range.End)), []);
+	}
+	
+	private IStatementNode? ParseConditionBody(ref int index, IExpressionNode condition) =>
+		ExpressionParser.EndsIncomplete(condition) && StartsDeclarationStatement(index)
+			? EmptyBody(index)
+			: ParseBody(ref index);
+	
+	private bool StartsDeclarationStatement(int index) =>
+		!IsOnSameLine(index) && Tokens[index].Type is TokenType.KeywordVal or TokenType.KeywordVar or
+			TokenType.KeywordConst;
+	
 	private WhileStatementNode? ParseWhileStatement(ref int index, Token keyword, Token? label)
 	{
 		if (StartsBody(index))
 		{
 			ReportMissing(index, "a condition");
-			return null;
+			var missing = Missing(index);
+			return ParseIncompleteBody(ref index) is { } incomplete
+				? new(SpanLoop(keyword, label, incomplete.SourceLocation), missing, incomplete, label)
+				: null;
 		}
 		
 		var condition = ParseExpression(ref index);
-		return ParseBody(ref index) is { } body
+		return ParseConditionBody(ref index, condition) is { } body
 			? new(SpanLoop(keyword, label, body.SourceLocation), condition, body, label)
 			: null;
 	}
@@ -402,14 +449,21 @@ public sealed partial class FileParser
 		var keyword = ifToken;
 		while (true)
 		{
+			IExpressionNode condition;
+			IStatementNode? then;
 			if (StartsBody(index))
 			{
 				ReportMissing(index, "a condition");
-				return null;
+				condition = Missing(index);
+				then = ParseIncompleteBody(ref index);
+			}
+			else
+			{
+				condition = ParseExpression(ref index);
+				then = ParseConditionBody(ref index, condition);
 			}
 			
-			var condition = ParseExpression(ref index);
-			if (ParseBody(ref index) is not { } then)
+			if (then is null)
 				return null;
 			
 			arms.Add((keyword, condition, then));
@@ -472,7 +526,7 @@ public sealed partial class FileParser
 			if (AtEnd(index))
 			{
 				ReportUnclosed(openBrace);
-				return null;
+				return Tokens[index - 1];
 			}
 			
 			if (Match(ref index, TokenType.KeywordWhen))
@@ -613,5 +667,6 @@ public sealed partial class FileParser
 		ParseWhenCondition = ParseCondition
 	};
 	
-	private ITypeNode ParseType(ref int index) => new TypeParser(Tokens, ContextualKeywords).Parse(ref index);
+	private ITypeNode ParseType(ref int index) =>
+		new TypeParser(Tokens, ContextualKeywords) { ReportRecovered = Diagnostics.Add }.Parse(ref index);
 }
