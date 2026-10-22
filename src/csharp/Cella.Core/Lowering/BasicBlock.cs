@@ -51,6 +51,7 @@ public sealed class ConstantValue(TypeSymbol type, object? value) : Value(type, 
 	public static ConstantValue False { get; } = new(NativeSymbols.Bool, false);
 	
 	public object? Value { get; } = value;
+	public ulong? FloatBits { get; init; }
 }
 
 // Used to zero-initialize memory

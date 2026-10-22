@@ -1,0 +1,70 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+F32Bits: union
+{
+	raw: u32
+	value: f32
+}
+
+F64Bits: union
+{
+	raw: u64
+	value: f64
+}
+
+Word: union
+{
+	value: u32
+	bytes: array[u8, 4]
+}
+
+Wide: union
+{
+	raw: u64
+	value: f32
+}
+
+Bounded: trait req copy
+{
+	maxValue: const Self
+	nan: const Self
+}
+
+f32: impl Bounded
+{
+	maxValue: const f32 = F32Bits(0x7F7FFFFFu32).value
+	nan: const f32 = F32Bits(0x7FC00000u32).value
+}
+
+f64: impl Bounded
+{
+	maxValue: const f64 = F64Bits(0x7FEFFFFFFFFFFFFFu64).value
+	nan: const f64 = F64Bits(0x7FF8000000000000u64).value
+}
+
+signaling: const f32 = F32Bits(0x7F800001u32).value
+oneBits: const u32 = F32Bits(1.0f32).raw
+lowByte: const u8 = Word(0x11223344u32).bytes[0]
+highByte: const u8 = Word(0x11223344u32).bytes[3]
+filled: const u64 = Wide(1.0f32).raw
+infinity: const F32Bits = F32Bits(0x7F800000u32)
+
+bitsOf: fun(value: f32) -> u32 => F32Bits(value).raw
+
+wideBitsOf: fun(value: f64) -> u64 => F64Bits(value).raw
+
+main: fun(args: ptr[str], count: usize) -> i32
+{
+	printf("%08X %08X %08X\n", bitsOf(f32.maxValue), bitsOf(f32.nan), bitsOf(signaling))
+	printf("%016llX %016llX\n", wideBitsOf(f64.maxValue), wideBitsOf(f64.nan))
+	printf("%08X %02X %02X %016llX\n", oneBits, lowByte, highByte, filled)
+	printf("%g %08X\n", f64(infinity.value), infinity.raw)
+	val runtime = u32(count) + 0x3F7FFFFFu32
+	printf("%g %g\n", f64(F32Bits(runtime).value), f64(F32Bits(runtime).value) * 2.0)
+	ret 0
+}

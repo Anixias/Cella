@@ -28,6 +28,7 @@ public sealed class IntegerConstant(TypeSymbol type, BigInteger value) : Constan
 public sealed class FloatConstant(TypeSymbol type, double value) : Constant(type)
 {
 	public double Value { get; } = value;
+	public ulong? Bits { get; init; }
 }
 
 public sealed class BoolConstant : Constant
@@ -62,6 +63,11 @@ public sealed class StringConstant(TypeSymbol type, object value) : Constant(typ
 public sealed class RecordConstant(TypeSymbol type, IEnumerable<Constant> fields) : Constant(type)
 {
 	public ImmutableArray<Constant> Fields { get; } = fields.ToImmutableArray();
+}
+
+public sealed class UnionConstant(TypeSymbol type, IEnumerable<byte> bytes) : Constant(type)
+{
+	public ImmutableArray<byte> Bytes { get; } = bytes.ToImmutableArray();
 }
 
 public sealed class ArrayConstant(ArrayType type, IEnumerable<Constant> elements) : Constant(type)

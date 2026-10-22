@@ -2,5 +2,6 @@ Error at union_construction.ce:11:13
 10 │ {
 11 │     val made = Bits(1)
                     ╘═════╛ No constructor for 'Bits' accepts these arguments
+                          | 'Bits' takes no arguments, or one value of a field's type: f32, u32
 
 [compilation failed]

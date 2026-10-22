@@ -12,11 +12,13 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef EmitStaticConstant(Constant constant) => constant switch
 	{
 		IntegerConstant c => EmitIntegerConstant(c),
+		FloatConstant { Bits: { } bits } c => EmitFloatBits(MapTypeSymbol(c.Type), bits),
 		FloatConstant c => LLVMValueRef.CreateConstReal(MapTypeSymbol(c.Type), c.Value),
 		BoolConstant c => c.Value ? _true : _false,
 		NullConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		StringConstant c => EmitConstant(new ConstantValue(c.Type, c.Value)),
 		RecordConstant c => EmitStructConstant(MapTypeSymbol(c.Type), [..c.Fields.Select(EmitStaticConstant)]),
+		UnionConstant c => EmitUnionConstant(c),
 		ArrayConstant c => EmitArrayConstant(MapTypeSymbol(c.ArrayType.ElementType),
 			[..c.Elements.Select(EmitStaticConstant)]),
 		EnumConstant c => EmitEnumConstant(c),
@@ -25,6 +27,35 @@ public sealed unsafe partial class CodeGenerator
 		ZeroConstant c => LLVMValueRef.CreateConstNull(MapTypeSymbol(c.Type)),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private LLVMValueRef EmitFloatBits(LLVMTypeRef type, ulong bits) => LLVM.ConstBitCast(
+		LLVMValueRef.CreateConstInt(
+			type.Kind == LLVMTypeKind.LLVMFloatTypeKind ? _context.Int32Type : _context.Int64Type,
+			bits), type);
+	
+	private LLVMValueRef EmitUnionConstant(UnionConstant constant)
+	{
+		var type = MapTypeSymbol(constant.Type);
+		if (type.StructElementTypesCount == 0)
+			return LLVMValueRef.CreateConstNull(type);
+		
+		var storage = type.StructGetTypeAtIndex(0);
+		var word = storage.ElementType;
+		var wordBytes = (int)word.IntWidth / 8;
+		var bytes = new byte[wordBytes * storage.ArrayLength];
+		constant.Bytes.AsSpan(0, Math.Min(bytes.Length, constant.Bytes.Length)).CopyTo(bytes);
+		var words = new LLVMValueRef[storage.ArrayLength];
+		for (var i = 0; i < words.Length; i++)
+		{
+			var chunk = new ulong[(wordBytes + 7) / 8];
+			for (var j = 0; j < wordBytes; j++)
+				chunk[j / 8] |= (ulong)bytes[i * wordBytes + j] << (j % 8 * 8);
+			
+			words[i] = LLVMValueRef.CreateConstIntOfArbitraryPrecision(word, chunk);
+		}
+		
+		return LLVMValueRef.CreateConstNamedStruct(type, [LLVMValueRef.CreateConstArray(word, words)]);
+	}
 	
 	private LLVMValueRef EmitStructConstant(LLVMTypeRef type, LLVMValueRef[] fields) =>
 		fields.Select((field, i) => field.TypeOf == type.StructGetTypeAtIndex((uint)i)).All(static same => same)

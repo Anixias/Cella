@@ -1,0 +1,39 @@
+Error at union_field_construction.ce:25:22
+24 │ 
+25 │ untyped: const f32 = F32Bits(0x7FC00000).value
+                          ╘═════════════════╛ No constructor for 'F32Bits' accepts these arguments
+                                            | 'F32Bits' takes no arguments, or one value of a field's type: u32, f32
+
+Error at union_field_construction.ce:26:24
+25 │ untyped: const f32 = F32Bits(0x7FC00000).value
+26 │ ambiguous: const u32 = Twin(5u32).first
+                            ╘════════╛ Conversion to 'Twin' is ambiguous
+
+Hint at union_field_construction.ce:27:1
+26 │ ambiguous: const u32 = Twin(5u32).first
+27 │ invalid: const bool = Flag(2u8).flag
+     ╘═════╛ 'invalid' is never used
+
+Error at union_field_construction.ce:27:23
+26 │ ambiguous: const u32 = Twin(5u32).first
+27 │ invalid: const bool = Flag(2u8).flag
+                           ╘════════════╛ The initial value of 'invalid' must be a constant
+
+Hint at union_field_construction.ce:28:1
+27 │ invalid: const bool = Flag(2u8).flag
+28 │ valid: const bool = Flag(1u8).flag
+     ╘═══╛ 'valid' is never used
+
+Error at union_field_construction.ce:29:27
+28 │ valid: const bool = Flag(1u8).flag
+29 │ twoArguments: const u32 = F32Bits(1u32, 2u32).raw
+                               ╘═════════════════╛ No constructor for 'F32Bits' accepts these arguments
+                                                 | 'F32Bits' takes no arguments, or one value of a field's type: u32, f32
+
+Error at union_field_construction.ce:30:22
+29 │ twoArguments: const u32 = F32Bits(1u32, 2u32).raw
+30 │ empty: const Empty = Empty(1u32)
+                          ╘═════════╛ No constructor for 'Empty' accepts these arguments
+                                    | 'Empty' has no fields
+
+[compilation failed]

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using Cella.Core.Binding.Conversions;
@@ -286,6 +287,8 @@ public sealed class ConstantEvaluator
 		ResolvedAlignOfExpressionNode n when substitution is not null => FoldLayout(n.Target, true),
 		ResolvedAccessExpressionNode n => FoldAccess(n),
 		ResolvedIndexerExpressionNode n => FoldAll([n.Target, n.Index], values => Index(values[0], values[1])),
+		ResolvedRecordExpressionNode { Type: RecordSymbol { IsUnion: true }, Fields: [var (_, value)] } n =>
+			FoldAll([value], values => BuildUnion(n.Type, values[0])),
 		ResolvedRecordExpressionNode n => FoldAll(n.Fields.Select(static f => f.Value),
 			values => values.Length == 0 ? new ZeroConstant(n.Type) : new RecordConstant(n.Type, values)),
 		ResolvedArrayExpressionNode { Type: ArrayType type } n =>
@@ -381,6 +384,7 @@ public sealed class ConstantEvaluator
 	private Constant? GetField(Constant value, FieldSymbol field) => value switch
 	{
 		RecordConstant record => record.Fields[typePool.GetFieldIndex(value.Type, field)],
+		UnionConstant union => ReadUnion(union, typePool.GetTypeOfMember(field)),
 		ZeroConstant => Zero(typePool.GetTypeOfMember(field)),
 		_ => null
 	};
@@ -581,6 +585,7 @@ public sealed class ConstantEvaluator
 				return FoldAll([node.Target], values => values[0] switch
 				{
 					RecordConstant record => record.Fields[typePool.GetFieldIndex(node.Target.Type, field)],
+					UnionConstant union => ReadUnion(union, node.Type),
 					ZeroConstant => Zero(node.Type),
 					_ => null
 				});
@@ -816,6 +821,121 @@ public sealed class ConstantEvaluator
 		wrapsChecked ? Integer(type, value)
 		: type is not IntegerStorageType integer || Fits(value, integer) ? new IntegerConstant(type, value)
 		: null;
+	
+	private UnionConstant? BuildUnion(TypeSymbol type, Constant value)
+	{
+		if (CountBytes(value.Type) is not { } size)
+			return null;
+		
+		var bytes = new byte[size];
+		return Write(value, bytes) ? new UnionConstant(type, bytes) : null;
+	}
+	
+	private Constant? ReadUnion(UnionConstant union, TypeSymbol type)
+	{
+		if (CountBytes(type) is not { } size)
+			return null;
+		
+		var bytes = new byte[size];
+		union.Bytes.AsSpan(0, Math.Min(size, union.Bytes.Length)).CopyTo(bytes);
+		return Read(type, bytes);
+	}
+	
+	private int? CountBytes(TypeSymbol type) => type switch
+	{
+		IntegerStorageType or FloatType or PrimitiveType { Kind: PrimitiveTypeKind.Bool } => (int)CountBits(type) / 8,
+		ArrayType { Length.Sign: >= 0 } array when CountBytes(array.ElementType) is { } element =>
+			element * (int)array.Length,
+		_ => null
+	};
+	
+	private bool Write(Constant value, Span<byte> target)
+	{
+		switch (value)
+		{
+			case ZeroConstant:
+				return true;
+			
+			case IntegerConstant integer:
+				return Modulo(integer.Value, BigInteger.One << (target.Length * 8))
+					.TryWriteBytes(target, out _, true);
+			
+			case BoolConstant flag:
+				target[0] = flag.Value ? (byte)1 : (byte)0;
+				return true;
+			
+			case FloatConstant { Type: var type } number when type == NativeSymbols.Float32:
+				BinaryPrimitives.WriteUInt32LittleEndian(target,
+					(uint)(number.Bits ?? BitConverter.SingleToUInt32Bits((float)number.Value)));
+				
+				return true;
+			
+			case FloatConstant number:
+				BinaryPrimitives.WriteUInt64LittleEndian(target,
+					number.Bits ?? BitConverter.DoubleToUInt64Bits(number.Value));
+				
+				return true;
+			
+			case ArrayConstant array when CountBytes(array.ArrayType.ElementType) is { } element:
+				for (var i = 0; i < array.Elements.Length; i++)
+				{
+					if (!Write(array.Elements[i], target.Slice(i * element, element)))
+						return false;
+				}
+				
+				return true;
+			
+			default:
+				return false;
+		}
+	}
+	
+	private Constant? Read(TypeSymbol type, ReadOnlySpan<byte> bytes)
+	{
+		switch (type)
+		{
+			case CharType:
+				var scalar = new BigInteger(bytes, true);
+				return scalar <= 0x10FFFF && (scalar < 0xD800 || scalar > 0xDFFF)
+					? new IntegerConstant(type, scalar)
+					: null;
+			
+			case IntegerStorageType integer:
+				var value = new BigInteger(bytes, true);
+				return new IntegerConstant(type, integer.IsSigned ? Wrap(value, integer) : value);
+			
+			case PrimitiveType { Kind: PrimitiveTypeKind.Bool }:
+				return bytes[0] switch
+				{
+					0 => BoolConstant.False,
+					1 => BoolConstant.True,
+					_ => null
+				};
+			
+			case FloatType when type == NativeSymbols.Float32:
+				var single = BinaryPrimitives.ReadUInt32LittleEndian(bytes);
+				return new FloatConstant(type, BitConverter.UInt32BitsToSingle(single)) { Bits = single };
+			
+			case FloatType:
+				var wide = BinaryPrimitives.ReadUInt64LittleEndian(bytes);
+				return new FloatConstant(type, BitConverter.UInt64BitsToDouble(wide)) { Bits = wide };
+			
+			case ArrayType array when CountBytes(array.ElementType) is { } element:
+				var elements = new List<Constant>();
+				for (var i = 0; i < (int)array.Length; i++)
+				{
+					if (Read(array.ElementType, bytes.Slice(i * element, element)) is not { } item)
+						return null;
+					
+					elements.Add(item);
+				}
+				
+				return new ArrayConstant(array, elements);
+			
+			default:
+				return null;
+		}
+	}
 	
 	private static FloatConstant Float(TypeSymbol type, double value) =>
 		new(type, type == NativeSymbols.Float32 ? (float)value : value);

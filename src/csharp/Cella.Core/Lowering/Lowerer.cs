@@ -228,7 +228,7 @@ public sealed partial class Lowerer
 		private Value? LowerConstant(Constant? constant, SourceLocation location) => constant switch
 		{
 			IntegerConstant { Type: IntegerStorageType } c => MakeConstant(c.Type, c.Value),
-			FloatConstant { Type: FloatType } c => new ConstantValue(c.Type, c.Value),
+			FloatConstant { Type: FloatType } c => new ConstantValue(c.Type, c.Value) { FloatBits = c.Bits },
 			BoolConstant c => c.Value ? ConstantValue.True : ConstantValue.False,
 			NullConstant { Type: not UntypedType } c => new ConstantValue(c.Type, null),
 			StringConstant { Type: StringType } c => new ConstantValue(c.Type, c.Value),

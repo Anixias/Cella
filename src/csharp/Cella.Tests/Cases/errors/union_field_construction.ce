@@ -1,0 +1,32 @@
+mod test
+
+F32Bits: union
+{
+	raw: u32
+	value: f32
+}
+
+Twin: union
+{
+	first: u32
+	second: u32
+}
+
+Flag: union
+{
+	raw: u8
+	flag: bool
+}
+
+Empty: union
+{
+}
+
+untyped: const f32 = F32Bits(0x7FC00000).value
+ambiguous: const u32 = Twin(5u32).first
+invalid: const bool = Flag(2u8).flag
+valid: const bool = Flag(1u8).flag
+twoArguments: const u32 = F32Bits(1u32, 2u32).raw
+empty: const Empty = Empty(1u32)
+
+main: fun -> i32 => 0

@@ -136,9 +136,32 @@ public sealed partial class Resolver
 		if (record.IsUnion && node.Arguments.Length > 0)
 		{
 			var args = resolvedArgs ?? node.Arguments.Select(a => VisitNode(a, null)).ToArray();
-			return AnyInvalid(args)
-				? new ResolvedInvalidExpressionNode(node, record)
-				: Error(node, $"No constructor for '{record.Name}' accepts these arguments", record, node);
+			if (AnyInvalid(args))
+				return new ResolvedInvalidExpressionNode(node, record);
+			
+			var matching = args is [var argument]
+				? fields.Where(field => GetMemberType(field) == Decay(argument).Type).ToArray()
+				: [];
+			
+			return matching switch
+			{
+				[var field] => new ResolvedRecordExpressionNode(record,
+					[(field, CoerceToType(args[0], GetMemberType(field)))], node),
+				[_, _, ..] => Error(node, $"Conversion to '{record.Name}' is ambiguous", record, node),
+				_ => Error(node, new Diagnostic(DiagnosticSeverity.Error, node.SourceLocation,
+					$"No constructor for '{record.Name}' accepts these arguments")
+				{
+					Hints = fields.Length == 0
+						? [$"'{record.Name}' has no fields"]
+						:
+						[
+							$"'{record.Name}' takes no arguments, or one value of a field's type: " +
+							string.Join(", ",
+								fields.Select(field => DiagnosticReporter.DescribeType(GetMemberType(field)))
+									.Distinct())
+						]
+				}, record)
+			};
 		}
 		
 		if (node.Arguments.Length != fields.Length && (node.Arguments.Length > 0 || !hasDefault))

@@ -578,7 +578,9 @@ public sealed unsafe partial class CodeGenerator
 				
 				case PrimitiveTypeKind.Float32:
 				case PrimitiveTypeKind.Float64:
-					return LLVMValueRef.CreateConstReal(type, (double)value);
+					return constant.FloatBits is { } bits
+						? EmitFloatBits(type, bits)
+						: LLVMValueRef.CreateConstReal(type, (double)value);
 				
 				case PrimitiveTypeKind.Str:
 				{
