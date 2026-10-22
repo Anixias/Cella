@@ -20,8 +20,15 @@ Ord: pub trait req Eq
 		ret greater
 	}
 	
-	<: op(imm left: Self, imm right: Self) -> bool
-	<=: op(imm left: Self, imm right: Self) -> bool
-	>: op(imm left: Self, imm right: Self) -> bool
-	>=: op(imm left: Self, imm right: Self) -> bool
+	<: op(imm left: Self, imm right: Self) -> bool =>
+		match compare(imm left, imm right) { less => true, else => false }
+	
+	<=: op(imm left: Self, imm right: Self) -> bool =>
+		match compare(imm left, imm right) { greater => false, else => true }
+	
+	>: op(imm left: Self, imm right: Self) -> bool =>
+		match compare(imm left, imm right) { greater => true, else => false }
+	
+	>=: op(imm left: Self, imm right: Self) -> bool =>
+		match compare(imm left, imm right) { less => false, else => true }
 }
