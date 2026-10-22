@@ -1,21 +1,30 @@
 ﻿mod std.num
 
-use std.cmp.[Eq, Ord]
+use std.cmp.[Eq, Ord, Ordering]
+use std.mem.Bitcast
 
 Additive: pub trait req copy
 {
 	+: op(left: Self, right: Self) -> Self
-	+%: op(left: Self, right: Self) -> Self
 	-: op(left: Self, right: Self) -> Self
-	-%: op(left: Self, right: Self) -> Self
 }
 
 Multiplicative: pub trait req copy
 {
 	*: op(left: Self, right: Self) -> Self
-	*%: op(left: Self, right: Self) -> Self
 	/: op(left: Self, right: Self) -> Self
 	%: op(left: Self, right: Self) -> Self
+}
+
+WrappedAdditive: pub trait req copy
+{
+	+%: op(left: Self, right: Self) -> Self
+	-%: op(left: Self, right: Self) -> Self
+}
+
+WrappedMultiplicative: pub trait req copy
+{
+	*%: op(left: Self, right: Self) -> Self
 }
 
 Number: pub trait req Additive + Multiplicative + Ord
@@ -24,9 +33,35 @@ Number: pub trait req Additive + Multiplicative + Ord
 	maxValue: const Self
 	zero: const Self
 	one: const Self
+	
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+	{
+		if (left == right)
+			ret equal
+		
+		if (left < right)
+			ret less
+		
+		ret greater
+	}
 }
 
-Integer: pub trait req Number
+Integer: pub trait req Number + WrappedAdditive + WrappedMultiplicative
+
+Float: pub trait req Number
+{
+	posInf: const Self
+	negInf: const Self
+	nan: const Self
+	epsilon: const Self
+	subnormal: const Self
+	normal: const Self
+	
+	approxEq: fun(imm left: Self, imm right: Self) -> bool
+	max: fun(imm left: Self, imm right: Self) -> Self
+	min: fun(imm left: Self, imm right: Self) -> Self
+	abs: fun(imm value: Self) -> Self
+}
 
 i8: impl Integer
 {
@@ -122,4 +157,44 @@ usize: impl Integer
 	maxValue: const usize = ~0
 	zero: const usize = 0
 	one: const usize = 1
+}
+
+f32: impl Float
+{
+	minValue: const f32 = Bitcast[u32, f32](0xFF7FFFFFu32).to
+	maxValue: const f32 = Bitcast[u32, f32](0x7F7FFFFFu32).to
+	zero: const f32 = 0
+	one: const f32 = 1
+	posInf: const f32 = Bitcast[u32, f32](0x7F800000u32).to
+	negInf: const f32 = Bitcast[u32, f32](0xFF800000u32).to
+	nan: const f32 = Bitcast[u32, f32](0x7FC00000u32).to
+	epsilon: const f32 = Bitcast[u32, f32](0x34000000u32).to
+	subnormal: const f32 = Bitcast[u32, f32](0x00000001u32).to
+	normal: const f32 = Bitcast[u32, f32](0x00800000u32).to
+
+	approxEq: fun(a: f32, b: f32) -> bool => abs(a - b) <= epsilon * max(abs(a), abs(b))
+
+	min: fun(a: f32, b: f32) -> f32 => match a < b { true => a, else => b }
+	max: fun(a: f32, b: f32) -> f32 => match a > b { true => a, else => b }
+	abs: fun(x: f32) -> f32 => max(x, -x)
+}
+
+f64: impl Float
+{
+	minValue: const f64 = Bitcast[u64, f64](0xFFEFFFFFFFFFFFFFu64).to
+	maxValue: const f64 = Bitcast[u64, f64](0x7FEFFFFFFFFFFFFFu64).to
+	zero: const f64 = 0
+	one: const f64 = 1
+	posInf: const f64 = Bitcast[u64, f64](0x7FF0000000000000u64).to
+	negInf: const f64 = Bitcast[u64, f64](0xFFF0000000000000u64).to
+	nan: const f64 = Bitcast[u64, f64](0x7FF8000000000000u64).to
+	epsilon: const f64 = Bitcast[u64, f64](0x3CB0000000000000u64).to
+	subnormal: const f64 = Bitcast[u64, f64](0x0000000000000001u64).to
+	normal: const f64 = Bitcast[u64, f64](0x0010000000000000u64).to
+
+	approxEq: fun(a: f64, b: f64) -> bool => abs(a - b) <= epsilon * max(abs(a), abs(b))
+
+	min: fun(a: f64, b: f64) -> f64 => match a < b { true => a, else => b }
+	max: fun(a: f64, b: f64) -> f64 => match a > b { true => a, else => b }
+	abs: fun(x: f64) -> f64 => max(x, -x)
 }

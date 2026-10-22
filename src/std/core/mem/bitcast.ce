@@ -1,0 +1,7 @@
+﻿mod std.mem
+
+Bitcast[From: ext + default, To: ext + default]: union
+{
+	from: From
+	to: To
+}
