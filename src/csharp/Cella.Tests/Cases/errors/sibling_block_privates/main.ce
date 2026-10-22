@@ -1,0 +1,9 @@
+mod test
+
+i32: impl
+{
+	usesHidden: fun(value: i32) -> i32 => hidden(value)
+	usesShared: fun(value: i32) -> i32 => shared(value)
+}
+
+main: fun -> i32 => i32.usesShared(1)

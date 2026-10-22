@@ -37,6 +37,7 @@ public readonly struct ResolutionContext
 	public string? ExclusionPlace { get; init; }
 	public TraitSymbol? Trait { get; init; }
 	public ImplSymbol? ImplBlock { get; init; }
+	public Func<string, Symbol?>? ResolveSiblingMember { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
 	public Action<ResolutionContext, TypeSymbol, SourceLocation>? TrackInstance { get; init; }
@@ -99,7 +100,7 @@ public readonly struct ResolutionContext
 			.Select(static function => function.Function)
 	]);
 	
-	private static Symbol? ResolveStatic(IEnumerable<MethodSymbol> functions, IEnumerable<PropertySymbol> properties,
+	public static Symbol? ResolveStatic(IEnumerable<MethodSymbol> functions, IEnumerable<PropertySymbol> properties,
 		string name) =>
 		properties.FirstOrDefault(p => p.Name == name && p.IsStatic) ?? ResolveFrom(name,
 			[..GetStatics(functions.Where(function => function.Name == name))]);
@@ -207,6 +208,9 @@ public readonly struct ResolutionContext
 		
 		if (ImplBlock?.Constants.FirstOrDefault(constant => constant.Name == name) is { } blockConstant)
 			return blockConstant;
+		
+		if (ResolveSiblingMember?.Invoke(name) is { } siblingMember)
+			return siblingMember;
 		
 		if (Trait is { } owner && ResolveStatic(owner.Functions, owner.Properties, name) is { } traitMember)
 			return traitMember;

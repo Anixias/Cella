@@ -1,0 +1,11 @@
+Hint at blocks.ce:5:2
+4 │ {
+5 │     hidden: pvt fun(value: i32) -> i32 => value + 2
+        ╘════╛ 'hidden' is never used
+
+Error at main.ce:5:40
+4 │ {
+5 │     usesHidden: fun(value: i32) -> i32 => hidden(value)
+                                              ╘═══════════╛ Symbol 'hidden' not found in this scope
+
+[compilation failed]

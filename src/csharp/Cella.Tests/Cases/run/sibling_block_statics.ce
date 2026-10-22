@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bits: union
+{
+	raw: u32
+	value: f32
+}
+
+Doubler: trait
+{
+	twice: fun(x: Self) -> Self
+}
+
+i32: impl
+{
+	plain: fun(value: i32) -> i32 => value + 1
+	hidden: pvt fun(value: i32) -> i32 => value + 2
+	offset: const i32 = 100
+}
+
+i32: impl
+{
+	usesPlain: fun(value: i32) -> i32 => plain(value)
+	usesHidden: fun(value: i32) -> i32 => hidden(value)
+	usesOffset: fun(value: i32) -> i32 => value + offset
+}
+
+i32: impl Doubler
+{
+	twice: fun(x: i32) -> i32 => plain(x) * 2
+}
+
+f32: impl
+{
+	bits: pvt get(imm self) -> u32 => Bits(self).raw
+	fromBits: pvt fun(bits: u32) -> f32 => Bits(bits).value
+}
+
+f32: impl Doubler
+{
+	twice: fun(x: f32) -> f32 => fromBits(x.bits + 0x800000)
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %g\n", i32.usesPlain(1), i32.usesHidden(1), i32.usesOffset(1), i32.twice(5), f64(f32.twice(1.5f32)))
+	ret 0
+}

@@ -188,7 +188,26 @@ public sealed partial class Resolver
 	{
 		var impl = (ImplSymbol)_symbolTable.DeclarationSymbols[node];
 		var target = _signatures.GetImplTarget(impl);
-		_resolutionContexts.Push(CurrentResolutionContext with { ContainingType = target, ImplBlock = impl });
+		var siblings = GetActiveMemberBlocks(target)
+			.Where(block => block != impl && block.TypeParameters.IsEmpty)
+			.ToList();
+		
+		var functions = siblings.SelectMany(block => block.Functions
+			.Where(method => IsVisibleExtensionMember(block, method.Function.Visibility))).ToList();
+		
+		var properties = siblings.SelectMany(block => block.Properties
+			.Where(property => IsVisibleExtensionMember(block, property.Visibility))).ToList();
+		
+		var constants = siblings.SelectMany(block => block.Constants
+			.Where(constant => IsVisibleExtensionMember(block, constant.Visibility))).ToList();
+		
+		_resolutionContexts.Push(CurrentResolutionContext with
+		{
+			ContainingType = target,
+			ImplBlock = impl,
+			ResolveSiblingMember = name => ResolutionContext.ResolveStatic(functions, properties, name) ??
+			                               constants.FirstOrDefault(constant => constant.Name == name)
+		});
 		var members = node.Members.SelectMany(VisitImplMember).ToList();
 		_resolutionContexts.Pop();
 		return new ResolvedImplNode(impl, target, members, node);

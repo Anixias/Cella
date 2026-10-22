@@ -1,0 +1,7 @@
+mod test
+
+i32: impl
+{
+	hidden: pvt fun(value: i32) -> i32 => value + 2
+	shared: fun(value: i32) -> i32 => value + 3
+}
