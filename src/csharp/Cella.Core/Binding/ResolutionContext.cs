@@ -102,11 +102,24 @@ public readonly struct ResolutionContext
 	private static Symbol? ResolveStatic(IEnumerable<MethodSymbol> functions, IEnumerable<PropertySymbol> properties,
 		string name) =>
 		properties.FirstOrDefault(p => p.Name == name && p.IsStatic) ?? ResolveFrom(name,
-		[
-			..functions
-				.Where(function => function.Name == name && !function.HasReceiver && !function.Function.IsConversion)
-				.Select(static function => function.Function)
-		]);
+			[..GetStatics(functions.Where(function => function.Name == name))]);
+	
+	private static IEnumerable<Symbol> GetStatics(IEnumerable<MethodSymbol> functions,
+		IEnumerable<PropertySymbol> properties) =>
+		properties.Where(static property => property.IsStatic).Concat<Symbol>(GetStatics(functions));
+	
+	private static IEnumerable<FunctionSymbol> GetStatics(IEnumerable<MethodSymbol> functions) => functions
+		.Where(static function => !function.HasReceiver && !function.Function.IsConversion)
+		.Select(static function => function.Function);
+	
+	private static IEnumerable<Symbol> GetStatics(TypeSymbol type) => type switch
+	{
+		RecordSymbol record => GetStatics(record.Members.OfType<MethodSymbol>(), record.Properties)
+			.Concat(record.StaticFields),
+		EnumSymbol enumType => GetStatics(enumType.Functions, enumType.Properties).Concat(enumType.StaticFields),
+		NamedTypeSymbol named => GetStatics([], named.Properties).Concat(named.StaticFields),
+		_ => []
+	};
 	
 	private static Symbol? ResolveFrom(string name, IReadOnlyCollection<Symbol> candidates) => candidates switch
 	{
@@ -481,9 +494,25 @@ public readonly struct ResolutionContext
 			foreach (var typeParameter in TypeParameters)
 				yield return typeParameter;
 		
+		if (Trait is { } trait)
+		{
+			yield return trait.Self;
+			foreach (var symbol in trait.TypeParameters)
+				yield return symbol;
+		}
+		
+		if (ImplBlock is { } impl)
+			foreach (var symbol in impl.TypeParameters.Where(impl.Declares)
+				         .Concat(GetStatics(impl.Functions, impl.Properties)).Concat(impl.Constants))
+				yield return symbol;
+		
+		if (Trait is { } owner)
+			foreach (var symbol in GetStatics(owner.Functions, owner.Properties).Concat(owner.Constants))
+				yield return symbol;
+		
 		for (var type = ContainingType; type is not null; type = type.ContainingType)
-			foreach (var child in type.Children.Values)
-				yield return child;
+			foreach (var symbol in type.Children.Values.Concat(GetStatics(type)))
+				yield return symbol;
 		
 		foreach (var file in File.Module.Files)
 			foreach (var fileSet in file.Symbols.Values)

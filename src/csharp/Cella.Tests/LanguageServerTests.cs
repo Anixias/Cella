@@ -1446,6 +1446,75 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task CompletesUnqualifiedMembersOfEnclosingDeclarations()
+	{
+		await InitializeAsync();
+		var items = await CompleteInAsync("""
+		                                  mod test
+
+		                                  Floaty: trait req copy
+		                                  {
+		                                  	unit: const Self
+		                                  	isNan: fun(imm x: Self) -> bool
+		                                  	lower: fun(imm a: Self, imm b: Self) -> Self
+		                                  	twice: fun(imm x: Self) -> bool => |
+		                                  }
+
+		                                  """);
+
+		Assert.Contains("unit", items.Keys);
+		Assert.Contains("isNan", items.Keys);
+		Assert.Contains("lower", items.Keys);
+
+		items = await CompleteInAsync("""
+		                              mod test
+
+		                              Floaty: trait req copy
+		                              {
+		                              	isNan: fun(imm x: Self) -> bool
+		                              	lower: fun(imm a: Self, imm b: Self) -> Self
+		                              }
+
+		                              f32: impl Floaty
+		                              {
+		                              	limit: const f32 = 1
+
+		                              	lower: fun(a: f32, b: f32) -> f32
+		                              	{
+		                              		if a == b
+		                              			ret match |
+
+		                              		ret a
+		                              	}
+
+		                              	isNan: fun(x: f32) -> bool => x != x
+		                              }
+
+		                              """);
+
+		Assert.Contains("limit", items.Keys);
+		Assert.Contains("isNan", items.Keys);
+		Assert.Contains("lower", items.Keys);
+
+		items = await CompleteInAsync("""
+		                              mod test
+
+		                              Point: rec
+		                              {
+		                              	x: i32
+
+		                              	origin: fun -> Point => Point(x: 0)
+		                              	nearest: fun -> i32 => |
+		                              }
+
+		                              """);
+
+		Assert.Contains("origin", items.Keys);
+		Assert.DoesNotContain("x", items.Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+
+	[Fact]
 	public async Task OrdersCompletionsByScopeThenProject()
 	{
 		await WriteImportableModulesAsync();
