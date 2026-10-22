@@ -10,15 +10,6 @@ Ordering: pub enum
 Ord: pub trait req Eq
 {
 	compare: fun(imm left: Self, imm right: Self) -> Ordering
-	{
-		if (left == right)
-			ret equal
-		
-		if (left < right)
-			ret less
-		
-		ret greater
-	}
 	
 	<: op(imm left: Self, imm right: Self) -> bool =>
 		match compare(imm left, imm right) { less => true, else => false }
