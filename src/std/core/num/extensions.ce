@@ -44,6 +44,11 @@ Number: pub trait req Additive + Multiplicative + Ord
 		
 		ret greater
 	}
+	
+	max: fun(imm a: Self, imm b: Self) -> Self
+	min: fun(imm a: Self, imm b: Self) -> Self
+	clamp: fun(imm x: Self, imm min: Self, imm max: Self) -> Self
+	abs: fun(imm x: Self) -> Self
 }
 
 Integer: pub trait req Number + WrappedAdditive + WrappedMultiplicative
@@ -56,11 +61,22 @@ Float: pub trait req Number
 	epsilon: const Self
 	subnormal: const Self
 	normal: const Self
+	pi: const Self
+	tau: const Self
+	e: const Self
 	
-	approxEq: fun(imm left: Self, imm right: Self) -> bool
-	max: fun(imm left: Self, imm right: Self) -> Self
-	min: fun(imm left: Self, imm right: Self) -> Self
-	abs: fun(imm value: Self) -> Self
+	approxEq: fun(imm a: Self, imm b: Self) -> bool
+	lerp: fun(imm a: Self, imm b: Self, imm t: Self) -> Self
+	isNan: fun(imm x: Self) -> bool
+	isInf: fun(imm x: Self) -> bool
+	isPosInf: fun(imm x: Self) -> bool
+	isNegInf: fun(imm x: Self) -> bool
+	isFinite: fun(imm x: Self) -> bool
+	isZero: fun(imm x: Self) -> bool
+	isSubnormal: fun(imm x: Self) -> bool
+	isNormal: fun(imm x: Self) -> bool
+	isPositive: fun(imm x: Self) -> bool
+	isNegative: fun(imm x: Self) -> bool
 }
 
 i8: impl Integer
@@ -69,6 +85,24 @@ i8: impl Integer
 	maxValue: const i8 =  0x7F
 	zero: const i8 = 0
 	one: const i8 = 1
+	
+	abs: fun(x: i8) -> i8 => x & maxValue
+	min: fun(a: i8, b: i8) -> i8 => match a < b { true => a, else => b }
+	max: fun(a: i8, b: i8) -> i8 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: i8, min: i8, max: i8) -> i8
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 u8: impl Integer
@@ -77,6 +111,24 @@ u8: impl Integer
 	maxValue: const u8 = 0xFF
 	zero: const u8 = 0
 	one: const u8 = 1
+	
+	abs: fun(x: u8) -> u8 => x
+	min: fun(a: u8, b: u8) -> u8 => match a < b { true => a, else => b }
+	max: fun(a: u8, b: u8) -> u8 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: u8, min: u8, max: u8) -> u8
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 i16: impl Integer
@@ -85,6 +137,24 @@ i16: impl Integer
 	maxValue: const i16 =  0x7FFF
 	zero: const i16 = 0
 	one: const i16 = 1
+	
+	abs: fun(x: i16) -> i16 => x & maxValue
+	min: fun(a: i16, b: i16) -> i16 => match a < b { true => a, else => b }
+	max: fun(a: i16, b: i16) -> i16 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: i16, min: i16, max: i16) -> i16
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 u16: impl Integer
@@ -93,6 +163,24 @@ u16: impl Integer
 	maxValue: const u16 = 0xFFFF
 	zero: const u16 = 0
 	one: const u16 = 1
+	
+	abs: fun(x: u16) -> u16 => x
+	min: fun(a: u16, b: u16) -> u16 => match a < b { true => a, else => b }
+	max: fun(a: u16, b: u16) -> u16 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: u16, min: u16, max: u16) -> u16
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 i32: impl Integer
@@ -101,6 +189,24 @@ i32: impl Integer
 	maxValue: const i32 =  0x7FFFFFFF
 	zero: const i32 = 0
 	one: const i32 = 1
+	
+	abs: fun(x: i32) -> i32 => x & maxValue
+	min: fun(a: i32, b: i32) -> i32 => match a < b { true => a, else => b }
+	max: fun(a: i32, b: i32) -> i32 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: i32, min: i32, max: i32) -> i32
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 u32: impl Integer
@@ -109,6 +215,24 @@ u32: impl Integer
 	maxValue: const u32 = 0xFFFFFFFF
 	zero: const u32 = 0
 	one: const u32 = 1
+	
+	abs: fun(x: u32) -> u32 => x
+	min: fun(a: u32, b: u32) -> u32 => match a < b { true => a, else => b }
+	max: fun(a: u32, b: u32) -> u32 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: u32, min: u32, max: u32) -> u32
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 i64: impl Integer
@@ -117,6 +241,24 @@ i64: impl Integer
 	maxValue: const i64 =  0x7FFFFFFF_FFFFFFFF
 	zero: const i64 = 0
 	one: const i64 = 1
+	
+	abs: fun(x: i64) -> i64 => x & maxValue
+	min: fun(a: i64, b: i64) -> i64 => match a < b { true => a, else => b }
+	max: fun(a: i64, b: i64) -> i64 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: i64, min: i64, max: i64) -> i64
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 u64: impl Integer
@@ -125,6 +267,24 @@ u64: impl Integer
 	maxValue: const u64 = 0xFFFFFFFF_FFFFFFFF
 	zero: const u64 = 0
 	one: const u64 = 1
+	
+	abs: fun(x: u64) -> u64 => x
+	min: fun(a: u64, b: u64) -> u64 => match a < b { true => a, else => b }
+	max: fun(a: u64, b: u64) -> u64 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: u64, min: u64, max: u64) -> u64
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 i128: impl Integer
@@ -133,6 +293,24 @@ i128: impl Integer
 	maxValue: const i128 =  0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
 	zero: const i128 = 0
 	one: const i128 = 1
+	
+	abs: fun(x: i128) -> i128 => x & maxValue
+	min: fun(a: i128, b: i128) -> i128 => match a < b { true => a, else => b }
+	max: fun(a: i128, b: i128) -> i128 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: i128, min: i128, max: i128) -> i128
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 u128: impl Integer
@@ -141,6 +319,24 @@ u128: impl Integer
 	maxValue: const u128 = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
 	zero: const u128 = 0
 	one: const u128 = 1
+	
+	abs: fun(x: u128) -> u128 => x
+	min: fun(a: u128, b: u128) -> u128 => match a < b { true => a, else => b }
+	max: fun(a: u128, b: u128) -> u128 => match a > b { true => a, else => b }
+	
+	clamp: fun(x: u128, min: u128, max: u128) -> u128
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 isize: impl Integer
@@ -149,6 +345,24 @@ isize: impl Integer
 	maxValue: const isize = isize(usize.maxValue >> 1)
 	zero: const isize = 0
 	one: const isize = 1
+	
+	abs: fun(x: isize) -> isize => x & maxValue
+	min: fun(a: isize, b: isize) -> isize => match a < b { true => a, else => b }
+	max: fun(a: isize, b: isize) -> isize => match a > b { true => a, else => b }
+	
+	clamp: fun(x: isize, min: isize, max: isize) -> isize
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
 }
 
 usize: impl Integer
@@ -157,6 +371,32 @@ usize: impl Integer
 	maxValue: const usize = ~0
 	zero: const usize = 0
 	one: const usize = 1
+	
+	abs: fun(x: usize) -> usize => x
+	min: fun(a: usize, b: usize) -> usize => match a < b { true => a, else => b }
+	max: fun(a: usize, b: usize) -> usize => match a > b { true => a, else => b }
+	
+	clamp: fun(x: usize, min: usize, max: usize) -> usize
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
+}
+
+f32: impl
+{
+	bits: pvt get(imm self) -> u32 => Bitcast[f32, u32](self).to
+	sign: pvt get(imm self) -> u32 => self.bits >> 31
+	exponentBits: pvt get(imm self) -> u32 => (self.bits >> 23) & 0xFF
+	fractionBits: pvt get(imm self) -> u32 => self.bits & 0x7FFFFF
 }
 
 f32: impl Float
@@ -171,12 +411,76 @@ f32: impl Float
 	epsilon: const f32 = Bitcast[u32, f32](0x34000000u32).to
 	subnormal: const f32 = Bitcast[u32, f32](0x00000001u32).to
 	normal: const f32 = Bitcast[u32, f32](0x00800000u32).to
+	pi: const f32 = Bitcast[u32, f32](0x40490FDBu32).to
+	tau: const f32 = Bitcast[u32, f32](0x40C90FDBu32).to
+	e: const f32 = Bitcast[u32, f32](0x402DF854u32).to
+	
+	approxEq: fun(a: f32, b: f32) -> bool => a == b || abs(a - b) <= epsilon * max(abs(a), abs(b))
+	
+	min: fun(a: f32, b: f32) -> f32
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret Bitcast[u32, f32](a.bits | b.bits).to
+		
+		ret match a < b { true => a, else => b }
+	}
+	
+	max: fun(a: f32, b: f32) -> f32
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret Bitcast[u32, f32](a.bits & b.bits).to
+		
+		ret match a > b { true => a, else => b }
+	}
+	
+	clamp: fun(x: f32, min: f32, max: f32) -> f32
+	{
+		// Catches NaN this way too
+		if !(min <= max)
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
+	
+	abs: fun(x: f32) -> f32 => Bitcast[u32, f32](x.bits & 0x7FFFFFFFu32).to
+	isNan: fun(x: f32) -> bool => x.exponentBits == 0xFF && x.fractionBits != 0
+	isInf: fun(x: f32) -> bool => x.exponentBits == 0xFF && x.fractionBits == 0
+	isPosInf: fun(x: f32) -> bool => x == posInf
+	isNegInf: fun(x: f32) -> bool => x == negInf
+	isFinite: fun(x: f32) -> bool => x.exponentBits != 0xFF
+	isZero: fun(x: f32) -> bool => (x.bits & 0x7FFFFFFF) == 0
+	isSubnormal: fun(x: f32) -> bool => x.exponentBits == 0 && x.fractionBits != 0
+	isNormal: fun(x: f32) -> bool => x.exponentBits != 0 && x.exponentBits != 0xFF
+	isPositive: fun(x: f32) -> bool => x.sign == 0
+	isNegative: fun(x: f32) -> bool => x.sign != 0
+	
+	lerp: fun(a: f32, b: f32, t: f32) -> f32 => a + (b - a) * t
+}
 
-	approxEq: fun(a: f32, b: f32) -> bool => abs(a - b) <= epsilon * max(abs(a), abs(b))
-
-	min: fun(a: f32, b: f32) -> f32 => match a < b { true => a, else => b }
-	max: fun(a: f32, b: f32) -> f32 => match a > b { true => a, else => b }
-	abs: fun(x: f32) -> f32 => max(x, -x)
+f64: impl
+{
+	bits: pvt get(imm self) -> u64 => Bitcast[f64, u64](self).to
+	sign: pvt get(imm self) -> u64 => self.bits >> 63
+	exponentBits: pvt get(imm self) -> u64 => (self.bits >> 52) & 0x7FF
+	fractionBits: pvt get(imm self) -> u64 => self.bits & 0xFFFFFFFFFFFFF
 }
 
 f64: impl Float
@@ -191,10 +495,66 @@ f64: impl Float
 	epsilon: const f64 = Bitcast[u64, f64](0x3CB0000000000000u64).to
 	subnormal: const f64 = Bitcast[u64, f64](0x0000000000000001u64).to
 	normal: const f64 = Bitcast[u64, f64](0x0010000000000000u64).to
-
-	approxEq: fun(a: f64, b: f64) -> bool => abs(a - b) <= epsilon * max(abs(a), abs(b))
-
-	min: fun(a: f64, b: f64) -> f64 => match a < b { true => a, else => b }
-	max: fun(a: f64, b: f64) -> f64 => match a > b { true => a, else => b }
-	abs: fun(x: f64) -> f64 => max(x, -x)
+	pi: const f64 = Bitcast[u64, f64](0x400921FB54442D18u64).to
+	tau: const f64 = Bitcast[u64, f64](0x401921FB54442D18u64).to
+	e: const f64 = Bitcast[u64, f64](0x4005BF0A8B145769u64).to
+	
+	approxEq: fun(a: f64, b: f64) -> bool => a == b || abs(a - b) <= epsilon * max(abs(a), abs(b))
+	
+	min: fun(a: f64, b: f64) -> f64
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret Bitcast[u64, f64](a.bits | b.bits).to
+		
+		ret match a < b { true => a, else => b }
+	}
+	
+	max: fun(a: f64, b: f64) -> f64
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret Bitcast[u64, f64](a.bits & b.bits).to
+		
+		ret match a > b { true => a, else => b }
+	}
+	
+	clamp: fun(x: f64, min: f64, max: f64) -> f64
+	{
+		// Catches NaN this way too
+		if !(min <= max)
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
+	
+	abs: fun(x: f64) -> f64 => Bitcast[u64, f64](x.bits & 0x7FFFFFFFFFFFFFFFu64).to
+	isNan: fun(x: f64) -> bool => x.exponentBits == 0x7FF && x.fractionBits != 0
+	isInf: fun(x: f64) -> bool => x.exponentBits == 0x7FF && x.fractionBits == 0
+	isPosInf: fun(x: f64) -> bool => x == posInf
+	isNegInf: fun(x: f64) -> bool => x == negInf
+	isFinite: fun(x: f64) -> bool => x.exponentBits != 0x7FF
+	isZero: fun(x: f64) -> bool => (x.bits & 0x7FFFFFFFFFFFFFFF) == 0
+	isSubnormal: fun(x: f64) -> bool => x.exponentBits == 0 && x.fractionBits != 0
+	isNormal: fun(x: f64) -> bool => x.exponentBits != 0 && x.exponentBits != 0x7FF
+	isPositive: fun(x: f64) -> bool => x.sign == 0
+	isNegative: fun(x: f64) -> bool => x.sign != 0
+	
+	lerp: fun(a: f64, b: f64, t: f64) -> f64 => a + (b - a) * t
 }
