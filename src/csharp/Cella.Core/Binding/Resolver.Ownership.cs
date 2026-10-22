@@ -66,6 +66,10 @@ public sealed partial class Resolver
 			Operand: ResolvedVarExpressionNode { Symbol: ParameterSymbol { IsDestructorSelf: true } }
 		};
 	
+	private bool IsOpenFunction(IExpressionNode syntax, IResolvedExpressionNode value) =>
+		value.Type is FunctionGroupType ||
+		syntax is VarExpressionNode name && FindOpenLocal(name) is { Initializer: LambdaExpressionNode };
+	
 	private static bool IsPlaceSyntax(IExpressionNode node) =>
 		node is VarExpressionNode or AccessExpressionNode or IndexerExpressionNode
 			or UnaryOpExpressionNode { Op.Type: TokenType.OpStar };
@@ -181,7 +185,7 @@ public sealed partial class Resolver
 	{
 		var hint = node.IsMutable ? null : ExpectedType is BorrowType borrow ? borrow.Target : ExpectedType;
 		var place = hint is null ? VisitNode(node.Value, null) : VisitHinted(node.Value, hint);
-		if (!node.IsMutable && survey is not null && IsOpenValue(place))
+		if (!node.IsMutable && survey is not null && IsOpenFunction(node.Value, place))
 			return place;
 		
 		if (!IsInvalid(place) && place.Type is UntypedType)
