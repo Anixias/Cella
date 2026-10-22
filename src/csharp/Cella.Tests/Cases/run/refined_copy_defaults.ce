@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Number: trait req copy
+{
+	zero: const Self
+
+	+: op(left: Self, right: Self) -> Self
+	-: op(left: Self, right: Self) -> Self
+	<: op(imm left: Self, imm right: Self) -> bool
+
+	abs: fun(imm x: Self) -> Self
+	twice: fun(imm x: Self) -> Self
+}
+
+Signed: trait req Number
+{
+	abs: fun(x: Self) -> Self => match x < Self.zero { true => Self.zero - x, else => x }
+	twice: fun(x: Self) -> Self => x + x
+}
+
+Unsigned: trait req Number
+{
+	abs: fun(x: Self) -> Self => x
+}
+
+i32: impl Signed
+{
+	zero: const i32 = 0
+}
+
+u8: impl Unsigned
+{
+	zero: const u8 = 0
+	twice: fun(imm x: u8) -> u8 => x * 2
+}
+
+magnitude[T: Number]: fun(imm x: T) -> T => T.abs(imm x)
+
+doubled[T: Number]: fun(imm x: T) -> T => T.twice(imm x)
+
+main: fun -> i32
+{
+	val negative: i32 = -7
+	val small: u8 = 9
+	printf("%d %d %d\n", i32.abs(imm negative), magnitude(imm negative), doubled(imm negative))
+	printf("%d %d %d\n", i32(u8.abs(imm small)), i32(magnitude(imm small)), i32(doubled(imm small)))
+	ret 0
+}

@@ -47,14 +47,18 @@ public sealed partial class SignatureCollector
 		
 		foreach (var trait in traits)
 		{
+			using var frame = Own(trait);
 			var required = GetAllRequiredTraits(trait).ToList();
 			foreach (var method in trait.Functions)
 			{
-				if (FindRedeclaredRequirement(trait, method, required) is not var (parent, arguments))
+				if (FindRedeclaredRequirement(trait, method, required) is not var (parent, arguments, copies))
 					continue;
 				
 				method.Function.Refines = parent;
 				method.Function.RefinedArguments = arguments;
+				if (!copies && method.Function.Syntax is IFunctionNode node)
+					Diagnostics.Add(new(DiagnosticSeverity.Error, node.Identifier.SourceLocation,
+						$"'{method.Name}' doesn't match '{parent.Trait!.Name}.{method.Name}'"));
 			}
 		}
 		
@@ -69,25 +73,39 @@ public sealed partial class SignatureCollector
 		ReportRequiredFunctionsOutsideTraits();
 	}
 	
-	private (FunctionSymbol Parent, ImmutableArray<TypeSymbol> Arguments)? FindRedeclaredRequirement(TraitSymbol trait,
-		MethodSymbol method, List<TraitType> required)
+	private (FunctionSymbol Parent, ImmutableArray<TypeSymbol> Arguments, bool Copies)? FindRedeclaredRequirement(
+		TraitSymbol trait, MethodSymbol method, List<TraitType> required)
 	{
 		var signature = GetFunctionInfo(method.Function).Signature;
 		var matches = required
 			.SelectMany(parent => parent.Trait.GetFunctions(method.Name)
-				.Select(other => (Parent: parent, other.Function)))
-			.Where(entry => _typePool.SubstituteSignature(GetFunctionInfo(entry.Function).Signature,
-				                TypePool.CreateTraitMap(entry.Parent, trait.Self)) is var expected &&
-			                expected.ReturnType == signature.ReturnType &&
-			                TypePool.ParametersMatch(signature, expected, false))
+				.Select(other => (Parent: parent, other.Function,
+					Expected: _typePool.SubstituteSignature(GetFunctionInfo(other.Function).Signature,
+						TypePool.CreateTraitMap(parent, trait.Self)))))
+			.Where(entry => entry.Expected.ReturnType == signature.ReturnType &&
+			                RedeclaresParameters(signature, entry.Expected))
 			.ToList();
 		
 		var root = matches.FirstOrDefault(entry => !matches.Any(other =>
 			other.Parent.Trait != entry.Parent.Trait &&
 			GetAllRequiredTraits(entry.Parent.Trait).Any(parent => parent.Trait == other.Parent.Trait)));
 		
-		return root.Function is null ? null : (root.Function, root.Parent.Arguments);
+		return root.Function is null
+			? null
+			: (root.Function, root.Parent.Arguments, CopiesWhereLent(signature, root.Expected));
 	}
+	
+	private static bool RedeclaresParameters(FunctionSignature signature, FunctionSignature expected) =>
+		signature.ParameterTypes.Length == expected.ParameterTypes.Length &&
+		Enumerable.Range(0, expected.ParameterTypes.Length).All(i =>
+			signature.ParameterTypes[i] == expected.ParameterTypes[i] && (signature.GetMode(i) == expected.GetMode(i) ||
+			                                                              signature.GetMode(i) == ParameterMode.Value &&
+			                                                              expected.GetMode(i) == ParameterMode.Imm));
+	
+	private bool CopiesWhereLent(FunctionSignature signature, FunctionSignature expected) =>
+		Enumerable.Range(0, expected.ParameterTypes.Length).All(i =>
+			signature.GetMode(i) == expected.GetMode(i) || _typePool.CopiesForImm(signature.GetMode(i),
+				signature.ParameterTypes[i], expected.GetMode(i), expected.ParameterTypes[i]));
 	
 	private void ReportRedeclaration(FunctionSymbol function, List<TraitType> required)
 	{

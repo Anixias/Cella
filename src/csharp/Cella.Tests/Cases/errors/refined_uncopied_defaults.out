@@ -1,0 +1,6 @@
+Error at refined_uncopied_defaults.ce:10:2
+ 9 │ {
+10 │     abs: fun(x: Self) -> Self => x
+         ╘═╛ 'abs' doesn't match 'Number.abs'
+
+[compilation failed]

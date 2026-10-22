@@ -1,0 +1,26 @@
+mod test
+
+Number: trait
+{
+	abs: fun(imm x: Self) -> Self
+}
+
+Signed: trait req Number
+{
+	abs: fun(x: Self) -> Self => x
+}
+
+Handle: own rec
+{
+	id: i32
+	
+	drop: op
+	{
+	}
+}
+
+Handle: impl Signed
+{
+}
+
+main: fun -> i32 => 0

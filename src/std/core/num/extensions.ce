@@ -3,31 +3,31 @@
 use std.cmp.[Eq, Ord, Ordering]
 use std.mem.Bitcast
 
-Additive: pub trait req copy
+Additive: pub trait
 {
-	+: op(left: Self, right: Self) -> Self
-	-: op(left: Self, right: Self) -> Self
+	+: op(imm left: Self, imm right: Self) -> Self
+	-: op(imm left: Self, imm right: Self) -> Self
 }
 
-Multiplicative: pub trait req copy
+Multiplicative: pub trait
 {
-	*: op(left: Self, right: Self) -> Self
-	/: op(left: Self, right: Self) -> Self
-	%: op(left: Self, right: Self) -> Self
+	*: op(imm left: Self, imm right: Self) -> Self
+	/: op(imm left: Self, imm right: Self) -> Self
+	%: op(imm left: Self, imm right: Self) -> Self
 }
 
-WrappedAdditive: pub trait req copy
+WrappedAdditive: pub trait
 {
-	+%: op(left: Self, right: Self) -> Self
-	-%: op(left: Self, right: Self) -> Self
+	+%: op(imm left: Self, imm right: Self) -> Self
+	-%: op(imm left: Self, imm right: Self) -> Self
 }
 
-WrappedMultiplicative: pub trait req copy
+WrappedMultiplicative: pub trait
 {
-	*%: op(left: Self, right: Self) -> Self
+	*%: op(imm left: Self, imm right: Self) -> Self
 }
 
-Number: pub trait req Additive + Multiplicative + Ord
+Number: pub trait req Additive + Multiplicative + Ord + copy
 {
 	minValue: const Self
 	maxValue: const Self
@@ -45,15 +45,74 @@ Number: pub trait req Additive + Multiplicative + Ord
 		ret greater
 	}
 	
-	min: fun(imm a: Self, imm b: Self) -> Self
-	max: fun(imm a: Self, imm b: Self) -> Self
-	clamp: fun(imm x: Self, imm min: Self, imm max: Self) -> Self
-	abs: fun(imm x: Self) -> Self
+	min: fun(a: Self, b: Self) -> Self
+	max: fun(a: Self, b: Self) -> Self
+	clamp: fun(x: Self, min: Self, max: Self) -> Self
+	abs: fun(x: Self) -> Self
+}
+
+SignedNumber: pub trait req Number
+{
+	sign: fun(x: Self) -> Self
+	copySign: fun(x: Self, sign: Self) -> Self
+	-: op(self) -> Self
 }
 
 Integer: pub trait req Number + WrappedAdditive + WrappedMultiplicative
+{
+	~: op(self) -> Self
+	&: op(a: Self, b: Self) -> Self
+	|: op(a: Self, b: Self) -> Self
+	^: op(a: Self, b: Self) -> Self
+	
+	min: fun(a: Self, b: Self) -> Self => match a < b { true => a, else => b }
+	max: fun(a: Self, b: Self) -> Self => match a > b { true => a, else => b }
+	
+	clamp: fun(x: Self, min: Self, max: Self) -> Self
+	{
+		if min > max
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
+}
 
-Float: pub trait req Number
+SignedInteger: pub trait req Integer + SignedNumber
+{
+	sign: fun(x: Self) -> Self
+	{
+		if x == Self.zero
+			ret Self.zero
+		
+		if x < Self.zero
+			ret -Self.one
+		
+		ret Self.one
+	}
+	
+	copySign: fun(x: Self, sign: Self) -> Self 
+	{
+		if (x < Self.zero) == (sign < Self.zero)
+			ret x
+	
+		ret -x
+	}
+	
+	abs: fun(x: Self) -> Self => match x < Self.zero { true => -x, else => x }
+}
+
+UnsignedInteger: pub trait req Integer
+{
+	abs: fun(x: Self) -> Self => x
+}
+
+Float: pub trait req SignedNumber
 {
 	posInf: const Self
 	negInf: const Self
@@ -65,330 +124,121 @@ Float: pub trait req Number
 	tau: const Self
 	e: const Self
 	
-	approxEq: fun(imm a: Self, imm b: Self) -> bool
-	lerp: fun(imm a: Self, imm b: Self, imm t: Self) -> Self
-	isNan: fun(imm x: Self) -> bool
-	isInf: fun(imm x: Self) -> bool
-	isPosInf: fun(imm x: Self) -> bool
-	isNegInf: fun(imm x: Self) -> bool
-	isFinite: fun(imm x: Self) -> bool
-	isZero: fun(imm x: Self) -> bool
-	isSubnormal: fun(imm x: Self) -> bool
-	isNormal: fun(imm x: Self) -> bool
-	isPositive: fun(imm x: Self) -> bool
-	isNegative: fun(imm x: Self) -> bool
+	approxEq: fun(a: Self, b: Self) -> bool
+	lerp: fun(a: Self, b: Self, t: Self) -> Self
+	trunc: fun(x: Self) -> Self
+	floor: fun(x: Self) -> Self
+	ceil: fun(x: Self) -> Self
+	round: fun(x: Self) -> Self
+	roundEven: fun(x: Self) -> Self
+	fract: fun(x: Self) -> Self
+	fractPos: fun(x: Self) -> Self
+	isNan: fun(x: Self) -> bool
+	isInf: fun(x: Self) -> bool
+	isPosInf: fun(x: Self) -> bool
+	isNegInf: fun(x: Self) -> bool
+	isFinite: fun(x: Self) -> bool
+	isZero: fun(x: Self) -> bool
+	isSubnormal: fun(x: Self) -> bool
+	isNormal: fun(x: Self) -> bool
+	isPositive: fun(x: Self) -> bool
+	isNegative: fun(x: Self) -> bool
 }
 
-i8: impl Integer
+i8: impl SignedInteger
 {
 	minValue: const i8 = -0x80
 	maxValue: const i8 =  0x7F
 	zero: const i8 = 0
 	one: const i8 = 1
-	
-	abs: fun(x: i8) -> i8 => x & maxValue
-	min: fun(a: i8, b: i8) -> i8 => match a < b { true => a, else => b }
-	max: fun(a: i8, b: i8) -> i8 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: i8, min: i8, max: i8) -> i8
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-u8: impl Integer
+u8: impl UnsignedInteger
 {
 	minValue: const u8 = 0
 	maxValue: const u8 = 0xFF
 	zero: const u8 = 0
 	one: const u8 = 1
-	
-	abs: fun(x: u8) -> u8 => x
-	min: fun(a: u8, b: u8) -> u8 => match a < b { true => a, else => b }
-	max: fun(a: u8, b: u8) -> u8 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: u8, min: u8, max: u8) -> u8
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-i16: impl Integer
+i16: impl SignedInteger
 {
 	minValue: const i16 = -0x8000
 	maxValue: const i16 =  0x7FFF
 	zero: const i16 = 0
 	one: const i16 = 1
-	
-	abs: fun(x: i16) -> i16 => x & maxValue
-	min: fun(a: i16, b: i16) -> i16 => match a < b { true => a, else => b }
-	max: fun(a: i16, b: i16) -> i16 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: i16, min: i16, max: i16) -> i16
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-u16: impl Integer
+u16: impl UnsignedInteger
 {
 	minValue: const u16 = 0
 	maxValue: const u16 = 0xFFFF
 	zero: const u16 = 0
 	one: const u16 = 1
-	
-	abs: fun(x: u16) -> u16 => x
-	min: fun(a: u16, b: u16) -> u16 => match a < b { true => a, else => b }
-	max: fun(a: u16, b: u16) -> u16 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: u16, min: u16, max: u16) -> u16
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-i32: impl Integer
+i32: impl SignedInteger
 {
 	minValue: const i32 = -0x80000000
 	maxValue: const i32 =  0x7FFFFFFF
 	zero: const i32 = 0
 	one: const i32 = 1
-	
-	abs: fun(x: i32) -> i32 => x & maxValue
-	min: fun(a: i32, b: i32) -> i32 => match a < b { true => a, else => b }
-	max: fun(a: i32, b: i32) -> i32 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: i32, min: i32, max: i32) -> i32
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-u32: impl Integer
+u32: impl UnsignedInteger
 {
 	minValue: const u32 = 0
 	maxValue: const u32 = 0xFFFFFFFF
 	zero: const u32 = 0
 	one: const u32 = 1
-	
-	abs: fun(x: u32) -> u32 => x
-	min: fun(a: u32, b: u32) -> u32 => match a < b { true => a, else => b }
-	max: fun(a: u32, b: u32) -> u32 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: u32, min: u32, max: u32) -> u32
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-i64: impl Integer
+i64: impl SignedInteger
 {
 	minValue: const i64 = -0x80000000_00000000
 	maxValue: const i64 =  0x7FFFFFFF_FFFFFFFF
 	zero: const i64 = 0
 	one: const i64 = 1
-	
-	abs: fun(x: i64) -> i64 => x & maxValue
-	min: fun(a: i64, b: i64) -> i64 => match a < b { true => a, else => b }
-	max: fun(a: i64, b: i64) -> i64 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: i64, min: i64, max: i64) -> i64
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-u64: impl Integer
+u64: impl UnsignedInteger
 {
 	minValue: const u64 = 0
 	maxValue: const u64 = 0xFFFFFFFF_FFFFFFFF
 	zero: const u64 = 0
 	one: const u64 = 1
-	
-	abs: fun(x: u64) -> u64 => x
-	min: fun(a: u64, b: u64) -> u64 => match a < b { true => a, else => b }
-	max: fun(a: u64, b: u64) -> u64 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: u64, min: u64, max: u64) -> u64
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-i128: impl Integer
+i128: impl SignedInteger
 {
 	minValue: const i128 = -0x80000000_00000000_00000000_00000000
 	maxValue: const i128 =  0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
 	zero: const i128 = 0
 	one: const i128 = 1
-	
-	abs: fun(x: i128) -> i128 => x & maxValue
-	min: fun(a: i128, b: i128) -> i128 => match a < b { true => a, else => b }
-	max: fun(a: i128, b: i128) -> i128 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: i128, min: i128, max: i128) -> i128
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-u128: impl Integer
+u128: impl UnsignedInteger
 {
 	minValue: const u128 = 0
 	maxValue: const u128 = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
 	zero: const u128 = 0
 	one: const u128 = 1
-	
-	abs: fun(x: u128) -> u128 => x
-	min: fun(a: u128, b: u128) -> u128 => match a < b { true => a, else => b }
-	max: fun(a: u128, b: u128) -> u128 => match a > b { true => a, else => b }
-	
-	clamp: fun(x: u128, min: u128, max: u128) -> u128
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-isize: impl Integer
+isize: impl SignedInteger
 {
 	minValue: const isize = -isize.maxValue - 1
 	maxValue: const isize = isize(usize.maxValue >> 1)
 	zero: const isize = 0
 	one: const isize = 1
-	
-	abs: fun(x: isize) -> isize => x & maxValue
-	min: fun(a: isize, b: isize) -> isize => match a < b { true => a, else => b }
-	max: fun(a: isize, b: isize) -> isize => match a > b { true => a, else => b }
-	
-	clamp: fun(x: isize, min: isize, max: isize) -> isize
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
-usize: impl Integer
+usize: impl UnsignedInteger
 {
 	minValue: const usize = 0
 	maxValue: const usize = ~0
 	zero: const usize = 0
 	one: const usize = 1
-	
-	abs: fun(x: usize) -> usize => x
-	min: fun(a: usize, b: usize) -> usize => match a < b { true => a, else => b }
-	max: fun(a: usize, b: usize) -> usize => match a > b { true => a, else => b }
-	
-	clamp: fun(x: usize, min: usize, max: usize) -> usize
-	{
-		if min > max
-			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
-		
-		if x < min
-			ret min
-		
-		if x > max
-			ret max
-		
-		ret x
-	}
 }
 
 f32: impl
@@ -397,6 +247,7 @@ f32: impl
 	sign: pvt get(imm self) -> u32 => self.bits >> 31
 	exponentBits: pvt get(imm self) -> u32 => (self.bits >> 23) & 0xFF
 	fractionBits: pvt get(imm self) -> u32 => self.bits & 0x7FFFFF
+	fromBits: pvt fun(bits: u32) -> f32 => Bitcast[u32, f32](bits).to
 }
 
 f32: impl Float
@@ -426,7 +277,7 @@ f32: impl Float
 			ret a
 		
 		if a == b
-			ret Bitcast[u32, f32](a.bits | b.bits).to
+			ret fromBits(a.bits | b.bits)
 		
 		ret match a < b { true => a, else => b }
 	}
@@ -440,7 +291,7 @@ f32: impl Float
 			ret a
 		
 		if a == b
-			ret Bitcast[u32, f32](a.bits & b.bits).to
+			ret fromBits(a.bits & b.bits)
 		
 		ret match a > b { true => a, else => b }
 	}
@@ -460,7 +311,32 @@ f32: impl Float
 		ret x
 	}
 	
-	abs: fun(x: f32) -> f32 => Bitcast[u32, f32](x.bits & 0x7FFFFFFFu32).to
+	lerp: fun(a: f32, b: f32, t: f32) -> f32
+	{
+		if (a <= zero && b >= zero) || (a >= zero && b <= zero)
+			ret t * b + (one - t) * a
+		
+		if t == one
+			ret b
+		
+		val x = a + t * (b - a)
+		if (t > one) == (b > a)
+			ret match b < x { true => x, else => b }
+		
+		ret match b > x { true => x, else => b }
+	}
+	
+	abs: fun(x: f32) -> f32 => fromBits(x.bits & 0x7FFFFFFFu32)
+	copySign: fun(x: f32, sign: f32) -> f32 => fromBits((x.bits & 0x7FFFFFFF) | (sign.bits & 0x80000000))
+	
+	sign: fun(x: f32) -> f32
+	{
+		if isNan(x) || isZero(x)
+			ret x
+	
+		ret match x.sign { 0 => 1, else => -1 }
+	}
+	
 	isNan: fun(x: f32) -> bool => x.exponentBits == 0xFF && x.fractionBits != 0
 	isInf: fun(x: f32) -> bool => x.exponentBits == 0xFF && x.fractionBits == 0
 	isPosInf: fun(x: f32) -> bool => x == posInf
@@ -472,7 +348,135 @@ f32: impl Float
 	isPositive: fun(x: f32) -> bool => x.sign == 0
 	isNegative: fun(x: f32) -> bool => x.sign != 0
 	
-	lerp: fun(a: f32, b: f32, t: f32) -> f32 => a + (b - a) * t
+	trunc: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < 0
+			ret fromBits(x.bits & 0x80000000)
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	floor: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 31) == 0
+				ret fromBits(0)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret -1.0f32
+		}
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 31) != 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	ceil: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 31) != 0
+				ret fromBits(0x80000000)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret 1.0f32
+		}
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 31) == 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	round: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x80000000)
+		
+		if exponent == -1
+			ret fromBits((x.bits & 0x80000000) | 0x3F800000)
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		ret fromBits((x.bits + (0x400000u32 >> u32(exponent))) & ~mask)
+	}
+	
+	roundEven: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x80000000)
+		
+		if exponent == -1
+			ret match (x.bits & 0x7FFFFFFF) == 0x3F000000
+			{
+				true => fromBits(x.bits & 0x80000000)
+				else => fromBits((x.bits & 0x80000000) | 0x3F800000)
+			}
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		val half = 0x400000u32 >> u32(exponent)
+		val fraction = x.bits & mask
+		if fraction == 0
+			ret x
+		
+		if fraction > half || (fraction == half && (x.bits & (half << 1)) != 0)
+			ret fromBits((x.bits + half) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	fract: fun(x: f32) -> f32
+	{
+		if isInf(x)
+			ret copySign(zero, x)
+		
+		ret copySign(x - trunc(x), x)
+	}
+	
+	fractPos: fun(x: f32) -> f32
+	{
+		if !isFinite(x)
+			ret nan
+		
+		val result = x - floor(x)
+		ret match result < one { true => result, else => fromBits(0x3F7FFFFFu32) }
+	}
 }
 
 f64: impl
@@ -481,6 +485,7 @@ f64: impl
 	sign: pvt get(imm self) -> u64 => self.bits >> 63
 	exponentBits: pvt get(imm self) -> u64 => (self.bits >> 52) & 0x7FF
 	fractionBits: pvt get(imm self) -> u64 => self.bits & 0xFFFFFFFFFFFFF
+	fromBits: pvt fun(bits: u64) -> f64 => Bitcast[u64, f64](bits).to
 }
 
 f64: impl Float
@@ -510,7 +515,7 @@ f64: impl Float
 			ret a
 		
 		if a == b
-			ret Bitcast[u64, f64](a.bits | b.bits).to
+			ret fromBits(a.bits | b.bits)
 		
 		ret match a < b { true => a, else => b }
 	}
@@ -524,7 +529,7 @@ f64: impl Float
 			ret a
 		
 		if a == b
-			ret Bitcast[u64, f64](a.bits & b.bits).to
+			ret fromBits(a.bits & b.bits)
 		
 		ret match a > b { true => a, else => b }
 	}
@@ -544,7 +549,34 @@ f64: impl Float
 		ret x
 	}
 	
-	abs: fun(x: f64) -> f64 => Bitcast[u64, f64](x.bits & 0x7FFFFFFFFFFFFFFFu64).to
+	lerp: fun(a: f64, b: f64, t: f64) -> f64
+	{
+		if (a <= zero && b >= zero) || (a >= zero && b <= zero)
+			ret t * b + (one - t) * a
+		
+		if t == one
+			ret b
+		
+		val x = a + t * (b - a)
+		if (t > one) == (b > a)
+			ret match b < x { true => x, else => b }
+		
+		ret match b > x { true => x, else => b }
+	}
+	
+	abs: fun(x: f64) -> f64 => fromBits(x.bits & 0x7FFFFFFFFFFFFFFFu64)
+	
+	copySign: fun(x: f64, sign: f64) -> f64 =>
+		fromBits((x.bits & 0x7FFFFFFFFFFFFFFFu64) | (sign.bits & 0x8000000000000000u64))
+	
+	sign: fun(x: f64) -> f64
+	{
+		if isNan(x) || isZero(x)
+			ret x
+	
+		ret match x.sign { 0 => 1, else => -1 }
+	}
+	
 	isNan: fun(x: f64) -> bool => x.exponentBits == 0x7FF && x.fractionBits != 0
 	isInf: fun(x: f64) -> bool => x.exponentBits == 0x7FF && x.fractionBits == 0
 	isPosInf: fun(x: f64) -> bool => x == posInf
@@ -556,5 +588,133 @@ f64: impl Float
 	isPositive: fun(x: f64) -> bool => x.sign == 0
 	isNegative: fun(x: f64) -> bool => x.sign != 0
 	
-	lerp: fun(a: f64, b: f64, t: f64) -> f64 => a + (b - a) * t
+	trunc: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < 0
+			ret fromBits(x.bits & 0x8000000000000000)
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	floor: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 63) == 0
+				ret fromBits(0)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret -1.0f64
+		}
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 63) != 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	ceil: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 63) != 0
+				ret fromBits(0x8000000000000000)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret 1.0f64
+		}
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 63) == 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	round: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x8000000000000000)
+		
+		if exponent == -1
+			ret fromBits((x.bits & 0x8000000000000000) | 0x3FF0000000000000)
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		ret fromBits((x.bits + (0x8000000000000u64 >> u64(exponent))) & ~mask)
+	}
+	
+	roundEven: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x8000000000000000)
+		
+		if exponent == -1
+			ret match (x.bits & 0x7FFFFFFFFFFFFFFF) == 0x3FE0000000000000
+			{
+				true => fromBits(x.bits & 0x8000000000000000)
+				else => fromBits((x.bits & 0x8000000000000000) | 0x3FF0000000000000)
+			}
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		val half = 0x8000000000000u64 >> u64(exponent)
+		val fraction = x.bits & mask
+		if fraction == 0
+			ret x
+		
+		if fraction > half || (fraction == half && (x.bits & (half << 1)) != 0)
+			ret fromBits((x.bits + half) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	fract: fun(x: f64) -> f64
+	{
+		if isInf(x)
+			ret copySign(zero, x)
+		
+		ret copySign(x - trunc(x), x)
+	}
+	
+	fractPos: fun(x: f64) -> f64
+	{
+		if !isFinite(x)
+			ret nan
+		
+		val result = x - floor(x)
+		ret match result < one { true => result, else => fromBits(0x3FEFFFFFFFFFFFFFu64) }
+	}
 }
