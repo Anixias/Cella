@@ -22,6 +22,10 @@ public sealed partial class CodeGenerator
 			? _typePool.FindConstructorWitness(self, function.Signature)
 			: _typePool.FindWitness(self, function.Symbol, TypePool.GetTraitArguments(function));
 		
+		if (function.Symbol.Trait is not null && witness is null or FunctionWitness { Function.Trait: not null } &&
+		    _typePool.FindNativeWitness(function.Symbol, function.Signature, self) is { } native)
+			return native;
+		
 		return witness is FunctionWitness { Function: var target } && target == function.Symbol ? null : witness;
 	}
 	
@@ -92,7 +96,7 @@ public sealed partial class CodeGenerator
 		var self = function.TypeArguments[0];
 		var declared = function.TypeArguments.TakeLast(function.Symbol.DeclaredTypeParameters.Length);
 		var arguments = _typePool.GetWitnessArguments(self, witness.Function, TypePool.GetTraitArguments(function),
-			declared);
+			declared, function.Symbol.Trait);
 		
 		var target = _typePool.InstantiateFunction(witness.Info, arguments);
 		GetFunctionValue(target);

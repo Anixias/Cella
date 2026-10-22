@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Ordering: pub enum
+{
+	less = -1
+	equal = 0
+	greater = 1
+}
+
+Eq: pub trait
+{
+	==: op(imm left: Self, imm right: Self) -> bool
+	!=: op(imm left: Self, imm right: Self) -> bool
+}
+
+Ord: pub trait req Eq
+{
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+
+	<: op(imm left: Self, imm right: Self) -> bool => match Self.compare(imm left, imm right) { less => true, else => false }
+	>: op(imm left: Self, imm right: Self) -> bool => match Self.compare(imm left, imm right) { greater => true, else => false }
+}
+
+smaller[T: Ord]: fun(a: T, b: T) -> T
+{
+	if b < a
+		ret b
+	ret a
+}
+
+main: fun -> i32
+{
+	printf("%d %d %d\n", i32(i32.compare(imm 2, imm 5)), smaller(7, 3), i32(u8.compare(imm 9u8, imm 9u8)))
+	ret 0
+}
+
+Integer: pub trait req Ord
+{
+}
+
+[T: Integer]: impl Ord
+{
+	compare: fun(imm left: T, imm right: T) -> Ordering
+	{
+		if left == right
+			ret Ordering.equal
+		if left < right
+			ret Ordering.less
+		ret Ordering.greater
+	}
+}
+
+i32: impl Integer
+{
+}
+
+u8: impl Integer
+{
+}

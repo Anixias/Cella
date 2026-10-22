@@ -1,0 +1,94 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Ordering: pub enum
+{
+	less = -1
+	equal = 0
+	greater = 1
+}
+
+Ord: pub trait
+{
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+
+	<: op(imm left: Self, imm right: Self) -> bool => match Self.compare(imm left, imm right) { less => true, else => false }
+}
+
+Named: pub trait req Ord
+{
+	name: fun(imm self) -> i32
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+}
+
+Strict: pub trait req Ord
+{
+	<: req op(imm left: Self, imm right: Self) -> bool
+}
+
+Fancy: pub trait req Strict
+{
+	<: op(imm left: Self, imm right: Self) -> bool => Self.compare(imm right, imm left) == Ordering.less
+}
+
+Level: rec impl Named
+{
+	value: i32
+
+	name: fun(imm self) -> i32 => self.value
+	compare: fun(imm left: Level, imm right: Level) -> Ordering
+	{
+		if left.value < right.value
+			ret Ordering.less
+		if left.value > right.value
+			ret Ordering.greater
+		ret Ordering.equal
+	}
+}
+
+Rank: rec impl Strict
+{
+	value: i32
+
+	compare: fun(imm left: Rank, imm right: Rank) -> Ordering => Ordering.equal
+	<: op(imm left: Rank, imm right: Rank) -> bool => left.value > right.value
+}
+
+Score: rec impl Fancy
+{
+	value: i32
+
+	compare: fun(imm left: Score, imm right: Score) -> Ordering
+	{
+		if left.value < right.value
+			ret Ordering.less
+		if left.value > right.value
+			ret Ordering.greater
+		ret Ordering.equal
+	}
+}
+
+i32: impl Strict
+{
+	compare: fun(imm left: i32, imm right: i32) -> Ordering => Ordering.equal
+}
+
+smaller[T: Named]: fun(a: T, b: T) -> T
+{
+	if T.compare(imm b, imm a) == Ordering.less
+		ret b
+	ret a
+}
+
+main: fun -> i32
+{
+	printf("named %d %d\n", smaller(Level(4), Level(3)).value, i32(Level(1) < Level(2)))
+	printf("strict %d\n", i32(Rank(5) < Rank(2)))
+	printf("fancy %d\n", i32(Score(5) < Score(2)))
+	printf("native %d\n", i32(1 < 2))
+	ret 0
+}

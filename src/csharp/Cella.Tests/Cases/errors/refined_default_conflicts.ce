@@ -1,0 +1,51 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Ordering: pub enum
+{
+	less = -1
+	equal = 0
+	greater = 1
+}
+
+Ord: pub trait
+{
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+
+	<: op(imm left: Self, imm right: Self) -> bool => match Self.compare(imm left, imm right) { less => true, else => false }
+}
+
+Ranked: pub trait req Ord
+{
+	rank: fun(imm self) -> i32
+
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+	{
+		if left.rank() < right.rank()
+			ret Ordering.less
+		if left.rank() > right.rank()
+			ret Ordering.greater
+		ret Ordering.equal
+	}
+}
+
+Sized: pub trait req Ord
+{
+	size: fun(imm self) -> i32
+
+	compare: fun(imm left: Self, imm right: Self) -> Ordering => Ordering.equal
+}
+
+Both: rec impl Ranked + Sized
+{
+	value: i32
+
+	rank: fun(imm self) -> i32 => self.value
+	size: fun(imm self) -> i32 => self.value
+}
+
+main: fun -> i32 => 0

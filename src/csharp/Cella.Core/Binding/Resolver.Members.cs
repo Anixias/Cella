@@ -435,12 +435,16 @@ public sealed partial class Resolver
 					                 IsDefaultWitness(conformance, method.Function))));
 	}
 	
-	private static IEnumerable<MethodSymbol> GetInstanceMethods(TraitType trait, string name) => trait.Arguments.IsEmpty
-		? trait.Trait.GetFunctions(name)
-		: trait.Trait.GetFunctions(name).Select(method => new MethodSymbol(method.Name, method.Function)
-		{
-			TraitArguments = trait.Arguments
-		});
+	private static IEnumerable<MethodSymbol> GetInstanceMethods(TraitType trait, string name)
+	{
+		var methods = trait.Trait.GetFunctions(name).Where(static method => method.Function.Refines is null);
+		return trait.Arguments.IsEmpty
+			? methods
+			: methods.Select(method => new MethodSymbol(method.Name, method.Function)
+			{
+				TraitArguments = trait.Arguments
+			});
+	}
 	
 	private static PropertySymbol? GetInstanceProperty(TraitType trait, string name) =>
 		trait.Trait.GetProperty(name) is { } property && !trait.Arguments.IsEmpty
@@ -477,7 +481,7 @@ public sealed partial class Resolver
 	
 	private static bool IsDefaultWitness(Conformance conformance, FunctionSymbol requirement) =>
 		conformance.Witnesses.GetValueOrDefault(requirement) is FunctionWitness { Function: var witness } &&
-		witness == requirement;
+		(witness == requirement || witness.Refines == requirement);
 	
 	private IEnumerable<Conformance> GetVisibleConformances(TypeSymbol type) => _typePool.FindConformances(type)
 		.Where(conformance => CurrentResolutionContext.IsVisible(conformance.Trait) &&

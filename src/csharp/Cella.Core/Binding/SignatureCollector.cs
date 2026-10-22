@@ -172,6 +172,7 @@ public sealed partial class SignatureCollector
 		ReportRedundantRequirements();
 		ReportDeferredChecks();
 		ReportBorrowingVariables();
+		LinkRefinedDefaults(files);
 		CheckConformances();
 		CheckImplBlocks();
 		ReportVariadicTypes();

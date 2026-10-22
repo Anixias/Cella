@@ -1,0 +1,37 @@
+Hint at required_redeclarations.ce:24:11
+23 │ {
+24 │     compare: req fun(imm left: Self, imm right: Self) -> Ordering
+                  ╘═╛ Redundant 'req'
+
+Error at required_redeclarations.ce:34:11
+33 │ {
+34 │     compare: req fun(imm left: Self, imm right: Self) -> Ordering => Ordering.equal
+                  ╘═╛ Cannot declare required functions
+
+Error at required_redeclarations.ce:35:9
+34 │ compare: req fun(imm left: Self, imm right: Self) -> Ordering => Ordering.equal
+35 │ extra: req fun(imm self) -> i32
+            ╘═╛ Cannot declare required functions
+
+Error at required_redeclarations.ce:38:16
+37 │ 
+38 │ Bare: rec impl Strict
+                    ╘════╛ 'Bare' needs 'Ord.<'
+                         | Default removed by 'Strict'
+
+Error at required_redeclarations.ce:45:17
+44 │ 
+45 │ Mixed: rec impl Strict + Loose
+                     ╘════╛ 'Ord.<' has a default in 'Loose' that 'Strict' removes
+
+Error at required_redeclarations.ce:56:8
+55 │ 
+56 │ size: req fun(imm self) -> i32 => self.count
+           ╘═╛ Cannot declare required functions
+
+Error at required_redeclarations.ce:57:5
+56 │ size: req fun(imm self) -> i32 => self.count
+57 │ <: req op(imm left: Holder, imm right: Holder) -> bool => true
+        ╘═╛ Cannot declare required operators
+
+[compilation failed]

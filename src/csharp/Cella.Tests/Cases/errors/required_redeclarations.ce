@@ -1,0 +1,60 @@
+mod test
+
+Ordering: pub enum
+{
+	less = -1
+	equal = 0
+	greater = 1
+}
+
+Ord: pub trait
+{
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+
+	<: op(imm left: Self, imm right: Self) -> bool => match Self.compare(imm left, imm right) { less => true, else => false }
+}
+
+Strict: pub trait req Ord
+{
+	<: req op(imm left: Self, imm right: Self) -> bool
+}
+
+Again: pub trait req Ord
+{
+	compare: req fun(imm left: Self, imm right: Self) -> Ordering
+}
+
+Loose: pub trait req Ord
+{
+	<: op(imm left: Self, imm right: Self) -> bool => true
+}
+
+Broken: pub trait req Ord
+{
+	compare: req fun(imm left: Self, imm right: Self) -> Ordering => Ordering.equal
+	extra: req fun(imm self) -> i32
+}
+
+Bare: rec impl Strict
+{
+	value: i32
+
+	compare: fun(imm left: Bare, imm right: Bare) -> Ordering => Ordering.equal
+}
+
+Mixed: rec impl Strict + Loose
+{
+	value: i32
+
+	compare: fun(imm left: Mixed, imm right: Mixed) -> Ordering => Ordering.equal
+}
+
+Holder: rec
+{
+	count: i32
+
+	size: req fun(imm self) -> i32 => self.count
+	<: req op(imm left: Holder, imm right: Holder) -> bool => true
+}
+
+main: fun -> i32 => 0

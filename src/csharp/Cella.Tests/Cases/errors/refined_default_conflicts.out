@@ -1,0 +1,6 @@
+Error at refined_default_conflicts.ce:43:16
+42 │ 
+43 │ Both: rec impl Ranked + Sized
+                    ╘════╛ 'Ord.compare' has defaults in both 'Ranked' and 'Sized'
+
+[compilation failed]

@@ -65,6 +65,14 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		var required = index;
+		if (Match(ref required, out var requiredKeyword, _memberContextualKeywords, TokenType.KeywordReq) &&
+		    IsOnSameLine(required) && IsFunctionMember(required))
+		{
+			modifiers.Tokens.Add(requiredKeyword);
+			index = required;
+		}
+		
 		if (FindMisplacedFieldModifier(index) is var (location, message))
 		{
 			Report(location, message);
@@ -151,6 +159,14 @@ public sealed partial class FileParser
 			: ParseMemberModifiers(ref index, block);
 		
 		RejectWriteRestriction(modifiers, "operators");
+		var required = index;
+		if (Match(ref required, out var requiredKeyword, _memberContextualKeywords, TokenType.KeywordReq) &&
+		    IsOnSameLine(required) && IsOperatorKeyword(required))
+		{
+			modifiers.Tokens.Add(requiredKeyword);
+			index = required;
+		}
+		
 		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 			return ParseFunction(ref index, symbol, modifiers, false, typeParameters);
 		
@@ -160,6 +176,8 @@ public sealed partial class FileParser
 	
 	private bool IsFunctionMember(int index) =>
 		Match(ref index, TokenType.KeywordFun) && !Peek(index, TokenType.OpOpenBracket);
+	
+	private bool IsOperatorKeyword(int index) => Match(ref index, _memberContextualKeywords, TokenType.KeywordOp);
 	
 	private bool StartsProperty(int index)
 	{
@@ -366,9 +384,6 @@ public sealed partial class FileParser
 		
 		if (_bindingKeywords.Contains(next.Type))
 			return (token.SourceLocation, "Cannot declare required static fields");
-		
-		if (IsFunctionMember(following))
-			return (token.SourceLocation, "Cannot declare required functions");
 		
 		if (LookAhead(() => Match(ref following, _memberContextualKeywords, TokenType.KeywordOp)))
 			return (token.SourceLocation, "Cannot declare required operators");

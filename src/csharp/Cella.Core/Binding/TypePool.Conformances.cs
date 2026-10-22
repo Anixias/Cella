@@ -1,6 +1,9 @@
 ﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
 
@@ -397,6 +400,48 @@ public sealed partial class TypePool
 			? conformance.Witnesses.GetValueOrDefault(requirement)
 			: null;
 	
+	public ImmutableArray<TypeSymbol> GetRefinedArguments(FunctionSymbol function, TypeSymbol self,
+		ImmutableArray<TypeSymbol> traitArguments)
+	{
+		var map = CreateMap(function.Trait!.TypeParameters, traitArguments);
+		map[function.Trait.Self] = self;
+		return [..function.RefinedArguments.Select(argument => Substitute(argument, map))];
+	}
+	
+	private ImmutableArray<TypeSymbol>? FindRefiningArguments(TypeSymbol self, FunctionSymbol witness,
+		ImmutableArray<TypeSymbol> requirementArguments) => FindConformances(self)
+		.Where(conformance => conformance.Trait == witness.Trait)
+		.Select(conformance => GetConformanceTrait(conformance, self).Arguments)
+		.Where(arguments => GetRefinedArguments(witness, self, arguments).SequenceEqual(requirementArguments))
+		.Select(static arguments => (ImmutableArray<TypeSymbol>?)arguments)
+		.FirstOrDefault();
+	
+	public NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature expected, TypeSymbol self)
+	{
+		if (self is not (PrimitiveType or EnumSymbol or PointerType) || requirement.Syntax is not FunctionNode node ||
+		    node.Identifier.Type is TokenType.Identifier or TokenType.KeywordAs or TokenType.KeywordNew)
+			return null;
+		
+		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
+			return expected.GetMode(0) == ParameterMode.Mut && OperatorRegistry
+				.GetBinaryCandidates(node.Identifier.Type)
+				.OfType<OperationImpl>()
+				.FirstOrDefault(candidate => candidate.ReturnType == self && candidate.ParameterTypes[0] == self &&
+				                             candidate.ParameterTypes[1] == expected.ParameterTypes[1]) is { } compound
+				? new NativeWitness(compound, true)
+				: null;
+		
+		var candidates = node.Receiver is null
+			? OperatorRegistry.GetBinaryCandidates(node.Identifier.Type)
+			: OperatorRegistry.GetUnaryCandidates(node.Identifier.Type);
+		
+		return candidates.OfType<OperationImpl>().FirstOrDefault(candidate =>
+			candidate.ReturnType == expected.ReturnType &&
+			candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes)) is { } native
+			? new NativeWitness(native)
+			: null;
+	}
+	
 	public static ImmutableArray<TypeSymbol> GetTraitArguments(FunctionInfo function) =>
 		function.Symbol.Trait is { TypeParameters.Length: > 0 and var count } &&
 		!function.TypeArguments.IsDefaultOrEmpty
@@ -404,11 +449,15 @@ public sealed partial class TypePool
 			: [];
 	
 	public ImmutableArray<TypeSymbol> GetWitnessArguments(TypeSymbol self, FunctionSymbol witness,
-		ImmutableArray<TypeSymbol> traitArguments, IEnumerable<TypeSymbol> declared)
+		ImmutableArray<TypeSymbol> traitArguments, IEnumerable<TypeSymbol> declared, TraitSymbol? requirement = null)
 	{
-		if (witness.Trait is { } trait)
+		if (witness.Trait is { } trait && requirement is not null && trait != requirement &&
+		    FindRefiningArguments(self, witness, traitArguments.IsDefault ? [] : traitArguments) is { } refining)
+			return [self, ..refining, ..declared];
+		
+		if (witness.Trait is { } own)
 			return traitArguments.IsDefault
-				? [self, ..trait.TypeParameters, ..declared]
+				? [self, ..own.TypeParameters, ..declared]
 				: [self, ..traitArguments, ..declared];
 		
 		if (witness.Impl is { } blanket && GetMemberBlockTarget(blanket) is TypeParameterSymbol)

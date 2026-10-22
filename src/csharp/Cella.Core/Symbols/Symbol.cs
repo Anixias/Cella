@@ -134,6 +134,8 @@ public sealed class FunctionSymbol
 	
 	public PropertySymbol? Property { get; internal set; }
 	public TraitSymbol? Trait { get; internal set; }
+	public FunctionSymbol? Refines { get; internal set; }
+	public ImmutableArray<TypeSymbol> RefinedArguments { get; internal set; } = [];
 	public ImplSymbol? Impl { get; internal set; }
 	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
 	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];

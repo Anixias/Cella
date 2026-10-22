@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using System.Text;
-using Cella.Core.Binding.Operations;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -36,6 +35,130 @@ public sealed partial class SignatureCollector
 		
 		foreach (var impl in _impls)
 			ReportUnmatchedMembers(impl);
+	}
+	
+	private void LinkRefinedDefaults(IEnumerable<FileNode> files)
+	{
+		var traits = files
+			.SelectMany(static file => file.Declarations)
+			.Select(declaration => _symbolTable.DeclarationSymbols.GetValueOrDefault(declaration))
+			.OfType<TraitSymbol>()
+			.ToList();
+		
+		foreach (var trait in traits)
+		{
+			var required = GetAllRequiredTraits(trait).ToList();
+			foreach (var method in trait.Functions)
+			{
+				if (FindRedeclaredRequirement(trait, method, required) is not var (parent, arguments))
+					continue;
+				
+				method.Function.Refines = parent;
+				method.Function.RefinedArguments = arguments;
+			}
+		}
+		
+		foreach (var trait in traits)
+		{
+			using var frame = Own(trait);
+			var required = GetAllRequiredTraits(trait).ToList();
+			foreach (var method in trait.Functions)
+				ReportRedeclaration(method.Function, required);
+		}
+		
+		ReportRequiredFunctionsOutsideTraits();
+	}
+	
+	private (FunctionSymbol Parent, ImmutableArray<TypeSymbol> Arguments)? FindRedeclaredRequirement(TraitSymbol trait,
+		MethodSymbol method, List<TraitType> required)
+	{
+		var signature = GetFunctionInfo(method.Function).Signature;
+		var matches = required
+			.SelectMany(parent => parent.Trait.GetFunctions(method.Name)
+				.Select(other => (Parent: parent, other.Function)))
+			.Where(entry => _typePool.SubstituteSignature(GetFunctionInfo(entry.Function).Signature,
+				                TypePool.CreateTraitMap(entry.Parent, trait.Self)) is var expected &&
+			                expected.ReturnType == signature.ReturnType &&
+			                TypePool.ParametersMatch(signature, expected, false))
+			.ToList();
+		
+		var root = matches.FirstOrDefault(entry => !matches.Any(other =>
+			other.Parent.Trait != entry.Parent.Trait &&
+			GetAllRequiredTraits(entry.Parent.Trait).Any(parent => parent.Trait == other.Parent.Trait)));
+		
+		return root.Function is null ? null : (root.Function, root.Parent.Arguments);
+	}
+	
+	private void ReportRedeclaration(FunctionSymbol function, List<TraitType> required)
+	{
+		if (function.Syntax is not FunctionNode node)
+			return;
+		
+		var keyword = FindRequiredKeyword(function);
+		if (function.Refines is not { } parent || node.Body is not null)
+		{
+			if (keyword is { } misplaced)
+				ReportRequiredFunction(misplaced, node);
+			
+			return;
+		}
+		
+		if (keyword is null)
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, node.Identifier.SourceLocation,
+				$"Redundant '{node.Identifier.Text}'")
+			{
+				Hints = [$"Declared in '{parent.Trait?.Name}'"],
+				Lint = Lints.Redundant
+			});
+		else if (!HasInheritedDefault(parent, required))
+			Diagnostics.Add(new(DiagnosticSeverity.Hint, keyword.Value.SourceLocation, "Redundant 'req'")
+			{
+				Lint = Lints.Redundant
+			});
+	}
+	
+	private static bool HasInheritedDefault(FunctionSymbol requirement, List<TraitType> required) =>
+		requirement.Syntax is FunctionNode { Body: not null } ||
+		required.Any(parent => parent.Trait.Functions.Any(method =>
+			method.Function.Refines == requirement && HasBody(method.Function)));
+	
+	private void ReportRequiredFunctionsOutsideTraits()
+	{
+		foreach (var (declaration, symbol) in _symbolTable.DeclarationSymbols)
+		{
+			if (declaration is not FunctionNode node || symbol is not FunctionSymbol { Trait: null } function ||
+			    FindRequiredKeyword(function) is not { } keyword)
+				continue;
+			
+			using var frame = Own(function);
+			ReportRequiredFunction(keyword, node);
+		}
+	}
+	
+	private void ReportRequiredFunction(Token keyword, FunctionNode node) =>
+		Diagnostics.Add(new(DiagnosticSeverity.Error, keyword.SourceLocation,
+			node.Identifier.Type == TokenType.Identifier
+				? "Cannot declare required functions"
+				: "Cannot declare required operators"));
+	
+	private static Token? FindRequiredKeyword(FunctionSymbol function) => function.Syntax is FunctionNode node
+		? node.Modifiers.Where(static token => token.Type == TokenType.KeywordReq).Select(static token => (Token?)token)
+			.FirstOrDefault()
+		: null;
+	
+	private IEnumerable<TraitType> GetAllRequiredTraits(TraitSymbol trait)
+	{
+		var visited = new HashSet<TraitType>();
+		var pending = new Stack<TraitType>(_typePool.GetRequiredTraits(trait));
+		while (pending.TryPop(out var current))
+		{
+			if (!visited.Add(current))
+				continue;
+			
+			yield return current;
+			foreach (var next in _typePool.GetRequiredTraits(current, trait.Self))
+				pending.Push(next);
+		}
 	}
 	
 	private void MatchConstants(Conformance conformance)
@@ -235,7 +358,7 @@ public sealed partial class SignatureCollector
 		
 		var reported = new HashSet<FunctionSymbol>();
 		var narrowChecked = new HashSet<object>();
-		var missing = new List<(string Name, FunctionSymbol Requirement)>();
+		var missing = new List<(string Name, FunctionSymbol Requirement, string? RemovedBy)>();
 		foreach (var (name, requirement, info, allCandidates, matches) in requirements)
 		{
 			var candidates = allCandidates.Where(candidate => !witnesses.Contains(candidate.Function)).ToList();
@@ -263,8 +386,26 @@ public sealed partial class SignatureCollector
 					
 					break;
 				
-				case 0 when FindNativeWitness(requirement, info.Signature, traitMap, self) is { } native:
+				case 0 when _typePool.FindNativeWitness(requirement,
+					_typePool.SubstituteSignature(info.Signature, traitMap), self) is { } native:
 					conformance.Witnesses[requirement] = native;
+					break;
+				
+				case 0 when FindRefinedDefaults(conformance, requirement, self) is [var refined] && HasBody(refined):
+					conformance.Witnesses[requirement] = new FunctionWitness(refined, GetFunctionInfo(refined));
+					break;
+				
+				case 0 when FindRefinedDefaults(conformance, requirement, self) is [var removal, ..] removals &&
+				            removals.All(static entry => !HasBody(entry)):
+					if (missing.All(entry => entry.Name != name))
+						missing.Add((name, requirement, removal.Trait?.Name));
+					
+					break;
+				
+				case 0 when FindRefinedDefaults(conformance, requirement, self) is [_, _, ..] conflicting:
+					ReportConformance(conformance.Location,
+						DescribeConflictingDefaults($"{trait}.{name}", conflicting));
+					
 					break;
 				
 				case 0 when requirement.Syntax is FunctionNode { Body: not null }:
@@ -304,17 +445,18 @@ public sealed partial class SignatureCollector
 				
 				default:
 					if (missing.All(entry => entry.Name != name))
-						missing.Add((name, requirement));
+						missing.Add((name, requirement, null));
 					
 					break;
 			}
 		}
 		
 		var fix = ImplementMembers(conformance, self, missing.Select(static entry => entry.Requirement));
-		foreach (var (name, requirement) in missing)
+		foreach (var (name, requirement, removedBy) in missing)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
 				DescribeMissingRequirement(conformance, trait, self, name, requirement))
 			{
+				Hints = removedBy is null ? [] : [$"Default removed by '{removedBy}'"],
 				Fixes = fix is null ? [] : [fix]
 			});
 		
@@ -568,7 +710,8 @@ public sealed partial class SignatureCollector
 	[
 		..trait.Functions
 			.Where(static method => method.Function.Kind != FunctionKind.Destructor &&
-			                        method.Function.Visibility != Visibility.Private)
+			                        method.Function.Visibility != Visibility.Private &&
+			                        method.Function.Refines is null)
 			.Select(static method => (method.Name, method.Function)),
 		..trait.Properties.SelectMany(static property => new[] { property.Getter, property.Setter }
 			.OfType<FunctionAccessor>()
@@ -700,32 +843,42 @@ public sealed partial class SignatureCollector
 			.All(signature => constructorBounds.Any(other => TypePool.ParametersMatch(signature, other, false)));
 	}
 	
-	private NativeWitness? FindNativeWitness(FunctionSymbol requirement, FunctionSignature signature,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
+	private List<FunctionSymbol> FindRefinedDefaults(Conformance conformance, FunctionSymbol requirement,
+		TypeSymbol self)
 	{
-		if (self is not (PrimitiveType or EnumSymbol or PointerType) || requirement.Syntax is not FunctionNode node ||
-		    node.Identifier.Type == TokenType.Identifier || IsConversion(node))
-			return null;
+		var arguments = _typePool.GetConformanceTrait(conformance, self).Arguments;
+		var defaults = _typePool.Conformances
+			.Where(other => other.Target == conformance.Target && other.Trait != conformance.Trait)
+			.SelectMany(other => other.Trait.Functions
+				.Where(method => method.Function.Refines == requirement &&
+				                 (HasBody(method.Function) || FindRequiredKeyword(method.Function) is not null) &&
+				                 _typePool
+					                 .GetRefinedArguments(method.Function, self,
+						                 _typePool.GetConformanceTrait(other, self).Arguments)
+					                 .SequenceEqual(arguments))
+				.Select(method => (other.Trait, method.Function)))
+			.Distinct()
+			.ToList();
 		
-		var expected = _typePool.SubstituteSignature(signature, traitMap);
-		var registry = _typePool.OperatorRegistry;
-		if (node.Receiver is not null && expected.ParameterTypes.Length == 2)
-			return expected.GetMode(0) == ParameterMode.Mut && registry.GetBinaryCandidates(node.Identifier.Type)
-				.OfType<OperationImpl>()
-				.FirstOrDefault(candidate => candidate.ReturnType == self && candidate.ParameterTypes[0] == self &&
-				                             candidate.ParameterTypes[1] == expected.ParameterTypes[1]) is { } compound
-				? new NativeWitness(compound, true)
-				: null;
-		
-		var candidates = node.Receiver is null
-			? registry.GetBinaryCandidates(node.Identifier.Type)
-			: registry.GetUnaryCandidates(node.Identifier.Type);
-		
-		return candidates.OfType<OperationImpl>().FirstOrDefault(candidate =>
-			candidate.ReturnType == expected.ReturnType &&
-			candidate.ParameterTypes.SequenceEqual(expected.ParameterTypes)) is { } native
-			? new NativeWitness(native)
-			: null;
+		return
+		[
+			..defaults
+				.Where(entry => !defaults.Any(other => other.Trait != entry.Trait &&
+				                                       GetAllRequiredTraits(other.Trait)
+					                                       .Any(parent => parent.Trait == entry.Trait)))
+				.Select(static entry => entry.Function)
+		];
+	}
+	
+	private static bool HasBody(FunctionSymbol function) => function.Syntax is FunctionNode { Body: not null };
+	
+	private static string DescribeConflictingDefaults(string member, List<FunctionSymbol> conflicting)
+	{
+		var bodies = conflicting.Where(HasBody).ToList();
+		return bodies is [var first, var second, ..]
+			? $"'{member}' has defaults in both '{first.Trait?.Name}' and '{second.Trait?.Name}'"
+			: $"'{member}' has a default in '{bodies[0].Trait?.Name}' that " +
+			  $"'{conflicting.First(static entry => !HasBody(entry)).Trait?.Name}' removes";
 	}
 	
 	private SelfConversionWitness? FindSelfConversionWitness(FunctionSymbol requirement, FunctionSignature signature,

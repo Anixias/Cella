@@ -1,0 +1,65 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Source[T]: pub trait
+{
+	read: fun(imm self) -> T
+	label: fun(imm self) -> i32
+}
+
+Fixed[T]: pub trait req Source[T]
+{
+	value: fun(imm self) -> T
+
+	read: fun(imm self) -> T => self.value()
+}
+
+Counted: pub trait req Source[i32]
+{
+	count: fun(imm self) -> i32
+
+	read: fun(imm self) -> i32 => self.count() * 10
+}
+
+Cell: rec impl Fixed[i32]
+{
+	v: i32
+
+	value: fun(imm self) -> i32 => self.v
+	label: fun(imm self) -> i32 => 1
+}
+
+Flag: rec impl Fixed[bool]
+{
+	on: bool
+
+	value: fun(imm self) -> bool => self.on
+	label: fun(imm self) -> i32 => 2
+}
+
+Tally: rec impl Counted
+{
+	n: i32
+
+	count: fun(imm self) -> i32 => self.n
+	label: fun(imm self) -> i32 => 3
+}
+
+readSource[T, S: Source[T]]: fun(imm source: S) -> T => source.read()
+
+readFixed[S: Fixed[i32]]: fun(imm source: S) -> i32 => source.read()
+
+main: fun -> i32
+{
+	val cell = Cell(4)
+	val flag = Flag(true)
+	val tally = Tally(5)
+	printf("direct %d %d %d\n", cell.read(), i32(flag.read()), tally.read())
+	printf("bound %d %d %d\n", readSource[i32, Cell](imm cell), i32(readSource[bool, Flag](imm flag)), readSource[i32, Tally](imm tally))
+	printf("fixed %d\n", readFixed(imm cell))
+	ret 0
+}

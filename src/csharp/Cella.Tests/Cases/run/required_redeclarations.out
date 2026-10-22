@@ -1,0 +1,11 @@
+Hint at required_redeclarations.ce:25:2
+24 │ name: fun(imm self) -> i32
+25 │ compare: fun(imm left: Self, imm right: Self) -> Ordering
+     ╘═════╛ Redundant 'compare'
+           | Declared in 'Ord'
+
+named 3 1
+strict 1
+fancy 1
+native 1
+[exit code 0]
