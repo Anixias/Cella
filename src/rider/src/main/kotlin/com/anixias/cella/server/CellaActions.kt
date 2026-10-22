@@ -170,6 +170,7 @@ class CellaRenameHandler : RenameHandler {
 		val primaryMarker = markers[ranges.indexOf(primary)]
 		val otherEdits = others.groupBy { it.uri }
 		
+		PsiDocumentManager.getInstance(project).commitDocument(document)
 		WriteCommandAction.runWriteCommandAction(project, "Rename", null, {
 			val builder = TemplateBuilderImpl(file as PsiElement)
 			builder.replaceRange(primary, "NAME", ConstantNode(name), true)
@@ -178,11 +179,10 @@ class CellaRenameHandler : RenameHandler {
 					builder.replaceElement(range, "NAME_$index", "NAME", false)
 			}
 			
-			editor.caretModel.moveToOffset(0)
 			val template = builder.buildInlineTemplate()
 			template.isToShortenLongNames = false
 			template.isToReformat = false
-			editor.caretModel.moveToOffset(primary.startOffset)
+			editor.caretModel.moveToOffset(file.textRange.startOffset)
 			TemplateManager.getInstance(project).startTemplate(editor, template, object : TemplateEditingAdapter() {
 				override fun templateFinished(template: Template, brokenOff: Boolean) =
 					finish(project, editor, name, primaryMarker, markers, otherEdits)
