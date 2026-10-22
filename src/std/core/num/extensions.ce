@@ -27,7 +27,7 @@ WrappedMultiplicative: pub trait
 	*%: op(imm left: Self, imm right: Self) -> Self
 }
 
-Number: pub trait req Additive + Multiplicative + Ord + copy
+Number: pub trait req Additive + Multiplicative + Ord + copy + noref
 {
 	minValue: const Self
 	maxValue: const Self

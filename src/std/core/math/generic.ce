@@ -1,8 +1,34 @@
 ﻿mod std.math
 
-use std.num.Number
+use std.num.[Float, Number, SignedNumber]
 
+// Number
 abs[T: Number]: pub fun(x: T) -> T => T.abs(x)
 min[T: Number]: pub fun(a: T, b: T) -> T => T.min(a, b)
 max[T: Number]: pub fun(a: T, b: T) -> T => T.max(a, b)
 clamp[T: Number]: pub fun(x: T, min: T, imm max: T) -> T => T.clamp(x, min, max)
+
+// SignedNumber
+sign[T: SignedNumber]: pub fun(x: T) -> T => T.sign(x)
+copySign[T: SignedNumber]: pub fun(x: T, sign: T) -> T => T.copySign(x, sign)
+
+// Float
+approxEq[T: Float]: pub fun(a: T, b: T) -> bool => T.approxEq(a, b)
+lerp[T: Float]: pub fun(a: T, b: T, t: T) -> T => T.lerp(a, b, t)
+trunc[T: Float]: pub fun(x: T) -> T => T.trunc(x)
+floor[T: Float]: pub fun(x: T) -> T => T.floor(x)
+ceil[T: Float]: pub fun(x: T) -> T => T.ceil(x)
+round[T: Float]: pub fun(x: T) -> T => T.round(x)
+roundEven[T: Float]: pub fun(x: T) -> T => T.roundEven(x)
+fract[T: Float]: pub fun(x: T) -> T => T.fract(x)
+fractPos[T: Float]: pub fun(x: T) -> T => T.fractPos(x)
+isNan[T: Float]: pub fun(x: T) -> bool => T.isNan(x)
+isInf[T: Float]: pub fun(x: T) -> bool => T.isInf(x)
+isPosInf[T: Float]: pub fun(x: T) -> bool => T.isPosInf(x)
+isNegInf[T: Float]: pub fun(x: T) -> bool => T.isNegInf(x)
+isFinite[T: Float]: pub fun(x: T) -> bool => T.isFinite(x)
+isZero[T: Float]: pub fun(x: T) -> bool => T.isZero(x)
+isSubnormal[T: Float]: pub fun(x: T) -> bool => T.isSubnormal(x)
+isNormal[T: Float]: pub fun(x: T) -> bool => T.isNormal(x)
+isPositive[T: Float]: pub fun(x: T) -> bool => T.isPositive(x)
+isNegative[T: Float]: pub fun(x: T) -> bool => T.isNegative(x)
