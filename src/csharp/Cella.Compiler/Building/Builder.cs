@@ -183,13 +183,26 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	
 	private bool HasErrors => _problems.Any(static problem => problem.Severity == DiagnosticSeverity.Error);
 	
+	private IEnumerable<ProjectDiagnostic> ShownProblems =>
+		_problems.Where(static problem => !IsFromStandardLibrary(problem));
+	
+	private static bool IsFromStandardLibrary(ProjectDiagnostic problem) =>
+		problem.Projects is [_, ..] && problem.Projects.All(IsBundled);
+	
 	private void ReportProblems()
 	{
-		foreach (var problem in _problems)
+		foreach (var problem in ShownProblems)
 			output.WriteLine(problem.Text);
 	}
 	
-	private BuildResult Fail() => new(false, [.._projects], [.._problems]);
+	private void AddProblem(ProjectDiagnostic problem)
+	{
+		_problems.Add(problem);
+		if (!IsFromStandardLibrary(problem))
+			output.WriteLine(problem.Text);
+	}
+	
+	private BuildResult Fail() => new(false, [.._projects], [..ShownProblems]);
 	
 	private void AssignBundledOutputs(Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
 	{
@@ -225,7 +238,9 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private static readonly string _bundledDirectory =
 		GetCanonicalPath(StandardLibraryDirectory) + Path.DirectorySeparatorChar;
 	
-	private static bool IsBundled(ProjectInfo project) => project.FilePath.StartsWith(_bundledDirectory,
+	private static bool IsBundled(ProjectInfo project) => IsBundled(project.FilePath);
+	
+	private static bool IsBundled(string path) => path.StartsWith(_bundledDirectory,
 		OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 	
 	private static string GetIdentity(ProjectInfo project) => IsBundled(project) ? $"std/{project.Name}" : project.Name;

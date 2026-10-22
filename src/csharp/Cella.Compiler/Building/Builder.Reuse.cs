@@ -94,7 +94,7 @@ public sealed partial class Builder
 			position++;
 		}
 		
-		return new(succeeded, [.._projects], [.._problems]);
+		return new(succeeded, [.._projects], [..ShownProblems]);
 	}
 	
 	private string GetFingerprint(ProjectInfo project)

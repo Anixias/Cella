@@ -53,7 +53,7 @@ public sealed partial class Builder
 		
 		if (files.Length == 0)
 		{
-			if (ReportErrors(diagnostics))
+			if (ReportErrors(project, diagnostics))
 				return new(new(GetIdentity(project), SymbolTable.Empty, SignatureTable.Empty, null), outputType, null,
 					false);
 			
@@ -61,7 +61,7 @@ public sealed partial class Builder
 				return new(new(GetIdentity(project), SymbolTable.Empty, SignatureTable.Empty, null), outputType, null,
 					true);
 			
-			output.Report([
+			Report(project, [
 				new(DiagnosticSeverity.Error, SourceLocation.None,
 					$"The program has no '{entryPointName}' function")
 			]);
@@ -95,8 +95,7 @@ public sealed partial class Builder
 			
 			foreach (var problem in duplicated.Select(problem => ProjectDiagnostic.In(project.FilePath, problem)))
 			{
-				_problems.Add(problem);
-				output.WriteLine(problem.Text);
+				AddProblem(problem);
 				generatesCode = false;
 			}
 		}
@@ -154,8 +153,7 @@ public sealed partial class Builder
 		foreach (var alias in signatureCollector.Modules.AliasConflicts)
 		{
 			var problem = ProjectDiagnostic.In(project.FilePath, $"'{alias}' names a project reference and a module");
-			_problems.Add(problem);
-			output.WriteLine(problem.Text);
+			AddProblem(problem);
 			generatesCode = false;
 		}
 		
@@ -189,8 +187,7 @@ public sealed partial class Builder
 		
 		foreach (var problem in plainNameConflicts.Select(problem => ProjectDiagnostic.In(project.FilePath, problem)))
 		{
-			_problems.Add(problem);
-			output.WriteLine(problem.Text);
+			AddProblem(problem);
 			generatesCode = false;
 		}
 		
@@ -271,16 +268,18 @@ public sealed partial class Builder
 					.OfType<Diagnostic>())
 			];
 			
-			_projects.Add(new(project.FilePath, [..diagnostics.SelectMany(static list => list)], resolvedFiles)
+			_projects.Add(new(project.FilePath,
+				IsBundled(project) ? [] : [..diagnostics.SelectMany(static list => list)],
+				resolvedFiles)
 			{
 				Model = options.ChecksOnly ? CreateModel(resolvedFiles, names, typePool, signatureCollector) : null,
 				InactiveCode = inactiveCode
 			});
 			
-			if (ReportErrors(diagnostics))
+			if (ReportErrors(project, diagnostics))
 				return errorResult;
 			
-			output.Report(diagnostics.SelectMany(static list => list));
+			Report(project, diagnostics.SelectMany(static list => list));
 		}
 		
 		if (options.ChecksOnly || !generatesCode)
@@ -371,7 +370,7 @@ public sealed partial class Builder
 				importedGlobals.UnionWith(result.ImportedGlobals);
 			}
 			
-			if (ReportErrors([codeGenerator.Diagnostics]))
+			if (ReportErrors(project, [codeGenerator.Diagnostics]))
 				return errorResult;
 			
 			if (codeGenFailed)
@@ -461,7 +460,7 @@ public sealed partial class Builder
 					    .Select(static library => (library.AssemblySymbol, library.Directory!))
 			    ], targetTriple, linkerToolchain) is { } described)
 			{
-				ReportErrors([described]);
+				ReportErrors(project, [described]);
 				return errorResult;
 			}
 			
@@ -529,12 +528,18 @@ public sealed partial class Builder
 		};
 	}
 	
-	private bool ReportErrors(List<DiagnosticList> diagnostics)
+	private bool ReportErrors(ProjectInfo project, List<DiagnosticList> diagnostics)
 	{
 		if (diagnostics.All(static list => list.ErrorCount == 0))
 			return false;
 		
-		output.Report(diagnostics.SelectMany(static list => list));
+		Report(project, diagnostics.SelectMany(static list => list));
 		return true;
+	}
+	
+	private void Report(ProjectInfo project, IEnumerable<Diagnostic> diagnostics)
+	{
+		if (!IsBundled(project))
+			output.Report(diagnostics);
 	}
 }

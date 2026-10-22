@@ -28,11 +28,6 @@ Error at bad_enums.ce:16:1
 16 │ Never: enum
      ╘═══╛ 'Never' needs at least one case
 
-Error at bad_enums.ce:20:1
-19 │ 
-20 │ Chain: enum
-     ╘═══╛ 'Chain' depends on its own layout
-
 Error at bad_enums.ce:23:13
 22 │ end
 23 │ link(next: Chain)

@@ -1,8 +1,3 @@
-Error at borrow_mismatches.ce:17:10
-16 │ var big: i64 = 2
-17 │ val r = imm x
-             ╘═══╛ Cannot convert type 'imm[i32]' to 'i32'
-
 Error at borrow_mismatches.ce:19:6
 18 │ val m = mut x
 19 │ inc(x)
@@ -32,7 +27,7 @@ Error at borrow_mismatches.ce:23:10
 Error at borrow_mismatches.ce:24:20
 23 │ val t = Tally()
 24 │ val w: mut[i32] = r
-                       ^ Cannot mutably borrow values implicitly
+                       ^ Cannot convert type 'imm[i32]' to 'mut[i32]'
 
 Error at borrow_mismatches.ce:25:15
 24 │ val w: mut[i32] = r

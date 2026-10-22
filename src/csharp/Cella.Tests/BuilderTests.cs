@@ -193,6 +193,29 @@ public sealed class BuilderTests : IDisposable
 				SearchOption.AllDirectories), static directory => Path.GetFileName(directory) is "bin" or "obj");
 	}
 	
+	[Fact]
+	public async Task ReportsNothingFromTheStandardLibrary()
+	{
+		Directory.CreateDirectory(Path.Combine(_directory, "app"));
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"), "OutputType = \"Executable\"\n",
+			Token);
+		
+		await File.WriteAllTextAsync(ProgramPath, "mod test\n\nunused: fun -> i32 => 0\n\nmain: fun -> i32 => 0\n",
+			Token);
+		
+		var output = new RecordingOutput();
+		var result = await CheckAsync(CreateBuilder(output));
+		var standardLibrary = Path.Combine(AppContext.BaseDirectory, "lib", "std") + Path.DirectorySeparatorChar;
+		Assert.True(result.Succeeded);
+		var reported = Assert.Single(output.Diagnostics);
+		Assert.Equal(ProgramPath, reported.SourceLocation.Source.FilePath);
+		var checks = result.Projects.Where(check => check.ProjectPath.StartsWith(standardLibrary,
+			StringComparison.OrdinalIgnoreCase)).ToList();
+		
+		Assert.NotEmpty(checks);
+		Assert.All(checks, static check => Assert.Empty(check.Diagnostics));
+	}
+	
 	private static string OptedOut(string outputType) =>
 		$"OutputType = \"{outputType}\"\nStandardLibrary = \"None\"\n";
 	
