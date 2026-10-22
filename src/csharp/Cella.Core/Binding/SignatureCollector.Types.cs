@@ -315,7 +315,8 @@ public sealed partial class SignatureCollector
 	
 	private bool IsPlainBits(TypeSymbol type, ResolutionContext context, HashSet<RecordSymbol> visited) => type switch
 	{
-		PrimitiveType or PointerType or FunctionType { IsExternal: true } or TypeParameterSymbol => true,
+		PrimitiveType or PointerType or FunctionType { IsExternal: true } => true,
+		TypeParameterSymbol parameter => parameter.IsExt,
 		EnumSymbol enumType => enumType.IsExternal,
 		ArrayType array => IsPlainBits(array.ElementType, context, visited),
 		RecordSymbol record => !visited.Add(record) || _typePool.GetMembers(record).OfType<FieldSymbol>().All(field =>

@@ -162,7 +162,7 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 {
 	private readonly ImmutableArray<Token> _keywords = keywords.ToImmutableArray();
 	
-	public bool IsNoref => Has(TokenType.KeywordNoref) || IsAtomic;
+	public bool IsNoref => Has(TokenType.KeywordNoref) || IsAtomic || IsExt;
 	public bool HasNull => Has(TokenType.KeywordNull);
 	public bool IsCopy => Has(TokenType.KeywordCopy) || IsAtomic || IsExt;
 	public bool IsAtomic => Has(TokenType.KeywordAtomic);

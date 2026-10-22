@@ -1783,6 +1783,25 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task HoversNonFiniteFloats()
+	{
+		await File.WriteAllTextAsync(SourcePath,
+			"mod test\n\nBits: union\n{\n\traw: u32\n\tvalue: f32\n}\n\n" +
+			"infinity: const f32 = Bits(0x7F800000u32).value\n" +
+			"negative: const f32 = -1.0f32 / 0.0f32\n" +
+			"nan: const f32 = Bits(0x7FC00000u32).value\n" +
+			"wide: const f64 = 0.0 / 0.0\n\n" +
+			"main: fun -> i32 => 0\n", Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("infinity: const f32 = Bits(0x7F800000u32).value\n= infinity"), await HoverAsync(8, 2));
+		Assert.Equal(Code("negative: const f32 = -1.0f32 / 0.0f32\n= -infinity"), await HoverAsync(9, 2));
+		Assert.Equal(Code("nan: const f32 = Bits(0x7FC00000u32).value\n= NaN (0x7FC00000)"), await HoverAsync(10, 1));
+		Assert.Equal(Code("wide: const f64 = 0.0 / 0.0\n= NaN (0xFFF8000000000000)"), await HoverAsync(11, 1));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task KeepsImplicitSelfOutOfDeclarations()
 	{
 		await File.WriteAllTextAsync(SourcePath, """

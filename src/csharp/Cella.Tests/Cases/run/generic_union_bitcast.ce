@@ -1,0 +1,33 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bitcast[From: ext + default, To: ext + default]: union
+{
+	from: From
+	to: To
+}
+
+infinity: const f32 = Bitcast[u32, f32](0x7F800000u32).to
+nan: const f64 = Bitcast[u64, f64](0x7FF8000000000000u64).to
+oneBits: const u32 = Bitcast[f32, u32](1.0f32).to
+bytes: const array[u8, 4] = Bitcast[u32, array[u8, 4]](0x11223344u32).to
+widened: const u32 = Bitcast[u16, u32](0xABCDu16).to
+narrowed: const u32 = Bitcast[u64, u32](0x1122334455667788u64).to
+
+bitsOf: fun(value: f32) -> u32 => Bitcast[f32, u32](value).to
+
+widen: fun(value: u16) -> u32 => Bitcast[u16, u32](value).to
+
+narrow: fun(value: u64) -> u32 => Bitcast[u64, u32](value).to
+
+main: fun -> i32
+{
+	printf("%g %g %08X %02X %02X\n", f64(infinity), nan, oneBits, bytes[0], bytes[3])
+	printf("%08X %08X\n", bitsOf(infinity), bitsOf(-2.0f32))
+	printf("%08X %08X %08X %08X\n", widened, narrowed, widen(0xABCDu16), narrow(0x1122334455667788u64))
+	ret 0
+}

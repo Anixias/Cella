@@ -1,0 +1,33 @@
+Error at generic_union_members.ce:11:9
+10 │ {
+11 │     value: T
+                ^ Cannot store borrows in unions
+
+Error at generic_union_members.ce:16:9
+15 │ {
+16 │     value: T
+                ^ Cannot store values without defaults in unions
+
+Error at generic_union_members.ce:21:9
+20 │ {
+21 │     value: T
+                ^ Cannot store 'T' values in unions
+
+Error at generic_union_members.ce:34:19
+33 │ 
+34 │ same: const u32 = Bitcast[u32, u32](1u32).to
+                       ╘═════════════════════╛ Conversion to 'Bitcast[u32, u32]' is ambiguous
+
+Error at generic_union_members.ce:35:27
+34 │ same: const u32 = Bitcast[u32, u32](1u32).to
+35 │ text: const u32 = Bitcast[str, u32]("a").to
+                               ╘═╛ 'Bitcast' requires 'From: ext'
+                                 | 'str' can't be used in 'ext' signatures
+
+Error at generic_union_members.ce:36:28
+35 │ text: const u32 = Bitcast[str, u32]("a").to
+36 │ point: const u32 = Bitcast[Point, u32](Point(1)).to
+                                ╘═══╛ 'Bitcast' requires 'From: default'
+                                    | 'Point' has no default
+
+[compilation failed]

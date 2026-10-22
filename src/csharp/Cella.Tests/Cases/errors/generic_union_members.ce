@@ -1,0 +1,38 @@
+mod test
+
+Bitcast[From: ext + default, To: ext + default]: union
+{
+	from: From
+	to: To
+}
+
+Bare[T]: union
+{
+	value: T
+}
+
+NoDefault[T: ext]: union
+{
+	value: T
+}
+
+NotExt[T: copy + noref + default]: union
+{
+	value: T
+}
+
+Point: rec
+{
+	x: i32
+
+	new: op(x: i32)
+	{
+		self.x = x
+	}
+}
+
+same: const u32 = Bitcast[u32, u32](1u32).to
+text: const u32 = Bitcast[str, u32]("a").to
+point: const u32 = Bitcast[Point, u32](Point(1)).to
+
+main: fun -> i32 => 0

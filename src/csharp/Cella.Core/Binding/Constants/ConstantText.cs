@@ -49,12 +49,18 @@ public static class ConstantText
 	
 	private static string TypeName(TypeSymbol type) => DiagnosticReporter.DescribeType(type);
 	
-	private static string? DescribeFloat(FloatConstant number)
+	private static string DescribeFloat(FloatConstant number)
 	{
-		if (!double.IsFinite(number.Value))
-			return null;
+		var isSingle = number.Type == NativeSymbols.Float32;
+		if (double.IsNaN(number.Value))
+			return isSingle
+				? $"NaN (0x{number.Bits ?? BitConverter.SingleToUInt32Bits((float)number.Value):X8})"
+				: $"NaN (0x{number.Bits ?? BitConverter.DoubleToUInt64Bits(number.Value):X16})";
 		
-		var text = number.Type == NativeSymbols.Float32
+		if (double.IsInfinity(number.Value))
+			return number.Value > 0 ? "infinity" : "-infinity";
+		
+		var text = isSingle
 			? ((float)number.Value).ToString("R", CultureInfo.InvariantCulture)
 			: number.Value.ToString("R", CultureInfo.InvariantCulture);
 		

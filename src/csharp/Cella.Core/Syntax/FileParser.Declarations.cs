@@ -142,11 +142,8 @@ public sealed partial class FileParser
 			if (isRef)
 				Report(refKeyword, "Cannot declare 'ref' unions");
 			
-			if (typeParameters is [var parameter, ..])
-				Report(parameter.SourceLocation, "Cannot declare type parameters on unions");
-			
 			var union = ParseDeclaration(ref index, identifier, "union",
-				(ref i) => ParseRecord(ref i, identifier, modifiers, false, false, true, []));
+				(ref i) => ParseRecord(ref i, identifier, modifiers, false, false, true, typeParameters));
 			
 			if (union is null)
 				SkipDeclaration(ref index, declarationStart, insideBlock);
