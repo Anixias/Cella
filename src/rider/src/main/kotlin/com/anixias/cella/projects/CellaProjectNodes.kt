@@ -10,7 +10,9 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.problems.WolfTheProblemSolver
 import com.intellij.ui.SimpleTextAttributes
+import com.jetbrains.rider.projectView.nodes.getScopeColor
 import com.jetbrains.rider.projectView.views.SolutionViewNode
 import com.jetbrains.rider.projectView.views.getChildrenForSolutionView
 import com.jetbrains.rider.projectView.views.navigateToSolutionView
@@ -94,14 +96,14 @@ class CellaProjectNode(project: Project, celp: VirtualFile, private val settings
 
 			val projects = CellaProjects.projectFilesIn(child)
 			if (projects.isEmpty())
-				nodes += SolutionExplorerFileNode(myProject, child, emptyList(), settings, false, false)
+				nodes += CellaFileNode(myProject, child, settings)
 			else
 				projects.mapTo(nodes) { CellaProjectNode(myProject, it, settings) }
 		}
-
+		
 		for (child in files.sortedBy { it.name.lowercase() }) {
 			if (child.extension != "celp")
-				nodes += SolutionExplorerFileNode(myProject, child, emptyList(), settings, false, false)
+				nodes += CellaFileNode(myProject, child, settings)
 		}
 
 		return nodes
@@ -113,7 +115,10 @@ class CellaProjectNode(project: Project, celp: VirtualFile, private val settings
 	}
 
 	override fun getVirtualFile(): VirtualFile? = celp.parent
-
+	
+	override fun hasProblemFileBeneath() =
+		WolfTheProblemSolver.getInstance(myProject).hasProblemFilesBeneath { contains(it) }
+	
 	override fun contains(file: VirtualFile): Boolean = celp.parent?.let { VfsUtil.isAncestor(it, file, false) } == true
 
 	override fun canNavigate() = true
@@ -121,6 +126,39 @@ class CellaProjectNode(project: Project, celp: VirtualFile, private val settings
 	override fun canNavigateToSource() = true
 
 	override fun navigate(requestFocus: Boolean) = OpenFileDescriptor(myProject, celp).navigate(requestFocus)
+}
+
+class CellaFileNode(project: Project, file: VirtualFile, private val settings: SolutionExplorerViewSettings) :
+	SolutionViewNode<VirtualFile>(project, file) {
+	private val inner = SolutionExplorerFileNode(project, file, emptyList(), settings, false, false)
+	
+	override fun calculateChildren(): MutableList<AbstractTreeNode<*>> = inner.children.mapTo(mutableListOf()) { child ->
+		if (child is SolutionExplorerFileNode) CellaFileNode(myProject, child.virtualFile, settings) else child
+	}
+	
+	override fun update(presentation: PresentationData) {
+		inner.update()
+		presentation.copyFrom(inner.presentation)
+	}
+	
+	override fun hasProblemFileBeneath(): Boolean {
+		val solver = WolfTheProblemSolver.getInstance(myProject)
+		return if (value.isDirectory) solver.hasProblemFilesBeneath { contains(it) } else solver.isProblemFile(value)
+	}
+	
+	override fun getVirtualFile(): VirtualFile = value
+	
+	override fun contains(file: VirtualFile) = inner.contains(file)
+	
+	override fun getBackgroundColor() = value.getScopeColor(myProject, false, true)
+	
+	override fun getName() = inner.name
+	
+	override fun canNavigate() = inner.canNavigate()
+	
+	override fun canNavigateToSource() = inner.canNavigateToSource()
+	
+	override fun navigate(requestFocus: Boolean) = inner.navigate(requestFocus)
 }
 
 data class CellaReferencesKey(val owner: Path)

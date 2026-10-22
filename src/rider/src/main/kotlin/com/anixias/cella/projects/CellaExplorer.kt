@@ -15,7 +15,6 @@ import com.jetbrains.rider.projectView.views.SolutionViewRootNodeBase
 import com.jetbrains.rider.projectView.views.getChildrenForSolutionView
 import com.jetbrains.rider.projectView.views.impl.SolutionViewSelectInTargetBase
 import com.jetbrains.rider.projectView.views.solutionExplorer.SolutionExplorerViewSettings
-import com.jetbrains.rider.projectView.views.solutionExplorer.nodes.SolutionExplorerFileNode
 import com.jetbrains.rider.workspaceModel.WorkspaceUserModelUpdater
 import java.nio.file.Files
 import java.nio.file.Path
@@ -103,13 +102,13 @@ class CellaExplorerRootNode(project: Project) : SolutionViewRootNodeBase(project
 			for (folder in folders.filter { !it.name.startsWith(".") }.sortedBy { it.name.lowercase() }) {
 				val inner = CellaProjects.projectFilesIn(folder)
 				if (inner.isEmpty())
-					nodes += SolutionExplorerFileNode(myProject, folder, emptyList(), CellaExplorerSettings, false, false)
+					nodes += CellaFileNode(myProject, folder, CellaExplorerSettings)
 				else
 					inner.mapTo(nodes) { CellaProjectNode(myProject, it, CellaExplorerSettings) }
 			}
 
 			for (file in files.sortedBy { it.name.lowercase() })
-				nodes += SolutionExplorerFileNode(myProject, file, emptyList(), CellaExplorerSettings, false, false)
+				nodes += CellaFileNode(myProject, file, CellaExplorerSettings)
 		}
 
 		return nodes

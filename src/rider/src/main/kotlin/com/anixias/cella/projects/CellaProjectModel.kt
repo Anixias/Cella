@@ -16,6 +16,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.problems.ProblemListener
 import com.intellij.util.Alarm
 import com.jetbrains.rider.projectView.isDirectorySolution
 import com.jetbrains.rider.projectView.views.solutionExplorer.SolutionExplorerViewPane
@@ -88,6 +89,12 @@ class CellaProjectModel(private val project: Project) : Disposable {
 				if (events.any { it !is VFileContentChangeEvent })
 					updateExplorer()
 			}
+		})
+		
+		connection.subscribe(ProblemListener.TOPIC, object : ProblemListener {
+			override fun problemsAppeared(file: VirtualFile) = updateStatuses()
+			
+			override fun problemsDisappeared(file: VirtualFile) = updateStatuses()
 		})
 		
 		connection.subscribe(FileStatusListener.TOPIC, object : FileStatusListener {

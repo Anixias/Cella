@@ -24,6 +24,7 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.problems.WolfTheProblemSolver
 import java.net.URI
 import java.nio.file.Path
 import javax.swing.Icon
@@ -130,6 +131,12 @@ class CellaProblems(override val project: Project) : ProblemsProvider {
 				problems.remove(file)
 			else
 				problems[file] = updated
+			
+			val solver = WolfTheProblemSolver.getInstance(project)
+			if (updated.any { it.level == CellaProblemLevel.Error })
+				solver.reportProblemsFromExternalSource(file, this)
+			else
+				solver.clearProblemsFromExternalSource(file, this)
 
 			for (root in roots.toList()) {
 				previous.filter { it !in updated && isShown(it) }.forEach(root::problemDisappeared)
