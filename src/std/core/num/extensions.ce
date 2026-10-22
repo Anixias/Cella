@@ -3,6 +3,25 @@
 use std.cmp.[Eq, Ord, Ordering]
 use std.mem.Bitcast
 
+// TODO Port these to Cella to guarantee exact computation on all platforms
+pvt ext
+{
+	sqrtF32: ext("sqrtf") fun(x: f32) -> f32
+	sqrtF64: ext("sqrt") fun(x: f64) -> f64
+	sinF32: ext("sinf") fun(x: f32) -> f32
+	sinF64: ext("sin") fun(x: f64) -> f64
+	cosF32: ext("cosf") fun(x: f32) -> f32
+	cosF64: ext("cos") fun(x: f64) -> f64
+	expF32: ext("expf") fun(x: f32) -> f32
+	expF64: ext("exp") fun(x: f64) -> f64
+	logF32: ext("logf") fun(x: f32) -> f32
+	logF64: ext("log") fun(x: f64) -> f64
+	powF32: ext("powf") fun(x: f32, e: f32) -> f32
+	powF64: ext("pow") fun(x: f64, e: f64) -> f64
+	fmaF32: ext("fmaf") fun(x: f32, y: f32, z: f32) -> f32
+	fmaF64: ext("fma") fun(x: f64, y: f64, z: f64) -> f64
+}
+
 Additive: pub trait
 {
 	+: op(imm left: Self, imm right: Self) -> Self
@@ -49,12 +68,15 @@ Number: pub trait req Additive + Multiplicative + Ord + copy + noref
 	max: fun(a: Self, b: Self) -> Self
 	clamp: fun(x: Self, min: Self, max: Self) -> Self
 	abs: fun(x: Self) -> Self
+	isZero: fun(x: Self) -> bool
 }
 
 SignedNumber: pub trait req Number
 {
 	sign: fun(x: Self) -> Self
 	copySign: fun(x: Self, sign: Self) -> Self
+	isPositive: fun(x: Self) -> bool
+	isNegative: fun(x: Self) -> bool
 	-: op(self) -> Self
 }
 
@@ -81,6 +103,8 @@ Integer: pub trait req Number + WrappedAdditive + WrappedMultiplicative
 		
 		ret x
 	}
+	
+	isZero: fun(x: Self) -> bool => x == Self.zero
 }
 
 SignedInteger: pub trait req Integer + SignedNumber
@@ -105,6 +129,9 @@ SignedInteger: pub trait req Integer + SignedNumber
 	}
 	
 	abs: fun(x: Self) -> Self => match x < Self.zero { true => -x, else => x }
+	
+	isPositive: fun(x: Self) -> bool => x > Self.zero
+	isNegative: fun(x: Self) -> bool => x < Self.zero
 }
 
 UnsignedInteger: pub trait req Integer
@@ -138,11 +165,15 @@ Float: pub trait req SignedNumber
 	isPosInf: fun(x: Self) -> bool
 	isNegInf: fun(x: Self) -> bool
 	isFinite: fun(x: Self) -> bool
-	isZero: fun(x: Self) -> bool
 	isSubnormal: fun(x: Self) -> bool
 	isNormal: fun(x: Self) -> bool
-	isPositive: fun(x: Self) -> bool
-	isNegative: fun(x: Self) -> bool
+	sqrt: fun(x: Self) -> Self
+	sin: fun(x: Self) -> Self
+	cos: fun(x: Self) -> Self
+	exp: fun(x: Self) -> Self
+	log: fun(x: Self) -> Self
+	pow: fun(x: Self, e: Self) -> Self
+	fma: fun(x: Self, y: Self, z: Self) -> Self
 }
 
 i8: impl SignedInteger
@@ -477,6 +508,14 @@ f32: impl Float
 		val result = x - floor(x)
 		ret match result < one { true => result, else => fromBits(0x3F7FFFFFu32) }
 	}
+	
+	sqrt: fun(x: f32) -> f32 => sqrtF32(x)
+	sin: fun(x: f32) -> f32 => sinF32(x)
+	cos: fun(x: f32) -> f32 => cosF32(x)
+	exp: fun(x: f32) -> f32 => expF32(x)
+	log: fun(x: f32) -> f32 => logF32(x)
+	pow: fun(x: f32, e: f32) -> f32 => powF32(x, e)
+	fma: fun(x: f32, y: f32, z: f32) -> f32 => fmaF32(x, y, z)
 }
 
 f64: impl
@@ -717,4 +756,12 @@ f64: impl Float
 		val result = x - floor(x)
 		ret match result < one { true => result, else => fromBits(0x3FEFFFFFFFFFFFFFu64) }
 	}
+	
+	sqrt: fun(x: f64) -> f64 => sqrtF64(x)
+	sin: fun(x: f64) -> f64 => sinF64(x)
+	cos: fun(x: f64) -> f64 => cosF64(x)
+	exp: fun(x: f64) -> f64 => expF64(x)
+	log: fun(x: f64) -> f64 => logF64(x)
+	pow: fun(x: f64, e: f64) -> f64 => powF64(x, e)
+	fma: fun(x: f64, y: f64, z: f64) -> f64 => fmaF64(x, y, z)
 }
