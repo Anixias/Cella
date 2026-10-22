@@ -65,6 +65,9 @@ public sealed partial class FileParser
 			parts.Add(Tokens[index++]);
 		}
 		
+		if (parts is [_])
+			return new IdentifierTypeNode(identifier);
+		
 		var (source, range) = identifier.SourceLocation;
 		return new QualifiedTypeNode(new(source, range.Join(parts[^1].SourceLocation.Range)), parts);
 	}
@@ -507,6 +510,9 @@ public sealed partial class FileParser
 			ReportExpected(index, "a case name");
 			return null;
 		}
+		
+		if (!Peek(index, TokenType.OpEqual))
+			SkipStray(ref index, TokenType.OpOpenParen);
 		
 		var payload = new List<FieldNode>();
 		if (Tokens[index].Line == name.Line && Match(ref index, out var openParen, TokenType.OpOpenParen))

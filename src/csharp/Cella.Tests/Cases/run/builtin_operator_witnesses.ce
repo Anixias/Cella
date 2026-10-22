@@ -1,0 +1,66 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Ordering: pub enum
+{
+	less = -1
+	equal = 0
+	greater = 1
+}
+
+Ord: pub trait
+{
+	compare: fun(imm left: Self, imm right: Self) -> Ordering
+	{
+		if left < right
+			ret Ordering.less
+		if right < left
+			ret Ordering.greater
+		ret Ordering.equal
+	}
+
+	<: op(imm left: Self, imm right: Self) -> bool => Self.compare(imm left, imm right) == Ordering.less
+	>: op(imm left: Self, imm right: Self) -> bool => Self.compare(imm left, imm right) == Ordering.greater
+}
+
+i32: impl Ord
+{
+}
+
+u8: impl Ord
+{
+}
+
+Version: rec impl Ord
+{
+	major: i32
+
+	compare: fun(imm left: Version, imm right: Version) -> Ordering => i32.compare(imm left.major, imm right.major)
+}
+
+Score: rec impl Ord
+{
+	points: i32
+
+	<: op(imm left: Score, imm right: Score) -> bool => left.points < right.points
+}
+
+smaller[T: Ord]: fun(a: T, b: T) -> T
+{
+	if b < a
+		ret b
+	ret a
+}
+
+main: fun -> i32
+{
+	printf("i32 %d %d %d\n", i32(i32.compare(imm 2, imm 5)), smaller(7, 3), i32(9 > 4))
+	printf("u8 %d\n", i32(u8.compare(imm 200u8, imm 100u8)))
+	printf("version %d %d\n", i32(Version(1) < Version(2)), smaller(Version(4), Version(3)).major)
+	printf("score %d %d\n", i32(Score.compare(imm Score(5), imm Score(5))), i32(Score(8) > Score(2)))
+	ret 0
+}

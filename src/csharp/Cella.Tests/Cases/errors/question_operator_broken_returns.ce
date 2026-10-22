@@ -1,0 +1,17 @@
+mod test
+
+Result[T, E]: enum
+{
+	ok(value: T)
+	err(error: E)
+
+	?: op(self) -> T => match self
+	{
+		ok(val value) => value
+		err(val error) => ret Result.err=(error)
+	}
+}
+
+doubled: fun(r: Result[i32, i32]) -> Result[i32, i32] => Result.ok(r? * 2)
+
+main: fun -> i32 => 0

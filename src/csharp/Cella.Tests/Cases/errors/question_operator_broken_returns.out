@@ -1,0 +1,7 @@
+Error at question_operator_broken_returns.ce:15:69
+14 │ 
+15 │ doubled: fun(r: Result[i32, i32]) -> Result[i32, i32] => Result.ok(r? * 2)
+                                                                         ^ Cannot use '?' on 'Result[i32, i32]' in 'doubled'
+                                                                         | 'doubled' returns 'Result[i32, i32]'
+
+[compilation failed]

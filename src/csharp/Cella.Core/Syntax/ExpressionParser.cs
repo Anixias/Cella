@@ -648,7 +648,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	
 	private IExpressionNode ParseOperand(ref int index)
 	{
-		if (!AtEnd(index) && !IsNextNewline(index))
+		if (!AtEnd(index) && !IsNextNewline(index) && !(CanRecover && StopsOperand(index)))
 			return ParseUnary(ref index);
 		
 		if (!CanRecover)
@@ -660,9 +660,12 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	private IExpressionNode ParseRight(ref int index, ParseStep<IExpressionNode> parse) =>
 		CanRecover && (IsNextNewline(index)
 			? !CanStartExpression(index) || Peek(index + 1, TokenType.OpColon)
-			: EndsOperand(index))
+			: StopsOperand(index))
 			? MissingOperand(index)
 			: parse(ref index);
+	
+	private bool StopsOperand(int index) =>
+		EndsOperand(index) || Peek(index, TokenType.OpCloseBrace) || ContinuesExpression(Tokens[index].Type);
 	
 	private bool EndsOperand(int index) =>
 		AtEnd(index) || Tokens[index].Type is TokenType.OpCloseParen or TokenType.OpCloseBracket or TokenType.OpComma;
@@ -734,7 +737,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 		if (Match(ref index, out var openParen, TokenType.OpOpenParen))
 		{
 			// Parenthesized Expression
-			node = InBrackets(ref index, ParseExpression);
+			node = CanRecover && Peek(index, TokenType.OpCloseParen)
+				? MissingOperand(index)
+				: InBrackets(ref index, ParseExpression);
 			
 			if (!Match(ref index, out var parenthesisClose, TokenType.OpCloseParen))
 				throw Expected(index, "')'", openParen);

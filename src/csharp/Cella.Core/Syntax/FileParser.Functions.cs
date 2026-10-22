@@ -388,6 +388,9 @@ public sealed partial class FileParser
 	private (ReceiverNode? Receiver, List<ParameterNode> Parameters, ITypeNode? ReturnType, bool IsVariadic)?
 		ParseFunctionSignature(ref int index, bool allowVariadic, bool allowReceiver)
 	{
+		if (!Peek(index, TokenType.OpArrow) && !Peek(index, TokenType.OpFatArrow))
+			SkipStray(ref index, TokenType.OpOpenParen);
+		
 		var start = index;
 		if (ParseParameters(ref index, allowVariadic, allowReceiver, out var isVariadic, out var receiver) is not
 		    { } parameters)

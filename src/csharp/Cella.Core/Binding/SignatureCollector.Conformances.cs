@@ -263,6 +263,10 @@ public sealed partial class SignatureCollector
 					
 					break;
 				
+				case 0 when FindNativeWitness(requirement, info.Signature, traitMap, self) is { } native:
+					conformance.Witnesses[requirement] = native;
+					break;
+				
 				case 0 when requirement.Syntax is FunctionNode { Body: not null }:
 					conformance.Witnesses[requirement] = new FunctionWitness(requirement, info);
 					foreach (var candidate in candidates.Where(candidate =>
@@ -277,10 +281,6 @@ public sealed partial class SignatureCollector
 								$"'{name}' doesn't match '{trait}.{name}'");
 					}
 					
-					break;
-				
-				case 0 when FindNativeWitness(requirement, info.Signature, traitMap, self) is { } native:
-					conformance.Witnesses[requirement] = native;
 					break;
 				
 				case 0 when FindSelfConversionWitness(requirement, info.Signature, traitMap, self) is { } conversion:

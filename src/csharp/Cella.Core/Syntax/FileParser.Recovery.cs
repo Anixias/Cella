@@ -1,4 +1,6 @@
-﻿using Cella.Core.Syntax.Nodes;
+﻿using System.Collections;
+using System.Collections.Immutable;
+using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
 namespace Cella.Core.Syntax;
@@ -268,6 +270,30 @@ public sealed partial class FileParser
 	
 	private void ReportUnclosed(Token openBrace) => Report(openBrace, "Expected '}' to close this '{'");
 	
+	private bool SkipStray(ref int index, TokenType expected)
+	{
+		if (!IsOnSameLine(index) || !IsOnSameLine(index + 1) || !Peek(index + 1, expected) || !IsStray(Tokens[index]))
+			return false;
+		
+		ReportUnexpected(Tokens[index]);
+		index++;
+		return true;
+	}
+	
+	private void SkipStrayBeforeWord(ref int index)
+	{
+		if (!IsOnSameLine(index) || !IsOnSameLine(index + 1) || !IsStray(Tokens[index]) ||
+		    Tokens[index + 1].Text is not [var first, ..] || !char.IsLetter(first))
+			return;
+		
+		ReportUnexpected(Tokens[index]);
+		index++;
+	}
+	
+	private static bool IsStray(Token token) =>
+		TokenType.GetOperator(token.Text) is not null && token.Type is not (TokenType.OpOpenBrace or
+			TokenType.OpCloseBrace or TokenType.OpOpenParen or TokenType.OpOpenBracket or TokenType.OpColon);
+	
 	private readonly record struct ParseState
 	(
 		int Index,
@@ -285,7 +311,52 @@ public sealed partial class FileParser
 	private ParseState SaveState(int index) => new(index, Diagnostics.Mark, KeywordMark, attributedErrors,
 		droppedMembers, _droppedNames.Count, _parsedDeclarations.Count, _inactiveRanges.Count);
 	
-	private bool HasErrorsSince(ParseState state) => Diagnostics.HasErrorsSince(state.Diagnostics);
+	private bool HasErrorsSince(ParseState state) => Diagnostics.CountErrorsSince(state.Diagnostics) > 0;
+	
+	private static bool HasNestedStatementAt(IStatementNode root, int offset)
+	{
+		var pending = new Stack<object>([root]);
+		while (pending.TryPop(out var node))
+		{
+			if (node != root && node is IStatementNode statement && statement.SourceLocation.Range.Start == offset)
+				return true;
+			
+			foreach (var property in node.GetType().GetProperties())
+			{
+				if (property.GetIndexParameters().Length > 0)
+					continue;
+				
+				switch (property.GetValue(node))
+				{
+					case string:
+						break;
+					
+					case IEnumerable items when !IsDefaultArray(items):
+						foreach (var item in items)
+						{
+							if (item is not null && IsSyntaxNode(item))
+								pending.Push(item);
+						}
+						
+						break;
+					
+					case { } value when IsSyntaxNode(value):
+						pending.Push(value);
+						break;
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	private static bool IsSyntaxNode(object value) =>
+		value.GetType().Namespace == typeof(IStatementNode).Namespace;
+	
+	private static bool IsDefaultArray(object items) =>
+		items.GetType() is { IsGenericType: true } type &&
+		type.GetGenericTypeDefinition() == typeof(ImmutableArray<>) &&
+		type.GetProperty(nameof(ImmutableArray<object>.IsDefault))!.GetValue(items) is true;
 	
 	private bool HasLexicalErrors(int start, int end)
 	{

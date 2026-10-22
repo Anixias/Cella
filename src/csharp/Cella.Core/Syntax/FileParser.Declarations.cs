@@ -61,6 +61,7 @@ public sealed partial class FileParser
 			return false;
 		
 		var target = ParseImplTarget(ref index, identifier);
+		SkipStray(ref index, TokenType.OpOpenBracket);
 		if (ParseTypeParameters(ref index) is not { } typeParameters)
 		{
 			_droppedNames.Add(identifier);
@@ -68,6 +69,7 @@ public sealed partial class FileParser
 			return true;
 		}
 		
+		SkipStray(ref index, TokenType.OpColon);
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			Report(IsOnSameLine(index) ? Tokens[index] : identifier, $"Expected ':' after '{identifier.Text}'");
@@ -114,7 +116,9 @@ public sealed partial class FileParser
 		}
 		
 		var isOwn = Match(ref index, out var ownKeyword, _topLevelContextualKeywords, TokenType.KeywordOwn);
+		SkipStrayBeforeWord(ref index);
 		var isRef = Match(ref index, out var refKeyword, _topLevelContextualKeywords, TokenType.KeywordRef);
+		SkipStrayBeforeWord(ref index);
 		
 		// Record
 		if (Match(ref index, _topLevelContextualKeywords, TokenType.KeywordRec))
@@ -270,8 +274,10 @@ public sealed partial class FileParser
 	
 	private DeclarationModifiers ParseDeclarationModifiers(ref int index, Token? block)
 	{
+		SkipStrayBeforeWord(ref index);
 		var start = index;
 		var modifiers = ParseDeclarationKeywords(ref index, block);
+		SkipStrayBeforeWord(ref index);
 		RecordSites(start, index, CompletionSite.Declaration);
 		return modifiers;
 	}
@@ -292,8 +298,10 @@ public sealed partial class FileParser
 	
 	private DeclarationModifiers ParseMemberModifiers(ref int index, Token? block)
 	{
+		SkipStrayBeforeWord(ref index);
 		var start = index;
 		var modifiers = ParseMemberKeywords(ref index, block);
+		SkipStrayBeforeWord(ref index);
 		RecordSites(start, index, CompletionSite.Declaration);
 		return modifiers;
 	}

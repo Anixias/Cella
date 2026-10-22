@@ -72,8 +72,12 @@ public sealed partial class FileParser
 				if (statement is null)
 					ResyncStatement(ref skipped, start);
 				
+				var original = statement;
 				cut = broken
-					? FindCut(start, Math.Max(index, skipped), statement is null, (i, _, _) => StartsStatementCut(i))
+					? FindCut(start, Math.Max(index, skipped), statement is null, (i, _, _) =>
+						StartsStatementCut(i) && !(original is not null &&
+						                           HasNestedStatementAt(original,
+							                           Tokens[i].SourceLocation.Range.Start)))
 					: null;
 				
 				if (cut is not null)
@@ -541,6 +545,7 @@ public sealed partial class FileParser
 	{
 		// keyword already consumed when this function is called
 		
+		SkipStray(ref index, TokenType.Identifier);
 		if (!IsOnSameLine(index))
 		{
 			Report(keyword, $"Expected a name after '{keyword.Text}'");
@@ -559,6 +564,9 @@ public sealed partial class FileParser
 		var isMutable = keyword.Type == TokenType.KeywordVar;
 		var (source, range) = keyword.SourceLocation;
 		var isConstant = keyword.Type == TokenType.KeywordConst;
+		if (!SkipStray(ref index, TokenType.OpColon))
+			SkipStray(ref index, TokenType.OpEqual);
+		
 		ITypeNode? type = null;
 		if (Match(ref index, out var colon, TokenType.OpColon))
 		{

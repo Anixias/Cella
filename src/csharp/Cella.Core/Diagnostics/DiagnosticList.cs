@@ -53,9 +53,9 @@ public sealed class DiagnosticList : IEnumerable<Diagnostic>
 	
 	public int Mark => redirect?.Count ?? _added.Count;
 	
-	public bool HasErrorsSince(int mark) => redirect is { } target
-		? target.Skip(mark).Any(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-		: _added.Skip(mark).Any(static added => added.Diagnostic.Severity == DiagnosticSeverity.Error);
+	public int CountErrorsSince(int mark) => redirect is { } target
+		? target.Skip(mark).Count(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+		: _added.Skip(mark).Count(static added => added.Diagnostic.Severity == DiagnosticSeverity.Error);
 	
 	public void Rollback(int mark)
 	{

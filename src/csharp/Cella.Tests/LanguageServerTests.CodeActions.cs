@@ -330,6 +330,14 @@ public sealed partial class LanguageServerTests
 	            "\tfirst: fun(self) -> usize => self.length\n}\n",
 		"6:1:5 method declaration|8:1:5 method declaration")]
 	[InlineData("mod test\n\nslice:\n\nhelper: fun(start: i32) -> i32 => start\n", "4:0:6 function declaration")]
+	[InlineData(
+		"mod test\n\nsame: fun(left: str) -> bool\n{\n\tif (left.byteLength !=-)\n\t\tret false\n\tret true\n}\n",
+		"4:5:4 parameter|4:10:10 property accessor")]
+	[InlineData("mod test\n\nsame: fun(left: array[i32, 2]) -> bool\n{\n\tif left[]\n\t\tret false\n\tif left[] !\n" +
+	            "\t\tret false\n\tret true\n}\n",
+		"4:4:4 parameter|6:4:4 parameter")]
+	[InlineData("mod test\n\nBuffer-: rec\n{\n\tid: i32\n}\n\nsize: fun(b: Buffer) -> i32 => b.id\n",
+		"2:0:6 struct declaration|7:13:6 struct|7:33:2 property")]
 	[InlineData("mod test.\n\nhelper: fun(start: i32) -> i32 => start\n",
 		"2:0:6 function declaration|2:12:5 parameter declaration")]
 	[InlineData("mod test\n\nPoint: rec\n{\n\tx: i32\n\n\tsum: fun(self) -> i32 => self.\n\n" +

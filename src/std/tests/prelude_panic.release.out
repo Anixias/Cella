@@ -1,7 +1,1 @@
-Hint at prelude_panic.ce:3:17
-2 │ 
-3 │ use std.process.panic
-                    ╘═══╛ Redundant import
-
-0
-[exit code 0]
+[compilation failed]

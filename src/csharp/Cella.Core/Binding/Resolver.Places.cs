@@ -126,7 +126,7 @@ public sealed partial class Resolver
 			target = MaterializeAsDefault(target);
 		
 		if (IsInvalid(target))
-			return RejectIndexing(node, new ResolvedInvalidExpressionNode(node, CurrentTargetType));
+			return RejectIndexing(node, target, new ResolvedInvalidExpressionNode(node, CurrentTargetType));
 		
 		return target.Type switch
 		{
@@ -137,28 +137,29 @@ public sealed partial class Resolver
 				ResolvePointerIndexing(node, target, pointer),
 			var type when GetMethods(type, "[]").Where(static method => method.HasReceiver).ToList() is
 				{ Count: > 0 } declared => ResolveDeclaredIndexing(node, target, declared),
-			_ => RejectIndexing(node, Error(node, $"Cannot index into type '{target.Type.Name}'", CurrentTargetType,
-				target.Syntax))
+			_ => RejectIndexing(node, target,
+				Error(node, $"Cannot index into type '{target.Type.Name}'", CurrentTargetType, target.Syntax))
 		};
 	}
 	
-	private ResolvedInvalidExpressionNode RejectIndexing(IndexerExpressionNode node,
+	private ResolvedInvalidExpressionNode RejectIndexing(IndexerExpressionNode node, IResolvedExpressionNode target,
 		ResolvedInvalidExpressionNode error)
 	{
+		var parts = new List<IResolvedExpressionNode> { target };
 		foreach (var argument in node.Arguments)
 		{
 			if (argument is not TypeExpressionNode && CurrentResolutionContext.FindNamed(argument) is not TypeSymbol)
-				VisitNode(argument);
+				parts.Add(VisitNode(argument));
 		}
 		
-		return error;
+		return new(error.Syntax, error.Type) { Parts = [..parts], NeedsTargetType = error.NeedsTargetType };
 	}
 	
 	private IResolvedExpressionNode ResolveBuiltInIndexing(IndexerExpressionNode node, IResolvedExpressionNode target,
 		TypeSymbol elementType)
 	{
 		if (node.Arguments.Length != 1)
-			return RejectIndexing(node, Error(node, DescribeIndexCount(target.Type, 1), elementType));
+			return RejectIndexing(node, target, Error(node, DescribeIndexCount(target.Type, 1), elementType));
 		
 		var index = VisitNode(node.Arguments[0], NativeSymbols.UIntSize);
 		return FindElement(target) is { } element
@@ -170,7 +171,7 @@ public sealed partial class Resolver
 		PointerType pointer)
 	{
 		if (node.Arguments.Length != 1)
-			return RejectIndexing(node, Error(node, DescribeIndexCount(pointer, 1), pointer.BaseType));
+			return RejectIndexing(node, target, Error(node, DescribeIndexCount(pointer, 1), pointer.BaseType));
 		
 		var index = VisitNode(node.Arguments[0], null);
 		var offsetType = index.Type is IntegerType { IsSigned: false } ? NativeSymbols.UIntSize : NativeSymbols.IntSize;
@@ -188,16 +189,16 @@ public sealed partial class Resolver
 	{
 		var type = target.Type;
 		if ((FindIndexer(type, ParameterMode.Value) ?? FindIndexer(type, ParameterMode.Mut)) is not { } indexer)
-			return RejectIndexing(node, Error(node, ReportHiddenMember(node.SourceLocation, "[]",
+			return RejectIndexing(node, target, Error(node, ReportHiddenMember(node.SourceLocation, "[]",
 				declared.Select(static method => method.Function)), CurrentTargetType));
 		
 		if (IsAmbiguousOperator(type, indexer))
-			return RejectIndexing(node, Error(node, DescribeAmbiguousOperator("[]", type), CurrentTargetType));
+			return RejectIndexing(node, target, Error(node, DescribeAmbiguousOperator("[]", type), CurrentTargetType));
 		
 		var info = GetFunctionInfo(indexer, type);
 		var parameterTypes = info.Signature.ParameterTypes;
 		if (node.Arguments.Length != parameterTypes.Length - 1)
-			return RejectIndexing(node, Error(node, DescribeIndexCount(type, parameterTypes.Length - 1),
+			return RejectIndexing(node, target, Error(node, DescribeIndexCount(type, parameterTypes.Length - 1),
 				CurrentTargetType));
 		
 		if (!GetOpenTypeParameters(info).IsEmpty)

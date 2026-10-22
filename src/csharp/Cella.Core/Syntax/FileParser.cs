@@ -156,7 +156,10 @@ public sealed partial class FileParser
 			return;
 		
 		reportedNesting |= exception.IsNesting;
-		Diagnostics.Add(exception.Diagnostic);
+		var diagnostic = exception.Diagnostic;
+		if (!Diagnostics.Any(reported => reported.SourceLocation == diagnostic.SourceLocation &&
+		                                 reported.Message == diagnostic.Message))
+			Diagnostics.Add(diagnostic);
 	}
 	
 	private bool MatchOnLine(ref int index, TokenType type)

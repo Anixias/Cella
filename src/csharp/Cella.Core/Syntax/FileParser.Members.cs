@@ -42,6 +42,7 @@ public sealed partial class FileParser
 			return null;
 		
 		RejectReservedNames(typeParameters);
+		SkipStray(ref index, TokenType.OpColon);
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			Report(IsOnSameLine(index) ? Tokens[index] : identifier, $"Expected ':' after '{identifier.Text}'");
@@ -138,6 +139,7 @@ public sealed partial class FileParser
 	private FunctionNode? ParseOperator(ref int index, Token symbol, Token? block,
 		List<TypeParameterNode> typeParameters)
 	{
+		SkipStray(ref index, TokenType.OpColon);
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			Report(Tokens[index], $"Expected ':' after '{symbol.Text}'");

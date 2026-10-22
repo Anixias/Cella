@@ -21,10 +21,16 @@ Error at declaration_recovery.ce:14:7
            ^ Expected ')'
            | To match the '(' on line 13
 
+Error at declaration_recovery.ce:16:9
+15 │ {
+16 │     ret (4 +
+                ^ Expected an expression
+
 Error at declaration_recovery.ce:17:1
 16 │     ret (4 +
 17 │ }
-     ^ Expected an expression
+     ^ Expected ')'
+     | To match the '(' on line 16
 
 Error at declaration_recovery.ce:20:5
 19 │ fifth: fun(

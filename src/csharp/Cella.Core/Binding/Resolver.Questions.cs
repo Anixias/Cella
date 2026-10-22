@@ -171,7 +171,11 @@ public sealed partial class Resolver
 		if (inline.Caller is not { } caller)
 		{
 			var discarded = node.Value is { } value ? VisitDiscarded(value) : null;
+			var isBroken = checkpoint.HasErrors;
 			Rollback(checkpoint);
+			if (isBroken && discarded is not null)
+				discarded = new ResolvedInvalidExpressionNode(discarded.Syntax) { Parts = [discarded] };
+			
 			return new ResolvedReturnExpressionNode(discarded, node) { HasUnknownTarget = true };
 		}
 		
