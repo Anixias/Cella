@@ -186,6 +186,28 @@ public sealed partial class LanguageServerTests
 	}
 	
 	[Fact]
+	public async Task ImplementsMissingConstantsAndImpliedMembers()
+	{
+		const string bounded =
+			"mod test\n\nBounded: trait req copy\n{\n\ttop: const Self\n\tclamp: fun(self) -> Self\n}\n\n";
+		
+		Assert.Equal(
+			bounded + "i32: impl Bounded\n{\n\ttop: const i32 = panic\n\n\tclamp: fun(self) -> i32 => panic\n}\n",
+			await FixAsync(bounded + "i32: impl ‸Bounded\n{\n}\n", "Implement missing members"));
+		
+		const string numeric = "mod test\n\nOrdered: trait req copy\n{\n" +
+		                       "\torder: fun(imm left: Self, imm right: Self) -> i32\n}\n\n" +
+		                       "Numeric: trait req Ordered\n{\n\tzero: const Self\n}\n\n";
+		
+		Assert.Equal(numeric + "i32: impl Numeric\n{\n\tzero: const i32 = 0\n\n" +
+		             "\torder: fun(imm left: i32, imm right: i32) -> i32 => panic\n}\n",
+			await FixAsync(numeric + "i32: impl ‸Numeric\n{\n\tzero: const i32 = 0\n}\n",
+				"Implement missing members"));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ImportsNamesThatAreNotFound()
 	{
 		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),

@@ -28,8 +28,8 @@ public sealed partial class SignatureCollector
 					continue;
 			}
 			
-			MatchRequirements(conformance);
-			MatchConstants(conformance);
+			var fix = MatchRequirements(conformance);
+			MatchConstants(conformance, fix);
 			CheckSelfConstraints(conformance);
 		}
 		
@@ -161,7 +161,7 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
-	private void MatchConstants(Conformance conformance)
+	private void MatchConstants(Conformance conformance, DiagnosticFix? fix)
 	{
 		var self = GetConformanceSelf(conformance);
 		if (self is InvalidType)
@@ -177,8 +177,11 @@ public sealed partial class SignatureCollector
 				if (requirement.Syntax.Initializer is not null)
 					conformance.ConstantWitnesses[requirement] = requirement;
 				else
-					ReportConformance(conformance.Location,
-						$"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.{name}'");
+					Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+						$"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.{name}'")
+					{
+						Fixes = fix is null ? [] : [fix]
+					});
 				
 				continue;
 			}
@@ -325,11 +328,11 @@ public sealed partial class SignatureCollector
 		return map;
 	}
 	
-	private void MatchRequirements(Conformance conformance)
+	private DiagnosticFix? MatchRequirements(Conformance conformance)
 	{
 		var self = GetConformanceSelf(conformance);
 		if (self is InvalidType)
-			return;
+			return null;
 		
 		var trait = DescribeTrait(conformance);
 		var traitMap = CreateTraitMap(conformance, self);
@@ -451,7 +454,9 @@ public sealed partial class SignatureCollector
 			}
 		}
 		
-		var fix = ImplementMembers(conformance, self, missing.Select(static entry => entry.Requirement));
+		var fix = ImplementMembers(conformance, self, missing.Select(static entry => entry.Requirement),
+			FindMissingConstants(conformance));
+		
 		foreach (var (name, requirement, removedBy) in missing)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
 				DescribeMissingRequirement(conformance, trait, self, name, requirement))
@@ -461,7 +466,12 @@ public sealed partial class SignatureCollector
 			});
 		
 		MatchConstructors(conformance, trait, traitMap, self);
+		return fix;
 	}
+	
+	private IEnumerable<GlobalSymbol> FindMissingConstants(Conformance conformance) => conformance.Trait.Constants
+		.Where(requirement => requirement.Syntax.Initializer is null &&
+		                      FindConstantCandidate(conformance, requirement.Name) is null);
 	
 	private void ReportNarrowWitness(string trait, TypeSymbol self, string name, FunctionSymbol witness)
 	{
@@ -486,21 +496,27 @@ public sealed partial class SignatureCollector
 	};
 	
 	private static DiagnosticFix? ImplementMembers(Conformance conformance, TypeSymbol self,
-		IEnumerable<FunctionSymbol> requirements)
+		IEnumerable<FunctionSymbol> requirements, IEnumerable<GlobalSymbol> constants)
 	{
 		var (body, lastHeaderToken) = conformance switch
 		{
-			{ IsImplied: true } => (null, null),
 			{ Impl: { } impl } => (impl.Node.Body, impl.Node.LastHeaderToken),
 			{ Target: NamedTypeSymbol { Definition: RecordSymbol record } } =>
 				(record.Node.Body, record.Node.LastHeaderToken),
 			_ => default((SourceLocation?, Token?))
 		};
 		
-		var members = requirements
-			.Select(static requirement => requirement.Syntax)
-			.OfType<FunctionNode>()
-			.Where(static function => function is { Body: null } && function.SourceLocation.Source.FilePath.Length > 0)
+		var selfName = DiagnosticReporter.DescribeType(self);
+		var members = constants
+			.Select(static constant => constant.Syntax)
+			.Where(static constant => constant.SourceLocation.Source.FilePath.Length > 0)
+			.Select(Func<string, string> (constant) => _ => DescribeConstant(constant, selfName))
+			.Concat(requirements
+				.Select(static requirement => requirement.Syntax)
+				.OfType<FunctionNode>()
+				.Where(static function =>
+					function is { Body: null } && function.SourceLocation.Source.FilePath.Length > 0)
+				.Select(Func<string, string> (function) => indent => DescribeMember(function, selfName, indent)))
 			.ToList();
 		
 		if (members.Count == 0 || lastHeaderToken is not { } header)
@@ -508,12 +524,11 @@ public sealed partial class SignatureCollector
 		
 		var source = header.SourceLocation.Source;
 		var newline = source.FindNewline();
-		var selfName = DiagnosticReporter.DescribeType(self);
 		if (body is not { } braces)
 		{
 			var indent = source.FindIndent(header.SourceLocation.Range.Start);
-			var text = string.Concat(members.Select((member, i) =>
-				(i > 0 ? newline + newline : "") + indent + "\t" + DescribeMember(member, selfName, indent + "\t")));
+			var text = string.Concat(members.Select((describe, i) =>
+				(i > 0 ? newline + newline : "") + indent + "\t" + describe(indent + "\t")));
 			
 			var at = header.SourceLocation.Range.End;
 			return DiagnosticFix.Replace("Implement missing members", new(source, new(at, at)),
@@ -528,8 +543,7 @@ public sealed partial class SignatureCollector
 		var closeIndent = source.GetText(new(lineStart, close)).ToString();
 		var memberIndent = closeIndent + "\t";
 		var isEmpty = source.GetText(new(braces.Range.Start + 1, close)).ToString().Trim().Length == 0;
-		var added = string.Join(newline + newline,
-			members.Select(member => memberIndent + DescribeMember(member, selfName, memberIndent)));
+		var added = string.Join(newline + newline, members.Select(describe => memberIndent + describe(memberIndent)));
 		
 		if (lineStart > 0 && source[lineStart - 1] == '\n')
 			return DiagnosticFix.Replace("Implement missing members", new(source, new(lineStart, lineStart)),
@@ -539,27 +553,37 @@ public sealed partial class SignatureCollector
 			newline + added + newline + closeIndent);
 	}
 	
+	private static string DescribeConstant(GlobalNode constant, string selfName)
+	{
+		var type = ReplaceSelf(constant.Type.SourceLocation, [constant.Type], selfName);
+		return $"{constant.Identifier.Text}: const {type} = panic";
+	}
+	
+	private static string ReplaceSelf(SourceLocation location, IEnumerable<ITypeNode> types, string selfName)
+	{
+		var (source, range) = location;
+		var text = new StringBuilder();
+		var position = range.Start;
+		foreach (var self in types.SelectMany(FindSelfTypes).OrderBy(static self => self.Range.Start))
+		{
+			text.Append(source.GetText(new(position, self.Range.Start))).Append(selfName);
+			position = self.Range.End;
+		}
+		
+		return text.Append(source.GetText(new(position, range.End))).ToString();
+	}
+	
 	private static string DescribeMember(FunctionNode function, string selfName, string indent)
 	{
 		var (source, range) = function.Extent;
 		var start = function.Identifier.SourceLocation.Range.Start;
-		var text = new StringBuilder();
-		var position = start;
-		var selfTypes = function.Parameters.Select(static parameter => parameter.Type)
+		var text = ReplaceSelf(new(source, new(start, range.End)), function.Parameters
+			.Select(static parameter => parameter.Type)
 			.Append(function.ReturnType)
-			.OfType<ITypeNode>()
-			.SelectMany(FindSelfTypes)
-			.OrderBy(static location => location.Range.Start);
+			.OfType<ITypeNode>(), selfName);
 		
-		foreach (var location in selfTypes)
-		{
-			text.Append(source.GetText(new(position, location.Range.Start))).Append(selfName);
-			position = location.Range.End;
-		}
-		
-		text.Append(source.GetText(new(position, range.End)));
 		var oldIndent = source.FindIndent(start);
-		var lines = text.ToString().TrimEnd().Split('\n');
+		var lines = text.TrimEnd().Split('\n');
 		for (var i = 1; i < lines.Length; i++)
 		{
 			if (lines[i].StartsWith(oldIndent, StringComparison.Ordinal))
