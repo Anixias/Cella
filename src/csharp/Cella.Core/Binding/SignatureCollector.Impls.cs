@@ -87,6 +87,10 @@ public sealed partial class SignatureCollector
 				: null;
 	}
 	
+	public bool DeclaresTypeParameter(ImplNode node, int index) =>
+		_symbolTable.DeclarationSymbols.GetValueOrDefault(node) is not ImplSymbol impl ||
+		index >= impl.TypeParameters.Length || impl.Declares(impl.TypeParameters[index]);
+	
 	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
 	{
 		impl.TargetArguments =

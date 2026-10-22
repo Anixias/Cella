@@ -1,0 +1,6 @@
+Hint at impl_target_naming.ce:14:6
+13 │ 
+14 │ Pair[item: copy]: impl
+          ╘══╛ 'item' doesn't match {PascalCase}
+
+[exit code 6]

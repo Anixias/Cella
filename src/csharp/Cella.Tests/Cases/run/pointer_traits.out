@@ -1,7 +1,2 @@
-Hint at pointer_traits.ce:27:5
-26 │ 
-27 │ ptr[i32]: impl Hash
-         ╘═╛ 'i32' doesn't match {PascalCase}
-
 1 0 7 3 1
 [exit code 0]

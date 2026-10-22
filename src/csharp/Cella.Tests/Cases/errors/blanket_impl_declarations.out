@@ -13,11 +13,6 @@ Error at blanket_impl_declarations.ce:30:5
 30 │ [T, U]: impl Describe
          ^ Blanket impls take one type parameter
 
-Hint at blanket_impl_declarations.ce:35:2
-34 │ 
-35 │ [i32]: impl Describe
-      ╘═╛ 'i32' doesn't match {PascalCase}
-
 Error at blanket_impl_declarations.ce:35:2
 34 │ 
 35 │ [i32]: impl Describe

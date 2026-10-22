@@ -24,6 +24,16 @@ public sealed class NamingChecker(IReadOnlyDictionary<NamingCategory, NamingPatt
 		return [.._diagnostics];
 	}
 	
+	public IReadOnlyList<Diagnostic> CheckImplTypeParameters(IEnumerable<FileNode> files,
+		Func<ImplNode, int, bool> declares)
+	{
+		_diagnostics.Clear();
+		foreach (var impl in files.SelectMany(static file => file.Declarations).OfType<ImplNode>())
+			CheckTypeParameters(impl.TypeParameters.Where((_, i) => declares(impl, i)));
+		
+		return [.._diagnostics];
+	}
+	
 	private void CheckDeclarations(IEnumerable<IDeclarationNode> declarations, bool isTraitImpl)
 	{
 		foreach (var declaration in declarations)
@@ -56,7 +66,6 @@ public sealed class NamingChecker(IReadOnlyDictionary<NamingCategory, NamingPatt
 					break;
 				
 				case ImplNode impl:
-					CheckTypeParameters(impl.TypeParameters);
 					CheckDeclarations(impl.Members, !impl.Traits.IsEmpty);
 					break;
 				

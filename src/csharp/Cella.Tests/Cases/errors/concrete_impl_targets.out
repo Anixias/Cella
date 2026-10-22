@@ -3,11 +3,6 @@ Error at concrete_impl_targets.ce:23:14
 23 │ Box[T]: impl Tag
                   ╘═╛ 'Box[i32]' implements 'Tag' more than once
 
-Hint at concrete_impl_targets.ce:28:5
-27 │ 
-28 │ Box[i32]: impl Tag
-         ╘═╛ 'i32' doesn't match {PascalCase}
-
 Error at concrete_impl_targets.ce:28:16
 27 │ 
 28 │ Box[i32]: impl Tag
