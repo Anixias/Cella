@@ -162,6 +162,14 @@ public sealed partial class Resolver
 		new(DiagnosticSeverity.Error, location,
 			$"No overload of '{name}' takes {ResolutionContext.DescribeGenericArguments(count)}");
 	
+	private ResolvedInvalidExpressionNode RejectNamedValue(IExpressionNode node, Symbol symbol, string message)
+	{
+		if (RecordName is { } record && FindCallName(node) is { } name)
+			record(name, symbol);
+		
+		return Error(node, message, CurrentTargetType);
+	}
+	
 	public IResolvedExpressionNode Visit(VarExpressionNode node)
 	{
 		ProbeName(node.Identifier);
@@ -228,19 +236,19 @@ public sealed partial class Resolver
 				return ResolveFunctionValue(node, symbol);
 			
 			case ModulePathSymbol:
-				return Error(node, "Cannot use modules as values", CurrentTargetType);
+				return RejectNamedValue(node, symbol, "Cannot use modules as values");
 			
 			case TypeParameterSymbol { IsValue: true } parameter:
 				return new ResolvedValueParameterExpressionNode(parameter, node);
 			
 			case TraitSymbol or TypeParameterSymbol { IsTrait: true }:
-				return Error(node, "Cannot use traits as values", CurrentTargetType);
+				return RejectNamedValue(node, symbol, "Cannot use traits as values");
 			
 			case CapturedSymbol when node is VarExpressionNode variable:
 				return ResolveCapture(variable);
 			
 			case TypeSymbol:
-				return Error(node, "Cannot use types as values", CurrentTargetType);
+				return RejectNamedValue(node, symbol, "Cannot use types as values");
 			
 			default:
 				return Error(node, $"Symbol '{GetName(node)}' is not a variable", CurrentTargetType);

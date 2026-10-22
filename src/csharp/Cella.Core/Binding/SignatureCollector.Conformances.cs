@@ -498,25 +498,27 @@ public sealed partial class SignatureCollector
 	private static DiagnosticFix? ImplementMembers(Conformance conformance, TypeSymbol self,
 		IEnumerable<FunctionSymbol> requirements, IEnumerable<GlobalSymbol> constants)
 	{
-		var (body, lastHeaderToken) = conformance switch
+		var (body, lastHeaderToken, existing) = conformance switch
 		{
-			{ Impl: { } impl } => (impl.Node.Body, impl.Node.LastHeaderToken),
+			{ Impl: { } impl } => (impl.Node.Body, impl.Node.LastHeaderToken, impl.Node.Members),
 			{ Target: NamedTypeSymbol { Definition: RecordSymbol record } } =>
-				(record.Node.Body, record.Node.LastHeaderToken),
-			_ => default((SourceLocation?, Token?))
+				(record.Node.Body, record.Node.LastHeaderToken, record.Node.Members),
+			_ => default((SourceLocation?, Token?, ImmutableArray<IDeclarationNode>))
 		};
 		
 		var selfName = DiagnosticReporter.DescribeType(self);
 		var members = constants
 			.Select(static constant => constant.Syntax)
 			.Where(static constant => constant.SourceLocation.Source.FilePath.Length > 0)
-			.Select(Func<string, string> (constant) => _ => DescribeConstant(constant, selfName))
+			.Select(constant => (IsFunction: false, Describe: (Func<string, string>)(_ =>
+				DescribeConstant(constant, selfName))))
 			.Concat(requirements
 				.Select(static requirement => requirement.Syntax)
 				.OfType<FunctionNode>()
 				.Where(static function =>
 					function is { Body: null } && function.SourceLocation.Source.FilePath.Length > 0)
-				.Select(Func<string, string> (function) => indent => DescribeMember(function, selfName, indent)))
+				.Select(function => (IsFunction: true, Describe: (Func<string, string>)(indent =>
+					DescribeMember(function, selfName, indent)))))
 			.ToList();
 		
 		if (members.Count == 0 || lastHeaderToken is not { } header)
@@ -527,9 +529,7 @@ public sealed partial class SignatureCollector
 		if (body is not { } braces)
 		{
 			var indent = source.FindIndent(header.SourceLocation.Range.Start);
-			var text = string.Concat(members.Select((describe, i) =>
-				(i > 0 ? newline + newline : "") + indent + "\t" + describe(indent + "\t")));
-			
+			var text = JoinMembers(members, indent + "\t", newline);
 			var at = header.SourceLocation.Range.End;
 			return DiagnosticFix.Replace("Implement missing members", new(source, new(at, at)),
 				$"{newline}{indent}{{{newline}{text}{newline}{indent}}}");
@@ -543,14 +543,31 @@ public sealed partial class SignatureCollector
 		var closeIndent = source.GetText(new(lineStart, close)).ToString();
 		var memberIndent = closeIndent + "\t";
 		var isEmpty = source.GetText(new(braces.Range.Start + 1, close)).ToString().Trim().Length == 0;
-		var added = string.Join(newline + newline, members.Select(describe => memberIndent + describe(memberIndent)));
+		var added = JoinMembers(members, memberIndent, newline);
+		var separates = !isEmpty && (members[0].IsFunction || existing.IsDefaultOrEmpty ||
+		                             existing[^1] is not (GlobalNode or FieldNode));
 		
 		if (lineStart > 0 && source[lineStart - 1] == '\n')
 			return DiagnosticFix.Replace("Implement missing members", new(source, new(lineStart, lineStart)),
-				(isEmpty ? "" : newline) + added + newline);
+				(separates ? memberIndent + newline : "") + added + newline);
 		
 		return DiagnosticFix.Replace("Implement missing members", new(source, new(close, close)),
 			newline + added + newline + closeIndent);
+	}
+	
+	private static string JoinMembers(List<(bool IsFunction, Func<string, string> Describe)> members, string indent,
+		string newline)
+	{
+		var text = new StringBuilder();
+		for (var i = 0; i < members.Count; i++)
+		{
+			if (i > 0)
+				text.Append(newline).Append(members[i - 1].IsFunction || members[i].IsFunction ? indent + newline : "");
+			
+			text.Append(indent).Append(members[i].Describe(indent));
+		}
+		
+		return text.ToString();
 	}
 	
 	private static string DescribeConstant(GlobalNode constant, string selfName)

@@ -169,16 +169,16 @@ public sealed partial class LanguageServerTests
 		const string start = "mod test\n\nShape: trait\n{\n\tarea: fun(imm self) -> f64\n" +
 		                     "\tscaled: fun(imm self, factor: f64) -> Self\n}\n\nSquare: rec\n{\n\tside: f64\n}\n\n";
 		
-		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => panic\n\n" +
+		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => panic\n\t\n" +
 		             "\tscaled: fun(imm self, factor: f64) -> Square => panic\n}\n",
 			await FixAsync(start + "Square: impl ‸Shape\n{\n}\n", "Implement missing members"));
 		
-		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => self.side * self.side\n\n" +
+		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => self.side * self.side\n\t\n" +
 		             "\tscaled: fun(imm self, factor: f64) -> Square => panic\n}\n",
 			await FixAsync(start + "Square: impl ‸Shape\n{\n\tarea: fun(imm self) -> f64 => self.side * self.side\n}\n",
 				"Implement missing members"));
 		
-		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => panic\n\n" +
+		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => panic\n\t\n" +
 		             "\tscaled: fun(imm self, factor: f64) -> Square => panic\n}\n",
 			await FixAsync(start + "Square: impl ‸Shape\n", "Implement missing members"));
 		
@@ -192,17 +192,24 @@ public sealed partial class LanguageServerTests
 			"mod test\n\nBounded: trait req copy\n{\n\ttop: const Self\n\tclamp: fun(self) -> Self\n}\n\n";
 		
 		Assert.Equal(
-			bounded + "i32: impl Bounded\n{\n\ttop: const i32 = panic\n\n\tclamp: fun(self) -> i32 => panic\n}\n",
+			bounded + "i32: impl Bounded\n{\n\ttop: const i32 = panic\n\t\n\tclamp: fun(self) -> i32 => panic\n}\n",
 			await FixAsync(bounded + "i32: impl ‸Bounded\n{\n}\n", "Implement missing members"));
 		
 		const string numeric = "mod test\n\nOrdered: trait req copy\n{\n" +
 		                       "\torder: fun(imm left: Self, imm right: Self) -> i32\n}\n\n" +
 		                       "Numeric: trait req Ordered\n{\n\tzero: const Self\n}\n\n";
 		
-		Assert.Equal(numeric + "i32: impl Numeric\n{\n\tzero: const i32 = 0\n\n" +
+		Assert.Equal(numeric + "i32: impl Numeric\n{\n\tzero: const i32 = 0\n\t\n" +
 		             "\torder: fun(imm left: i32, imm right: i32) -> i32 => panic\n}\n",
 			await FixAsync(numeric + "i32: impl ‸Numeric\n{\n\tzero: const i32 = 0\n}\n",
 				"Implement missing members"));
+		
+		const string limits = "mod test\n\nLimits: trait req copy\n{\n\tlow: const Self\n\thigh: const Self\n" +
+		                      "\tmiddle: const Self\n}\n\n";
+		
+		Assert.Equal(limits + "i32: impl Limits\n{\n\tlow: const i32 = 0\n\thigh: const i32 = panic\n" +
+		             "\tmiddle: const i32 = panic\n}\n",
+			await FixAsync(limits + "i32: impl ‸Limits\n{\n\tlow: const i32 = 0\n}\n", "Implement missing members"));
 		
 		Assert.Equal(0, await ShutDownAsync());
 	}
@@ -360,6 +367,8 @@ public sealed partial class LanguageServerTests
 		"4:4:4 parameter|6:4:4 parameter")]
 	[InlineData("mod test\n\nBuffer-: rec\n{\n\tid: i32\n}\n\nsize: fun(b: Buffer) -> i32 => b.id\n",
 		"2:0:6 struct declaration|7:13:6 struct|7:33:2 property")]
+	[InlineData("mod test\n\nBits: union\n{\n\traw: u32\n\tvalue: f32\n}\n\nminimum: const f32 = Bits\n",
+		"8:21:4 struct")]
 	[InlineData("mod test.\n\nhelper: fun(start: i32) -> i32 => start\n",
 		"2:0:6 function declaration|2:12:5 parameter declaration")]
 	[InlineData("mod test\n\nPoint: rec\n{\n\tx: i32\n\n\tsum: fun(self) -> i32 => self.\n\n" +
