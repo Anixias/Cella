@@ -151,11 +151,15 @@ public readonly struct ResolutionContext
 		
 		List<Symbol> module = [..GetModuleSymbols(name).Where(IsVisible)];
 		if (Imports is { } environment && environment.Resolve(name) is { Length: > 0 } imports)
-			return ResolveFrom(name,
-			[
-				..module,
-				..imports.Where(import => !module.Contains(import) && IsKeptBeside(environment, import, module))
-			]);
+		{
+			List<Symbol> kept =
+				[..imports.Where(import => !module.Contains(import) && IsKeptBeside(environment, import, module))];
+			
+			foreach (var import in kept)
+				environment.MarkResolved(import);
+			
+			return ResolveFrom(name, [..module, ..kept]);
+		}
 		
 		if (module.Count > 0)
 			return ResolveFrom(name, module);

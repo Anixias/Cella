@@ -1,0 +1,9 @@
+mod shapes
+
+area: pub fun -> i32 => 1
+perimeter: pub fun -> i32 => 2
+
+Shape: pub rec
+{
+	size: i32
+}

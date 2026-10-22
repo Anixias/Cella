@@ -40,4 +40,9 @@ Error at main.ce:8:10
              ╘════╛ Module 'game' has no member 'phyics'
                   | Did you mean 'physics'?
 
+Hint at main.ce:9:1
+8 │ use game.phyics.speed
+9 │ use game.physics.*
+    ╘════════════════╛ Unused import
+
 [compilation failed]

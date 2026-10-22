@@ -1,19 +1,42 @@
 ﻿using System.Collections.Immutable;
 using Cella.Core.Symbols;
+using Cella.Core.Syntax.Nodes;
+using Cella.Core.Text;
 
 namespace Cella.Core.Binding;
+
+public sealed class ImportUse(ImportExpression import, Token? name)
+{
+	public ImportExpression Import { get; } = import;
+	public Token? Name { get; } = name;
+}
 
 public sealed class ImportEnvironment
 (
 	IEnumerable<Symbol> importedSymbols,
 	IEnumerable<Symbol> explicitSymbols,
 	IEnumerable<Symbol> hiddenSymbols,
-	IEnumerable<ModuleSymbol> activatedModules
+	IEnumerable<ModuleSymbol> activatedModules,
+	IEnumerable<(Symbol Symbol, ImportUse Use)> sources,
+	IEnumerable<(ModuleSymbol Module, ImportUse Use)> moduleSources
 )
 {
 	private readonly ImmutableHashSet<ModuleSymbol> _activatedModules = activatedModules.ToImmutableHashSet();
+	private readonly ILookup<Symbol, ImportUse> _sources = sources.ToLookup(static s => s.Symbol, static s => s.Use);
 	
-	public bool Activates(ModuleSymbol module) => _activatedModules.Contains(module);
+	private readonly ILookup<ModuleSymbol, ImportUse> _moduleSources =
+		moduleSources.ToLookup(static s => s.Module, static s => s.Use);
+	
+	private readonly HashSet<ImportUse> _used = [];
+	
+	public bool Activates(ModuleSymbol module)
+	{
+		if (!_activatedModules.Contains(module))
+			return false;
+		
+		MarkUsed(_moduleSources[module]);
+		return true;
+	}
 	
 	public IEnumerable<Symbol> ImportedSymbols => _importedSymbols.SelectMany(static kvp => kvp.Value);
 	
@@ -30,5 +53,29 @@ public sealed class ImportEnvironment
 	
 	public bool IsExplicit(Symbol symbol) => _explicitSymbols.Contains(symbol);
 	
-	public IEnumerable<Symbol> ResolveHidden(string name) => _hiddenSymbols[name];
+	public IEnumerable<Symbol> ResolveHidden(string name)
+	{
+		foreach (var symbol in _hiddenSymbols[name])
+			MarkResolved(symbol);
+		
+		return _hiddenSymbols[name];
+	}
+	
+	public void MarkResolved(Symbol symbol) => MarkUsed(_sources[symbol]);
+	
+	public IEnumerable<ImportUse> FindUnused()
+	{
+		lock (_used)
+			return _sources.SelectMany(static group => group)
+				.Concat(_moduleSources.SelectMany(static group => group))
+				.Distinct()
+				.Where(use => !_used.Contains(use))
+				.ToList();
+	}
+	
+	private void MarkUsed(IEnumerable<ImportUse> uses)
+	{
+		lock (_used)
+			_used.UnionWith(uses);
+	}
 }

@@ -22,14 +22,24 @@ public sealed partial class SignatureCollector
 		var prelude = new HashSet<Symbol>();
 		var projectImported = new HashSet<Symbol>();
 		var projectNames = new HashSet<Token>();
+		var sources = new List<(Symbol Symbol, ImportUse Use)>();
+		var moduleSources = new List<(ModuleSymbol Module, ImportUse Use)>();
 		
 		void Add(ImportExpression import, ModulePathSymbol module, Action<Diagnostic> report, bool isProject)
 		{
+			var hiddenStart = hidden.Count;
 			var named = CollectImport(module, import, ForImport(import, context), hidden, report);
 			var collected = named.Select(static entry => entry.Symbol).ToList();
 			imports.AddRange(collected);
-			activated.AddRange(Modules.GetModules(module));
-			activated.AddRange(collected.OfType<ModulePathSymbol>().SelectMany(Modules.GetModules));
+			var modules = Modules.GetModules(module)
+				.Concat(collected.OfType<ModulePathSymbol>().SelectMany(Modules.GetModules))
+				.ToList();
+			
+			activated.AddRange(modules);
+			if (!isProject && !import.IsPrelude)
+				TrackUses(import, [..named, ..hidden.Skip(hiddenStart).Select(static symbol => (symbol, (Token?)null))],
+					modules, sources, moduleSources);
+			
 			if (import.IsPrelude)
 				prelude.UnionWith(collected);
 			else if (isProject)
@@ -66,18 +76,63 @@ public sealed partial class SignatureCollector
 			         .Select(static entry => entry.Name)
 			         .Distinct()
 			         .Where(name => isFirstFile || !projectNames.Contains(name)))
+		{
+			_redundantImports.Add(name);
 			Diagnostics.Add(new(DiagnosticSeverity.Hint, name.SourceLocation, "Redundant import")
 			{
-				Fixes = [RemoveImport(node.Imports, name)],
+				UnnecessaryLocation = FindImportedNameExtent(node.Imports, name),
+				Fixes = [RemoveImport(node.Imports, name, "Remove redundant import")],
 				Lint = Lints.RedundantImport
 			});
+		}
 		
 		_explicitImports.Add((explicitImports, context));
 		ReportRepeatedImports(ProjectImports.Where(static import => !import.IsPrelude));
 		ReportRepeatedImports(node.Imports.Where(static import => !import.HasSyntaxErrors));
 		
-		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated);
+		return new(imports, explicitImports.Select(static entry => entry.Symbol), hidden, activated, sources,
+			moduleSources);
 	}
+	
+	private static void TrackUses(ImportExpression import, List<(Symbol Symbol, Token? Name)> named,
+		List<ModuleSymbol> modules, List<(Symbol Symbol, ImportUse Use)> sources,
+		List<(ModuleSymbol Module, ImportUse Use)> moduleSources)
+	{
+		var uses = new Dictionary<Token, ImportUse>();
+		var whole = new ImportUse(import, null);
+		foreach (var (symbol, name) in named)
+		{
+			if (name is not { } token)
+			{
+				sources.Add((symbol, whole));
+				continue;
+			}
+			
+			if (!uses.TryGetValue(token, out var use))
+				uses[token] = use = new(import, token);
+			
+			sources.Add((symbol, use));
+		}
+		
+		IEnumerable<ImportUse> all = import.Import is FullImport ? [whole] : uses.Values;
+		foreach (var use in all)
+			moduleSources.AddRange(modules.Select(module => (module, use)));
+	}
+	
+	public bool IsRedundantImport(Token name) => _redundantImports.Contains(name);
+	
+	public static SourceLocation FindImportedNameExtent(IEnumerable<ImportExpression> imports, Token name)
+	{
+		var import = imports.First(import => ImportsName(import, name));
+		return import.Import is ListImport { Tokens.Length: > 1 } ? name.SourceLocation : import.SourceLocation;
+	}
+	
+	private static bool ImportsName(ImportExpression import, Token name) => import.Import switch
+	{
+		TokenImport single => single.Token == name,
+		ListImport list => list.Tokens.Contains(name),
+		_ => false
+	};
 	
 	private List<ModulePathSymbol?> ResolveProjectImports(ResolutionContext context) =>
 		[..ProjectImports.Select(import => ResolveImportPath(import, ForImport(import, context)))];
@@ -179,15 +234,9 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
-	private static DiagnosticFix RemoveImport(IEnumerable<ImportExpression> imports, Token name)
+	public static DiagnosticFix RemoveImport(IEnumerable<ImportExpression> imports, Token name, string title)
 	{
-		const string title = "Remove redundant import";
-		var import = imports.First(import => import.Import switch
-		{
-			TokenImport single => single.Token == name,
-			ListImport list => list.Tokens.Contains(name),
-			_ => false
-		});
+		var import = imports.First(import => ImportsName(import, name));
 		
 		switch (import.Import)
 		{

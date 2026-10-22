@@ -23,6 +23,7 @@ public static class Lints
 	public const string EndlessRecursion = nameof(EndlessRecursion);
 	public const string UnusedLocal = nameof(UnusedLocal);
 	public const string UnusedDeclaration = nameof(UnusedDeclaration);
+	public const string UnusedImport = nameof(UnusedImport);
 	public const string Naming = nameof(Naming);
 	
 	public static ImmutableArray<LintInfo> All { get; } =
@@ -36,6 +37,7 @@ public static class Lints
 		new(EndlessRecursion, "Functions that recurse forever", LintLevel.Warning),
 		new(UnusedLocal, "Unused local variables", LintLevel.Hint),
 		new(UnusedDeclaration, "Unused functions and globals", LintLevel.Hint),
+		new(UnusedImport, "Unused imports", LintLevel.Hint),
 		new(Naming, "Naming rules", LintLevel.Hint)
 	];
 	

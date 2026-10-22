@@ -1,0 +1,16 @@
+Hint at main.ce:3:19
+2 │ 
+3 │ use shapes.[area, perimeter]
+                      ╘═══════╛ Unused import
+
+Hint at main.ce:4:1
+3 │ use shapes.[area, perimeter]
+4 │ use util.*
+    ╘════════╛ Unused import
+
+Hint at main.ce:5:1
+4 │ use util.*
+5 │ use shapes.Shape
+    ╘══════════════╛ Unused import
+
+[exit code 3]

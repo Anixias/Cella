@@ -61,6 +61,65 @@ public sealed partial class Resolver
 		}
 	}
 	
+	public IEnumerable<Diagnostic> FindUnusedImports(IEnumerable<ResolvedFileNode> files)
+	{
+		const string title = "Remove unused import";
+		foreach (var file in files)
+		{
+			var syntax = file.Symbol.Syntax;
+			var unresolved = syntax.InactiveCode
+				.Concat(syntax.BrokenStatements.Select(static statement => statement.SourceLocation))
+				.Select(static location => location.GetText().ToString())
+				.ToList();
+			
+			var errors = _signatures.Diagnostics.Concat(Diagnostics)
+				.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error &&
+				                     diagnostic.SourceLocation.Source == syntax.SourceLocation.Source)
+				.Select(static diagnostic => diagnostic.SourceLocation.Range)
+				.ToList();
+			
+			var firstDeclaration = syntax.Declarations
+				.Select(static declaration => declaration.SourceLocation.Range.Start)
+				.DefaultIfEmpty(int.MaxValue)
+				.Min();
+			
+			var unused = _signatures.GetImports(file.Symbol).FindUnused()
+				.Where(use => use.Import.SourceLocation.Range.Start < firstDeclaration)
+				.Where(use => !use.Import.HasSyntaxErrors && !errors.Any(error =>
+					error.Start >= use.Import.SourceLocation.Range.Start &&
+					error.Start < use.Import.SourceLocation.Range.End))
+				.Where(use => use.Name is { } name
+					? !_signatures.IsRedundantImport(name) &&
+					  !unresolved.Any(text => Regex.IsMatch(text, $@"\b{Regex.Escape(name.Text)}\b"))
+					: unresolved.Count == 0);
+			
+			foreach (var group in unused.GroupBy(static use => use.Import.SourceLocation))
+			{
+				var import = group.First().Import;
+				var names = group.Select(static use => use.Name).OfType<Token>().ToList();
+				if (import.Import is ListImport list && names.Count < list.Tokens.Length)
+				{
+					foreach (var name in names)
+						yield return new(DiagnosticSeverity.Hint, name.SourceLocation, "Unused import")
+						{
+							UnnecessaryLocation = name.SourceLocation,
+							Fixes = [SignatureCollector.RemoveImport(syntax.Imports, name, title)],
+							Lint = Lints.UnusedImport
+						};
+					
+					continue;
+				}
+				
+				yield return new(DiagnosticSeverity.Hint, import.SourceLocation, "Unused import")
+				{
+					UnnecessaryLocation = import.SourceLocation,
+					Fixes = [DiagnosticFix.Remove(title, import.SourceLocation)],
+					Lint = Lints.UnusedImport
+				};
+			}
+		}
+	}
+	
 	private IEnumerable<(IResolvedDeclarationNode Node, Token Name)> FindDeclarations(
 		IEnumerable<IResolvedDeclarationNode> declarations)
 	{

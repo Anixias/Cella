@@ -208,6 +208,7 @@ public sealed partial class Builder
 		
 		containment.AddDeclarations(resolvedFiles);
 		diagnostics.Add(new(resolver.FindUnusedDeclarations(resolvedFiles, containment)));
+		diagnostics.Add(new(resolver.FindUnusedImports(resolvedFiles)));
 		
 		// Phase 4: Type checking
 		{

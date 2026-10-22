@@ -128,6 +128,41 @@ public sealed partial class LanguageServerTests
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	private async Task<IEnumerable<string>> FadedRangesAsync(string text)
+	{
+		await SetTextAsync(text);
+		var published = await ReadDiagnosticsAsync(static diagnostics => diagnostics.Count > 0);
+		return ((JsonArray)published["params"]!["diagnostics"]!)
+			.Where(static diagnostic => diagnostic!["tags"] is JsonArray tags && tags.Any(static tag => (int)tag! == 1))
+			.Select(static diagnostic =>
+			{
+				var range = diagnostic!["range"]!;
+				return $"{(int)range["start"]!["line"]!}:{(int)range["start"]!["character"]!}-" +
+				       $"{(int)range["end"]!["line"]!}:{(int)range["end"]!["character"]!}";
+			})
+			.Order(StringComparer.Ordinal)
+			.ToList();
+	}
+	
+	[Fact]
+	public async Task FadesAndRemovesUnusedImports()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),
+			"mod test.util\n\nhelper: pub fun -> i32 => 1\n\nother: pub fun -> i32 => 2\n", Token);
+		
+		const string body = "\nmain: fun -> i32 => helper()\n";
+		Assert.Equal("mod test\n\nuse test.util.helper\n" + body,
+			await FixAsync("mod test\n\nuse test.util.[helper, ‸other]\n" + body, "Remove unused import"));
+		
+		Assert.Equal("mod test\n\nuse test.util.helper\n" + body,
+			await FixAsync("mod test\n\nuse test.util.helper\nuse test.util.‸other\n" + body,
+				"Remove unused import"));
+		
+		Assert.Equal(["2:23-2:28"], await FadedRangesAsync("mod test\n\nuse test.util.[helper, other]\n" + body));
+		Assert.Equal(["2:0-2:15"], await FadedRangesAsync("mod test\n\nuse test.util.*\n\nmain: fun -> i32 => 0\n"));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
 	[Fact]
 	public async Task ChangesUnchangedVarsToVal()
 	{

@@ -56,6 +56,8 @@ public sealed partial class SignatureCollector
 	private readonly List<(List<(Symbol Symbol, Token Name, string Module)> Imports, ResolutionContext Context)>
 		_explicitImports = [];
 	
+	private readonly HashSet<Token> _redundantImports = [];
+	
 	private readonly Dictionary<GlobalSymbol, TypeSymbol> _globalTypes = [];
 	private readonly Dictionary<PropertySymbol, TypeSymbol> _propertyTypes = [];
 	private readonly HashSet<TypeSymbol> _completedTypes = [];

@@ -1,0 +1,8 @@
+mod test
+
+use shapes.[area, perimeter]
+use util.*
+use shapes.Shape
+use tools.math
+
+main: fun -> i32 => area() + math.twice(1)
