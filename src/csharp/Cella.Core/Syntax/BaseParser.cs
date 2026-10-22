@@ -41,6 +41,13 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 		return tokens;
 	}
 	
+	protected ImmutableArray<Token> Delete(int index)
+	{
+		var tokens = Tokens;
+		Tokens = tokens.RemoveAt(index);
+		return tokens;
+	}
+	
 	protected void Unbind(ImmutableArray<Token> tokens) => Tokens = tokens;
 	
 	protected bool StartsMemberDeclaration(int index)

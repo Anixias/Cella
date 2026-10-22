@@ -241,25 +241,16 @@ public sealed partial class FileParser
 			}
 			
 			var start = index;
-			var state = SaveState(index);
 			var window = OpenErrorWindow(index);
-			var member = TryParseMember(ref index, block);
-			var cut = FindDeclarationCut(start, index, state, member is not null, true);
-			if (cut is not null)
+			int? lastCut = null;
+			var member = ParseWithStrayRecovery(ref index, from =>
 			{
-				RestoreState(state, index);
-				index = start;
-				var tokens = Bound(cut.Value);
-				try
-				{
-					member = TryParseMember(ref index, block);
-				}
-				finally
-				{
-					Unbind(tokens);
-				}
-			}
+				var attempt = ParseMemberWithCut(from, block, out var found);
+				lastCut = found;
+				return attempt;
+			}, static () => { }, out var deleted, separates: SeparatesMembers);
 			
+			var cut = lastCut is { } found && deleted >= 0 && found >= deleted ? found + 1 : lastCut;
 			RecordSyntaxErrors(member, window, index);
 			if (member is not null)
 			{
@@ -277,6 +268,39 @@ public sealed partial class FileParser
 		}
 		
 		return true;
+	}
+	
+	private bool SeparatesMembers(int index) => Peek(index, TokenType.OpComma) &&
+	                                            (Peek(index + 1, TokenType.OpCloseBrace) ||
+	                                             Peek(index + 1, TokenType.Identifier) &&
+	                                             Peek(index + 2, TokenType.OpColon));
+	
+	private bool SeparatesCases(int index) => Peek(index, TokenType.OpComma) &&
+	                                          (Peek(index + 1, TokenType.OpCloseBrace) ||
+	                                           Peek(index + 1, TokenType.Identifier));
+	
+	private (IDeclarationNode? Member, int End) ParseMemberWithCut(int start, Token? block, out int? cut)
+	{
+		var index = start;
+		var state = SaveState(index);
+		var member = TryParseMember(ref index, block);
+		cut = FindDeclarationCut(start, index, state, member is not null, true);
+		if (cut is null)
+			return (member, index);
+		
+		RestoreState(state, index);
+		index = start;
+		var tokens = Bound(cut.Value);
+		try
+		{
+			member = TryParseMember(ref index, block);
+		}
+		finally
+		{
+			Unbind(tokens);
+		}
+		
+		return (member, index);
 	}
 	
 	private IDeclarationNode? TryParseMember(ref int index, Token? block)
@@ -452,7 +476,14 @@ public sealed partial class FileParser
 			else
 				index = caseStart;
 			
-			if (ParseEnumCase(ref index, matchedType) is not { } enumCase)
+			var parsedCase = ParseWithStrayRecovery(ref index, from =>
+			{
+				var end = from;
+				var attempt = ParseEnumCase(ref end, matchedType);
+				return (attempt, end);
+			}, static () => { }, out _, separates: SeparatesCases);
+			
+			if (parsedCase is not { } enumCase)
 			{
 				if (ResyncMember(ref index, caseStart))
 					return false;

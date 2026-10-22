@@ -1551,6 +1551,17 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		"2:0:5 ", "4:5:1 ", "6:0:6 ")]
 	[InlineData("mod test\n\nShape: enum\n{\n\tcircle(\n\tsquare(side: f32)\n\tpoint\n}\n", "5:1:6 ", "5:8:4 ",
 		"6:1:5 ")]
+	[InlineData(
+		"mod test\n\nf: fun(a: i32, b: i32) -> i32 => a\n\nmain: fun -> i32\n{\n\tval x: i32 = 1\n\tval y: i32 = f(, )\n\tval z: i32 = f(, x)\n\tval w: array[i32, 2] = [, x]\n\tret y\n}\n",
+		"7:5:1 ", "7:14:1 ", "8:5:1 ", "8:14:1 ", "8:18:1 ", "9:5:1 ", "9:27:1 ")]
+	[InlineData(
+		"mod test\n\nReal: trait\n{\n\tlower: fun(imm a: Self) -> Self\n}\n\nf32: impl. Real\n{\n\tlower: fun(a: f32) -> f32 => a\n}\n",
+		"7:0:3 ", "7:11:4 ", "9:1:5 ", "9:30:1 ")]
+	[InlineData("mod test\n\nmain(: fun -> i32\n{\n\tval total: i32 = 1\n\tret total\n}\n",
+		"2:0:4 ", "4:5:5 ", "5:5:5 ")]
+	[InlineData(
+		"mod test\n\nmain: fun -> i32\n{\n\tvar total(: i32 = 1\n\tret match(total < 2 { true => total, else => 0 }\n}\n",
+		"4:5:5 ", "5:11:5 ", "5:31:5 ")]
 	public async Task ClassifiesNamesInIncompleteCode(string source, params string[] expected)
 	{
 		var tokens = await ClassifyAsync(source);

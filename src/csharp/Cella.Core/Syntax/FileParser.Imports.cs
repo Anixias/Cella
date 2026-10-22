@@ -8,7 +8,13 @@ public sealed partial class FileParser
 {
 	private ModuleName? ParseModuleName(ref int index)
 	{
-		SkipStray(ref index, TokenType.Identifier);
+		if (!SkipStray(ref index, TokenType.Identifier) && IsOnSameLine(index) && IsOnSameLine(index + 1) &&
+		    Peek(index + 1, TokenType.Identifier) && IsDeletable(Tokens[index]))
+		{
+			ReportUnexpected(Tokens[index]);
+			index++;
+		}
+		
 		var parts = new List<Token>();
 		if (!IsOnSameLine(index) || !Match(ref index, out var firstPart, TokenType.Identifier))
 		{

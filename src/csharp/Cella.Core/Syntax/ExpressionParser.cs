@@ -404,6 +404,9 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 	
 	private T InBrackets<T>(ref int index, ParseStep<T> parse) => WithDepth(ref index, bracketDepth + 1, parse);
 	
+	private IExpressionNode ParseListItem(ref int index, ParseStep<IExpressionNode> parse) =>
+		CanRecover && Peek(index, TokenType.OpComma) ? MissingOperand(index) : InBrackets(ref index, parse);
+	
 	private T? TryParse<T>(int start, ParseStep<T> parse, out int end) where T : class
 	{
 		end = start;
@@ -789,14 +792,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			}
 			else
 			{
-				var values = new List<IExpressionNode> { InBrackets(ref index, ParseExpression) };
+				var values = new List<IExpressionNode> { ParseListItem(ref index, ParseExpression) };
 				
 				while (MatchSeparator(ref index, TokenType.OpCloseBracket))
 				{
 					if (EndsUnclosedLine(index))
 						break;
 					
-					values.Add(InBrackets(ref index, ParseExpression));
+					values.Add(ParseListItem(ref index, ParseExpression));
 				}
 				
 				if (!Match(ref index, out closeBracket, TokenType.OpCloseBracket))
@@ -1297,7 +1300,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			if (StartsLine(index) && (!CanStartExpression(index) || StartsMemberDeclaration(index)))
 				return RecoverUnclosed(index, "')'", target, arguments, openParen);
 			
-			arguments.Add(InBrackets(ref index, ParseArgument));
+			arguments.Add(ParseListItem(ref index, ParseArgument));
 		}
 		
 		return new(target, arguments, new(source, range.Join(closeParen.SourceLocation.Range)))
@@ -1362,7 +1365,7 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 					continue;
 			}
 			
-			arguments.Add(InBrackets(ref index, ParseExpression));
+			arguments.Add(ParseListItem(ref index, ParseExpression));
 		}
 		
 		range = range.Join(closeBracket.SourceLocation.Range);

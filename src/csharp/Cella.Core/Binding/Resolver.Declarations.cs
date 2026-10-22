@@ -208,6 +208,7 @@ public sealed partial class Resolver
 			ResolveSiblingMember = name => ResolutionContext.ResolveStatic(functions, properties, name) ??
 			                               constants.FirstOrDefault(constant => constant.Name == name)
 		});
+		
 		var members = node.Members.SelectMany(VisitImplMember).ToList();
 		_resolutionContexts.Pop();
 		return new ResolvedImplNode(impl, target, members, node);

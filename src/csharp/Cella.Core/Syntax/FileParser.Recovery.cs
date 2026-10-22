@@ -290,6 +290,118 @@ public sealed partial class FileParser
 		index++;
 	}
 	
+	private delegate (T Result, int End) ParseFrom<T>(int start);
+	
+	private T ParseWithStrayRecovery<T>(ref int index, ParseFrom<T> parse, Action undo, out int deleted,
+		Action? markBroken = null, Func<int, bool>? separates = null)
+	{
+		deleted = -1;
+		var start = index;
+		var line = Tokens[start].Line;
+		var state = SaveState(start);
+		var (result, end) = parse(start);
+		var first = Diagnostics.ErrorsSince(state.Diagnostics).FirstOrDefault();
+		var trails = first is null && EndsMidLine(end, line) && separates?.Invoke(end) != true;
+		if (!trails && (first is null || first.Line != line) || HasLexicalErrors(start, end))
+		{
+			index = end;
+			return result;
+		}
+		
+		if (trails)
+		{
+			var rest = SaveState(end);
+			var (_, restEnd) = parse(end);
+			first = Diagnostics.ErrorsSince(rest.Diagnostics).FirstOrDefault(error => error.Line == line);
+			var trailing = Diagnostics.ErrorsSince(rest.Diagnostics).Where(error => error.Line == line).ToList();
+			RestoreState(rest, restEnd);
+			undo();
+			RestoreState(state, end);
+			(_, end) = parse(start);
+			Diagnostics.AddRange(trailing);
+		}
+		
+		var original = Diagnostics.CountErrorsSince(state.Diagnostics);
+		var reported = Diagnostics.ErrorsSince(state.Diagnostics).Where(error => error.Line == line).ToList();
+		var at = first is null ? end : FindTokenAt(first.SourceLocation.Range.Start, start);
+		int[] candidates = first is null ? [at - 1, at] : [at - 1, at, at + 1, ..FindUnclosedOpeners(start, at)];
+		foreach (var i in candidates)
+		{
+			if (i <= start || AtEnd(i + 1) || !IsOnSameLine(i) || !IsOnSameLine(i + 1) || !IsDeletable(Tokens[i]))
+				continue;
+			
+			RestoreState(state, end);
+			undo();
+			var tokens = Delete(i);
+			try
+			{
+				(result, end) = parse(start);
+			}
+			finally
+			{
+				Unbind(tokens);
+			}
+			
+			if (end >= i)
+				end++;
+			
+			var errors = Diagnostics.ErrorsSince(state.Diagnostics).ToList();
+			if (errors.Any(error => error.Line == line) || errors.Count + reported.Count > original ||
+			    end <= start || EndsMidLine(end, line))
+				continue;
+			
+			if (reported.Count == 0)
+				ReportUnexpected(Tokens[i]);
+			else
+				Diagnostics.AddRange(reported);
+			
+			markBroken?.Invoke();
+			deleted = i;
+			index = end;
+			return result;
+		}
+		
+		RestoreState(state, end);
+		undo();
+		(result, end) = parse(start);
+		index = end;
+		return result;
+	}
+	
+	private bool EndsMidLine(int end, int line) =>
+		!AtEnd(end) && Tokens[end].Line == line && !Peek(end, TokenType.OpCloseBrace);
+	
+	private IEnumerable<int> FindUnclosedOpeners(int start, int end)
+	{
+		var open = new Stack<int>();
+		for (var i = start; i < end && !AtEnd(i); i++)
+		{
+			if (Tokens[i].Type is TokenType.OpOpenParen or TokenType.OpOpenBracket)
+				open.Push(i);
+			else if (Tokens[i].Type is TokenType.OpCloseParen or TokenType.OpCloseBracket)
+				open.TryPop(out _);
+		}
+		
+		return open;
+	}
+	
+	private int FindTokenAt(int offset, int start)
+	{
+		var i = start;
+		for (; !AtEnd(i) && Tokens[i].Line == Tokens[start].Line; i++)
+		{
+			if (Tokens[i].SourceLocation.Range.Start >= offset)
+				return i;
+		}
+		
+		return i;
+	}
+	
+	private static bool IsDeletable(Token token) =>
+		TokenType.GetOperator(token.Text) is not null && token.Type is not (TokenType.OpOpenBrace or
+			TokenType.OpCloseBrace or TokenType.OpColon or TokenType.OpEqual or TokenType.OpArrow or
+			TokenType.OpFatArrow);
+	
 	private static bool IsStray(Token token) =>
 		TokenType.GetOperator(token.Text) is not null && token.Type is not (TokenType.OpOpenBrace or
 			TokenType.OpCloseBrace or TokenType.OpOpenParen or TokenType.OpOpenBracket or TokenType.OpColon);
@@ -528,6 +640,22 @@ public sealed partial class FileParser
 	
 	private bool ParseTopLevelWithCuts(ref int index, List<IDeclarationNode> declarations, Token? block,
 		bool insideBraces = false)
+	{
+		var count = declarations.Count;
+		return ParseWithStrayRecovery(ref index, start =>
+		{
+			var end = start;
+			var parsed = ParseTopLevelCut(ref end, declarations, block, insideBraces);
+			return (parsed, end);
+		}, () => declarations.RemoveRange(count, declarations.Count - count), out _, () =>
+		{
+			_brokenDeclarations.UnionWith(declarations.Skip(count));
+			_declarationsWithErrors.UnionWith(declarations.Skip(count));
+		});
+	}
+	
+	private bool ParseTopLevelCut(ref int index, List<IDeclarationNode> declarations, Token? block,
+		bool insideBraces)
 	{
 		var start = index;
 		var count = declarations.Count;

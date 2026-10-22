@@ -58,37 +58,15 @@ public sealed partial class FileParser
 			}
 			else
 			{
-				var state = SaveState(index);
-				statement = TryParseStatement(ref index);
-				var broken = statement is null || HasLexicalErrors(start, index) ||
-				             Diagnostics.ErrorCount - errorsBefore > attributedErrors - attributedBefore;
-				
-				var skipped = index;
-				if (statement is null)
-					ResyncStatement(ref skipped, start);
-				
-				var original = statement;
-				cut = broken
-					? FindCut(start, Math.Max(index, skipped), statement is null, (i, _, _) =>
-						StartsStatementCut(i) && !(original is not null &&
-						                           HasNestedStatementAt(original,
-							                           Tokens[i].SourceLocation.Range.Start)))
-					: null;
-				
-				if (cut is not null)
+				int? lastCut = null;
+				statement = ParseWithStrayRecovery(ref index, from =>
 				{
-					RestoreState(state, index);
-					index = start;
-					var tokens = Bound(cut.Value);
-					try
-					{
-						statement = TryParseStatement(ref index);
-					}
-					finally
-					{
-						Unbind(tokens);
-					}
-				}
+					var attempt = ParseStatementWithCut(from, errorsBefore, attributedBefore, out var found);
+					lastCut = found;
+					return attempt;
+				}, static () => { }, out var deleted);
+				
+				cut = lastCut is { } found && deleted >= 0 && found >= deleted ? found + 1 : lastCut;
 			}
 			
 			if (statement is null)
@@ -118,6 +96,44 @@ public sealed partial class FileParser
 		}
 		
 		return true;
+	}
+	
+	private (IStatementNode? Statement, int End) ParseStatementWithCut(int start, int errorsBefore,
+		int attributedBefore, out int? cut)
+	{
+		var index = start;
+		var state = SaveState(index);
+		var statement = TryParseStatement(ref index);
+		var broken = statement is null || HasLexicalErrors(start, index) ||
+		             Diagnostics.ErrorCount - errorsBefore > attributedErrors - attributedBefore;
+		
+		var skipped = index;
+		if (statement is null)
+			ResyncStatement(ref skipped, start);
+		
+		var original = statement;
+		cut = broken
+			? FindCut(start, Math.Max(index, skipped), statement is null, (i, _, _) =>
+				StartsStatementCut(i) && !(original is not null &&
+				                           HasNestedStatementAt(original, Tokens[i].SourceLocation.Range.Start)))
+			: null;
+		
+		if (cut is null)
+			return (statement, index);
+		
+		RestoreState(state, index);
+		index = start;
+		var tokens = Bound(cut.Value);
+		try
+		{
+			statement = TryParseStatement(ref index);
+		}
+		finally
+		{
+			Unbind(tokens);
+		}
+		
+		return (statement, index);
 	}
 	
 	private IStatementNode? TryParseStatement(ref int index)
