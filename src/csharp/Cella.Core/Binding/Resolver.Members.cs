@@ -446,6 +446,23 @@ public sealed partial class Resolver
 			});
 	}
 	
+	private IEnumerable<MethodSymbol> GetPickedMethods(TraitType trait, TypeSymbol self, string name)
+	{
+		var visited = new HashSet<TraitType>();
+		var pending = new Queue<TraitType>([trait]);
+		while (pending.TryDequeue(out var current))
+		{
+			if (!visited.Add(current))
+				continue;
+			
+			foreach (var method in GetInstanceMethods(current, name))
+				yield return method;
+			
+			foreach (var required in _typePool.GetRequiredTraits(current, self))
+				pending.Enqueue(required);
+		}
+	}
+	
 	private static PropertySymbol? GetInstanceProperty(TraitType trait, string name) =>
 		trait.Trait.GetProperty(name) is { } property && !trait.Arguments.IsEmpty
 			? new PropertySymbol(property.Name)

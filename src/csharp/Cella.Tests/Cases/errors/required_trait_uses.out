@@ -1,9 +1,13 @@
-Error at required_trait_uses.ce:24:45
+Hint at required_trait_uses.ce:10:2
+ 9 │ {
+10 │     name: fun(imm self) -> i32
+         ╘══╛ Redundant 'name'
+            | Declared in 'Named'
+
+Hint at required_trait_uses.ce:24:1
 23 │ 
 24 │ show[T: Shape]: fun(imm value: T) -> i32 => value.name()
-                                                 ╘════════╛ Call to 'name' is ambiguous
-                                                          | Candidate on line 5
-                                                          | Candidate on line 10
+     ╘══╛ 'show' is never used
 
 Hint at required_trait_uses.ce:26:1
 25 │ 

@@ -12,7 +12,6 @@ Named: trait
 
 Shape: trait req Named
 {
-	name: fun(imm self) -> i32
 	area: fun(imm self) -> i32
 }
 
@@ -33,11 +32,10 @@ A: impl Named
 
 A: impl Shape
 {
-	name: fun(imm self) -> i32 => 2
 	area: fun(imm self) -> i32 => self.v
 }
 
-f: fun(imm s: dyn[Shape]) -> i32 => Named(s).name() * 10 + Shape(s).name()
+f: fun(imm s: dyn[Shape]) -> i32 => Named(s).name() * 10 + Shape(s).name() * 100 + Shape(s).area()
 
 main: fun -> i32
 {

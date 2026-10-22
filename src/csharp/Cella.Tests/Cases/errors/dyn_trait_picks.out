@@ -1,13 +1,17 @@
+Hint at dyn_trait_picks.ce:10:2
+ 9 │ {
+10 │     name: fun(imm self) -> i32
+         ╘══╛ Redundant 'name'
+            | Declared in 'Named'
+
 Error at dyn_trait_picks.ce:18:43
 17 │ 
 18 │ g: fun(imm s: dyn[Shape]) -> i32 => Other(s).name()
                                                ^ 'dyn[Shape]' doesn't implement 'Other'
 
-Error at dyn_trait_picks.ce:20:37
+Hint at dyn_trait_picks.ce:20:1
 19 │ 
 20 │ h: fun(imm s: dyn[Shape]) -> i32 => s.name()
-                                         ╘════╛ Call to 'name' is ambiguous
-                                              | Candidate on line 5
-                                              | Candidate on line 10
+     ^ 'h' is never used
 
 [compilation failed]

@@ -182,7 +182,10 @@ public sealed partial class Resolver
 			return VisitIndirectCall(node, Index(indexer, ResolveAccess(access, target)));
 		
 		IEnumerable<TraitType> traits = picked is null ? GetDynTraits(dyn) : [picked];
-		var functions = traits.SelectMany(trait => GetInstanceMethods(trait, name)).ToArray();
+		var functions = (picked is null
+			? traits.SelectMany(trait => GetInstanceMethods(trait, name))
+			: GetPickedMethods(picked, dyn, name)).ToArray();
+		
 		if (functions.Length == 0)
 			return Error(node, $"Type '{dyn.Name}' has no member '{name}'", CurrentTargetType, member);
 		
@@ -246,7 +249,7 @@ public sealed partial class Resolver
 		if (trait.Trait.GetProperty(name) is not null)
 			return VisitIndirectCall(node, Index(indexer, VisitTraitMember(access, trait, argument)));
 		
-		var functions = GetInstanceMethods(trait, name).ToArray();
+		var functions = GetPickedMethods(trait, self, name).ToArray();
 		var matching = functions.Where(method => method.HasReceiver == receiver is not null).ToArray();
 		if (matching.Length == 0)
 			return Error(node, DescribeMissingTraitMember(trait, name, functions, receiver is not null),
@@ -311,7 +314,7 @@ public sealed partial class Resolver
 		if (GetInstanceProperty(trait, name) is { } property)
 			return ResolvePropertyUse(node, member, property, self, receiver);
 		
-		var functions = GetInstanceMethods(trait, name).ToArray();
+		var functions = GetPickedMethods(trait, self, name).ToArray();
 		if (receiver is not null)
 			return Error(node, functions.Any(static method => method.HasReceiver)
 				? "Cannot use methods as values"
