@@ -18,7 +18,7 @@ public sealed partial class Builder
 	private static Lazy<SemanticModel> CreateModel(ImmutableArray<ResolvedFileNode> files,
 		List<(Token Name, Symbol Symbol)> names, TypePool typePool, SignatureCollector signatures)
 	{
-		var model = new SemanticModel(files, names, typePool.NeedsDrop, signatures.FindFunctionInfo,
+		var model = new SemanticModel(files, names, signatures.FindFunctionInfo,
 			signatures.GetGlobalInfo, signatures.DescribeTypeConstant, typePool.GetCaseValue, signatures.FindImports);
 		
 		return new(() => model);

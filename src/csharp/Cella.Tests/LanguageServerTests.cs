@@ -972,13 +972,29 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		                                 	handle: Handle
 		                                 }
 		                                 
+		                                 Holder[T]: rec
+		                                 {
+		                                 	value: T
+		                                 }
+		                                 
+		                                 keep: fun(held: Holder[Handle]) -> i32 => held.value.id
+		                                 
+		                                 Slot: own enum
+		                                 {
+		                                 	empty
+		                                 	full(handle: Handle)
+		                                 }
+		                                 
 		                                 """);
 		
 		Assert.Contains("2:0:5 struct declaration", tokens);
 		Assert.Contains("14:0:4 struct declaration ref", tokens);
-		Assert.Contains("34:0:6 struct declaration drop", tokens);
-		Assert.Contains("41:0:5 struct declaration drop", tokens);
-		Assert.Contains("43:9:6 struct drop", tokens);
+		Assert.Contains("34:0:6 struct declaration own", tokens);
+		Assert.Contains("41:0:5 struct declaration own", tokens);
+		Assert.Contains("43:9:6 struct own", tokens);
+		Assert.Contains("51:16:6 struct", tokens);
+		Assert.Contains("51:23:6 struct own", tokens);
+		Assert.Contains("53:0:4 enum declaration own", tokens);
 		Assert.Contains("19:0:5 enum declaration", tokens);
 		Assert.Contains("31:5:1 variable readonly", tokens);
 		Assert.Contains("31:6:1 method", tokens);

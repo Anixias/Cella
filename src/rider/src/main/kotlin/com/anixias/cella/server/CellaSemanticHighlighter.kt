@@ -34,12 +34,12 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		
 		fun colorOf(type: String, modifiers: Set<String>, text: String): TextAttributesKey? = when (type) {
 			"struct" -> when {
-				"drop" in modifiers -> CellaColors.DROP_TYPE
+				"own" in modifiers -> CellaColors.OWN_RECORD
 				"ref" in modifiers -> CellaColors.REF_RECORD
 				else -> CellaColors.RECORD
 			}
 			
-			"enum" -> CellaColors.ENUM
+			"enum" -> if ("own" in modifiers) CellaColors.OWN_ENUM else CellaColors.ENUM
 			"interface" -> CellaColors.TRAIT
 			"typeParameter" -> CellaColors.TYPE_PARAMETER
 			"type" -> CellaColors.TYPE

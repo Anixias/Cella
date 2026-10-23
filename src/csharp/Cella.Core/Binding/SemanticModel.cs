@@ -17,7 +17,6 @@ public sealed record SymbolReference(SourceLocation Location, Symbol Symbol, str
 {
 	public SourceLocation? Declaration { get; init; } = SemanticModel.FindDeclaration(Symbol);
 	public ImmutableArray<SourceLocation> OverloadDeclarations { get; init; } = [];
-	public bool NeedsDrop { get; init; }
 }
 
 public sealed class SemanticModel
@@ -29,8 +28,6 @@ public sealed class SemanticModel
 	
 	private readonly Dictionary<string, List<SymbolReference>> _references = new(_pathComparer);
 	private readonly Dictionary<Type, PropertyInfo[]> _children = [];
-	private readonly Dictionary<TypeSymbol, bool> _drops = [];
-	private readonly Func<TypeSymbol, bool>? _needsDrop;
 	private readonly Func<FunctionSymbol, FunctionInfo?>? _functions;
 	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
@@ -44,13 +41,12 @@ public sealed class SemanticModel
 		new(ReferenceEqualityComparer.Instance);
 	
 	public SemanticModel(IEnumerable<ResolvedFileNode> files, IEnumerable<(Token Name, Symbol Symbol)> names,
-		Func<TypeSymbol, bool>? needsDrop = null, Func<FunctionSymbol, FunctionInfo?>? functions = null,
+		Func<FunctionSymbol, FunctionInfo?>? functions = null,
 		Func<GlobalSymbol, GlobalInfo?>? globals = null,
 		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null,
 		Func<EnumSymbol, EnumCaseSymbol, BigInteger>? caseValues = null,
 		Func<FileSymbol, ImportEnvironment?>? imports = null)
 	{
-		_needsDrop = needsDrop;
 		_imports = imports;
 		_functions = functions;
 		_globals = globals;
@@ -212,24 +208,12 @@ public sealed class SemanticModel
 		
 		references.Add(new(location, symbol, description)
 		{
-			NeedsDrop = NeedsDrop(symbol),
 			OverloadDeclarations =
 			[
 				..(overloads ?? []).Select(FindDeclaration).Where(static declaration => declaration is not null)
 				.Select(static declaration => declaration!.Value)
 			]
 		});
-	}
-	
-	private bool NeedsDrop(Symbol symbol)
-	{
-		if (symbol is not TypeSymbol { OriginalDefinition: RecordSymbol } type || _needsDrop is null)
-			return false;
-		
-		if (!_drops.TryGetValue(type, out var drops))
-			_drops[type] = drops = _needsDrop(type);
-		
-		return drops;
 	}
 	
 	private void Add(Token? token, Symbol symbol, string description)

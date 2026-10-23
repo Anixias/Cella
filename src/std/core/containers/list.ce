@@ -1,0 +1,39 @@
+﻿mod std.containers
+
+use std.mem.[Allocator, Heap, Layout]
+
+List[T: noref, A: Allocator = Heap]: pub own rec
+{
+	data: pvt req ptr[T]
+	count: pvt set usize
+	capacity: pvt set req usize
+	alloc: pvt req A
+	
+	new: op(value: T, allocator: A)
+	{
+		self.alloc = allocator
+		
+		// TODO Move to const after const functions exist
+		val layout = Layout.arrayOf[T]()
+		
+		val p = self.alloc.allocate(layout)
+		if p == null
+			panic "out of memory"
+		
+		self.data = ptr[T](p)
+		own *self.data = value
+	}
+}
+
+Test: own rec impl Allocator
+{
+	allocate: fun(mut self, layout: Layout) -> ptr => panic
+	release: fun(mut self, memory: ptr, layout: Layout) => panic
+	drop: op {}
+}
+
+f: fun
+{
+	val l1 = List[i32, Test](3, Test())
+	val l2 = List[i32, Heap](3, Heap())
+}

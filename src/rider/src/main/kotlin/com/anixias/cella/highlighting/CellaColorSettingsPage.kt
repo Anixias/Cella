@@ -34,10 +34,11 @@ class CellaColorSettingsPage : ColorSettingsPage {
 		AttributesDescriptor("Punctuation//Arrow", CellaColors.ARROW),
 		AttributesDescriptor("Punctuation//Operator", CellaColors.OPERATOR),
 		AttributesDescriptor("Bad character", CellaColors.BAD_CHARACTER),
-		AttributesDescriptor("Types//Drop type", CellaColors.DROP_TYPE),
+		AttributesDescriptor("Types//Own record", CellaColors.OWN_RECORD),
 		AttributesDescriptor("Types//Record", CellaColors.RECORD),
 		AttributesDescriptor("Types//Ref record", CellaColors.REF_RECORD),
 		AttributesDescriptor("Types//Enum", CellaColors.ENUM),
+		AttributesDescriptor("Types//Own enum", CellaColors.OWN_ENUM),
 		AttributesDescriptor("Types//Trait", CellaColors.TRAIT),
 		AttributesDescriptor("Types//Type parameter", CellaColors.TYPE_PARAMETER),
 		AttributesDescriptor("Types//Other type", CellaColors.TYPE),
@@ -54,10 +55,11 @@ class CellaColorSettingsPage : ColorSettingsPage {
 	)
 	
 	private val tags = mapOf(
-		"drop" to CellaColors.DROP_TYPE,
+		"own" to CellaColors.OWN_RECORD,
 		"record" to CellaColors.RECORD,
 		"ref" to CellaColors.REF_RECORD,
 		"enum" to CellaColors.ENUM,
+		"ownEnum" to CellaColors.OWN_ENUM,
 		"trait" to CellaColors.TRAIT,
 		"typeParameter" to CellaColors.TYPE_PARAMETER,
 		"function" to CellaColors.FUNCTION,
@@ -108,11 +110,17 @@ class CellaColorSettingsPage : ColorSettingsPage {
 			<field>point</field>: imm[<record>Point</record>]
 		}
 
-		<drop>Handle</drop>: <declaration>rec</declaration>
+		<own>Handle</own>: own <declaration>rec</declaration>
 		{
 			<field>id</field>: i32
 
 			drop: <declaration>op</declaration> { }
+		}
+
+		<ownEnum>Slot</ownEnum>: own <declaration>enum</declaration>
+		{
+			<case>empty</case>
+			<case>full</case>(<field>handle</field>: <own>Handle</own>)
 		}
 
 		<trait>Sized</trait>: <declaration>trait</declaration>

@@ -40,10 +40,11 @@ object CellaColors {
 	val PROJECT_COMMENT = key("PROJECT_COMMENT", Default.LINE_COMMENT)
 	val PROJECT_EQUALS = key("PROJECT_EQUALS", Default.OPERATION_SIGN)
 	
-	val DROP_TYPE = key("DROP_TYPE", Rider.CLASS)
+	val OWN_RECORD = key("OWN_RECORD", Rider.CLASS)
 	val RECORD = key("RECORD", Rider.STRUCT)
 	val REF_RECORD = key("REF_RECORD", Rider.STRUCT)
 	val ENUM = key("ENUM", Rider.ENUM)
+	val OWN_ENUM = key("OWN_ENUM", Rider.CLASS)
 	val TRAIT = key("TRAIT", Rider.INTERFACE)
 	val TYPE_PARAMETER = key("TYPE_PARAMETER", Rider.TYPE_PARAMETER)
 	val TYPE = key("TYPE", Rider.CLASS)
