@@ -81,7 +81,7 @@ Error at value_parameter_uses.ce:50:27
 Error at value_parameter_uses.ce:52:15
 51 │ var huge: array[i32, 300] = undef
 52 │ val v = huge.doubled()
-                  ╘═════╛ Type 'array[i32, 300]' has no member 'doubled'
+                  ╘═════╛ '300' doesn't fit in 'u8'
 
 Error at value_parameter_uses.ce:57:15
 56 │ {

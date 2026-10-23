@@ -1,0 +1,12 @@
+Error at main.ce:20:20
+19 │ val names = [Name(1), Name(2)]
+20 │ val first = names.first()
+                       ╘═══╛ 'first' requires 'T: copy'
+                           | 'Name' can't be copied
+
+Error at main.ce:23:21
+22 │ val head = numbers.first()
+23 │ val last = numbers.last()
+                        ╘══╛ Type 'array[i32, 2]' has no member 'last'
+
+[compilation failed]

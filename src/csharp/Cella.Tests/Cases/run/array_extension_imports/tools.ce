@@ -1,0 +1,6 @@
+mod tools
+
+array[T, length: const usize]: impl
+{
+	last: pub fun(imm self) -> imm[T] => imm self[length - 1]
+}

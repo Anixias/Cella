@@ -1,0 +1,25 @@
+mod test
+
+use tools.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Name: own rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+main: fun -> i32
+{
+	val numbers = [4, 5, 6]
+	val names = [Name(1), Name(2)]
+	printf("%d %d\n", numbers.last(), names.last().id)
+	ret 0
+}

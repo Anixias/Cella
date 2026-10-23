@@ -1,0 +1,69 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Name: own rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+swap[T: noref]: fun(mut a: T, mut b: T)
+{
+	val tmp = own a
+	a = own b
+	b = tmp
+}
+
+array[T, length: const usize]: impl
+{
+	size: fun(imm self) -> usize => length
+}
+
+array[T: copy, length: const usize]: impl
+{
+	first: fun(imm self) -> T => self[0]
+
+	sum[U: copy]: fun(imm self, start: U, add: fun[U, T -> U]) -> U
+	{
+		var total = start
+		for item in self
+			total = add(total, item)
+
+		ret total
+	}
+}
+
+array[T: noref, length: const usize]: impl
+{
+	reverse: fun(mut self)
+	{
+		for i in 0..length / 2
+			swap(mut self[i], mut self[length - 1 - i])
+	}
+}
+
+array[i32, length: const usize]: impl
+{
+	pairSum: fun(imm self) -> i32 => self[0] + self[length - 1]
+}
+
+main: fun -> i32
+{
+	var numbers = [1, 2, 3]
+	numbers.reverse()
+	val total = numbers.sum(10i64, fun(sum: i64, item: i32) => sum + item)
+	printf("%zu %d %d %d %d %lld\n", numbers.size(), numbers.first(), numbers[0], numbers[1], numbers[2], total)
+	printf("%d\n", [20, 22].pairSum())
+	var names = [Name(1), Name(2), Name(3), Name(4)]
+	names.reverse()
+	printf("%zu %d %d %d %d\n", names.size(), names[0].id, names[1].id, names[2].id, names[3].id)
+	ret 0
+}

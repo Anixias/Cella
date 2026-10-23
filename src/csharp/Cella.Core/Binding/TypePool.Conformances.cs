@@ -370,12 +370,14 @@ public sealed partial class TypePool
 	
 	private bool Matches(Conformance conformance, TypeSymbol type) => conformance.Target is TypeParameterSymbol
 		? type is not TypeParameterSymbol && Satisfies(conformance.Parameters, [type])
-		: type is not TypeParameterSymbol &&
-		  (conformance.Target is ArrayType ? type is ArrayType
-			  : IsTypedPointer(conformance.Target) ? IsTypedPointer(type)
-			  : conformance.Target == type.OriginalDefinition) &&
+		: type is not TypeParameterSymbol && HasShape(conformance.Target, type) &&
 		  Fits(conformance.Impl, GetShapeArguments(type)) &&
 		  Satisfies(conformance.Parameters, GetShapeArguments(type));
+	
+	private static bool HasShape(TypeSymbol target, TypeSymbol type) =>
+		target is ArrayType ? type is ArrayType
+		: IsTypedPointer(target) ? IsTypedPointer(type)
+		: target == type.OriginalDefinition;
 	
 	private static bool IsTypedPointer(TypeSymbol type) => type is PointerType && type != NativeSymbols.VoidPtr;
 	
@@ -414,8 +416,9 @@ public sealed partial class TypePool
 	private IEnumerable<ImplSymbol> ComputeMemberBlocks(TypeSymbol type) => _memberBlocks
 		.Where(block => block.Target is TypeParameterSymbol
 			? Satisfies(block.Impl.TypeParameters, [type])
-			: type is not TypeParameterSymbol && block.Target == type.OriginalDefinition &&
-			  Fits(block.Impl, type.TypeArguments) && Satisfies(block.Impl.TypeParameters, type.TypeArguments))
+			: type is not TypeParameterSymbol && HasShape(block.Target, type) &&
+			  Fits(block.Impl, GetShapeArguments(type)) &&
+			  Satisfies(block.Impl.TypeParameters, GetShapeArguments(type)))
 		.Select(static block => block.Impl);
 	
 	public TypeSymbol? GetMemberBlockTarget(ImplSymbol impl) =>
@@ -428,12 +431,12 @@ public sealed partial class TypePool
 			.Concat(_conformances
 				.Where(static conformance => conformance.Impl is not null)
 				.Select(static conformance => (Target: conformance.Target.OriginalDefinition, Impl: conformance.Impl!)))
-			.Where(block => block.Target == type.OriginalDefinition &&
-			                block.Impl.TypeParameters.Length == type.TypeArguments.Length &&
-			                Fits(block.Impl, type.TypeArguments) &&
+			.Where(block => HasShape(block.Target, type) &&
+			                block.Impl.TypeParameters.Length == GetShapeArguments(type).Length &&
+			                Fits(block.Impl, GetShapeArguments(type)) &&
 			                (block.Impl.Functions.Any(method => method.Name == name) ||
 			                 block.Impl.Properties.Any(property => property.Name == name)))
-			.Select(block => FindViolation(block.Impl.TypeParameters, type.TypeArguments, name))
+			.Select(block => FindViolation(block.Impl.TypeParameters, GetShapeArguments(type), name))
 			.FirstOrDefault(static violation => violation is not null);
 	
 	public IEnumerable<FunctionSymbol> GetWitnessFunctions() => _conformances
@@ -525,7 +528,7 @@ public sealed partial class TypePool
 			return [self, ..declared];
 		
 		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
-			return [..self.TypeArguments, ..declared];
+			return [..GetShapeArguments(self), ..declared];
 		
 		var map = CreateMap(conformance.Parameters, GetTargetArguments(conformance, self));
 		return [..witness.Impl.TypeParameters.Select(parameter => map[parameter]), ..declared];
