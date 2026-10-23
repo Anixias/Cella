@@ -1,0 +1,53 @@
+﻿mod std.text
+
+use std.mem.[Allocator, Heap, Layout]
+
+String[A: Allocator = Heap]: pub own rec
+{
+	data: pvt ptr[u8]
+	length: pvt set usize
+	alloc: pvt req A
+	
+	new: op(text: str, allocator: A)
+	{
+		self.alloc = allocator
+		
+		val length = text.byteLength
+		self.length = length
+		
+		if length == 0
+		{
+			self.data = null
+			ret
+		}
+		
+		val layout = Layout.arrayOf[u8](length)
+		
+		val p = self.alloc.allocate(layout)
+		if p == null
+			panic "out of memory"
+		
+		self.data = ptr[u8](p)
+		for i in 0..length
+			*(self.data + i) = text[i]
+	}
+	
+	as: op(imm self) -> str => str(self.data, self.length)
+	
+	drop: op
+	{
+		if self.data == null
+			ret
+		
+		val layout = Layout.arrayOf[u8](self.length)
+		self.alloc.release(self.data, layout)
+	}
+}
+
+String[A: Allocator + default]: impl
+{
+	new: op(value: str)
+	{
+		self = String[A](value, A())
+	}
+}

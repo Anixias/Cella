@@ -1,0 +1,57 @@
+﻿mod std.mem
+
+Layout: pub rec
+{
+	size: usize
+	alignment: usize
+	
+	of[T]: fun -> Layout => Layout(sizeOf(T), alignOf(T))
+	arrayOf[T]: fun(count: usize) -> Layout => Layout(sizeOf(T) * count, alignOf(T))
+}
+
+Allocator: pub trait
+{
+	allocate: fun(mut self, layout: Layout) -> ptr
+	release: fun(mut self, memory: ptr, layout: Layout)
+	
+	resize: fun(mut self, memory: ptr, layout: Layout, newSize: usize) -> ptr
+	{
+		val result = self.allocate(Layout(newSize, layout.alignment))
+		if result == null
+			ret null
+		
+		// TODO replace with general-purpose mem copy
+		var source = ptr[u8](memory)
+		var target = ptr[u8](result)
+		var remaining = layout.size
+		if newSize < remaining
+			remaining = newSize
+		
+		while remaining > 0
+		{
+			*target = *source
+			source += 1
+			target += 1
+			remaining -= 1
+		}
+		
+		self.release(memory, layout)
+		ret result
+	}
+}
+
+pvt ext
+{
+	allocateHook: ext("cellaStdAllocate") fun(size: usize, alignment: usize) -> ptr
+	releaseHook: ext("cellaStdRelease") fun(memory: ptr, size: usize, alignment: usize)
+	resizeHook: ext("cellaStdResize") fun(memory: ptr, size: usize, alignment: usize, newSize: usize) -> ptr
+}
+
+Heap: pub rec impl Allocator
+{
+	allocate: fun(mut self, layout: Layout) -> ptr => allocateHook(layout.size, layout.alignment)
+	release: fun(mut self, memory: ptr, layout: Layout) => releaseHook(memory, layout.size, layout.alignment)
+	
+	resize: fun(mut self, memory: ptr, layout: Layout, newSize: usize) -> ptr =>
+		resizeHook(memory, layout.size, layout.alignment, newSize)
+}

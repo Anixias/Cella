@@ -1,0 +1,54 @@
+﻿mod std.mem
+
+Box[T: noref, A: Allocator = Heap]: pub own rec
+{
+	data: pvt req ptr[T]
+	alloc: pvt req A
+	
+	new: op(value: T, allocator: A)
+	{
+		self.alloc = allocator
+		
+		// TODO Move to const after const functions exist
+		val layout = Layout.of[T]()
+		
+		val p = self.alloc.allocate(layout)
+		if p == null
+			panic "out of memory"
+		
+		self.data = ptr[T](p)
+		own *self.data = value
+	}
+	
+	drop: op
+	{
+		drop *self.data
+		
+		// TODO Move to const after const functions exist
+		val layout = Layout.of[T]()
+		self.alloc.release(self.data, layout)
+	}
+	
+	unbox: fun(self) -> T
+	{
+		val p = own self.data
+		val value = own *p
+		
+		// TODO Move to const after const functions exist
+		val layout = Layout.of[T]()
+		self.alloc.release(p, layout)
+		
+		ret value
+	}
+	
+	*: op(imm self) -> imm[T] => imm *self.data
+	*: op(mut self) -> mut[T] => mut *self.data
+}
+
+Box[T: noref, A: Allocator + default]: impl
+{
+	new: op(value: T)
+	{
+		self = Box[T, A](value, A())
+	}
+}

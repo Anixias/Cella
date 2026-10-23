@@ -1,40 +1,60 @@
 ﻿mod std.mem
 
-ext
+when windows
 {
-	malloc: fun(size: usize) -> ptr
-	free: fun(data: ptr)
+	ext
+	{
+		alignedAlloc: ext("_aligned_malloc") fun(size: usize, alignment: usize) -> ptr
+		alignedResize: ext("_aligned_realloc") fun(memory: ptr, size: usize, alignment: usize) -> ptr
+		alignedFree: ext("_aligned_free") fun(memory: ptr)
+	}
+	
+	allocateHook: pub ext("cellaStdAllocate") fun(size: usize, alignment: usize) -> ptr =>
+		alignedAlloc(size, alignment)
+	
+	resizeHook: pub ext("cellaStdResize") fun(memory: ptr, size: usize, alignment: usize, newSize: usize) -> ptr =>
+		alignedResize(memory, newSize, alignment)
+	
+	releaseHook: pub ext("cellaStdRelease") fun(memory: ptr, size: usize, alignment: usize) =>
+		alignedFree(memory)
 }
-
-Box[T: noref]: pub own rec
+else
 {
-	data: pvt req ptr[T]
-	
-	new: op(value: T)
+	ext
 	{
-		// Can panic for zero-sized T
-		val p = malloc(sizeOf(T))
-		if p == null
-			panic "out of memory"
+		malloc: fun(size: usize) -> ptr
+		alignedAllocate: ext("aligned_alloc") fun(alignment: usize, size: usize) -> ptr
+		realloc: fun(memory: ptr, size: usize) -> ptr
+		free: fun(memory: ptr)
+		memcpy: fun(target: ptr, source: ptr, count: usize) -> ptr
+	}
+	
+	allocateHook: pub ext("cellaStdAllocate") fun(size: usize, alignment: usize) -> ptr
+	{
+		if alignment <= 16
+			ret malloc(size)
 		
-		self.data = ptr[T](p)
-		own *self.data = value
+		ret alignedAllocate(alignment, (size + alignment - 1) / alignment * alignment)
 	}
 	
-	drop: op
+	resizeHook: pub ext("cellaStdResize") fun(memory: ptr, size: usize, alignment: usize, newSize: usize) -> ptr
 	{
-		drop *self.data
-		free(self.data)
+		if alignment <= 16
+			ret realloc(memory, newSize)
+		
+		val result = allocateHook(newSize, alignment)
+		if result == null
+			ret null
+		
+		var count = size
+		if newSize < count
+			count = newSize
+		
+		memcpy(result, memory, count)
+		free(memory)
+		ret result
 	}
 	
-	unbox: fun(self) -> T
-	{
-		val p = own self.data
-		val value = own *p
-		free(p)
-		ret value
-	}
-	
-	*: op(imm self) -> imm[T] => imm *self.data
-	*: op(mut self) -> mut[T] => mut *self.data
+	releaseHook: pub ext("cellaStdRelease") fun(memory: ptr, size: usize, alignment: usize) =>
+		free(memory)
 }

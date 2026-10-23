@@ -1,6 +1,6 @@
 ﻿mod std.num
 
-use std.cmp.[Eq, Ord, Ordering]
+use std.cmp.[Ord, Ordering]
 use std.mem.Bitcast
 
 // TODO Port these to Cella to guarantee exact computation on all platforms
