@@ -749,13 +749,15 @@ public sealed class TypeChecker
 	
 	private void CheckOwnStore(ResolvedAssignmentExpressionNode node)
 	{
+		var own = (OwnExpressionNode)((BinaryOpExpressionNode)node.Syntax).Left;
 		if (node.Operation is not null)
-			Diagnostics.Add(new(DiagnosticSeverity.Error,
-				((OwnExpressionNode)((BinaryOpExpressionNode)node.Syntax).Left).Keyword.SourceLocation,
+			Diagnostics.Add(new(DiagnosticSeverity.Error, own.Keyword.SourceLocation,
 				"Cannot use 'own' on compound assignments"));
 		else if (!IsThroughPointer(node.Left))
-			Diagnostics.Add(new(DiagnosticSeverity.Error, ((BinaryOpExpressionNode)node.Syntax).Left.SourceLocation,
+			Diagnostics.Add(new(DiagnosticSeverity.Error, own.SourceLocation,
 				"Cannot assign with 'own' except through pointers"));
+		else if (node.Type is not InvalidType && !typePool.NeedsDrop(node.Type))
+			Diagnostics.Add(DiagnosticFix.Redundant(own.Keyword.SourceLocation));
 	}
 	
 	public void Visit(ResolvedBinaryOpExpressionNode node)

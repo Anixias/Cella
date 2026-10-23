@@ -3,5 +3,15 @@ Hint at own_plain_data.ce:15:10
 15 │ val z = own y
              ╘═╛ Redundant 'own'
 
+Hint at own_plain_data.ce:19:2
+18 │ val p = @x
+19 │ own *p = 5
+     ╘═╛ Redundant 'own'
+
+Hint at own_plain_data.ce:21:2
+20 │ val v = own *p
+21 │ own *p = 6
+     ╘═╛ Redundant 'own'
+
 7 3 4 5 6
 [exit code 0]

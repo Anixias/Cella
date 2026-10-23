@@ -8,6 +8,11 @@ Error at raw_memory.ce:32:2
 32 │ own b = make(2)
      ╘═══╛ Cannot assign with 'own' except through pointers
 
+Hint at raw_memory.ce:34:2
+33 │ val q = ptr[i32](malloc(4))
+34 │ own *q = 5
+     ╘═╛ Redundant 'own'
+
 Error at raw_memory.ce:35:2
 34 │ own *q = 5
 35 │ own *q += 1

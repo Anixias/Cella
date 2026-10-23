@@ -1,0 +1,77 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+	malloc: fun(size: usize) -> ptr
+	free: fun(memory: ptr)
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+}
+
+Token: own rec
+{
+	id: i32
+}
+
+Noisy: own rec
+{
+	id: i32
+
+	drop: op
+	{
+		printf("drop %d\n", self.id)
+	}
+}
+
+Holder: own rec
+{
+	inner: Noisy
+}
+
+fill[T: copy]: fun(target: ptr[T], value: T, count: usize)
+{
+	var current = target
+	for _ in 0..count
+	{
+		own *current = value
+		current += 1
+	}
+}
+
+place[T]: fun(target: ptr[T], value: T)
+{
+	own *target = value
+}
+
+main: fun -> i32
+{
+	val numbers = ptr[i32](malloc(sizeOf(i32) * 3))
+	own *numbers = 5
+	fill(numbers, 7, 3)
+	printf("%d %d\n", *numbers, *(numbers + 2))
+	free(numbers)
+	val point = ptr[Point](malloc(sizeOf(Point)))
+	own *point = Point(1, 2)
+	printf("%d %d\n", point.x, point.y)
+	free(point)
+	val token = ptr[Token](malloc(sizeOf(Token)))
+	own *token = Token(3)
+	printf("%d\n", token.id)
+	free(token)
+	val noisy = ptr[Noisy](malloc(sizeOf(Noisy)))
+	own *noisy = Noisy(4)
+	drop *noisy
+	place(noisy, Noisy(5))
+	drop *noisy
+	free(noisy)
+	val holder = ptr[Holder](malloc(sizeOf(Holder)))
+	own *holder = Holder(Noisy(6))
+	drop *holder
+	free(holder)
+	ret 0
+}

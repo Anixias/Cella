@@ -1,0 +1,27 @@
+Hint at redundant_own_stores.ce:41:3
+40 │ {
+41 │     own *current = value
+         ╘═╛ Redundant 'own'
+
+Hint at redundant_own_stores.ce:54:2
+53 │ val numbers = ptr[i32](malloc(sizeOf(i32) * 3))
+54 │ own *numbers = 5
+     ╘═╛ Redundant 'own'
+
+Hint at redundant_own_stores.ce:59:2
+58 │ val point = ptr[Point](malloc(sizeOf(Point)))
+59 │ own *point = Point(1, 2)
+     ╘═╛ Redundant 'own'
+
+Hint at redundant_own_stores.ce:63:2
+62 │ val token = ptr[Token](malloc(sizeOf(Token)))
+63 │ own *token = Token(3)
+     ╘═╛ Redundant 'own'
+
+7 7
+1 2
+3
+drop 4
+drop 5
+drop 6
+[exit code 0]
