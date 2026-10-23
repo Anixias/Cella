@@ -34,4 +34,9 @@ Error at bad_name_of.ce:22:15
 22 │ val g: i32 = nameOf(point)
                   ╘═══════════╛ Cannot convert type 'string literal' to 'i32'
 
+Error at bad_name_of.ce:23:17
+22 │ val g: i32 = nameOf(point)
+23 │ val h = nameOf(red)
+                    ╘═╛ Symbol 'red' not found in this scope
+
 [compilation failed]

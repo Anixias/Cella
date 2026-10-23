@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Choice[T]: enum
+{
+	none
+	some(value: T)
+
+	unwrap: fun(self) -> T => match self
+	{
+		some(val value) => value
+		none => panic
+	}
+
+	describe: fun(self) -> cstr => nameOf(self.unwrap)
+
+	misuse: fun -> cstr => "called '{nameOf(unwrap)}' on '{nameOf(none)}'"
+
+	typed: fun -> cstr => "{nameOf(Choice[T])} {nameOf(Choice[T].unwrap)} {nameOf(Choice[T].some)}"
+
+	empty: fun -> Choice[T] => Choice.none
+}
+
+identity[T]: fun(value: T) -> T => value
+
+main: fun -> i32
+{
+	val choice: Choice[i32] = Choice.some(1)
+	val a: cstr = nameOf(Choice.unwrap)
+	val b: cstr = nameOf(Choice.empty)
+	val c: cstr = nameOf(Choice.some)
+	val d: cstr = nameOf(choice.unwrap)
+	printf("%s %s %s %s %s %d\n", a, b, c, d, choice.describe(), choice.unwrap())
+	printf("%s\n", Choice[i32].misuse())
+	printf("%s\n", Choice[i32].typed())
+	printf("%s %s %s\n", nameOf(Choice[bool].none), nameOf(Choice[u8]), nameOf(identity[i32]))
+	ret 0
+}

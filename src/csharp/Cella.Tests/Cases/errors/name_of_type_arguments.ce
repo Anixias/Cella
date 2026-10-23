@@ -2,8 +2,22 @@ mod test
 
 Option[T]: enum { none, some(value: T) }
 
+Point: rec
+{
+	x: i32
+}
+
+identity[T]: fun(value: T) -> T => value
+
 main: fun -> i32
 {
-	val n = nameOf(Option[i32].none)
+	val points = [Point(1)]
+	val a = nameOf(Option[i32, bool])
+	val b = nameOf(Option[Missing].none)
+	val c = nameOf(Option[i32].missing)
+	val d = nameOf(identity[i32, bool])
+	val e = nameOf(points[0])
+	val f = nameOf(points[0].x)
+	val g = nameOf(Missing[i32].none)
 	ret 0
 }

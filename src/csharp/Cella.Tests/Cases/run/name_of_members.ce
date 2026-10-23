@@ -16,6 +16,8 @@ Point: rec
 	field: fun(self) -> cstr => nameOf(self.x)
 
 	make: fun -> Point => Point(0)
+
+	bare: fun -> cstr => "{nameOf(x)} {nameOf(len)} {nameOf(make)}"
 }
 
 main: fun -> i32
@@ -25,5 +27,6 @@ main: fun -> i32
 	val b: cstr = nameOf(Point.len)
 	val c: cstr = nameOf(Point.make)
 	printf("%s %s %s %s %s\n", a, b, p.name(), p.field(), c)
+	printf("%s\n", Point.bare())
 	ret 0
 }

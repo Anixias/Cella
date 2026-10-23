@@ -20,5 +20,6 @@ main: fun -> i32
 	val e = nameOf(test.nothing)
 	val f = nameOf(Pointt.x)
 	val g: i32 = nameOf(point)
+	val h = nameOf(red)
 	ret 0
 }

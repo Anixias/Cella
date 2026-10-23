@@ -1172,8 +1172,14 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			throw Expected(index, "a name");
 		
 		IExpressionNode name = new VarExpressionNode(first);
-		while (Match(ref index, out var dot, TokenType.OpDot))
+		while (true)
 		{
+			if (Match(ref index, out var openBracket, TokenType.OpOpenBracket))
+				name = ParseIndexerExpression(ref index, name, openBracket);
+			
+			if (!Match(ref index, out var dot, TokenType.OpDot))
+				break;
+			
 			if (!Match(ref index, out var member, TokenType.Identifier))
 				throw Expected(index, "a name");
 			
@@ -1181,10 +1187,6 @@ public sealed class ExpressionParser(ImmutableArray<Token> tokens, List<Token>? 
 			name = new AccessExpressionNode(name, dot, member,
 				new(nameSource, nameRange.Join(member.SourceLocation.Range)));
 		}
-		
-		if (Peek(index, TokenType.OpOpenBracket))
-			throw new ParseException(new Diagnostic(DiagnosticSeverity.Error, Tokens[index].SourceLocation,
-				"Cannot use type arguments in 'nameOf'"));
 		
 		if (!Match(ref index, out var closeParen, TokenType.OpCloseParen))
 			throw Expected(index, "')'", openParen);

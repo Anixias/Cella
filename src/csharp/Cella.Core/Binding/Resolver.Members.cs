@@ -620,9 +620,17 @@ public sealed partial class Resolver
 	};
 	
 	private Diagnostic ReportUndefinedSymbol(ISyntaxNode node, string name, SourceLocation? nameLocation = null) =>
+		ReportHiddenSymbol(node, name) ?? ReportMisplacedName(node.SourceLocation, name) ??
+		ReportMissingSymbol(node, name, nameLocation);
+	
+	private Diagnostic ReportUndefinedName(ISyntaxNode node, string name) =>
+		ReportHiddenSymbol(node, name) ?? ReportMissingSymbol(node, name, null);
+	
+	private Diagnostic? ReportHiddenSymbol(ISyntaxNode node, string name) =>
 		CurrentResolutionContext.ReportHidden(name, node.SourceLocation) ??
-		ReportHiddenStatic(name, node.SourceLocation) ??
-		ReportMisplacedName(node.SourceLocation, name) ??
+		ReportHiddenStatic(name, node.SourceLocation);
+	
+	private Diagnostic ReportMissingSymbol(ISyntaxNode node, string name, SourceLocation? nameLocation) =>
 		CurrentResolutionContext.WithImportFixes(DiagnosticReporter.ReportUndefinedSymbol(node, name,
 				GetVisibleSymbolNames().Concat(_literalKeywords), nameLocation), name,
 			static symbol => symbol is FunctionSymbol or GlobalSymbol or NamedTypeSymbol);

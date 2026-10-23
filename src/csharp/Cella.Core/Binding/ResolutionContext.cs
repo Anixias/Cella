@@ -142,12 +142,12 @@ public readonly struct ResolutionContext
 		return symbol;
 	}
 	
-	public Symbol? Resolve(string name)
+	public Symbol? Resolve(string name, Func<TypeSymbol, string, Symbol?>? findMember = null)
 	{
 		if (NativeSymbols.IsBuiltInTypeName(name))
 			return NativeSymbols.Resolve(name);
 		
-		if (ResolveScoped(name) is { } scoped)
+		if (ResolveScoped(name, findMember) is { } scoped)
 			return IsExcluded(scoped) ? null : scoped;
 		
 		List<Symbol> module = [..GetModuleSymbols(name).Where(IsVisible)];
@@ -184,7 +184,7 @@ public readonly struct ResolutionContext
 	public Symbol? ResolveNear(string name) =>
 		ResolveScoped(name) ?? ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]);
 	
-	private Symbol? ResolveScoped(string name)
+	private Symbol? ResolveScoped(string name, Func<TypeSymbol, string, Symbol?>? findMember = null)
 	{
 		if (LocalScope?.Resolve(name) is { } localSymbol)
 			return localSymbol;
@@ -236,6 +236,9 @@ public readonly struct ResolutionContext
 			
 			if (ResolveStatic(type, name) is { } function)
 				return function;
+			
+			if (findMember?.Invoke(type, name) is { } found)
+				return found;
 		}
 		
 		return null;

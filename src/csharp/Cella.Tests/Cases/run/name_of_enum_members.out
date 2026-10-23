@@ -1,0 +1,5 @@
+unwrap empty some unwrap unwrap 1
+called 'unwrap' on 'none'
+Choice unwrap some
+none Choice identity
+[exit code 0]

@@ -419,20 +419,22 @@ public sealed partial class Resolver
 		if (!defined)
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType) { Parts = [..parts] };
 		
-		var name = node.Name switch
-		{
-			AccessExpressionNode access => access.Member.Text,
-			VarExpressionNode variable => variable.Identifier.Text,
-			_ => throw new InvalidOperationException()
-		};
-		
-		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, name, node) { Parts = [..parts] };
+		var name = FindNamedToken(node.Name) ?? throw new InvalidOperationException();
+		return new ResolvedLiteralExpressionNode(NativeSymbols.UntypedString, name.Text, node) { Parts = [..parts] };
 	}
 	
 	private static Token? FindNamedToken(IExpressionNode name) => name switch
 	{
 		AccessExpressionNode access => access.Member,
 		VarExpressionNode variable => variable.Identifier,
+		IndexerExpressionNode indexer => FindNamedToken(indexer.Target),
+		_ => null
+	};
+	
+	private static IndexerExpressionNode? FindIndexer(IExpressionNode name) => name switch
+	{
+		AccessExpressionNode access => FindIndexer(access.Target),
+		IndexerExpressionNode indexer => indexer,
 		_ => null
 	};
 	
@@ -441,21 +443,32 @@ public sealed partial class Resolver
 		var context = CurrentResolutionContext;
 		switch (name)
 		{
-			case VarExpressionNode variable when context.Resolve(variable.Identifier.Text) is null &&
-			                                     CurrentScope?.ResolveLabel(variable.Identifier.Text) is null:
-				Diagnostics.Add(ReportUndefinedSymbol(variable, variable.Identifier.Text));
-				return false;
-			
-			case VarExpressionNode variable:
-				if (context.Resolve(variable.Identifier.Text) is LocalVariableSymbol local)
+			case VarExpressionNode variable when context.Resolve(variable.Identifier.Text, FindNamedMember) is
+				{ } resolved:
+				if (resolved is LocalVariableSymbol local)
 					MarkUsed(local);
 				else
-					MarkUsed(context.Resolve(variable.Identifier.Text));
+					MarkUsed(resolved);
 				
-				if (context.Resolve(variable.Identifier.Text) is { } resolved)
-					named.Add(resolved);
-				
+				named.Add(resolved);
 				return true;
+			
+			case VarExpressionNode variable when CurrentScope?.ResolveLabel(variable.Identifier.Text) is not null:
+				return true;
+			
+			case VarExpressionNode variable:
+				Diagnostics.Add(ReportUndefinedName(variable, variable.Identifier.Text));
+				return false;
+			
+			case IndexerExpressionNode indexer when context.TryResolveExpressionAsType(indexer) is { } type:
+				return type is not InvalidType;
+			
+			case IndexerExpressionNode indexer when ResolveExplicitFunctionValue(indexer) is { } function:
+				parts.Add(function);
+				return !IsInvalid(function);
+			
+			case IndexerExpressionNode indexer:
+				return RejectIndexer(indexer, parts);
 			
 			case AccessExpressionNode access when context.ResolveModule(access.Target) is { } module:
 				if (context.ResolveMember(module, access.Member.Text) is { } member)
@@ -471,8 +484,12 @@ public sealed partial class Resolver
 				return false;
 			
 			case AccessExpressionNode access when context.TryResolveExpressionAsType(access.Target) is { } type:
+				if (type is InvalidType)
+					return false;
+				
 				if (type is not EnumSymbol enumType || enumType.GetStaticField(access.Member.Text) is not null ||
-				    GetPropertyMember(enumType, access.Member.Text) is not null)
+				    GetPropertyMember(enumType, access.Member.Text) is not null ||
+				    GetMethods(enumType, access.Member.Text).Any())
 					return HasMember(type, access.Member, named);
 				
 				if (FindCase(enumType, access.Member) is not { } enumCase)
@@ -480,6 +497,9 @@ public sealed partial class Resolver
 				
 				named.Add(enumCase);
 				return true;
+			
+			case AccessExpressionNode access when FindIndexer(access.Target) is { } indexer:
+				return RejectIndexer(indexer, parts);
 			
 			case AccessExpressionNode access:
 				var target = Decay(VisitNode(access.Target, null));
@@ -490,6 +510,31 @@ public sealed partial class Resolver
 			default:
 				return false;
 		}
+	}
+	
+	private bool RejectIndexer(IndexerExpressionNode indexer, List<IResolvedExpressionNode> parts)
+	{
+		if (IsDefinedName(indexer.Target, [], parts))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, indexer.SourceLocation, "Expected a name"));
+		
+		return false;
+	}
+	
+	private Symbol? FindNamedMember(TypeSymbol type, string name)
+	{
+		if (type is EnumSymbol enumType && enumType.Cases.FirstOrDefault(c => c.Name == name) is { } enumCase)
+			return enumCase;
+		
+		if (GetPropertyMember(type, name) is { } property)
+			return property;
+		
+		List<Symbol> functions = [..GetMethods(type, name).Select(static method => method.Function)];
+		return functions switch
+		{
+			[var function] => function,
+			[_, ..] => new AmbiguousSymbol(name, functions),
+			_ => _typePool.ResolveMember(type, name)
+		};
 	}
 	
 	private bool HasMember(TypeSymbol type, Token member, List<Symbol> named)

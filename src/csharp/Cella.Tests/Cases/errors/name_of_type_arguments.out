@@ -1,6 +1,36 @@
-Error at name_of_type_arguments.ce:7:23
-6 │ {
-7 │     val n = nameOf(Option[i32].none)
-                             ^ Cannot use type arguments in 'nameOf'
+Error at name_of_type_arguments.ce:15:17
+14 │ val points = [Point(1)]
+15 │ val a = nameOf(Option[i32, bool])
+                    ╘═══════════════╛ 'Option' takes one generic argument
+
+Error at name_of_type_arguments.ce:16:24
+15 │ val a = nameOf(Option[i32, bool])
+16 │ val b = nameOf(Option[Missing].none)
+                           ╘═════╛ 'Missing' is not a type
+
+Error at name_of_type_arguments.ce:17:29
+16 │ val b = nameOf(Option[Missing].none)
+17 │ val c = nameOf(Option[i32].missing)
+                                ╘═════╛ 'Option[i32]' has no case 'missing'
+
+Error at name_of_type_arguments.ce:18:17
+17 │ val c = nameOf(Option[i32].missing)
+18 │ val d = nameOf(identity[i32, bool])
+                    ╘═════════════════╛ 'identity' takes one generic argument
+
+Error at name_of_type_arguments.ce:19:17
+18 │ val d = nameOf(identity[i32, bool])
+19 │ val e = nameOf(points[0])
+                    ╘═══════╛ Expected a name
+
+Error at name_of_type_arguments.ce:20:17
+19 │ val e = nameOf(points[0])
+20 │ val f = nameOf(points[0].x)
+                    ╘═══════╛ Expected a name
+
+Error at name_of_type_arguments.ce:21:17
+20 │ val f = nameOf(points[0].x)
+21 │ val g = nameOf(Missing[i32].none)
+                    ╘═════╛ Symbol 'Missing' not found in this scope
 
 [compilation failed]
