@@ -19,6 +19,15 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 		self.data = ptr[T](self.alloc.allocate(layout))
 	}
 	
+	drop: op
+	{
+		for i in 0..self.count
+			drop self.data[i]
+		
+		val layout = Layout.arrayOf[T](self.capacity)
+		self.alloc.release(self.data, layout)
+	}
+	
 	grow: pvt fun(mut self)
 	{
 		val newCapacity = match self.capacity
@@ -27,9 +36,9 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 			else => self.capacity * 2
 		}
 		
-		// Existing layout, not new layout
-		val layout = Layout.arrayOf[T](self.capacity)
-		self.data = ptr[T](self.alloc.resize(self.data, layout, newCapacity))
+		val oldLayout = Layout.arrayOf[T](self.capacity)
+		val newLayout = Layout.arrayOf[T](newCapacity)
+		self.data = ptr[T](self.alloc.resize(self.data, oldLayout, newLayout.size))
 		self.capacity = newCapacity
 	}
 	
