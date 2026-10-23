@@ -7,6 +7,7 @@ using Cella.Compiler.Building;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Operations;
+using Cella.Core.CodeGen;
 using Cella.Core.Symbols;
 using Cella.Diagnostics;
 using Xunit;
@@ -308,6 +309,67 @@ public sealed class BuilderTests : IDisposable
 		Assert.Empty(project.Diagnostics);
 		Assert.NotEmpty(project.Files);
 		Assert.Empty(output.Lines);
+	}
+	
+	[Fact]
+	public async Task InlinesAcrossModulesAndStaticLibrariesInRelease()
+	{
+		Directory.CreateDirectory(Path.GetDirectoryName(LibraryPath)!);
+		Directory.CreateDirectory(Path.GetDirectoryName(ProgramPath)!);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "lib", "lib.celp"), OptedOut("StaticLibrary"), Token);
+		await File.WriteAllTextAsync(LibraryPath,
+			"mod lib\n\nscaled: pub fun(value: i32, factor: i32) -> i32 => value * factor\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"),
+			OptedOut("Executable") + "\n[[ProjectReferences]]\nPath = '../lib/lib.celp'\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "geometry.ce"), """
+			mod geometry
+			
+			Vector: rec
+			{
+				x: i32
+				y: i32
+			
+				+: op(a: Vector, b: Vector) -> Vector => Vector(a.x + b.x, a.y + b.y)
+			}
+			
+			""", Token);
+		
+		await File.WriteAllTextAsync(ProgramPath, """
+		                                          mod test
+		                                          
+		                                          use geometry
+		                                          use lib
+		                                          
+		                                          main: fun -> i32
+		                                          {
+		                                          	val sum = geometry.Vector(1, 2) + geometry.Vector(3, 4)
+		                                          	ret lib.scaled(sum.x, sum.y)
+		                                          }
+		                                          
+		                                          """, Token);
+		
+		var output = new RecordingOutput();
+		var builder = new Builder(new BuildOptions
+		{
+			Target = TargetTriple.FromHost().WithDefaultAbi(),
+			OptimizeMode = OptimizeMode.Release,
+			EmitsIr = true
+		}, output);
+		
+		var result = await CompilerThread.Run(() =>
+			builder.BuildAsync(Path.Combine(_directory, "app", "test.celp"), null, Token));
+		
+		Assert.True(result.Succeeded,
+			string.Join('\n', output.Lines.Concat(output.Diagnostics.Select(static d => d.Message))));
+		
+		var ir = await File.ReadAllTextAsync(
+			Assert.Single(Directory.GetFiles(Path.Combine(_directory, "app"), "*.ll", SearchOption.AllDirectories)),
+			Token);
+		
+		Assert.DoesNotContain("call ", ir);
+		Assert.Contains("ret i32 24", ir);
 	}
 	
 	[Fact]

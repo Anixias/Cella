@@ -712,6 +712,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		public ImmutableArray<string> ContainedLibraries { get; init; } = [];
 		public ImmutableArray<string> LibraryFiles { get; init; } = [];
 		public string? DebugSymbols { get; init; }
+		public string? Bitcode { get; init; }
 		public ImmutableArray<string> ImportedFunctions { get; init; } = [];
 		public ImmutableArray<string> ImportedGlobals { get; init; } = [];
 		public string? Directory { get; init; }

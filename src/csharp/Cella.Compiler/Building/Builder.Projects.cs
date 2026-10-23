@@ -119,6 +119,7 @@ public sealed partial class Builder
 				BuildFlags.ChecksOverflow(project.Project, optimizeMode)),
 			DebugInfo = project.Project.DebugInfo ?? true,
 			ExportsSymbols = outputType != ProjectOutputType.StaticLibrary,
+			WritesBitcode = outputType == ProjectOutputType.StaticLibrary && optimizeMode == OptimizeMode.Release,
 			StartFunction = isReferenceable ? Mangling.MangleStart(GetIdentity(project)) : null
 		};
 		
@@ -308,6 +309,7 @@ public sealed partial class Builder
 		// Phase 7: Code generation
 		string outputPath;
 		string? debugSymbols;
+		string? bitcode = null;
 		ImmutableArray<string> ownLibraries;
 		ImmutableArray<string> ownImports;
 		ImmutableArray<string> ownGlobalImports;
@@ -357,7 +359,8 @@ public sealed partial class Builder
 				[
 					..dropOrder.Where(static d => d.OutputType != ProjectOutputType.StaticLibrary && d.HasStaticDrops)
 						.Select(static d => d.Name)
-				]
+				],
+				ContainedBitcode = [..contained.Select(static library => library.Bitcode).OfType<string>()]
 			};
 			
 			using var codeGenerator = new CodeGenerator(assemblySymbol, typePool, codeGenConfig,
@@ -378,6 +381,7 @@ public sealed partial class Builder
 				}
 				
 				objectFiles.Add(result.OutputPath!);
+				bitcode ??= result.BitcodePath;
 				externalLibraries.UnionWith(result.ExternalLibraries);
 				importedFunctions.UnionWith(result.ImportedFunctions);
 				importedGlobals.UnionWith(result.ImportedGlobals);
@@ -424,7 +428,8 @@ public sealed partial class Builder
 				: ownLibraries
 					.Concat(contained.SelectMany(static library => library.LibraryFiles))
 					.Concat(allDependencies
-						.Where(d => d.OutputType != ProjectOutputType.StaticLibrary || !providers.ContainsKey(d.Name))
+						.Where(d => d.OutputType != ProjectOutputType.StaticLibrary ||
+						            !providers.ContainsKey(d.Name) && d.Bitcode is null)
 						.Select(d => targetTriple.IsElf ? d.OutputPath : Path.ChangeExtension(d.OutputPath, ".lib")))
 					.WhereNot(string.IsNullOrEmpty)
 					.Distinct()
@@ -535,6 +540,7 @@ public sealed partial class Builder
 			PlainNames = plainNames,
 			ContainedLibraries = containedNames,
 			DebugSymbols = debugSymbols,
+			Bitcode = bitcode,
 			LibraryFiles = ownLibraries,
 			ImportedFunctions = ownImports,
 			ImportedGlobals = ownGlobalImports

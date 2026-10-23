@@ -1,5 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Cella.Core.Binding;
 using Cella.Core.Binding.Constants;
 using Cella.Core.CodeGen.Extensions;
@@ -283,6 +285,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	public List<CodeGenResult> Generate(IEnumerable<LoweredModule> modules)
 	{
 		var states = new List<ModuleState>();
+		var linked = new HashSet<ModuleState>();
 		try
 		{
 			foreach (var module in modules)
@@ -320,6 +323,9 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			else
 				RemoveEntryDropsCall();
 			
+			if (_config.OptimizeMode == OptimizeMode.Release && states.Count > 0)
+				return [FinishProject(states, linked)];
+			
 			var fileNames = GetFileNames(states);
 			return [..states.Select(state => Finish(state, fileNames[state]))];
 		}
@@ -328,7 +334,8 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			foreach (var state in states)
 			{
 				LLVM.DisposeDIBuilder((LLVMOpaqueDIBuilder*)state.DiBuilder.Handle);
-				state.Module.Dispose();
+				if (!linked.Contains(state))
+					state.Module.Dispose();
 			}
 			
 			_moduleStates.Clear();
@@ -414,25 +421,108 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 	private static string DescribeInvalidModule(string module, string message) =>
 		$"Internal compiler error: invalid code generated for module '{module}'{Environment.NewLine}{message.TrimEnd()}";
 	
-	private CodeGenResult Finish(ModuleState state, string fileName)
+	private string? Prepare(ModuleState state)
 	{
 		current = state;
 		var llvmModule = state.Module;
-		var name = state.Lowered.Symbol.Name;
 		AddUnwindTables(llvmModule);
 		if (IsWindows)
 			PlaceFunctionsInSections(llvmModule);
 		
 		state.DiBuilder.DIBuilderFinalize();
+		return llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var message)
+			? null
+			: DescribeInvalidModule(state.Lowered.Symbol.Name, message);
+	}
+	
+	private CodeGenResult Finish(ModuleState state, string fileName) => Prepare(state) is { } invalid
+		? CodeGenResult.Failure with { ErrorMessage = invalid }
+		: Emit(state.Module, state.Lowered.Symbol.Name, fileName, [state]);
+	
+	private CodeGenResult FinishProject(List<ModuleState> states, HashSet<ModuleState> linked)
+	{
+		foreach (var state in states)
+		{
+			if (Prepare(state) is { } invalid)
+				return CodeGenResult.Failure with { ErrorMessage = invalid };
+		}
 		
-		string message;
-		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out message))
-			return CodeGenResult.Failure with { ErrorMessage = DescribeInvalidModule(name, message) };
+		var merged = states[0].Module;
+		var errors = new List<string>();
+		var errorList = GCHandle.Alloc(errors);
+		LLVM.ContextSetDiagnosticHandler((LLVMOpaqueContext*)_context.Handle, &CollectError,
+			(void*)GCHandle.ToIntPtr(errorList));
 		
+		try
+		{
+			foreach (var state in states.Skip(1))
+			{
+				linked.Add(state);
+				if (LLVM.LinkModules2((LLVMOpaqueModule*)merged.Handle, (LLVMOpaqueModule*)state.Module.Handle) != 0)
+					return CodeGenResult.Failure with
+					{
+						ErrorMessage = DescribeInvalidModule(state.Lowered.Symbol.Name, string.Join('\n', errors))
+					};
+			}
+			
+			foreach (var path in _inputs.ContainedBitcode)
+			{
+				if (LinkBitcode(merged, path, errors) is { } failure)
+					return CodeGenResult.Failure with { ErrorMessage = failure };
+			}
+		}
+		finally
+		{
+			LLVM.ContextSetDiagnosticHandler((LLVMOpaqueContext*)_context.Handle, null, null);
+			errorList.Free();
+		}
+		
+		return Emit(merged, _assemblySymbol.Name, _assemblySymbol.Name, states);
+	}
+	
+	private string? LinkBitcode(LLVMModuleRef target, string path, List<string> errors)
+	{
+		using var marshaledPath = new MarshaledString(path);
+		LLVMOpaqueMemoryBuffer* buffer;
+		sbyte* message;
+		if (LLVM.CreateMemoryBufferWithContentsOfFile(marshaledPath, &buffer, &message) != 0)
+		{
+			var reason = SpanExtensions.AsString(message);
+			LLVM.DisposeMessage(message);
+			return DescribeReadFailure(path, reason);
+		}
+		
+		LLVMOpaqueModule* library;
+		var isUnreadable = LLVM.ParseBitcodeInContext2((LLVMOpaqueContext*)_context.Handle, buffer, &library) != 0;
+		LLVM.DisposeMemoryBuffer(buffer);
+		if (isUnreadable)
+			return DescribeReadFailure(path, string.Join('\n', errors));
+		
+		return LLVM.LinkModules2((LLVMOpaqueModule*)target.Handle, library) != 0
+			? DescribeInvalidModule(Path.GetFileNameWithoutExtension(path), string.Join('\n', errors))
+			: null;
+	}
+	
+	[UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+	private static void CollectError(LLVMOpaqueDiagnosticInfo* info, void* errors)
+	{
+		if (LLVM.GetDiagInfoSeverity(info) != LLVMDiagnosticSeverity.LLVMDSError)
+			return;
+		
+		var description = LLVM.GetDiagInfoDescription(info);
+		((List<string>)GCHandle.FromIntPtr((nint)errors).Target!).Add(SpanExtensions.AsString(description));
+		LLVM.DisposeMessage(description);
+	}
+	
+	private static string DescribeReadFailure(string path, string message) => $"Cannot read '{path}': {message}";
+	
+	private CodeGenResult Emit(LLVMModuleRef llvmModule, string name, string fileName,
+		IReadOnlyCollection<ModuleState> states)
+	{
 		if (RunOptimizationPass(llvmModule) is { } passError)
 			return CodeGenResult.Failure with { ErrorMessage = passError };
 		
-		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out message))
+		if (!llvmModule.TryVerify(LLVMVerifierFailureAction.LLVMReturnStatusAction, out var message))
 			return CodeGenResult.Failure with { ErrorMessage = DescribeInvalidModule(name, message) };
 		
 		if (!Directory.Exists(_config.OutputConfig.Directory))
@@ -460,17 +550,28 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 				return CodeGenResult.Failure with { ErrorMessage = DescribeWriteFailure(assemblyFilePath, message) };
 		}
 		
+		string? bitcodePath = null;
+		if (_config.WritesBitcode)
+		{
+			bitcodePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.bc");
+			if (llvmModule.WriteBitcodeToFile(bitcodePath) != 0)
+				return CodeGenResult.Failure with { ErrorMessage = $"Cannot write '{bitcodePath}'" };
+		}
+		
 		var objectFilePath = Path.Combine(_config.OutputConfig.Directory, $"{fileName}.o");
 		if (_targetMachine.TryEmitToFile(llvmModule, objectFilePath, LLVMCodeGenFileType.LLVMObjectFile, out message))
-			return new(true, objectFilePath, null, state.ExternalLibraries)
+			return new(true, objectFilePath, null, states.SelectMany(static state => state.ExternalLibraries))
 			{
+				BitcodePath = bitcodePath,
 				ImportedFunctions =
 				[
-					..state.ExternalFunctions.Where(name => IsReferenced(llvmModule.GetNamedFunction(name)))
+					..states.SelectMany(static state => state.ExternalFunctions).Distinct()
+						.Where(function => IsReferenced(llvmModule.GetNamedFunction(function)))
 				],
 				ImportedGlobals =
 				[
-					..state.ExternalGlobals.Where(name => IsReferenced(llvmModule.GetNamedGlobal(name)))
+					..states.SelectMany(static state => state.ExternalGlobals).Distinct()
+						.Where(global => IsReferenced(llvmModule.GetNamedGlobal(global)))
 				]
 			};
 		
@@ -706,6 +807,7 @@ public readonly struct CodeGenResult
 	public string? ErrorMessage { get; init; }
 	
 	public ImmutableHashSet<string> ExternalLibraries { get; }
+	public string? BitcodePath { get; init; }
 	public ImmutableArray<string> ImportedFunctions { get; init; } = [];
 	public ImmutableArray<string> ImportedGlobals { get; init; } = [];
 	
@@ -729,6 +831,7 @@ public sealed record CodeGenInputs
 	public IReadOnlySet<string> HostedRegistries { get; init; } = ImmutableHashSet<string>.Empty;
 	public ImmutableArray<string> ContainedAssemblies { get; init; } = [];
 	public ImmutableArray<string> LoadedAssemblies { get; init; } = [];
+	public ImmutableArray<string> ContainedBitcode { get; init; } = [];
 	
 	public IReadOnlyDictionary<FunctionSymbol, RuntimeChecks> ForeignChecks { get; init; } =
 		ImmutableDictionary<FunctionSymbol, RuntimeChecks>.Empty;
@@ -753,6 +856,7 @@ public sealed record CodeGenConfig
 	public bool ExportsSymbols { get; init; }
 	public string? StartFunction { get; init; }
 	public bool DebugInfo { get; init; }
+	public bool WritesBitcode { get; init; }
 	
 	public unsafe (string DataLayout, string TargetTriple, LLVMTargetMachineRef TargetMachine, uint PointerSize)
 		GetDataLayout()
