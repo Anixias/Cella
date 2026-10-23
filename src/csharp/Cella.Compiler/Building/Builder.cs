@@ -15,19 +15,23 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 {
 	public static string StandardLibraryDirectory => Path.Combine(AppContext.BaseDirectory, "lib", "std");
 	
-	private static IEnumerable<string> FindStandardLibrary(StandardLibrary use) => use switch
+	internal string BundledDirectory { get; init; } = StandardLibraryDirectory;
+	
+	private IEnumerable<string> FindStandardLibrary(StandardLibrary use) => use switch
 	{
 		StandardLibrary.Full =>
 		[
-			Path.Combine(StandardLibraryDirectory, "core", "core.celp"),
-			Path.Combine(StandardLibraryDirectory, "os", "os.celp")
+			Path.Combine(BundledDirectory, "core", "core.celp"),
+			Path.Combine(BundledDirectory, "os", "os.celp")
 		],
-		StandardLibrary.Core => [Path.Combine(StandardLibraryDirectory, "core", "core.celp")],
+		StandardLibrary.Core => [Path.Combine(BundledDirectory, "core", "core.celp")],
 		_ => []
 	};
 	
 	private readonly List<ProjectCheck> _projects = [];
 	private readonly List<ProjectDiagnostic> _problems = [];
+	private readonly List<Diagnostic> _standardLibraryErrors = [];
+	private readonly List<string> _standardLibraryUsers = [];
 	private readonly HashSet<string> _unchecked = [];
 	private readonly Dictionary<string, string> _outputDirectories = [];
 	private readonly Dictionary<string, string> _canonicalPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -44,6 +48,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private CompletionProbe? probe;
 	private int probeRun;
 	private bool generatesCode;
+	private bool reportedStandardLibrary;
 	
 	public bool RemembersProjects { get; init; }
 	
@@ -80,7 +85,10 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	{
 		_projects.Clear();
 		_problems.Clear();
+		_standardLibraryErrors.Clear();
+		_standardLibraryUsers.Clear();
 		_unchecked.Clear();
+		reportedStandardLibrary = false;
 		openFiles = unsavedFiles ?? new Dictionary<string, string>();
 		if (!Directory.Exists(sourcePath) && !File.Exists(sourcePath))
 		{
@@ -205,23 +213,60 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	
 	private bool HasErrors => _problems.Any(static problem => problem.Severity == DiagnosticSeverity.Error);
 	
-	private IEnumerable<ProjectDiagnostic> ShownProblems =>
-		_problems.Where(static problem => !IsFromStandardLibrary(problem));
+	private IEnumerable<ProjectDiagnostic> ShownProblems => _problems.Where(problem => !IsHidden(problem));
 	
-	private static bool IsFromStandardLibrary(ProjectDiagnostic problem) =>
+	private bool IsFromStandardLibrary(ProjectDiagnostic problem) =>
 		problem.Projects is [_, ..] && problem.Projects.All(IsBundled);
+	
+	private bool IsHidden(ProjectDiagnostic problem) =>
+		problem.Severity != DiagnosticSeverity.Error && IsFromStandardLibrary(problem);
+	
+	private bool IsStandardLibraryError(ProjectDiagnostic problem) =>
+		problem.Severity == DiagnosticSeverity.Error && IsFromStandardLibrary(problem);
+	
+	private ProjectDiagnostic StandardLibraryProblem =>
+		ProjectDiagnostic.About($"Standard library in '{BundledDirectory}' has errors", _standardLibraryUsers);
 	
 	private void ReportProblems()
 	{
+		var firstError = _problems.FindIndex(IsStandardLibraryError);
+		if (firstError >= 0 && !reportedStandardLibrary)
+		{
+			reportedStandardLibrary = true;
+			_problems.Insert(firstError, StandardLibraryProblem);
+		}
+		
 		foreach (var problem in ShownProblems)
 			output.WriteLine(problem.Text);
 	}
 	
 	private void AddProblem(ProjectDiagnostic problem)
 	{
+		if (IsStandardLibraryError(problem))
+			AddStandardLibraryProblem();
+		
 		_problems.Add(problem);
-		if (!IsFromStandardLibrary(problem))
+		if (!IsHidden(problem))
 			output.WriteLine(problem.Text);
+	}
+	
+	private void AddStandardLibraryProblem()
+	{
+		if (reportedStandardLibrary)
+			return;
+		
+		reportedStandardLibrary = true;
+		AddProblem(StandardLibraryProblem);
+	}
+	
+	private void ReportStandardLibraryErrors(ProjectInfo project, AssemblyInfo? built)
+	{
+		if (!IsBundled(project) || built is { Succeeded: true })
+			return;
+		
+		AddStandardLibraryProblem();
+		output.Report(_standardLibraryErrors);
+		_standardLibraryErrors.Clear();
 	}
 	
 	private BuildResult Fail() => new(false, [.._projects], [..ShownProblems]);
@@ -257,15 +302,17 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	
 	private static string GetOutputBaseName(ProjectInfo project) => project.Project.AssemblyName ?? project.Name;
 	
-	private static readonly string _bundledDirectory =
-		GetCanonicalPath(StandardLibraryDirectory) + Path.DirectorySeparatorChar;
+	private string? bundledPrefix;
 	
-	private static bool IsBundled(ProjectInfo project) => IsBundled(project.FilePath);
+	private string BundledPrefix =>
+		bundledPrefix ??= GetCanonicalPath(BundledDirectory) + Path.DirectorySeparatorChar;
 	
-	private static bool IsBundled(string path) => path.StartsWith(_bundledDirectory,
+	private bool IsBundled(ProjectInfo project) => IsBundled(project.FilePath);
+	
+	private bool IsBundled(string path) => path.StartsWith(BundledPrefix,
 		OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 	
-	private static string GetIdentity(ProjectInfo project) => IsBundled(project) ? $"std/{project.Name}" : project.Name;
+	private string GetIdentity(ProjectInfo project) => IsBundled(project) ? $"std/{project.Name}" : project.Name;
 	
 	private Dictionary<ProjectInfo, SystemLinkPreference> FindLinkPreferences(
 		Dictionary<ProjectInfo, ImmutableArray<ProjectInfo>> dependencies)
@@ -336,7 +383,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			}
 			
 			var clashes = closure
-				.Where(static project => !IsBundled(project))
+				.Where(project => !IsBundled(project))
 				.GroupBy(GetOutputBaseName, StringComparer.OrdinalIgnoreCase)
 				.Where(static sameName => sameName.Count() > 1)
 				.OrderBy(static sameName => sameName.Key, StringComparer.OrdinalIgnoreCase);
@@ -542,6 +589,9 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			
 			var project = loaded.Resolve(path, CreateFlags(loaded), _problems);
 			CheckVersion(path, project);
+			if (project.StandardLibrary != StandardLibrary.None && !IsBundled(path))
+				_standardLibraryUsers.Add(path);
+			
 			var projectDirectory = Path.GetDirectoryName(path) ?? string.Empty;
 			var projectName = Path.GetFileNameWithoutExtension(path);
 			var projectInfo = new ProjectInfo(path, projectDirectory, projectName, project);
@@ -609,7 +659,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		}
 		
 		if (missingLibrary.Count > 0)
-			_problems.Add(ProjectDiagnostic.About($"Standard library not found in '{StandardLibraryDirectory}'",
+			_problems.Add(ProjectDiagnostic.About($"Standard library not found in '{BundledDirectory}'",
 					missingLibrary) with
 				{
 					StopsChecking = true

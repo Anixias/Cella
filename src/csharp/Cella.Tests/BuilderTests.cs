@@ -216,6 +216,52 @@ public sealed class BuilderTests : IDisposable
 		Assert.All(checks, static check => Assert.Empty(check.Diagnostics));
 	}
 	
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task ReportsStandardLibraryErrors(bool checksOnly)
+	{
+		var bundled = Path.Combine(_directory, "std");
+		var source = Path.Combine(AppContext.BaseDirectory, "lib", "std");
+		foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+		{
+			var copy = Path.Combine(bundled, Path.GetRelativePath(source, file));
+			Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
+			File.Copy(file, copy);
+		}
+		
+		await File.WriteAllTextAsync(Path.Combine(bundled, "core", "broken.ce"),
+			"mod std\n\nunused: fun -> i32 => 0\n\nbroken: fun => missing()\n", Token);
+		
+		var project = Path.Combine(_directory, "app", "test.celp");
+		Directory.CreateDirectory(Path.GetDirectoryName(project)!);
+		await File.WriteAllTextAsync(project, "OutputType = \"Executable\"\n", Token);
+		await File.WriteAllTextAsync(ProgramPath, ValidSource, Token);
+		var output = new RecordingOutput();
+		var builder = new Builder(new BuildOptions
+		{
+			Target = TargetTriple.FromHost().WithDefaultAbi(),
+			ChecksOnly = checksOnly
+		}, output)
+		{
+			BundledDirectory = bundled
+		};
+		
+		var result = await CompilerThread.Run(() => builder.BuildAsync(project, null, Token));
+		Assert.False(result.Succeeded);
+		var problem = Assert.Single(result.ProjectDiagnostics);
+		Assert.Equal($"Standard library in '{bundled}' has errors", problem.Message);
+		Assert.Equal([project], problem.Projects, StringComparer.OrdinalIgnoreCase);
+		Assert.Equal([problem.Text], output.Lines);
+		var error = Assert.Single(output.Diagnostics);
+		Assert.Equal("Symbol 'missing' not found in this scope", error.Message);
+		Assert.Equal(Path.Combine(bundled, "core", "broken.ce"), error.SourceLocation.Source.FilePath,
+			StringComparer.OrdinalIgnoreCase);
+		
+		if (checksOnly)
+			Assert.Equal([error], result.Projects.SelectMany(static check => check.Diagnostics));
+	}
+	
 	private static string OptedOut(string outputType) =>
 		$"OutputType = \"{outputType}\"\nStandardLibrary = \"None\"\n";
 	

@@ -1644,6 +1644,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 			"11:4:1 typeParameter declaration", "13:38:1 typeParameter", "16:4:1 typeParameter declaration",
 			"25:4:3 keyword defaultLibrary"
 		];
+		
 		foreach (var prefix in expected)
 			Assert.Contains(tokens, token => token.StartsWith(prefix));
 		

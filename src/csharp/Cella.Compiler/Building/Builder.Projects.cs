@@ -279,7 +279,10 @@ public sealed partial class Builder
 			];
 			
 			_projects.Add(new(project.FilePath,
-				IsBundled(project) ? [] : [..diagnostics.SelectMany(static list => list)],
+				[
+					..diagnostics.SelectMany(static list => list)
+						.Where(diagnostic => !IsBundled(project) || IsError(diagnostic))
+				],
 				resolvedFiles)
 			{
 				Model = options.ChecksOnly ? CreateModel(resolvedFiles, names, typePool, signatureCollector) : null,
@@ -551,5 +554,9 @@ public sealed partial class Builder
 	{
 		if (!IsBundled(project))
 			output.Report(diagnostics);
+		else
+			_standardLibraryErrors.AddRange(diagnostics.Where(IsError));
 	}
+	
+	private static bool IsError(Diagnostic diagnostic) => diagnostic.Severity == DiagnosticSeverity.Error;
 }

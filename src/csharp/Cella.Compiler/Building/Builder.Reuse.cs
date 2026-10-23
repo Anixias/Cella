@@ -57,6 +57,7 @@ public sealed partial class Builder
 				else
 					succeeded = false;
 				
+				ReportStandardLibraryErrors(project, cached.Assembly);
 				position++;
 				continue;
 			}
@@ -88,6 +89,7 @@ public sealed partial class Builder
 			else
 				succeeded = false;
 			
+			ReportStandardLibraryErrors(project, built);
 			_cache.Add(new(project.FilePath, fingerprint, built, [.._projects.Skip(checksBefore)],
 				typePool.CreateSnapshot()));
 			
