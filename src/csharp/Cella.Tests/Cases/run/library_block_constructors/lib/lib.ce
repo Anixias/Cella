@@ -1,0 +1,38 @@
+mod lib
+
+Holder[T, U]: pub rec
+{
+	value: T
+	extra: U
+
+	new: op(value: T, extra: U)
+	{
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Holder[T, U: default]: impl
+{
+	new: op(value: T)
+	{
+		var extra: U
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Pair[T]: pub rec
+{
+	a: T
+	b: T
+}
+
+Pair[i32]: impl
+{
+	new: op(total: i32)
+	{
+		self.a = total / 2
+		self.b = total - self.a
+	}
+}

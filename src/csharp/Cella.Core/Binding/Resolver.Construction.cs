@@ -25,9 +25,9 @@ public sealed partial class Resolver
 			return VisitNode(text, targetType);
 		
 		if (targetType is RecordSymbol record)
-			return _typePool.GetConstructors(record).Count == 0
-				? VisitRecordConversion(node, record) ?? VisitRecordConstruction(node, record)
-				: VisitConstructorCall(node, record, null);
+			return _typePool.DeclaresConstructors(record)
+				? VisitConstructorCall(node, record, null)
+				: VisitRecordConversion(node, record) ?? VisitRecordConstruction(node, record);
 		
 		if (targetType is TypeParameterSymbol { HasNew: true } && node.Arguments.Length == 0)
 			return new ResolvedNewExpressionNode(targetType, node);
@@ -197,7 +197,7 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode VisitInferredConstruction(CallExpressionNode node, RecordSymbol definition)
 	{
-		var constructors = _typePool.GetConstructors(definition);
+		var constructors = _typePool.GetDeclaredConstructors(definition);
 		var accessible = constructors.Where(info => CanAccess(definition, info.Symbol.Visibility)).ToArray();
 		ReceiverCallable[] unpacked =
 			[..accessible.Select(constructor => new ReceiverCallable(constructor, definition))];
@@ -294,7 +294,16 @@ public sealed partial class Resolver
 		if (InstantiateInferred(result, definition, name, location, failures) is not { } instance)
 			return null;
 		
-		var info = _typePool.GetConstructors(instance).First(info => info.Symbol == callable.Info.Symbol);
+		if (_typePool.GetConstructors(instance).Where(info => info.Symbol == callable.Info.Symbol).ToList() is not
+		    [var info])
+		{
+			failures.AddRange(_typePool.FindUnmetConstructors(instance)
+				.Where(unmet => unmet.Constructor.Symbol == callable.Info.Symbol)
+				.Select(unmet => unmet.Violation.At(location)));
+			
+			return null;
+		}
+		
 		return new ReceiverCallable(info, instance, Repack(callable, info));
 	}
 	
@@ -381,6 +390,9 @@ public sealed partial class Resolver
 				return Error(node, ReportHiddenMember(node.SourceLocation, "new",
 					hidden.Select(static info => info.Symbol)), recovery);
 			
+			if (FindUnmetConstructor(targetType, args, target) is { } violation)
+				return Error(node, violation, recovery, node.Target.SourceLocation);
+			
 			if (ReportArgumentModes(candidates, args, target) ||
 			    candidates.Any(static candidate => candidate.ParameterTypes.Any(static type => type is InvalidType)))
 				return new ResolvedInvalidExpressionNode(node, recovery);
@@ -417,4 +429,11 @@ public sealed partial class Resolver
 		
 		return result;
 	}
+	
+	private DiagnosticText? FindUnmetConstructor(TypeSymbol type, IResolvedExpressionNode[] args, TypeSymbol? target) =>
+		_typePool.FindUnmetConstructors(type)
+			.Where(unmet => ResolveCallable([new ReceiverCallable(unmet.Constructor, type)], args,
+				MaterializationMode.Overload, target).HasResult)
+			.Select(static unmet => unmet.Violation)
+			.FirstOrDefault();
 }

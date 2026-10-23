@@ -157,11 +157,13 @@ public sealed partial class TypePool
 		TypeParameterSymbol parameter => parameter.HasNew || parameter.HasDefault || GetParameterConstructors(parameter)
 			.Any(static constructor => constructor.Signature.ParameterTypes.Length == 1),
 		TraitType => false,
-		RecordSymbol when GetConstructors(type).Count > 0 => FindNewConstructor(type) is not null,
+		RecordSymbol when DeclaresConstructors(type) => FindNewConstructor(type) is not null,
 		_ => HasDefault(type)
 	};
 	
-	public bool DeclaresConstructors(TypeSymbol type) => type is NamedTypeSymbol && GetConstructors(type).Count > 0;
+	public bool DeclaresConstructors(TypeSymbol type) => type is NamedTypeSymbol &&
+	                                                     (GetConstructors(type).Count > 0 ||
+	                                                      _blockConstructors.Any(block => IsBlockOf(block.Impl, type)));
 	
 	public bool IsDefaultConstructor(FunctionInfo constructor) =>
 		constructor.Symbol.Syntax is ConstructorNode { Default: not null };
@@ -263,7 +265,7 @@ public sealed partial class TypePool
 	{
 		var constructors = GetConstructors(type);
 		IEnumerable<ImmutableArray<TypeSymbol>> shapes =
-			constructors.Count > 0 || type is not RecordSymbol { IsUnion: false }
+			DeclaresConstructors(type) || type is not RecordSymbol { IsUnion: false }
 				? constructors.Select(static constructor => constructor.Signature.ParameterTypes.RemoveAt(0))
 				: [[..GetMembers(type).OfType<FieldSymbol>().Select(GetTypeOfMember)]];
 		
@@ -294,7 +296,7 @@ public sealed partial class TypePool
 		if (match is not null)
 			return match;
 		
-		if (declared.Count > 0 && type is RecordSymbol)
+		if (DeclaresConstructors(type) && type is RecordSymbol)
 			return FindConversionWitness(type, expected);
 		
 		return FindConstructionWitness(type, expected) ?? FindConversionWitness(type, expected);
@@ -358,7 +360,7 @@ public sealed partial class TypePool
 	}
 	
 	public string? DescribeHiddenFields(TypeSymbol self, FunctionSignature expected) =>
-		self is RecordSymbol record && GetConstructors(self).Count == 0 &&
+		self is RecordSymbol record && !DeclaresConstructors(self) &&
 		GetMembers(self).OfType<FieldSymbol>().ToList() is var fields && MatchesFields(record, fields, expected)
 			? DescribeHiddenField(self, fields)
 			: null;
@@ -433,7 +435,7 @@ public sealed partial class TypePool
 			RecordSymbol r => Combine(r.HasDestructor, GetParts(r)) with
 			{
 				IsCopy = !r.IsOwn && Combine(r.HasDestructor, GetParts(r)).IsCopy,
-				HasDefault = GetConstructors(r).Count > 0
+				HasDefault = DeclaresConstructors(r)
 					? HasDefaultConstructor(r)
 					: !r.HasDestructor && GetMembers(r).OfType<FieldSymbol>().All(HasDefault)
 			},

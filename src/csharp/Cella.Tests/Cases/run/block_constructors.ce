@@ -1,0 +1,103 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Shown: trait
+{
+	code: fun(imm self) -> i32
+}
+
+i32: impl Shown
+{
+	code: fun(imm self) -> i32 => self * 10
+}
+
+Holder[T, U]: rec
+{
+	value: T
+	extra: U
+
+	new: op(value: T, extra: U)
+	{
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Holder[T, U: default]: impl
+{
+	new: op(value: T)
+	{
+		var extra: U
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Labeled[T]: rec
+{
+	value: T
+	label: i32
+}
+
+Labeled[T: Shown]: impl
+{
+	new: op(value: T)
+	{
+		self.label = value.code()
+		self.value = value
+	}
+}
+
+Pair[T]: rec
+{
+	a: T
+	b: T
+}
+
+Pair[i32]: impl
+{
+	new: op(total: i32)
+	{
+		self.a = total / 2
+		self.b = total - self.a
+	}
+}
+
+Slot[T]: rec
+{
+	value: T
+
+	new: op(value: T)
+	{
+		self.value = value
+	}
+}
+
+Slot[T: default]: impl
+{
+	new: op = default
+}
+
+make[U: default]: fun -> Holder[i32, U] => Holder[i32, U](9)
+
+build[T: new(i32)]: fun -> T => T(4)
+
+main: fun -> i32
+{
+	val explicit = Holder[i32, i64](5)
+	val both = Holder(6, 7)
+	val labeled = Labeled(3)
+	val pair = Pair[i32](11)
+	var slot: Slot[i32]
+	val filled = Slot(8)
+	val made = make[i64]()
+	val built = build[Holder[i32, i64]]()
+	printf("%d %lld %d %d\n", explicit.value, explicit.extra, both.value, both.extra)
+	printf("%d %d %d %d\n", labeled.value, labeled.label, pair.a, pair.b)
+	printf("%d %d %d %d\n", slot.value, filled.value, made.value, built.value)
+	ret 0
+}

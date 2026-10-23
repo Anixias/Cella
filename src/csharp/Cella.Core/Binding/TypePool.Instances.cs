@@ -97,7 +97,7 @@ public sealed partial class TypePool
 			RegisterMember(instance, fields[field.Name], Substitute(GetTypeOfMember(field), map));
 		
 		RegisterRecord(instance);
-		foreach (var constructor in GetConstructors(definition))
+		foreach (var constructor in GetBodyConstructors(definition))
 			AddConstructor(instance, InstantiateFunction(constructor, instance.TypeArguments));
 		
 		if (GetDestructor(definition) is { } destructor)

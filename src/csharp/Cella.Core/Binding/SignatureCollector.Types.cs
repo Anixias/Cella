@@ -117,9 +117,12 @@ public sealed partial class SignatureCollector
 					
 					break;
 				
-				case ConstructorNode constructor when context.ImplBlock is not null:
-					Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
-						$"Cannot declare constructors in {kind}"));
+				case ConstructorNode constructor when context.ImplBlock is { } block:
+					if (DescribeConstructorPlace(block) is { } place)
+						Diagnostics.Add(new(DiagnosticSeverity.Error, constructor.Keyword.SourceLocation,
+							$"Cannot declare constructors in {place}"));
+					else
+						CollectBlockConstructors(block);
 					
 					break;
 				
@@ -133,6 +136,25 @@ public sealed partial class SignatureCollector
 					Complete(symbol);
 					break;
 			}
+		}
+	}
+	
+	private string? DescribeConstructorPlace(ImplSymbol impl) =>
+		!impl.Node.Traits.IsEmpty ? "trait impls"
+		: impl.IsExtension ? "extension blocks"
+		: GetImplTarget(impl).OriginalDefinition is EnumSymbol ? "enums"
+		: null;
+	
+	private void CollectBlockConstructors(ImplSymbol impl)
+	{
+		if (GetImplTarget(impl).OriginalDefinition is not RecordSymbol || DescribeConstructorPlace(impl) is not null)
+			return;
+		
+		foreach (var constructor in
+		         impl.Constructors.Where(constructor => !_builder.Functions.ContainsKey(constructor)))
+		{
+			using var frame = Own(constructor);
+			CollectConstructor(constructor, (ConstructorNode)constructor.Syntax, _declarations[constructor].Context);
 		}
 	}
 	
@@ -251,6 +273,9 @@ public sealed partial class SignatureCollector
 				.Select(static p => (p.Identifier, (IDeclarationNode?)p, MemberKind.Property)),
 			..functions[false].Select(static f => (f.Identifier, (IDeclarationNode?)f, MemberKind.Function))
 		]);
+		
+		foreach (var block in _typePool.GetMemberBlocks(record))
+			CollectBlockConstructors(block);
 		
 		ReportConstructorConflicts(parsed);
 		ReportModeOperators(record, [..functions[true]]);

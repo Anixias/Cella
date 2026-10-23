@@ -1,0 +1,16 @@
+mod test
+
+use lib.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val holder = Holder[i32, i64](5)
+	val pair = Pair[i32](9)
+	printf("%d %lld %d %d\n", holder.value, holder.extra, pair.a, pair.b)
+	ret 0
+}

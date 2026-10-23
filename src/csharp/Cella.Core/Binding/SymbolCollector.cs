@@ -381,20 +381,21 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_typeStack.Push(node.Traits.IsEmpty ? target : $"{target}.{traits}");
 		_typeVisibilities.Push(Visibility.Public);
 		_typeParameters.Push(typeParameters);
-		var (functions, properties, _) = CollectMembers(node.Members);
+		var (functions, properties, constructors) = CollectMembers(node.Members);
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
 		_typeParameters.Pop();
 		
 		var impl = new ImplSymbol(node, typeParameters, functions, properties)
 		{
-			Constants = [..GetConstants(node.Members)]
+			Constants = [..GetConstants(node.Members)],
+			Constructors = [..constructors]
 		};
 		
 		foreach (var constant in impl.Constants)
 			constant.Impl = impl;
 		
-		foreach (var function in GetMemberFunctions(functions, properties))
+		foreach (var function in GetMemberFunctions(functions, properties).Concat(constructors))
 			function.Impl = impl;
 		
 		foreach (var property in properties)

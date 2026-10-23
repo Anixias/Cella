@@ -409,6 +409,7 @@ public sealed partial class SignatureCollector
 			         {
 				         FunctionNode function => function.Visibility,
 				         PropertyNode property => property.Visibility,
+				         ConstructorNode constructor => constructor.Visibility,
 				         _ => null
 			         })
 			         .OfType<Token>()
@@ -456,6 +457,7 @@ public sealed partial class SignatureCollector
 		block.IsValue && block.ValueType != declared.ValueType ||
 		block.IsNoref && !declared.IsNoref || block.HasNull && !declared.HasNull || block.IsCopy && !declared.IsCopy ||
 		block.HasDrop && !declared.HasDrop || block.HasNew && !_typePool.HasNew(declared) ||
+		block.HasDefault && !declared.HasDefault ||
 		block.IsAtomic && !declared.IsAtomic || block.IsExt && !declared.IsExt ||
 		_typePool.GetConstructorBounds(block).Any(constructor => !_typePool.GetConstructors(declared)
 			.Any(existing => TypePool.MatchesConstructor(_typePool.SubstituteSignature(existing.Signature, map),
@@ -509,6 +511,38 @@ public sealed partial class SignatureCollector
 				using var frame = member.Function is { } owner ? Own(owner) : Own(declaration.Node);
 				Diagnostics.Add(new(DiagnosticSeverity.Error, member.Name.SourceLocation, message));
 			}
+		}
+		
+		ReportBlockConstructorConflicts(declaration.Node, blocks, declared);
+	}
+	
+	private void ReportBlockConstructorConflicts(IDeclarationNode node, IReadOnlyList<ImplSymbol> blocks,
+		ImmutableArray<TypeParameterSymbol> declared)
+	{
+		var constructors = (node is RecordNode record ? record.Members : [])
+			.OfType<ConstructorNode>()
+			.Select(constructor => (Function: (FunctionSymbol)_symbolTable.DeclarationSymbols[constructor],
+				Block: (ImplSymbol?)null))
+			.Concat(blocks.SelectMany(static impl => impl.Constructors.Select(constructor =>
+				(Function: constructor, Block: (ImplSymbol?)impl))))
+			.Where(constructor => _builder.Functions.ContainsKey(constructor.Function))
+			.Select(constructor => (constructor.Function, constructor.Block,
+				Signature: GetDeclaredSignature(constructor.Function, constructor.Block, declared)))
+			.ToList();
+		
+		foreach (var constructor in constructors)
+		{
+			var others = constructors
+				.Where(other => other.Function != constructor.Function &&
+				                (constructor.Block is not null || other.Block is not null))
+				.Select(static other => other.Signature);
+			
+			if (DescribeConflict(constructor.Function, constructor.Signature, others) is not { } message)
+				continue;
+			
+			using var frame = Own(constructor.Function);
+			Diagnostics.Add(new(DiagnosticSeverity.Error,
+				((ConstructorNode)constructor.Function.Syntax).Keyword.SourceLocation, message));
 		}
 	}
 	

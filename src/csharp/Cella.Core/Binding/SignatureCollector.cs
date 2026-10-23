@@ -286,6 +286,8 @@ public sealed partial class SignatureCollector
 		{
 			if (declaration.Context.Trait is { } trait)
 				CompleteTrait(trait);
+			else if (declaration.Context.ImplBlock is { } block)
+				CollectBlockConstructors(block);
 			else if (declaration.Context.ContainingType is RecordSymbol record)
 				CompleteRecord(record);
 			

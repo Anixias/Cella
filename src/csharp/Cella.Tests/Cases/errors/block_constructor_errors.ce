@@ -1,0 +1,146 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+i32: impl Eq
+
+Token: own rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder[T, U]: rec
+{
+	value: T
+	extra: U
+
+	new: op(value: T, extra: U)
+	{
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Holder[T, U: default]: impl
+{
+	new: op(value: T)
+	{
+		var extra: U
+		self.value = value
+		self.extra = extra
+	}
+
+	new: pub op(value: T, flag: bool)
+	{
+		var extra: U
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Dup[T]: rec
+{
+	value: T
+
+	new: op(value: T)
+	{
+		self.value = value
+	}
+}
+
+Dup[T: Eq]: impl
+{
+	new: op(value: T)
+	{
+		self.value = value
+	}
+
+	new: op(value: T, flag: bool)
+	{
+		self.value = value
+	}
+}
+
+Dup[T: default]: impl
+{
+	new: op(value: T, flag: bool)
+	{
+		self.value = value
+	}
+}
+
+Wrap[T]: rec
+{
+	value: T
+}
+
+Wrap[T: Eq]: impl
+{
+	new: op(value: T, twice: bool)
+	{
+		self.value = value
+	}
+}
+
+Shade: enum
+{
+	dark
+	light
+}
+
+Choice[T]: enum
+{
+	none
+	some(value: T)
+}
+
+Choice[T: Eq]: impl
+{
+	new: op
+	{
+	}
+}
+
+Point: rec
+{
+	x: i32
+}
+
+Point: impl Eq
+{
+	new: op(x: i32)
+	{
+	}
+
+	==: op(imm a: Point, imm b: Point) -> bool => a.x == b.x
+}
+
+i32: impl
+{
+	new: op(text: bool)
+	{
+	}
+}
+
+[T]: impl
+{
+	new: op(flag: bool)
+	{
+	}
+}
+
+generic[U]: fun -> Holder[i32, U] => Holder[i32, U](1)
+
+main: fun -> i32
+{
+	val token = Holder[i32, Token](1)
+	val wrapped = Wrap(2)
+	ret 0
+}

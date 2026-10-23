@@ -909,6 +909,7 @@ public sealed class ImplSymbol
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 	public ImmutableArray<GlobalSymbol> Constants { get; init; } = [];
+	public ImmutableArray<FunctionSymbol> Constructors { get; init; } = [];
 	
 	public bool Declares(TypeParameterSymbol parameter) => TargetArguments.Contains(parameter);
 	

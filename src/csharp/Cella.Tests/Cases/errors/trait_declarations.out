@@ -51,7 +51,7 @@ Error at trait_declarations.ce:36:2
 Error at trait_declarations.ce:37:2
 36 │ count: val i32 = 3
 37 │ new: op(x: i32, y: i32) { }
-     ╘═╛ Cannot declare constructors in impl blocks
+     ╘═╛ Cannot declare constructors in trait impls
 
 Error at trait_declarations.ce:38:2
 37 │ new: op(x: i32, y: i32) { }

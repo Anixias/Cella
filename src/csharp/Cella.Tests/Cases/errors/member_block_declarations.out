@@ -31,7 +31,8 @@ Error at member_block_declarations.ce:23:2
 Error at member_block_declarations.ce:25:2
 24 │ 
 25 │ new: op
-     ╘═╛ Cannot declare constructors in impl blocks
+     ╘═╛ Cannot leave fields uninitialized
+       | 'value' is uninitialized
 
 Error at member_block_declarations.ce:29:2
 28 │ 

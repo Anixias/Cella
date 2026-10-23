@@ -41,6 +41,7 @@ public sealed partial class TypePool
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];
 	private readonly Dictionary<TypeSymbol, TypeFacts> _facts = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _constructors = [];
+	private readonly List<(ImplSymbol Impl, FunctionInfo Info)> _blockConstructors = [];
 	private readonly Dictionary<TypeSymbol, List<FunctionInfo>> _explicitConversions = [];
 	private readonly Dictionary<TraitSymbol, List<FunctionInfo>> _traitConstructors = [];
 	private readonly Dictionary<TypeSymbol, FunctionInfo> _destructors = [];
@@ -87,6 +88,8 @@ public sealed partial class TypePool
 	}
 	
 	public void AddConstructor(TypeSymbol type, FunctionInfo info) => _constructors.GetOrAdd(type).Add(info);
+	
+	public void AddBlockConstructor(ImplSymbol impl, FunctionInfo info) => _blockConstructors.Add((impl, info));
 	
 	public void AddExplicitConversion(TypeSymbol type, FunctionInfo info) =>
 		_explicitConversions.GetOrAdd(type).Add(info);

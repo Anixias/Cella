@@ -225,6 +225,10 @@ public sealed partial class Resolver
 	{
 		PropertyNode property => property.Accessors.Select(accessor => VisitNode(accessor)),
 		FunctionNode function => VisitFunctionMember(function),
+		ConstructorNode constructor when CurrentResolutionContext is
+		{
+			ImplBlock: { Node.Traits.IsEmpty: true, IsExtension: false }, ContainingType: RecordSymbol
+		} => [VisitNode(constructor)],
 		_ => []
 	};
 }

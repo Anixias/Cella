@@ -1,0 +1,63 @@
+Error at block_constructor_errors.ce:40:7
+39 │ 
+40 │ new: pub op(value: T, flag: bool)
+          ╘═╛ Cannot declare 'pub' members
+
+Error at block_constructor_errors.ce:52:2
+51 │ 
+52 │ new: op(value: T)
+     ╘═╛ 'Dup.new' is declared more than once with the same signature
+
+Error at block_constructor_errors.ce:60:2
+59 │ {
+60 │     new: op(value: T)
+         ╘═╛ 'Dup.new' is declared more than once with the same signature
+
+Error at block_constructor_errors.ce:65:2
+64 │ 
+65 │ new: op(value: T, flag: bool)
+     ╘═╛ 'Dup.new' is declared more than once with the same signature
+
+Error at block_constructor_errors.ce:73:2
+72 │ {
+73 │     new: op(value: T, flag: bool)
+         ╘═╛ 'Dup.new' is declared more than once with the same signature
+
+Error at block_constructor_errors.ce:106:2
+105 │ {
+106 │     new: op
+          ╘═╛ Cannot declare constructors in enums
+
+Error at block_constructor_errors.ce:118:2
+117 │ {
+118 │     new: op(x: i32)
+          ╘═╛ Cannot declare constructors in trait impls
+
+Error at block_constructor_errors.ce:127:2
+126 │ {
+127 │     new: op(text: bool)
+          ╘═╛ Cannot declare constructors in extension blocks
+
+Error at block_constructor_errors.ce:134:2
+133 │ {
+134 │     new: op(flag: bool)
+          ╘═╛ Cannot declare constructors in extension blocks
+
+Error at block_constructor_errors.ce:139:38
+138 │ 
+139 │ generic[U]: fun -> Holder[i32, U] => Holder[i32, U](1)
+                                           ╘════════════╛ 'new' requires 'U: default'
+                                                        | 'U' has no default
+
+Error at block_constructor_errors.ce:143:14
+142 │ {
+143 │     val token = Holder[i32, Token](1)
+                      ╘════════════════╛ 'new' requires 'U: default'
+                                       | 'Token' has no default
+
+Error at block_constructor_errors.ce:144:16
+143 │ val token = Holder[i32, Token](1)
+144 │ val wrapped = Wrap(2)
+                    ╘═════╛ No constructor for 'Wrap[T]' accepts argument of type 'integer literal'
+
+[compilation failed]

@@ -476,12 +476,52 @@ public sealed partial class TypePool
 	
 	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type)
 	{
-		if (type is TypeParameterSymbol parameter)
-			return GetParameterConstructors(parameter);
-		
+		return type is TypeParameterSymbol parameter
+			? GetParameterConstructors(parameter)
+			: FindConstructors(type, false);
+	}
+	
+	public IReadOnlyList<FunctionInfo> GetDeclaredConstructors(TypeSymbol type) => type is TypeParameterSymbol
+		? GetConstructors(type)
+		: FindConstructors(type, true);
+	
+	public IEnumerable<(FunctionInfo Constructor, DiagnosticText Violation)> FindUnmetConstructors(TypeSymbol type) =>
+		type is TypeParameterSymbol
+			? []
+			: GetBlockConstructors(type)
+				.Select(block => (block.Info,
+					Violation: FindViolation(block.Impl.TypeParameters, type.TypeArguments, "new")))
+				.Where(static block => block.Violation is not null)
+				.Select(block => (InstantiateFunction(block.Info, type.TypeArguments), block.Violation!));
+	
+	private IReadOnlyList<FunctionInfo> GetBodyConstructors(TypeSymbol type)
+	{
 		Complete(type);
 		return _constructors.TryGetValue(type, out var list) ? list : [];
 	}
+	
+	private IReadOnlyList<FunctionInfo> FindConstructors(TypeSymbol type, bool includesUnmet)
+	{
+		var declared = GetBodyConstructors(type);
+		if (_blockConstructors.Count == 0)
+			return declared;
+		
+		List<FunctionInfo> blocks =
+		[
+			..GetBlockConstructors(type)
+				.Where(block => includesUnmet || Satisfies(block.Impl.TypeParameters, type.TypeArguments))
+				.Select(block => InstantiateFunction(block.Info, type.TypeArguments))
+		];
+		
+		return blocks.Count == 0 ? declared : [..declared, ..blocks];
+	}
+	
+	private IEnumerable<(ImplSymbol Impl, FunctionInfo Info)> GetBlockConstructors(TypeSymbol type) =>
+		_blockConstructors.Where(block => IsBlockOf(block.Impl, type) && Fits(block.Impl, type.TypeArguments));
+	
+	private bool IsBlockOf(ImplSymbol impl, TypeSymbol type) =>
+		GetMemberBlockTarget(impl) is { } target and not TypeParameterSymbol &&
+		target.OriginalDefinition == type.OriginalDefinition;
 	
 	private List<FunctionInfo> GetParameterConstructors(TypeParameterSymbol parameter)
 	{

@@ -61,6 +61,8 @@ public sealed partial class SignatureCollector
 		_builder.Functions[function] = info;
 		if (context.Trait is { } trait)
 			_typePool.AddTraitConstructor(trait, info);
+		else if (context.ImplBlock is { } block)
+			_typePool.AddBlockConstructor(block, info);
 		else
 			_typePool.AddConstructor(containingType, info);
 	}
