@@ -1,0 +1,51 @@
+﻿mod std.mem
+
+pvt ext
+{
+	memcpy: fun(dest: ptr, src: ptr, count: usize) -> ptr
+	memmove: fun(dest: ptr, src: ptr, count: usize) -> ptr
+	memset: fun(dest: ptr, value: i32, count: usize) -> ptr
+	memcmp: fun(first: ptr, second: ptr, count: usize) -> i32
+}
+
+copy[T]: pub fun(dest: ptr[T], src: ptr[T], count: usize) =>
+	memcpy(dest, src, count * sizeOf(T))
+
+copyOverlapping[T]: pub fun(dest: ptr[T], src: ptr[T], count: usize) =>
+	memmove(dest, src, count * sizeOf(T))
+
+fillBytes: pub fun(dest: ptr, value: u8, count: usize) =>
+	memset(dest, value, count)
+
+fill[T: copy]: pub fun(dest: ptr[T], value: T, count: usize)
+{
+	var current = dest
+	for _ in 0..count
+	{
+		own *current = value
+		current += 1
+	}
+}
+
+equalBytes: pub fun(first: ptr, second: ptr, count: usize) -> bool =>
+	memcmp(first, second, count) == 0
+
+swap[T: noref]: pub fun(mut a: T, mut b: T)
+{
+	val tmp = own a
+	a = own b
+	b = tmp
+}
+
+replace[T: noref]: pub fun(mut place: T, value: T) -> T
+{
+	val old = own place
+	place = value
+	ret old
+}
+
+take[T: noref + default]: pub fun(mut place: T) -> T
+{
+	var empty: T
+	ret replace(mut place, empty)
+}

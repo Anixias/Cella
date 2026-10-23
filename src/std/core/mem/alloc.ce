@@ -20,20 +20,9 @@ Allocator: pub trait
 		if result == null
 			ret null
 		
-		// TODO replace with general-purpose mem copy
-		var source = ptr[u8](memory)
-		var target = ptr[u8](result)
-		var remaining = layout.size
-		if newSize < remaining
-			remaining = newSize
-		
-		while remaining > 0
-		{
-			*target = *source
-			source += 1
-			target += 1
-			remaining -= 1
-		}
+		val source = ptr[u8](memory)
+		val target = ptr[u8](result)
+		copy(target, source, layout.size)
 		
 		self.release(memory, layout)
 		ret result
