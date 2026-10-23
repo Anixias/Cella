@@ -1602,6 +1602,55 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesBoundedImplTypeParameters()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Allocator: trait
+		                                 {
+		                                 }
+		                                 
+		                                 Bag[A: Allocator]: rec
+		                                 {
+		                                 	count: i32
+		                                 }
+		                                 
+		                                 Bag[A: Allocator + default]: impl
+		                                 {
+		                                 	size: fun(imm self) -> i32 => sizeOf(A) as i32
+		                                 }
+		                                 
+		                                 Bag[A]: impl
+		                                 {
+		                                 	twice: fun(imm self) -> i32 => count * 2
+		                                 }
+		                                 
+		                                 Box[T]: rec
+		                                 {
+		                                 }
+		                                 
+		                                 Box[i32]: impl
+		                                 {
+		                                 	zero: fun(imm self) -> i32 => 0
+		                                 }
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"11:4:1 typeParameter declaration", "13:38:1 typeParameter", "16:4:1 typeParameter declaration",
+			"25:4:3 keyword defaultLibrary"
+		];
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task OrdersCompletionsByScopeThenProject()
 	{
 		await WriteImportableModulesAsync();

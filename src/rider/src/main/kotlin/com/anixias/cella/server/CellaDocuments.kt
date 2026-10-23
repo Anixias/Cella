@@ -62,22 +62,52 @@ class CellaEditorListener : EditorFactoryListener {
 }
 
 class CellaDiagnosticsPainter(private val project: Project) {
-	private val highlightersKey = Key.create<List<RangeHighlighter>>("cella.diagnostics.highlighters")
+	private val highlightersKey = Key.create<List<Pair<Painted, RangeHighlighter>>>("cella.diagnostics.highlighters")
+	
+	private data class Painted(val start: Int, val end: Int, val message: String?, val severity: DiagnosticSeverity?,
+		val isUnnecessary: Boolean)
 	
 	fun paint(document: Document, diagnostics: List<Diagnostic>) {
 		val markup = DocumentMarkupModel.forDocument(document, project, true) as MarkupModelEx
-		document.getUserData(highlightersKey)?.forEach { if (it.isValid) markup.removeHighlighter(it) }
-		document.putUserData(highlightersKey, diagnostics.map { paint(markup, document, it) })
+		val existing = HashMap<Painted, ArrayDeque<RangeHighlighter>>()
+		for ((painted, highlighter) in document.getUserData(highlightersKey).orEmpty()) {
+			if (highlighter.isValid)
+				existing.getOrPut(painted.copy(start = highlighter.startOffset, end = highlighter.endOffset)) {
+					ArrayDeque()
+				} += highlighter
+		}
+		
+		val kept = diagnostics.map { diagnostic ->
+			val painted = describe(document, diagnostic)
+			painted to (existing[painted]?.removeFirstOrNull() ?: paint(markup, document, painted))
+		}
+		
+		for (stale in existing.values.flatten())
+			markup.removeHighlighter(stale)
+		
+		document.putUserData(highlightersKey, kept)
 	}
 	
-	private fun paint(markup: MarkupModelEx, document: Document, diagnostic: Diagnostic): RangeHighlighter {
+	private fun describe(document: Document, diagnostic: Diagnostic): Painted {
 		val start = offsetOf(document, diagnostic.range.start)
 		var end = offsetOf(document, diagnostic.range.end).coerceAtLeast(start)
-		if (diagnostic.tags?.contains(DiagnosticTag.Unnecessary) == true)
+		val isUnnecessary = diagnostic.tags?.contains(DiagnosticTag.Unnecessary) == true
+		if (!isUnnecessary && start == end && !isAfterEndOfLine(document, start))
+			end++
+		
+		return Painted(start, end, diagnostic.message, diagnostic.severity, isUnnecessary)
+	}
+	
+	private fun isAfterEndOfLine(document: Document, offset: Int) =
+		offset >= document.textLength || document.charsSequence[offset] == '\n'
+	
+	private fun paint(markup: MarkupModelEx, document: Document, painted: Painted): RangeHighlighter {
+		val (start, end) = painted
+		if (painted.isUnnecessary)
 			return markup.addRangeHighlighter(CodeInsightColors.NOT_USED_ELEMENT_ATTRIBUTES, start, end,
 				HighlighterLayer.WARNING - 1, HighlighterTargetArea.EXACT_RANGE)
 		
-		val (type, key, layer) = when (diagnostic.severity) {
+		val (type, key, layer) = when (painted.severity) {
 			DiagnosticSeverity.Error -> Triple(HighlightInfoType.ERROR, CodeInsightColors.ERRORS_ATTRIBUTES,
 				HighlighterLayer.ERROR)
 			DiagnosticSeverity.Warning -> Triple(HighlightInfoType.WARNING, CodeInsightColors.WARNINGS_ATTRIBUTES,
@@ -86,11 +116,8 @@ class CellaDiagnosticsPainter(private val project: Project) {
 				HighlighterLayer.WARNING)
 		}
 		
-		val isAfterEndOfLine = start == end && (end >= document.textLength || document.charsSequence[end] == '\n')
-		if (start == end && !isAfterEndOfLine)
-			end++
-		
-		val info = HighlightInfo.newHighlightInfo(type).range(start, end).descriptionAndTooltip(diagnostic.message)
+		val isAfterEndOfLine = start == end
+		val info = HighlightInfo.newHighlightInfo(type).range(start, end).descriptionAndTooltip(painted.message.orEmpty())
 			.createUnconditionally()
 		
 		return markup.addRangeHighlighterAndChangeAttributes(key, start, end, layer, HighlighterTargetArea.EXACT_RANGE,

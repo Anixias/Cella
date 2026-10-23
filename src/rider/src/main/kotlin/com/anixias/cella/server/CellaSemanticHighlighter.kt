@@ -84,9 +84,16 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		val legend = server.legend ?: return
 		val isProject = FileDocumentManager.getInstance().getFile(document)?.fileType == CelpFileType
 		val markup = DocumentMarkupModel.forDocument(document, project, true)
-		document.getUserData(highlightersKey)?.forEach { if (it.isValid) markup.removeHighlighter(it) }
+		val existing = HashMap<Span, ArrayDeque<RangeHighlighter>>()
+		for (highlighter in document.getUserData(highlightersKey).orEmpty()) {
+			val key = highlighter.textAttributesKey
+			if (highlighter.isValid && key != null)
+				existing.getOrPut(Span(highlighter.startOffset, highlighter.endOffset, key)) { ArrayDeque() } += highlighter
+			else if (highlighter.isValid)
+				markup.removeHighlighter(highlighter)
+		}
 		
-		val added = ArrayList<RangeHighlighter>(data.size / 5)
+		val kept = ArrayList<RangeHighlighter>(data.size / 5)
 		var line = 0
 		var character = 0
 		for (index in data.indices step 5) {
@@ -107,13 +114,14 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 			val modifiers = legend.tokenModifiers.filterIndexed { bit, _ -> data[index + 4] and (1 shl bit) != 0 }.toSet()
 			val key = (if (isProject && type == "property") CellaColors.PROJECT_SETTING else colorOf(type, modifiers,
 				document.charsSequence.subSequence(start, end).toString())) ?: continue
-			val highlighter = markup.addRangeHighlighter(key, start, end, HighlighterLayer.SYNTAX + 1,
-				HighlighterTargetArea.EXACT_RANGE)
-			
-			added += highlighter
+			kept += existing[Span(start, end, key)]?.removeFirstOrNull()
+				?: markup.addRangeHighlighter(key, start, end, HighlighterLayer.SYNTAX + 1, HighlighterTargetArea.EXACT_RANGE)
 		}
 		
-		document.putUserData(highlightersKey, added)
+		for (stale in existing.values.flatten())
+			markup.removeHighlighter(stale)
+		
+		document.putUserData(highlightersKey, kept)
 		requestRunnables(document, uri, version)
 	}
 	
@@ -147,4 +155,6 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 	}
 	
 	data class RunnableFunction(val start: Int, val end: Int, val name: String, val isMain: Boolean)
+	
+	private data class Span(val start: Int, val end: Int, val key: TextAttributesKey)
 }
