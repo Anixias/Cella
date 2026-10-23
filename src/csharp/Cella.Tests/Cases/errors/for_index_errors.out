@@ -1,0 +1,31 @@
+Error at for_index_errors.ce:11:3
+10 │ for item, i in [1, 2, 3]
+11 │     i = 4
+         ^ Cannot reassign read-only loop variables
+
+Error at for_index_errors.ce:16:12
+15 │ {
+16 │     for item, i in [1, 2, 3]
+                   ^ Cannot infer the type of 'i' from 'u8' and 'i8'
+
+Error at for_index_errors.ce:25:6
+24 │ {
+25 │     for item, item in [1, 2, 3]
+             ╘══╛ 'item' is bound more than once
+
+Error at for_index_errors.ce:25:12
+24 │ {
+25 │     for item, item in [1, 2, 3]
+                   ╘══╛ 'item' is bound more than once
+
+Error at for_index_errors.ce:31:12
+30 │ {
+31 │     for item, _ in [1, 2, 3]
+                   ^ Cannot use '_' as the index
+
+Hint at for_index_errors.ce:37:12
+36 │ {
+37 │     for item, Index in [1, 2, 3]
+                   ╘═══╛ 'Index' doesn't match {camelCase}
+
+[compilation failed]

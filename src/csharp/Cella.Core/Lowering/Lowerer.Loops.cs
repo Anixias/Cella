@@ -142,6 +142,7 @@ public sealed partial class Lowerer
 			var counter = new VariableValue(new(node.Counter, type), location);
 			var start = VisitNode(node.Start);
 			Declare(GetOrMakeBlock(), new LocalVarInstruction(node.Counter, start, location, scope.Id));
+			DeclareIndex(node.Index, location, scope.Id);
 			var end = CaptureAsAtomic(VisitNode(node.End), "end");
 			
 			var condBlock = CreateBlock($"for{id}_cond");
@@ -170,7 +171,15 @@ public sealed partial class Lowerer
 				latchBlock.SetTerminator(new ConditionalBranchTerminator(new BinOpValue(NativeSymbols.Bool, counter,
 					end, BinaryOperation.Equal, location), doneBlock, stepBlock, location));
 				
-				Increment(stepBlock, counter, bodyBlock);
+				Increment(stepBlock, counter, AdvanceIndex(node.Index, bodyBlock, id, location));
+			}
+			else if (node.Index is { } index)
+			{
+				var nextBlock = CreateBlock($"for{id}_next");
+				Increment(latchBlock, counter, nextBlock);
+				nextBlock.SetTerminator(new ConditionalBranchTerminator(new BinOpValue(NativeSymbols.Bool, counter,
+						end, BinaryOperation.Less, location), AdvanceIndex(index, bodyBlock, id, location), doneBlock,
+					location));
 			}
 			else
 			{
@@ -196,6 +205,30 @@ public sealed partial class Lowerer
 			block.SetTerminator(new BranchTerminator(next, location));
 		}
 		
+		private void DeclareIndex(LocalVariableSymbol? index, SourceLocation location, int scopeId)
+		{
+			if (index is not null)
+				Declare(GetOrMakeBlock(), new LocalVarInstruction(index, MakeConstant(index.Type, BigInteger.Zero),
+					location, scopeId));
+		}
+		
+		private BasicBlock AdvanceIndex(LocalVariableSymbol? index, BasicBlock bodyBlock, ulong id,
+			SourceLocation location)
+		{
+			if (index is null)
+				return bodyBlock;
+			
+			var block = CreateBlock($"for{id}_advance");
+			var at = index.Identifier.SourceLocation;
+			var value = new VariableValue(new(index, index.Type), at);
+			var sum = new BinOpValue(index.Type, value, MakeConstant(index.Type, BigInteger.One),
+				BinaryOperation.Addition, at);
+			
+			block.Instructions.Add(new ExpressionInstruction(new AssignValue(index.Type, value, sum, at)));
+			block.SetTerminator(new BranchTerminator(bodyBlock, location));
+			return block;
+		}
+		
 		public void Visit(ResolvedCursorForStatementNode node)
 		{
 			var id = NextLoopId();
@@ -207,8 +240,10 @@ public sealed partial class Lowerer
 			Declare(GetOrMakeBlock(), new LocalVarInstruction(cursor,
 				cursor.IsBorrowBinding ? value : Consume(value), location, scope.Id));
 			
+			DeclareIndex(node.Index, location, scope.Id);
 			var condBlock = CreateBlock($"for{id}_cond");
 			var bodyBlock = CreateBlock($"for{id}_body");
+			var nextBlock = node.Index is null ? condBlock : CreateBlock($"for{id}_next");
 			var doneBlock = CreateBlock($"for{id}_done");
 			var exitBlock = CreateBlock($"for{id}_exit");
 			
@@ -217,8 +252,16 @@ public sealed partial class Lowerer
 			LowerBranch(node.Step, bodyBlock, doneBlock);
 			
 			currentBlock = bodyBlock;
-			LowerIteration(node.Element, node.Body, exitBlock, condBlock, node.Label, breakDepth);
-			currentBlock?.FillTerminator(new BranchTerminator(condBlock, location));
+			LowerIteration(node.Element, node.Body, exitBlock, nextBlock, node.Label, breakDepth);
+			currentBlock?.FillTerminator(new BranchTerminator(nextBlock, location));
+			
+			if (nextBlock != condBlock && !nextBlock.HasPredecessor())
+				_function.Blocks.Remove(nextBlock);
+			else if (nextBlock != condBlock)
+			{
+				currentBlock = nextBlock;
+				LowerBranch(node.Step, AdvanceIndex(node.Index, bodyBlock, id, location), doneBlock);
+			}
 			
 			currentBlock = doneBlock;
 			EndCurrentScope();

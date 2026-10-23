@@ -13,7 +13,7 @@ public sealed partial class Resolver
 	private sealed record ForHeader
 	(
 		LocalVariableSymbol? Binding,
-		Func<IResolvedStatementNode, LabelSymbol?, IResolvedStatementNode> Build
+		Func<IResolvedStatementNode, LabelSymbol?, LocalVariableSymbol?, IResolvedStatementNode> Build
 	);
 	
 	private ForHeader ResolveRange(ForStatementNode node, IExpressionNode endNode)
@@ -55,8 +55,32 @@ public sealed partial class Resolver
 		var start = CoerceToType(bounds[0], type);
 		var end = CoerceToType(bounds[1], type);
 		var isInclusive = node.RangeOperator?.Type == TokenType.OpDotDotEqual;
-		return new(binding, (body, label) =>
-			new ResolvedRangeForStatementNode(counter, start, end, isInclusive, null, null, body, label, node));
+		return new(binding, (body, label, position) =>
+			new ResolvedRangeForStatementNode(counter, start, end, isInclusive, null, null, body, label, node)
+				{ Index = position });
+	}
+	
+	private LocalVariableSymbol? ResolveLoopIndex(ForIndexNode node)
+	{
+		var name = node.Name;
+		RejectBuiltInName(name);
+		if (name.Text == "_")
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, "Cannot use '_' as the index"));
+			return null;
+		}
+		
+		var start = new LiteralExpressionNode(new Token(TokenType.IntegerLiteral, name.SourceLocation, "0"));
+		var open = settledTypes is null && survey is not null
+			? DeclareOpen(new(node, name, start, CurrentResolutionContext) { IsCounter = true }, [])
+			: null;
+		
+		var type = settledTypes?.GetValueOrDefault(node) ?? MaterializeAsDefault(VisitNode(start)).Type;
+		var index = new LocalVariableSymbol(name, type, false) { IsLoopBinding = true };
+		if (open is not null)
+			survey!.Bind(index, open);
+		
+		return index;
 	}
 	
 	private TypeSymbol? FindBoundType(List<IResolvedExpressionNode> bounds)
@@ -90,7 +114,7 @@ public sealed partial class Resolver
 		
 		if (source.Type is NeverType)
 			return new(CreateLoopBinding(node.Binding, NativeSymbols.Never, false, false),
-				(_, _) => new ResolvedExpressionStatementNode(source, node));
+				(_, _, _) => new ResolvedExpressionStatementNode(source, node));
 		
 		var elementMode = node.BindingMode?.Type;
 		var type = source.Type;
@@ -217,8 +241,8 @@ public sealed partial class Resolver
 			: new ResolvedLoopVariable(binding, new ResolvedIndexerExpressionNode(elementType,
 				Dereference(sourceSymbol, syntax), new ResolvedVarExpressionNode(index, index.Type, syntax), syntax));
 		
-		return new(binding, (body, label) => new ResolvedRangeForStatementNode(index, start, end, false,
-			new(sourceSymbol, sourceValue), element, body, label, node));
+		return new(binding, (body, label, position) => new ResolvedRangeForStatementNode(index, start, end, false,
+			new(sourceSymbol, sourceValue), element, body, label, node) { Index = position });
 	}
 	
 	private ForHeader ResolveOwnedArrayIteration(ForStatementNode node, IResolvedExpressionNode source,
@@ -250,8 +274,8 @@ public sealed partial class Resolver
 				array.ElementType, new ResolvedVarExpressionNode(sourceSymbol, array, syntax),
 				new ResolvedVarExpressionNode(index, index.Type, syntax), syntax), syntax));
 		
-		return new(binding, (body, label) => new ResolvedRangeForStatementNode(index, start, end, false,
-			new(sourceSymbol, sourceValue), element, body, label, node));
+		return new(binding, (body, label, position) => new ResolvedRangeForStatementNode(index, start, end, false,
+			new(sourceSymbol, sourceValue), element, body, label, node) { Index = position });
 	}
 	
 	private IResolvedExpressionNode ConvertLength(IResolvedExpressionNode length) =>
@@ -314,8 +338,9 @@ public sealed partial class Resolver
 		
 		var stepCall = CallOperator(ReadCursor(), step, syntax);
 		if (node.Binding.Text == "_")
-			return new(null, (body, label) =>
-				new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall, null, body, label, node));
+			return new(null, (body, label, position) =>
+				new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall, null, body, label, node)
+					{ Index = position });
 		
 		var dereference = isMut
 			? FindDereference(type, ParameterMode.Mut) ?? FindDereference(type, ParameterMode.Value)
@@ -342,15 +367,15 @@ public sealed partial class Resolver
 		if (elementMode is null && !lends && !_typePool.IsCopy(element.Type))
 		{
 			var owned = new LocalVariableSymbol(node.Binding, element.Type, false);
-			return new(owned, (body, label) => new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall,
-				new(owned, element), body, label, node));
+			return new(owned, (body, label, position) => new ResolvedCursorForStatementNode(new(cursor, cursorValue),
+				stepCall, new(owned, element), body, label, node) { Index = position });
 		}
 		
 		var binding = CreateLoopBinding(node.Binding, element.Type,
 			lends && (elementMode is not null || !_typePool.IsCopy(element.Type)), isMut)!;
 		
-		return new(binding, (body, label) => new ResolvedCursorForStatementNode(new(cursor, cursorValue), stepCall,
-			new(binding, element), body, label, node));
+		return new(binding, (body, label, position) => new ResolvedCursorForStatementNode(new(cursor, cursorValue),
+			stepCall, new(binding, element), body, label, node) { Index = position });
 		
 		IResolvedExpressionNode ReadCursor() => cursor.IsBorrowBinding
 			? Dereference(cursor, syntax)
@@ -376,11 +401,14 @@ public sealed partial class Resolver
 	}
 	
 	private static ForHeader InvalidHeader(ForStatementNode node, LocalVariableSymbol? binding) =>
-		new(binding, (body, _) => new ResolvedInvalidStatementNode(node)
+		new(binding, (body, _, position) => new ResolvedInvalidStatementNode(node)
 		{
-			Parts = binding is null
-				? [body]
-				: [body, new ResolvedLoopVariable(binding, new ResolvedInvalidExpressionNode(node.Source))]
+			Parts =
+			[
+				body,
+				..new[] { binding, position }.OfType<LocalVariableSymbol>().Select(symbol =>
+					new ResolvedLoopVariable(symbol, new ResolvedInvalidExpressionNode(node.Source)))
+			]
 		});
 	
 	private LocalVariableSymbol? CreateLoopBinding(Token token, TypeSymbol type, bool isBorrow, bool isMut) =>

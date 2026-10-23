@@ -1,0 +1,49 @@
+mod test
+
+takeByte: fun(value: u8) -> u8 => value
+takeSigned: fun(value: i8) -> i8 => value
+takeSize: fun(value: usize) -> usize => value
+takeInt: fun(value: i32) -> i32 => value
+
+assigns: fun
+{
+	for item, i in [1, 2, 3]
+		i = 4
+}
+
+conflicts: fun
+{
+	for item, i in [1, 2, 3]
+	{
+		takeByte(i)
+		takeSigned(i)
+	}
+}
+
+repeats: fun
+{
+	for item, item in [1, 2, 3]
+		takeSize(item)
+}
+
+discards: fun
+{
+	for item, _ in [1, 2, 3]
+		takeInt(item)
+}
+
+named: fun
+{
+	for item, Index in [1, 2, 3]
+		takeSize(Index)
+}
+
+main: fun -> i32
+{
+	assigns()
+	conflicts()
+	repeats()
+	discards()
+	named()
+	ret 0
+}

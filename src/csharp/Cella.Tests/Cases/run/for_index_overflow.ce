@@ -1,0 +1,53 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+takeByte: fun(value: u8) -> u8 => value
+
+main: fun -> i32
+{
+	var last: u8 = 0
+	for n, i in 0..257
+		last = takeByte(i)
+	
+	printf("%d\n", i32(last))
+	ret 0
+}
+
+ext
+{
+	fflush: fun(stream: ptr) -> i32
+	exit: fun(code: i32) -> never
+}
+
+when windows
+{
+	ext
+	{
+		write: ext("_write") fun(fd: i32, data: ptr, count: u32) -> i32
+	}
+}
+else
+{
+	ext
+	{
+		write: fun(fd: i32, data: ptr, count: u32) -> i32
+	}
+}
+
+panic: op(message: str, location: str) -> never
+{
+	val prefix = "Panic at "
+	val separator = ": "
+	val newline = "\n"
+	fflush(null)
+	write(2, prefix.data, u32(prefix.byteLength))
+	write(2, location.data, u32(location.byteLength))
+	write(2, separator.data, u32(separator.byteLength))
+	write(2, message.data, u32(message.byteLength))
+	write(2, newline.data, u32(newline.byteLength))
+	exit(101)
+}

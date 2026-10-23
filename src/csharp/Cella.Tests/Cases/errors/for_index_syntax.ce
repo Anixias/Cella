@@ -1,0 +1,29 @@
+mod test
+
+takeSize: fun(value: usize) -> usize => value
+
+moded: fun
+{
+	for item, mut i in [1, 2, 3]
+		takeSize(i)
+}
+
+unnamed: fun
+{
+	for item, in [1, 2, 3]
+		takeSize(item)
+}
+
+parenthesized: fun
+{
+	for (item, i) in [1, 2, 3]
+		takeSize(i)
+}
+
+main: fun -> i32
+{
+	moded()
+	unnamed()
+	parenthesized()
+	ret 0
+}

@@ -148,6 +148,9 @@ public sealed class NamingChecker(IReadOnlyDictionary<NamingCategory, NamingPatt
 				
 				case ForStatementNode loop:
 					CheckName(loop.Binding, NamingCategory.Locals);
+					if (loop.Index is { } index)
+						CheckName(index.Name, NamingCategory.Locals);
+					
 					break;
 				
 				case PatternNode { Kind: PatternKind.Binding } binding:

@@ -282,17 +282,38 @@ public sealed partial class FileParser
 			return null;
 		}
 		
+		ForIndexNode? position = null;
+		if (Match(ref index, out _, TokenType.OpComma))
+		{
+			if (!AtEnd(index) && TokenSets.BorrowKeywords.Contains(Tokens[index].Type) &&
+			    Peek(index + 1, TokenType.Identifier))
+			{
+				ReportExpected(index, "a name");
+				index++;
+			}
+			
+			if (!Match(ref index, out var positionName, TokenType.Identifier))
+			{
+				ReportExpected(index, "a name");
+				return null;
+			}
+			
+			position = new(positionName);
+		}
+		
 		if (!Match(ref index, out var inKeyword, TokenType.KeywordIn))
 		{
 			ReportMissing(index, "'in'");
-			return IsOnSameLine(index) ? null : IncompleteFor(ref index, keyword, label, binding, bindingMode, null);
+			return IsOnSameLine(index)
+				? null
+				: IncompleteFor(ref index, keyword, label, binding, position, bindingMode, null);
 		}
 		
 		Token? mode = Match(ref index, out var mut, TokenType.KeywordMut) ? mut : null;
 		if (StartsBody(index))
 		{
 			ReportMissing(index, "an expression");
-			return IncompleteFor(ref index, keyword, label, binding, bindingMode, inKeyword);
+			return IncompleteFor(ref index, keyword, label, binding, position, bindingMode, inKeyword);
 		}
 		
 		var source = ParseExpression(ref index);
@@ -307,6 +328,7 @@ public sealed partial class FileParser
 				{
 					Keyword = keyword,
 					In = inKeyword,
+					Index = position,
 					BindingMode = bindingMode
 				}
 				: null;
@@ -324,13 +346,14 @@ public sealed partial class FileParser
 			{
 				Keyword = keyword,
 				In = inKeyword,
+				Index = position,
 				BindingMode = bindingMode
 			}
 			: null;
 	}
 	
 	private ForStatementNode? IncompleteFor(ref int index, Token keyword, Token? label, Token binding,
-		Token? bindingMode, Token? inKeyword)
+		ForIndexNode? position, Token? bindingMode, Token? inKeyword)
 	{
 		var source = Missing(index);
 		return ParseIncompleteBody(ref index) is { } body
@@ -338,6 +361,7 @@ public sealed partial class FileParser
 			{
 				Keyword = keyword,
 				In = inKeyword,
+				Index = position,
 				BindingMode = bindingMode
 			}
 			: null;

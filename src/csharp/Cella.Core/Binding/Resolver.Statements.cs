@@ -360,7 +360,11 @@ public sealed partial class Resolver
 	{
 		RejectBuiltInName(node.Binding);
 		var header = node.End is { } end ? ResolveRange(node, end) : ResolveIteration(node);
-		var scope = CreateScope([header.Binding]);
+		var index = node.Index is { } indexNode ? ResolveLoopIndex(indexNode) : null;
+		if (header.Binding is { } binding && index is not null)
+			ReportRepeatedBindings([binding, index]);
+		
+		var scope = CreateScope([header.Binding, index]);
 		LabelSymbol? label = node.Label is { } labelToken ? new(labelToken) : null;
 		if (label is not null)
 			scope.Define(label);
@@ -369,7 +373,7 @@ public sealed partial class Resolver
 		ReportDeclarationBody(node.Body);
 		var body = VisitNode(node.Body);
 		_resolutionContexts.Pop();
-		return header.Build(body, label);
+		return header.Build(body, label, index);
 	}
 	
 	public IResolvedStatementNode Visit(LoopStatementNode node)

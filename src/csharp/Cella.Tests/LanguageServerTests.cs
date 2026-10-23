@@ -1063,6 +1063,35 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task HoversLoopIndices()
+	{
+		const string source = """
+		                      mod test
+		                      
+		                      takeSize: fun(value: usize) -> usize => value
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	for item, i in [1, 2]
+		                      		takeSize(i)
+		                      
+		                      	for item, j in [1, 2]
+		                      		item + j
+		                      
+		                      	ret 0
+		                      }
+		                      
+		                      """;
+		
+		await File.WriteAllTextAsync(SourcePath, source, Token);
+		await InitializeAsync();
+		Assert.Equal(Code("val i: usize"), await HoverAsync(6, 12));
+		Assert.Equal(Code("val i: usize"), await HoverAsync(7, 11));
+		Assert.Equal(Code("val j: i32"), await HoverAsync(10, 9));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task FadesUnreachableCode()
 	{
 		await InitializeAsync();

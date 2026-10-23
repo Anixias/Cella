@@ -17,6 +17,7 @@ public sealed class ResolvedRangeForStatementNode
 ) : IResolvedStatementNode
 {
 	public LocalVariableSymbol Counter { get; } = counter;
+	public LocalVariableSymbol? Index { get; init; }
 	public IResolvedExpressionNode Start { get; } = start;
 	public IResolvedExpressionNode End { get; } = end;
 	public bool IsInclusive { get; } = isInclusive;
@@ -38,6 +39,7 @@ public sealed class ResolvedCursorForStatementNode
 ) : IResolvedStatementNode
 {
 	public ResolvedLoopVariable Cursor { get; } = cursor;
+	public LocalVariableSymbol? Index { get; init; }
 	public IResolvedExpressionNode Step { get; } = step;
 	public ResolvedLoopVariable? Element { get; } = element;
 	public IResolvedStatementNode Body { get; } = body;

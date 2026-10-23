@@ -1,0 +1,3 @@
+[stderr]
+Panic at for_index_overflow.ce:13:9: addition overflow
+[exit code 101]

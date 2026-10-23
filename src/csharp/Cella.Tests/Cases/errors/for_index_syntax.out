@@ -1,0 +1,21 @@
+Error at for_index_syntax.ce:7:12
+6 │ {
+7 │     for item, mut i in [1, 2, 3]
+                  ╘═╛ Expected a name
+
+Error at for_index_syntax.ce:13:12
+12 │ {
+13 │     for item, in [1, 2, 3]
+                   ╘╛ Expected a name
+
+Error at for_index_syntax.ce:19:6
+18 │ {
+19 │     for (item, i) in [1, 2, 3]
+             ^ Expected a name
+
+Error at for_index_syntax.ce:20:12
+19 │ for (item, i) in [1, 2, 3]
+20 │     takeSize(i)
+                  ^ Symbol 'i' not found in this scope
+
+[compilation failed]

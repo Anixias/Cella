@@ -378,11 +378,19 @@ public sealed class SemanticModel
 				AddLocal(binding);
 				break;
 			
-			case ResolvedRangeForStatementNode { Counter: { Identifier.Text: [not '.', ..] } counter }:
-				AddLocal(counter);
+			case ResolvedRangeForStatementNode n:
+				if (n.Counter.Identifier.Text is [not '.', ..])
+					AddLocal(n.Counter);
+				
+				if (n.Index is { } rangeIndex)
+					AddLocal(rangeIndex);
+				
 				break;
 			
 			case ResolvedCursorForStatementNode { Syntax: ForStatementNode loop } n:
+				if (n.Index is { } cursorIndex)
+					AddLocal(cursorIndex);
+				
 				if (loop.In is { } inKeyword)
 					AddLoopOperator(inKeyword, n.Cursor.Value, TokenType.KeywordIn);
 				
