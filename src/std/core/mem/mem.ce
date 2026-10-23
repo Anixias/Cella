@@ -22,7 +22,7 @@ fill[T: copy]: pub fun(dest: ptr[T], value: T, count: usize)
 	var current = dest
 	for _ in 0..count
 	{
-		own *current = value
+		*current = value
 		current += 1
 	}
 }
