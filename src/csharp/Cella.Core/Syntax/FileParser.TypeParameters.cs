@@ -37,7 +37,21 @@ public sealed partial class FileParser
 			else if (hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false))
 				return null;
 			
-			parameters.Add(new(name, keywords, traits, constructors) { ValueType = valueType });
+			ITypeNode? defaultType = null;
+			IExpressionNode? defaultValue = null;
+			if (Match(ref index, TokenType.OpEqual))
+			{
+				if (valueType is null && (defaultType = ParseConstraintType(ref index)) is null ||
+				    valueType is not null && (defaultValue = ParseDefaultValue(ref index)) is null)
+					return null;
+			}
+			
+			parameters.Add(new(name, keywords, traits, constructors)
+			{
+				ValueType = valueType,
+				DefaultType = defaultType,
+				DefaultValue = defaultValue
+			});
 		} while (MatchSeparator(ref index, TokenType.OpCloseBracket));
 		
 		if (Match(ref index, TokenType.OpCloseBracket))
@@ -139,6 +153,20 @@ public sealed partial class FileParser
 		try
 		{
 			return ParseType(ref index);
+		}
+		catch (ParseException e)
+		{
+			AddParseError(e);
+		}
+		
+		return null;
+	}
+	
+	private IExpressionNode? ParseDefaultValue(ref int index)
+	{
+		try
+		{
+			return ParseExpression(ref index);
 		}
 		catch (ParseException e)
 		{

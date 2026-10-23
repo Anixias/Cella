@@ -342,6 +342,13 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		if (type is not NamedTypeSymbol { IsGenericDefinition: true } generic || node is IndexerExpressionNode)
 			return type;
 		
+		if (_typePool.CompleteArguments(generic.TypeParameters, []) is { } arguments)
+		{
+			var instance = _typePool.Instantiate(generic, arguments);
+			TrackTypeInstance(CurrentResolutionContext, instance, node.SourceLocation);
+			return instance;
+		}
+		
 		Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(node.SourceLocation, generic));
 		return NativeSymbols.Invalid;
 	}
@@ -478,7 +485,10 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		ImmutableArray<TypeSymbol> Types,
 		ImmutableArray<SourceLocation> Locations,
 		SourceLocation Location
-	);
+	)
+	{
+		public SourceLocation Locate(int index) => index < Locations.Length ? Locations[index] : Location;
+	}
 	
 	private static string DescribeInstantiated(Symbol owner) => owner switch
 	{

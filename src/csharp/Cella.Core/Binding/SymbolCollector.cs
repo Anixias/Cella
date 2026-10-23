@@ -24,6 +24,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		.Select(parameter => new TypeParameterSymbol(parameter.Identifier.Text, GetConstraintKeywords(parameter))
 		{
 			IsValue = parameter.ValueType is not null,
+			DeclaresDefault = parameter.DefaultType is not null || parameter.DefaultValue is not null,
 			Owner = owner,
 			Definition = parameter.Identifier
 		})

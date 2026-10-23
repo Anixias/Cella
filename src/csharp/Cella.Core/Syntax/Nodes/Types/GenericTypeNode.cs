@@ -14,6 +14,7 @@ public sealed class GenericTypeNode
 	public ImmutableArray<Token> Qualifiers { get; init; } = [];
 	public ImmutableArray<IGenericArgumentNode> Arguments { get; } = arguments.ToImmutableArray();
 	public SourceLocation SourceLocation { get; } = sourceLocation;
+	public SourceLocation? EmptyBrackets { get; init; }
 }
 
 public interface IGenericArgumentNode

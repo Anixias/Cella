@@ -59,6 +59,9 @@ public sealed class TypeInference(TypePool typePool)
 			inferred[i] = type;
 		}
 		
+		for (var i = 0; i < parameters.Length; i++)
+			inferred[i] ??= typePool.FindDefaultArgument(parameters, inferred, i);
+		
 		var missing = parameters.Where((_, i) => inferred[i] is null).ToImmutableArray();
 		return missing.IsEmpty
 			? new() { Arguments = [..inferred.Select(static type => type!)] }

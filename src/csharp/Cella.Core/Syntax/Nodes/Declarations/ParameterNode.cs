@@ -36,6 +36,8 @@ public sealed class TypeParameterNode
 	public ImmutableArray<ITypeNode> Traits { get; } = traits.ToImmutableArray();
 	public ImmutableArray<ConstructorConstraintNode> Constructors { get; } = constructors.ToImmutableArray();
 	public ITypeNode? ValueType { get; init; }
+	public ITypeNode? DefaultType { get; init; }
+	public IExpressionNode? DefaultValue { get; init; }
 }
 
 public sealed class ConstructorConstraintNode

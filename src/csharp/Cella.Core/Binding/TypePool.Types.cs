@@ -231,7 +231,7 @@ public sealed partial class TypePool
 		if (instances.Find(instance => instance.Arguments.SequenceEqual(arguments)) is { } existing)
 			return existing;
 		
-		var traitType = new TraitType(trait, arguments);
+		var traitType = new TraitType(trait, arguments, CountShownArguments(trait.TypeParameters, arguments));
 		instances.Add(traitType);
 		return traitType;
 	}

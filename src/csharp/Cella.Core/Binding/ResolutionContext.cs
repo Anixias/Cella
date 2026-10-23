@@ -37,6 +37,7 @@ public readonly struct ResolutionContext
 	public string? ExclusionPlace { get; init; }
 	public TraitSymbol? Trait { get; init; }
 	public ImplSymbol? ImplBlock { get; init; }
+	public TypeSymbol? TraitSelf { get; init; }
 	public Func<string, Symbol?>? ResolveSiblingMember { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
@@ -357,8 +358,12 @@ public readonly struct ResolutionContext
 		switch (symbol)
 		{
 			case TraitSymbol trait:
+				if (node is GenericTypeNode emptyGeneric)
+					ReportRedundantBrackets(emptyGeneric, trait.TypeParameters);
+				
+				var inner = TraitSelf is null ? this : this with { TraitSelf = null };
 				return InstantiateTrait(trait,
-					ResolveGenericArguments(arguments, trait.TypeParameters, ResolveGenericTypeArgument),
+					ResolveGenericArguments(arguments, trait.TypeParameters, inner.ResolveGenericTypeArgument),
 					[..arguments.Select(static argument => argument.SourceLocation)], node.SourceLocation);
 			
 			case null:
@@ -383,29 +388,33 @@ public readonly struct ResolutionContext
 	public TraitType? InstantiateTrait(TraitSymbol trait, IReadOnlyList<TypeSymbol> arguments,
 		IReadOnlyList<SourceLocation> locations, SourceLocation location)
 	{
-		if (arguments.Count != trait.TypeParameters.Length)
-		{
-			Diagnostics.Add(ReportGenericArgumentCount(location, trait.Name, trait.TypeParameters.Length));
-			return null;
-		}
+		var self = new Dictionary<TypeParameterSymbol, TypeSymbol>
+			{ [trait.Self] = TraitSelf ?? NativeSymbols.Invalid };
 		
-		if (arguments.Any(static argument => argument is InvalidType))
-			return null;
-		
-		var map = TypePool.CreateMap(trait.TypeParameters, arguments);
-		var isValid = true;
-		for (var i = 0; i < arguments.Count; i++)
+		if (TypePool.CompleteArguments(trait.TypeParameters, arguments, self) is { } filled && TraitSelf is null &&
+		    FindSelfDefault(trait, arguments.Count, filled) is { } parameter)
 		{
-			var parameter = trait.TypeParameters[i];
-			if (DeferConstraintCheck?.Invoke(new(parameter, arguments[i], map, locations[i])) == true ||
-			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } violation)
-				continue;
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+				$"'{trait.Name}' needs an argument for '{parameter.Name}'"));
 			
-			Diagnostics.Add(violation.At(locations[i]));
-			isValid = false;
+			return null;
 		}
 		
-		return isValid ? TypePool.GetTraitType(trait, [..arguments]) : null;
+		return CheckGenericArguments(trait.Name, trait.TypeParameters, arguments, locations, location, self) is
+			{ } completed && !completed.Any(static argument => argument is InvalidType)
+			? TypePool.GetTraitType(trait, completed)
+			: null;
+	}
+	
+	private TypeParameterSymbol? FindSelfDefault(TraitSymbol trait, int written, ImmutableArray<TypeSymbol> filled)
+	{
+		for (var i = written; i < filled.Length; i++)
+			if (TypePool.ContainsInvalid(filled[i]) &&
+			    TypePool.GetDefaultArgument(trait.TypeParameters[i]) is { } fallback &&
+			    !TypePool.ContainsInvalid(fallback))
+				return trait.TypeParameters[i];
+		
+		return null;
 	}
 	
 	public TypeSymbol? ResolveTraitReference(ITypeNode node) => node switch
@@ -763,8 +772,7 @@ public readonly struct ResolutionContext
 		switch (Resolve(name))
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } generic:
-				Diagnostics.Add(ReportGenericArgumentCount(name.SourceLocation, generic));
-				break;
+				return InstantiateType(generic, [], [], name.SourceLocation);
 			
 			case TypeParameterSymbol { IsTrait: true } or TypeParameterSymbol { IsValue: true }:
 				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"'{name.Text}' is not a type"));
@@ -805,8 +813,7 @@ public readonly struct ResolutionContext
 		switch (ResolveQualifiedName(node.Parts))
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } generic:
-				Diagnostics.Add(ReportGenericArgumentCount(node.SourceLocation, generic));
-				break;
+				return InstantiateType(generic, [], [], node.SourceLocation);
 			
 			case TypeSymbol type:
 				return type;
@@ -1081,7 +1088,20 @@ public readonly struct ResolutionContext
 	}
 	
 	public static Diagnostic ReportGenericArgumentCount(SourceLocation location, NamedTypeSymbol generic) =>
-		ReportGenericArgumentCount(location, generic.Name, generic.TypeParameters.Length);
+		ReportGenericArgumentCount(location, generic.Name, generic.TypeParameters);
+	
+	public static Diagnostic ReportGenericArgumentCount(SourceLocation location, string name,
+		ImmutableArray<TypeParameterSymbol> parameters) => new(DiagnosticSeverity.Error, location,
+		$"'{name}' takes {DescribeGenericArguments(TypePool.CountRequiredArguments(parameters), parameters.Length)}");
+	
+	private static string DescribeGenericArguments(int minimum, int maximum) => (minimum, maximum) switch
+	{
+		_ when minimum == maximum => DescribeGenericArguments(maximum),
+		(0, 1) => "at most one generic argument",
+		(0, _) => $"at most {maximum} generic arguments",
+		_ when maximum - minimum == 1 => $"{minimum} or {maximum} generic arguments",
+		_ => $"{minimum} to {maximum} generic arguments"
+	};
 	
 	public static Diagnostic ReportGenericArgumentCount(SourceLocation location, string name, int count) =>
 		new(DiagnosticSeverity.Error, location, $"'{name}' takes {DescribeGenericArguments(count)}");
@@ -1093,38 +1113,42 @@ public readonly struct ResolutionContext
 		_ => $"{count} generic arguments"
 	};
 	
-	private bool CheckGenericArguments(string name, ImmutableArray<TypeParameterSymbol> parameters,
-		IReadOnlyList<TypeSymbol> arguments, IReadOnlyList<SourceLocation> locations, SourceLocation location)
+	private ImmutableArray<TypeSymbol>? CheckGenericArguments(string name,
+		ImmutableArray<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> arguments,
+		IReadOnlyList<SourceLocation> locations, SourceLocation location,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? outer = null)
 	{
-		if (arguments.Count != parameters.Length)
+		if (TypePool.CompleteArguments(parameters, arguments, outer) is not { } completed)
 		{
-			Diagnostics.Add(ReportGenericArgumentCount(location, name, parameters.Length));
-			return false;
+			Diagnostics.Add(ReportGenericArgumentCount(location, name, parameters));
+			return null;
 		}
 		
-		var map = TypePool.CreateMap(parameters, arguments);
+		var map = TypePool.CreateMap(parameters, completed);
 		var isValid = true;
-		for (var i = 0; i < arguments.Count; i++)
+		for (var i = 0; i < completed.Length; i++)
 		{
 			var parameter = parameters[i];
-			if (DeferConstraintCheck?.Invoke(new(parameter, arguments[i], map, locations[i])) == true ||
-			    TypePool.FindConstraintViolation(parameter, arguments[i], map) is not { } violation)
+			var argumentLocation = i < locations.Count ? locations[i] : location;
+			if (DeferConstraintCheck?.Invoke(new(parameter, completed[i], map, argumentLocation)) == true ||
+			    TypePool.FindConstraintViolation(parameter, completed[i], map) is not { } violation)
 				continue;
 			
-			Diagnostics.Add(violation.At(locations[i]));
+			Diagnostics.Add(violation.At(argumentLocation));
 			isValid = false;
 		}
 		
-		return isValid;
+		return isValid ? completed : null;
 	}
 	
 	private TypeSymbol InstantiateType(NamedTypeSymbol definition, IReadOnlyList<TypeSymbol> arguments,
 		IReadOnlyList<SourceLocation> locations, SourceLocation location)
 	{
-		if (!CheckGenericArguments(definition.Name, definition.TypeParameters, arguments, locations, location))
+		if (CheckGenericArguments(definition.Name, definition.TypeParameters, arguments, locations, location) is not
+		    { } completed)
 			return NativeSymbols.Invalid;
 		
-		var type = TypePool.Instantiate(definition, [..arguments]);
+		var type = TypePool.Instantiate(definition, completed);
 		TrackInstance?.Invoke(this, type, location);
 		AddSizeCheck(type, location);
 		return type;
@@ -1133,9 +1157,9 @@ public readonly struct ResolutionContext
 	private TypeSymbol InstantiateArray(IReadOnlyList<TypeSymbol> arguments, IReadOnlyList<SourceLocation> locations,
 		SourceLocation location)
 	{
-		if (!CheckGenericArguments(NativeSymbols.GenericArray.Name, NativeSymbols.GenericArray.TypeParameters,
+		if (CheckGenericArguments(NativeSymbols.GenericArray.Name, NativeSymbols.GenericArray.TypeParameters,
 			    arguments,
-			    locations, location) ||
+			    locations, location) is null ||
 		    arguments is not [not InvalidType and var element, not InvalidType and var length])
 			return NativeSymbols.Invalid;
 		
@@ -1159,8 +1183,7 @@ public readonly struct ResolutionContext
 		switch (type)
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } generic when expression is not IndexerExpressionNode:
-				Diagnostics.Add(ReportGenericArgumentCount(expression.SourceLocation, generic));
-				return NativeSymbols.Invalid;
+				return InstantiateType(generic, [], [], expression.SourceLocation);
 			
 			case not null:
 				return type;
@@ -1173,6 +1196,13 @@ public readonly struct ResolutionContext
 				return NativeSymbols.Invalid;
 		}
 	}
+	
+	public TypeSymbol ResolveDefaultArgument(TypeParameterNode node, TypeParameterSymbol parameter) => node switch
+	{
+		{ DefaultType: { } type } => ResolveGenericTypeArgument(new TypeArgumentNode(type), parameter),
+		{ DefaultValue: { } value } => ResolveGenericTypeArgument(new ExpressionArgumentNode(value), parameter),
+		_ => NativeSymbols.Invalid
+	};
 	
 	private TypeSymbol ResolveGenericTypeArgument(IGenericArgumentNode node, TypeParameterSymbol? parameter) =>
 		node switch
@@ -1232,6 +1262,10 @@ public readonly struct ResolutionContext
 		var symbol = node.Qualifiers.IsEmpty ? Resolve(name) : ResolveQualifiedName([..node.Qualifiers, name]);
 		switch (symbol)
 		{
+			case NamedTypeSymbol { IsGenericDefinition: true } generic when
+				ReportRedundantBrackets(node, generic.TypeParameters):
+				return InstantiateType(generic, [], [], node.SourceLocation);
+			
 			case TypeSymbol:
 				return ResolveGenericApplication(symbol, null, node.Arguments, node.SourceLocation);
 			
@@ -1251,6 +1285,15 @@ public readonly struct ResolutionContext
 		}
 		
 		return NativeSymbols.Invalid;
+	}
+	
+	private bool ReportRedundantBrackets(GenericTypeNode node, ImmutableArray<TypeParameterSymbol> parameters)
+	{
+		if (node.EmptyBrackets is not { } brackets || TypePool.CountRequiredArguments(parameters) > 0)
+			return false;
+		
+		Diagnostics.Add(DiagnosticFix.Redundant(brackets));
+		return true;
 	}
 	
 	private TypeSymbol ReportNotType(IGenericArgumentNode node)

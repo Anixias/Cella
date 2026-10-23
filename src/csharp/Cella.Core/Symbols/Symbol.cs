@@ -173,6 +173,8 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 	public bool IsTrait => Has(TokenType.KeywordTrait);
 	public bool IsValue { get; init; }
 	public bool IsSelf { get; init; }
+	public bool DeclaresDefault { get; init; }
+	public TypeSymbol? DefaultArgument { get; internal set; }
 	public Token? Definition { get; init; }
 	public TypeSymbol? ConstantOwner { get; init; }
 	public TraitType? ConstantTrait { get; init; }
@@ -596,10 +598,8 @@ public sealed class DynType : TypeSymbol
 	public string TraitName { get; }
 }
 
-public sealed class TraitType(TraitSymbol trait, ImmutableArray<TypeSymbol> arguments)
-	: TypeSymbol(arguments.IsEmpty
-		? trait.Name
-		: $"{trait.Name}[{string.Join(", ", arguments.Select(static argument => argument.Name))}]")
+public sealed class TraitType(TraitSymbol trait, ImmutableArray<TypeSymbol> arguments, int shownArguments)
+	: TypeSymbol(NamedTypeSymbol.DescribeInstance(trait.Name, arguments, shownArguments))
 {
 	public TraitSymbol Trait { get; } = trait;
 	public ImmutableArray<TypeSymbol> Arguments { get; } = arguments;
@@ -763,8 +763,8 @@ public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 		Visibility = Visibility.FromKeyword(visibility);
 	}
 	
-	protected NamedTypeSymbol(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments)
-		: base($"{definition.Name}[{string.Join(", ", typeArguments.Select(static a => a.Name))}]")
+	protected NamedTypeSymbol(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments, int shownArguments)
+		: base(DescribeInstance(definition.Name, typeArguments, shownArguments))
 	{
 		TypeParameters = [];
 		Definition = definition;
@@ -772,6 +772,11 @@ public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 		Visibility = definition.Visibility;
 		Properties = definition.Properties;
 	}
+	
+	public static string DescribeInstance(string name, ImmutableArray<TypeSymbol> arguments, int shownArguments) =>
+		shownArguments == 0
+			? name
+			: $"{name}[{string.Join(", ", arguments.Take(shownArguments).Select(static a => a.Name))}]";
 }
 
 public sealed class RecordSymbol : NamedTypeSymbol
@@ -796,8 +801,8 @@ public sealed class RecordSymbol : NamedTypeSymbol
 	}
 	
 	public RecordSymbol(RecordSymbol definition, ImmutableArray<TypeSymbol> typeArguments,
-		IEnumerable<MemberSymbol> members)
-		: base(definition, typeArguments)
+		IEnumerable<MemberSymbol> members, int shownArguments)
+		: base(definition, typeArguments, shownArguments)
 	{
 		Node = definition.Node;
 		Members = members.ToImmutableArray();
@@ -825,8 +830,8 @@ public sealed class EnumSymbol : NamedTypeSymbol
 	}
 	
 	public EnumSymbol(EnumSymbol definition, ImmutableArray<TypeSymbol> typeArguments,
-		IEnumerable<EnumCaseSymbol> cases)
-		: base(definition, typeArguments)
+		IEnumerable<EnumCaseSymbol> cases, int shownArguments)
+		: base(definition, typeArguments, shownArguments)
 	{
 		Node = definition.Node;
 		Cases = cases.ToImmutableArray();

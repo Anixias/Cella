@@ -13,6 +13,7 @@ public sealed partial class TypePool
 		
 		snapshot.SaveValue(() => TypeCompleter, value => TypeCompleter = value);
 		snapshot.SaveValue(() => TraitCompleter, value => TraitCompleter = value);
+		snapshot.SaveValue(() => DefaultResolver, value => DefaultResolver = value);
 		snapshot.SaveValue(() => IntegerFits, value => IntegerFits = value);
 		snapshot.SaveValue(() => TypeConstantValue, value => TypeConstantValue = value);
 		snapshot.SaveValue(() => GlobalTypeOf, value => GlobalTypeOf = value);

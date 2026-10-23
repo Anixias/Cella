@@ -1,0 +1,102 @@
+Error at generic_default_errors.ce:15:15
+14 │ 
+15 │ Late[T = i32, U]: rec
+                   ^ Cannot take parameters without defaults after parameters with defaults
+
+Error at generic_default_errors.ce:21:9
+20 │ 
+21 │ Own[T = Own[T]]: rec
+             ╘════╛ Cannot use 'T' in its own default
+
+Error at generic_default_errors.ce:26:13
+25 │ 
+26 │ Forward[T = U, U = i32]: rec
+                 ^ Cannot use 'U' in defaults of earlier parameters
+
+Error at generic_default_errors.ce:31:13
+30 │ 
+31 │ Bad[T: Eq = Plain]: rec
+                 ╘═══╛ 'Bad' requires 'T: Eq'
+                     | 'Plain' doesn't implement 'Eq'
+
+Error at generic_default_errors.ce:36:25
+35 │ 
+36 │ Small[limit: const u8 = 300]: rec
+                             ╘═╛ '300' doesn't fit in 'u8'
+
+Error at generic_default_errors.ce:47:17
+46 │ 
+47 │ Pair[K: Eq, V = K]: impl
+                     ^ Cannot declare defaults in impl blocks
+
+Error at generic_default_errors.ce:64:2
+63 │ {
+64 │     combine: fun(self, other: i64) -> i32 => self
+         ╘═════╛ 'combine' doesn't match 'Combine[i32].combine'
+
+Error at generic_default_errors.ce:67:28
+66 │ 
+67 │ holder: fun(imm value: dyn[Combine]) -> i32 => 0
+                                ╘═════╛ 'Combine' needs an argument for 'Rhs'
+
+Error at generic_default_errors.ce:69:1
+68 │ 
+69 │ first[T]: fun(x: T) -> i32 => 1
+     ╘═══╛ 'first' overloads cannot accept the same arguments
+
+Error at generic_default_errors.ce:70:1
+69 │ first[T]: fun(x: T) -> i32 => 1
+70 │ first[T, U = i32]: fun(x: T) -> i32 => 2
+     ╘═══╛ 'first' overloads cannot accept the same arguments
+
+Hint at generic_default_errors.ce:72:1
+71 │ 
+72 │ second[T]: fun(x: T) -> i32 => 1
+     ╘════╛ 'second' is never used
+
+Hint at generic_default_errors.ce:73:1
+72 │ second[T]: fun(x: T) -> i32 => 1
+73 │ second[T, U]: fun(x: T) -> i32 => 2
+     ╘════╛ 'second' is never used
+
+Hint at generic_default_errors.ce:85:16
+84 │ 
+85 │ i32: impl Shown[]
+                    ╘╛ Redundant '[]'
+
+Hint at generic_default_errors.ce:90:14
+89 │ 
+90 │ show[T: Shown[]]: fun(value: T) -> i32 => value.unit()
+                  ╘╛ Redundant '[]'
+
+Error at generic_default_errors.ce:94:9
+93 │ {
+94 │     val a: Pair[i32, i32, i32]
+                ╘═════════════════╛ 'Pair' takes 1 or 2 generic arguments
+
+Error at generic_default_errors.ce:95:9
+94 │ val a: Pair[i32, i32, i32]
+95 │ val b: Pair
+            ╘══╛ 'Pair' takes 1 or 2 generic arguments
+
+Error at generic_default_errors.ce:96:9
+95 │ val b: Pair
+96 │ val c: Required
+            ╘══════╛ 'Required' takes 2 generic arguments
+
+Error at generic_default_errors.ce:97:9
+96 │ val c: Required
+97 │ val d: Pair[]
+            ╘════╛ 'Pair' takes 1 or 2 generic arguments
+
+Error at generic_default_errors.ce:98:25
+97 │ val d: Pair[]
+98 │ val wrong: Pair[i32] = Pair[i32, i64](1, 2)
+                            ╘══════════════════╛ Cannot convert type 'Pair[i32, i64]' to 'Pair[i32]'
+
+Hint at generic_default_errors.ce:99:13
+98 │ val wrong: Pair[i32] = Pair[i32, i64](1, 2)
+99 │ val e: Text[]
+                ╘╛ Redundant '[]'
+
+[compilation failed]

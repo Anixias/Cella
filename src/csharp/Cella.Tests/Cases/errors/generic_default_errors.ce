@@ -1,0 +1,102 @@
+mod test
+
+Eq: trait
+{
+	==: op(imm a: Self, imm b: Self) -> bool
+}
+
+i32: impl Eq
+
+Plain: rec
+{
+	value: i32
+}
+
+Late[T = i32, U]: rec
+{
+	a: T
+	b: U
+}
+
+Own[T = Own[T]]: rec
+{
+	a: i32
+}
+
+Forward[T = U, U = i32]: rec
+{
+	a: T
+}
+
+Bad[T: Eq = Plain]: rec
+{
+	a: T
+}
+
+Small[limit: const u8 = 300]: rec
+{
+	a: i32
+}
+
+Pair[K, V = K]: rec
+{
+	key: K
+	value: V
+}
+
+Pair[K: Eq, V = K]: impl
+{
+	same: fun(imm self) -> bool => true
+}
+
+Required[T, U]: rec
+{
+	a: T
+}
+
+Combine[Rhs = Self]: trait
+{
+	combine: fun(self, other: Rhs) -> Self
+}
+
+i32: impl Combine
+{
+	combine: fun(self, other: i64) -> i32 => self
+}
+
+holder: fun(imm value: dyn[Combine]) -> i32 => 0
+
+first[T]: fun(x: T) -> i32 => 1
+first[T, U = i32]: fun(x: T) -> i32 => 2
+
+second[T]: fun(x: T) -> i32 => 1
+second[T, U]: fun(x: T) -> i32 => 2
+
+Text[A = i32]: rec
+{
+	length: A
+}
+
+Shown[Unit = i32]: trait
+{
+	unit: fun(imm self) -> Unit
+}
+
+i32: impl Shown[]
+{
+	unit: fun(imm self) -> i32 => self
+}
+
+show[T: Shown[]]: fun(value: T) -> i32 => value.unit()
+
+main: fun -> i32
+{
+	val a: Pair[i32, i32, i32]
+	val b: Pair
+	val c: Required
+	val d: Pair[]
+	val wrong: Pair[i32] = Pair[i32, i64](1, 2)
+	val e: Text[]
+	val f = show(1)
+	ret 0
+}

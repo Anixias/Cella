@@ -84,7 +84,7 @@ public sealed partial class SignatureCollector
 	private ImmutableArray<TraitType> RegisterConstraintList(TypeParameterNode node, TypeParameterSymbol parameter,
 		ResolutionContext context, Symbol? owner)
 	{
-		var deferring = context with { DeferConstraintCheck = DeferAlways };
+		var deferring = context with { DeferConstraintCheck = DeferAlways, TraitSelf = parameter };
 		var bounds = node.Traits.Select(deferring.ResolveTraitReference).ToList();
 		ReportRepeatedTraits(node.Traits, bounds);
 		if (owner is not null)

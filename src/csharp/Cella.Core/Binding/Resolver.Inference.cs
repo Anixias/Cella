@@ -79,16 +79,14 @@ public sealed partial class Resolver
 		Func<int, SourceLocation> locate;
 		if (typeArguments is { } explicitArguments)
 		{
-			if (explicitArguments.Types.Length != open.Length)
+			if (_typePool.CompleteArguments(open, explicitArguments.Types) is not { } completed)
 			{
-				failures.Add(
-					ResolutionContext.ReportGenericArgumentCount(explicitArguments.Location, name, open.Length));
-				
+				failures.Add(ResolutionContext.ReportGenericArgumentCount(explicitArguments.Location, name, open));
 				return null;
 			}
 			
-			arguments = explicitArguments.Types;
-			locate = i => explicitArguments.Locations[i];
+			arguments = SubstituteOwnerArguments(info, completed);
+			locate = explicitArguments.Locate;
 		}
 		else
 		{
@@ -105,7 +103,7 @@ public sealed partial class Resolver
 				return null;
 			}
 			
-			arguments = result.Arguments;
+			arguments = SubstituteOwnerArguments(info, result.Arguments);
 			locate = _ => location;
 			MarkDefaultedArguments(open, candidate, args);
 		}
@@ -195,6 +193,15 @@ public sealed partial class Resolver
 		return result.Succeeded && ReportConstraintViolation(open, result.Arguments, static _ => default, info) is null
 			? InstantiateDeclared(info, result.Arguments)
 			: null;
+	}
+	
+	private ImmutableArray<TypeSymbol> SubstituteOwnerArguments(FunctionInfo info, ImmutableArray<TypeSymbol> arguments)
+	{
+		if (info.TypeArguments.IsDefaultOrEmpty)
+			return arguments;
+		
+		var map = TypePool.CreateMap(info.Symbol.TypeParameters, info.TypeArguments);
+		return [..arguments.Select(argument => _typePool.Substitute(argument, map))];
 	}
 	
 	private static ImmutableArray<TypeParameterSymbol> GetOpenTypeParameters(FunctionInfo info)

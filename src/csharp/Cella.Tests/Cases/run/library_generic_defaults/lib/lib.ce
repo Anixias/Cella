@@ -1,0 +1,44 @@
+mod lib
+
+Allocator: pub trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Heap: pub rec impl Allocator
+{
+	tag: fun(imm self) -> i32 => 1
+}
+
+Box[T, A: Allocator = Heap]: pub rec
+{
+	value: T
+	allocator: A
+
+	new: op(value: T, allocator: A)
+	{
+		self.value = value
+		self.allocator = allocator
+	}
+}
+
+Box[T, A: Allocator + default]: impl
+{
+	new: op(value: T)
+	{
+		var allocator: A
+		self.value = value
+		self.allocator = allocator
+	}
+}
+
+Fixed[T, capacity: const usize = 4]: pub rec
+{
+	items: array[T, capacity]
+}
+
+parse[T: copy + default = i64]: pub fun -> T
+{
+	var value: T
+	ret value
+}

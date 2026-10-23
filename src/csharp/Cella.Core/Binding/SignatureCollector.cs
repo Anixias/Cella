@@ -140,10 +140,14 @@ public sealed partial class SignatureCollector
 		dropsEntryPoint = files.Any(file => file.DroppedNames.Any(name => IsEntryPointName(file, name)));
 		_typePool.TypeCompleter = Complete;
 		_typePool.TraitCompleter = CompleteTrait;
+		_typePool.DefaultResolver = ResolveDefault;
 		_typePool.SizeTable.Measurer = Measure;
 		
 		foreach (var file in files)
 			Register(file);
+		
+		foreach (var file in files)
+			RegisterDefaults(file);
 		
 		foreach (var file in files)
 			RegisterConstraints(file);
@@ -156,6 +160,7 @@ public sealed partial class SignatureCollector
 		foreach (var impl in _impls)
 			RegisterImplMembers(impl);
 		
+		ResolveDefaults();
 		AddImpliedConformances();
 		ReportRedundantBounds();
 		RegisterConstructorBounds();
@@ -180,6 +185,7 @@ public sealed partial class SignatureCollector
 		ReportVariadicTypes();
 		_typePool.TypeCompleter = null;
 		_typePool.TraitCompleter = null;
+		_typePool.DefaultResolver = null;
 		_typePool.SizeTable.Measurer = null;
 	}
 	

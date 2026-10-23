@@ -3,10 +3,10 @@ Error at generic_argument_starts.ce:3:12
 3 │ x: var ptr[drop] = undef
                ╘══╛ Cannot use 'drop' as a value
 
-Error at generic_argument_starts.ce:5:12
+Error at generic_argument_starts.ce:5:8
 4 │ 
 5 │ y: var ptr[] = undef
-               ^ Expected a type or a value
+           ╘═══╛ 'ptr' takes one generic argument
 
 Error at generic_argument_starts.ce:7:19
 6 │ 

@@ -137,14 +137,15 @@ public sealed partial class Resolver
 		foreach (var info in declared)
 		{
 			var open = GetOpenTypeParameters(info);
-			if (open.Length != typeArguments.Types.Length)
+			if (_typePool.CompleteArguments(open, typeArguments.Types) is not { } completed)
 				continue;
 			
-			if (ReportConstraintViolation(open, typeArguments.Types, i => typeArguments.Locations[i], info) is
-			    { } violation)
+			var arguments = SubstituteOwnerArguments(info, completed);
+			
+			if (ReportConstraintViolation(open, arguments, typeArguments.Locate, info) is { } violation)
 				return Error(node, violation, CurrentTargetType);
 			
-			infos.Add(InstantiateDeclared(info, typeArguments.Types));
+			infos.Add(InstantiateDeclared(info, arguments));
 		}
 		
 		if (infos.Count > 0)
@@ -153,8 +154,7 @@ public sealed partial class Resolver
 		
 		var location = node.SourceLocation;
 		return Error(node, methods is [var single]
-			? ResolutionContext.ReportGenericArgumentCount(location, name,
-				single.Function.DeclaredTypeParameters.Length)
+			? ResolutionContext.ReportGenericArgumentCount(location, name, single.Function.DeclaredTypeParameters)
 			: ReportOverloadArgumentCount(location, name, typeArguments.Types.Length), CurrentTargetType);
 	}
 	

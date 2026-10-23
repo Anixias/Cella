@@ -1,0 +1,24 @@
+mod test
+
+use lib.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Arena: rec impl Allocator
+{
+	tag: fun(imm self) -> i32 => 2
+}
+
+main: fun -> i32
+{
+	val boxed: Box[i32] = Box(5)
+	val other = Box[i32, Arena](6, Arena())
+	val parsed = parse()
+	printf("%d %d %d %zu %zu\n", boxed.value, boxed.allocator.tag(), other.allocator.tag(), sizeOf(Fixed[u8]),
+		sizeOf(parsed))
+	
+	ret 0
+}

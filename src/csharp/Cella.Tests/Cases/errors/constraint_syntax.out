@@ -3,10 +3,11 @@ Error at constraint_syntax.ce:3:10
 3 │ first[T: 3]: fun -> i32 = 0
              ^ Expected a constraint
 
-Error at constraint_syntax.ce:5:17
+Error at constraint_syntax.ce:5:18
 4 │ 
 5 │ second[T: Shape[]: fun -> i32 = 0
-                    ^ Expected a type or a value
+                     ^ Expected ',' or ']'
+                     | To match the '[' on line 5
 
 Error at constraint_syntax.ce:12:21
 11 │ 

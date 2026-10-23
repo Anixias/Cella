@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Combine[Rhs = Self]: trait
+{
+	combine: fun(self, other: Rhs) -> Self
+}
+
+i32: impl Combine
+{
+	combine: fun(self, other: i32) -> i32 => self + other
+}
+
+Meters: rec impl Combine
+{
+	value: i32
+
+	combine: fun(self, other: Meters) -> Meters => Meters(self.value + other.value)
+}
+
+Scaled[T]: rec
+{
+	value: T
+}
+
+Scaled[T: Combine + copy]: impl Combine
+{
+	combine: fun(self, other: Scaled[T]) -> Scaled[T] => Scaled(self.value.combine(other.value))
+}
+
+Grows: trait req Combine
+{
+	grow: fun(self) -> Self
+}
+
+i32: impl Grows
+{
+	grow: fun(self) -> i32 => self.combine(self)
+}
+
+Offset: rec impl Combine[i32]
+{
+	value: i32
+
+	combine: fun(self, other: i32) -> Offset => Offset(self.value + other)
+}
+
+Paired[Other = Self]: trait
+{
+	pair: fun(self, other: Other) -> i32
+}
+
+[T: copy]: impl Paired
+{
+	pair: fun(self, other: T) -> i32 => 1
+}
+
+sum[T: Combine + copy]: fun(a: T, b: T) -> T => a.combine(b)
+
+twice[T: Grows + copy]: fun(a: T) -> T => a.grow().combine(a)
+
+main: fun -> i32
+{
+	val meters = sum(Meters(2), Meters(3))
+	val scaled = sum(Scaled(4), Scaled(5))
+	val offset = Offset(1).combine(9)
+	printf("%d %d %d %d %d %d\n", sum(3, 4), meters.value, scaled.value, twice(5), offset.value, 5.pair(6))
+	ret 0
+}

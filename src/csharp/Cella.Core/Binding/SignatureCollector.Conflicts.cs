@@ -123,13 +123,47 @@ public sealed partial class SignatureCollector
 		if (isExternal && others.Any(static s => s is FunctionSymbol { Kind: FunctionKind.External }))
 			return new(DiagnosticSeverity.Error, location, "'ext' functions cannot be overloaded");
 		
+		var overloads = others.Cast<FunctionSymbol>().Where(other => HasReceiver(other) == HasReceiver(function))
+			.ToList();
+		
 		var message = DescribeConflict(function, _builder.Functions[function].Signature,
-			others.Cast<FunctionSymbol>()
-				.Where(other => HasReceiver(other) == HasReceiver(function))
+			overloads
 				.Select(other => AlignTypeParameters(function, other, _builder.Functions[other].Signature))
-				.OfType<FunctionSignature>());
+				.OfType<FunctionSignature>()) ?? DescribeDefaultedConflict(function, overloads);
 		
 		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
+	}
+	
+	private string? DescribeDefaultedConflict(FunctionSymbol function, IEnumerable<FunctionSymbol> overloads) =>
+		overloads
+			.Where(other => other.DeclaredTypeParameters.Length != function.DeclaredTypeParameters.Length)
+			.Select(other => AlignDefaultedTypeParameters(function, other))
+			.Any(pair => pair is var (mine, theirs) && DescribeConflict(function, mine, [theirs]) is not null)
+			? $"'{function.Name}' overloads cannot accept the same arguments"
+			: null;
+	
+	private (FunctionSignature Mine, FunctionSignature Theirs)? AlignDefaultedTypeParameters(FunctionSymbol function,
+		FunctionSymbol other)
+	{
+		var (shorter, longer) = function.DeclaredTypeParameters.Length < other.DeclaredTypeParameters.Length
+			? (function, other)
+			: (other, function);
+		
+		var kept = shorter.DeclaredTypeParameters;
+		var extended = longer.DeclaredTypeParameters;
+		if (TypePool.CountRequiredArguments(extended) > kept.Length)
+			return null;
+		
+		var map = TypePool.CreateMap(extended, kept);
+		if (!kept.Zip(extended).All(pair => HaveSameConstraints(pair.First, pair.Second, map)))
+			return null;
+		
+		for (var i = kept.Length; i < extended.Length; i++)
+			map[extended[i]] = _typePool.Substitute(_typePool.GetDefaultArgument(extended[i])!, map);
+		
+		var aligned = _typePool.SubstituteSignature(_builder.Functions[longer].Signature, map);
+		var plain = _builder.Functions[shorter].Signature;
+		return longer == function ? (aligned, plain) : (plain, aligned);
 	}
 	
 	private static bool HasReceiver(FunctionSymbol function) => function.Syntax is FunctionNode { Receiver: not null };

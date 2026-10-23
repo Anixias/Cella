@@ -14,6 +14,7 @@ public sealed partial class TypePool
 	public SizeTable SizeTable { get; }
 	public Action<TypeSymbol>? TypeCompleter { get; set; }
 	public Action<TraitSymbol>? TraitCompleter { get; set; }
+	public Func<TypeParameterSymbol, TypeSymbol?>? DefaultResolver { get; set; }
 	public Func<BigInteger, IntegerStorageType, bool>? IntegerFits { get; set; }
 	
 	public List<(TypeSymbol Type, SourceLocation Location, FunctionSymbol? Owner, ErrorContainment.Owner ErrorOwner)>

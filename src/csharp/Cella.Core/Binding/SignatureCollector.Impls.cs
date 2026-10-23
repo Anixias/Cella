@@ -12,7 +12,7 @@ public sealed partial class SignatureCollector
 {
 	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits, ResolutionContext context)
 	{
-		var deferring = context with { ContainingType = type, DeferConstraintCheck = DeferAlways };
+		var deferring = context with { ContainingType = type, DeferConstraintCheck = DeferAlways, TraitSelf = type };
 		foreach (var traitNode in traits)
 		{
 			if (deferring.ResolveTrait(traitNode) is { } trait)
@@ -109,7 +109,15 @@ public sealed partial class SignatureCollector
 		if (node.Traits.IsEmpty)
 			_typePool.AddMemberBlock(impl, target);
 		
-		var deferring = context with { ImplBlock = impl, DeferConstraintCheck = DeferAlways };
+		var deferring = context with
+		{
+			ImplBlock = impl,
+			DeferConstraintCheck = DeferAlways,
+			TraitSelf = target is NamedTypeSymbol { IsGenericDefinition: true } definition
+				? _typePool.Instantiate(definition, [..impl.TargetArguments])
+				: target
+		};
+		
 		var traits = new List<TraitType>();
 		foreach (var traitNode in node.Traits)
 		{
@@ -181,7 +189,9 @@ public sealed partial class SignatureCollector
 				return named;
 			
 			case NamedTypeSymbol named:
-				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, named));
+				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, named.Name,
+					named.TypeParameters.Length));
+				
 				return null;
 			
 			case PrimitiveType primitive when impl.TypeParameters.IsEmpty:

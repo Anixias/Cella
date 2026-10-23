@@ -48,6 +48,17 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 			return qualified ?? (ITypeNode)new IdentifierTypeNode(identifier);
 		}
 		
+		if (Match(ref index, out var emptyClose, TokenType.OpCloseBracket))
+		{
+			var (nameSource, nameRange) = identifier.SourceLocation;
+			var (bracketSource, bracketRange) = openBracket.SourceLocation;
+			return new GenericTypeNode(new(nameSource, nameRange.Join(emptyClose.SourceLocation.Range)), name, [])
+			{
+				Qualifiers = qualified is null ? [] : qualified.Parts[..^1],
+				EmptyBrackets = new(bracketSource, bracketRange.Join(emptyClose.SourceLocation.Range))
+			};
+		}
+		
 		var args = new List<IGenericArgumentNode>();
 		Token closeBracket;
 		while (true)

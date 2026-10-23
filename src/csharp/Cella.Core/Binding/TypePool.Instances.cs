@@ -39,13 +39,14 @@ public sealed partial class TypePool
 			.Select(static field => new GlobalSymbol(field.Syntax, field.Visibility))
 			.ToImmutableArray();
 		
+		var shown = CountShownArguments(definition.TypeParameters, typeArguments);
 		NamedTypeSymbol created = definition switch
 		{
-			RecordSymbol record => new RecordSymbol(record, typeArguments, record.Members.Select(CopyMember))
+			RecordSymbol record => new RecordSymbol(record, typeArguments, record.Members.Select(CopyMember), shown)
 			{
 				StaticFields = statics
 			},
-			EnumSymbol enumType => new EnumSymbol(enumType, typeArguments, enumType.Cases.Select(CopyCase))
+			EnumSymbol enumType => new EnumSymbol(enumType, typeArguments, enumType.Cases.Select(CopyCase), shown)
 			{
 				StaticFields = statics
 			},
@@ -127,6 +128,59 @@ public sealed partial class TypePool
 		
 		if (!instance.HasPayload)
 			RegisterEnumConversions(instance);
+	}
+	
+	public TypeSymbol? GetDefaultArgument(TypeParameterSymbol parameter) =>
+		parameter.DefaultArgument ?? (parameter.DeclaresDefault ? DefaultResolver?.Invoke(parameter) : null);
+	
+	public int CountShownArguments(ImmutableArray<TypeParameterSymbol> parameters,
+		ImmutableArray<TypeSymbol> arguments)
+	{
+		var map = CreateMap(parameters, arguments);
+		var shown = arguments.Length;
+		while (shown > 0 && shown <= parameters.Length && GetDefaultArgument(parameters[shown - 1]) is { } fallback &&
+		       Substitute(fallback, map) == arguments[shown - 1])
+			shown--;
+		
+		return shown;
+	}
+	
+	public static int CountRequiredArguments(ImmutableArray<TypeParameterSymbol> parameters) =>
+		parameters.Count(static parameter => !parameter.DeclaresDefault);
+	
+	public ImmutableArray<TypeSymbol>? CompleteArguments(ImmutableArray<TypeParameterSymbol> parameters,
+		IReadOnlyList<TypeSymbol> arguments, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? outer = null)
+	{
+		if (arguments.Count > parameters.Length)
+			return null;
+		
+		var completed = arguments.ToList();
+		while (completed.Count < parameters.Length)
+		{
+			if (GetDefaultArgument(parameters[completed.Count]) is not { } fallback)
+				return null;
+			
+			var map = CreateMap(parameters, completed);
+			foreach (var (parameter, argument) in outer ?? new Dictionary<TypeParameterSymbol, TypeSymbol>())
+				map[parameter] = argument;
+			
+			completed.Add(Substitute(fallback, map));
+		}
+		
+		return [..completed];
+	}
+	
+	public TypeSymbol? FindDefaultArgument(ImmutableArray<TypeParameterSymbol> parameters,
+		IReadOnlyList<TypeSymbol?> arguments, int index)
+	{
+		if (GetDefaultArgument(parameters[index]) is not { } fallback)
+			return null;
+		
+		var map = parameters.Take(index).Select((parameter, i) => (parameter, arguments[i] ?? NativeSymbols.Invalid))
+			.ToDictionary(static pair => pair.parameter, static pair => pair.Item2);
+		
+		var argument = Substitute(fallback, map);
+		return ContainsInvalid(argument) ? null : argument;
 	}
 	
 	public static Dictionary<TypeParameterSymbol, TypeSymbol> CreateMap(

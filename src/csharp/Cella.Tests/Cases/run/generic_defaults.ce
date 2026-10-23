@@ -1,0 +1,139 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Allocator: trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Heap: rec impl Allocator
+{
+	tag: fun(imm self) -> i32 => 1
+}
+
+Arena: rec impl Allocator
+{
+	id: i32
+
+	tag: fun(imm self) -> i32 => self.id
+}
+
+Box[T, A: Allocator = Heap]: rec
+{
+	value: T
+	allocator: A
+
+	new: op(value: T, allocator: A)
+	{
+		self.value = value
+		self.allocator = allocator
+	}
+}
+
+Box[T, A: Allocator + default]: impl
+{
+	new: op(value: T)
+	{
+		var allocator: A
+		self.value = value
+		self.allocator = allocator
+	}
+}
+
+Text[A: Allocator = Heap]: rec
+{
+	length: i32
+}
+
+Fixed[T, capacity: const usize = 4]: rec
+{
+	items: array[T, capacity]
+}
+
+Grid[rows: const usize, columns: const usize = rows]: rec
+{
+	side: array[u8, rows]
+	top: array[u8, columns]
+}
+
+Pair[K, V = K]: rec
+{
+	key: K
+	value: V
+}
+
+Shown[Unit = i32]: trait
+{
+	unit: fun(imm self) -> Unit
+}
+
+i32: impl Shown
+{
+	unit: fun(imm self) -> i32 => self * 2
+}
+
+Holder[T]: rec
+{
+	value: T
+
+	keep[R = T]: fun(self, other: R) -> R => other
+
+	width[R = T]: fun(self) -> usize => sizeOf(R)
+
+	make[U: default = i64]: fun -> U
+	{
+		var made: U
+		ret made
+	}
+}
+
+Counter[T: default = i32]: rec
+{
+	value: T
+
+	zero: fun -> Counter[T]
+	{
+		var counter: Counter[T]
+		ret counter
+	}
+}
+
+parse[T: copy + default = i64]: fun -> T
+{
+	var value: T
+	ret value
+}
+
+pick[T, U = i32]: fun(a: T, b: U) -> T => a
+
+measure: fun(text: Text) -> i32 => text.length
+
+show[T: Shown]: fun(value: T) -> i32 => value.unit()
+
+main: fun -> i32
+{
+	val heap = Box(5)
+	val arena = Box(6, Arena(9))
+	val written: Box[i32] = Box[i32](7)
+	val text = Text(3)
+	val pair = Pair[i32](1, 2)
+	val parsed = parse()
+	val narrow = parse[u8]()
+	printf("%d %d %d %d %zu %zu\n", heap.allocator.tag(), arena.allocator.tag(), written.value, measure(text),
+		sizeOf(Fixed[u8]), sizeOf(Grid[3]))
+
+	printf("%d %d %zu %zu %d\n", pair.key, pair.value, sizeOf(parsed), sizeOf(narrow), show(21))
+	val holder = Holder(5)
+	val kept = holder.keep(7)
+	val wide = holder.keep[i64](8)
+	val made = Holder[u8].make()
+	val counter = Counter.zero()
+	printf("%d %lld %zu %zu %d %zu\n", kept, wide, sizeOf(made), Holder[u16](1).width(), pick[i8](1, 2),
+		sizeOf(counter))
+
+	ret 0
+}
