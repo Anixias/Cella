@@ -123,6 +123,10 @@ class SnippetInsertHandler(private val snippet: String) : InsertHandler<LookupEl
 	
 	override fun handleInsert(context: InsertionContext, item: LookupElement) {
 		val editor = context.editor
+		val isCall = '(' in snippet
+		if (isCall && context.completionChar == '(')
+			context.setAddCompletionChar(false)
+		
 		context.document.deleteString(context.startOffset, context.tailOffset)
 		editor.caretModel.moveToOffset(context.startOffset)
 		
@@ -143,6 +147,8 @@ class SnippetInsertHandler(private val snippet: String) : InsertHandler<LookupEl
 		
 		template.addTextSegment(snippet.substring(position))
 		manager.startTemplate(editor, template)
+		if (isCall)
+			AutoPopupController.getInstance(context.project).autoPopupParameterInfo(editor, null)
 	}
 }
 
@@ -255,7 +261,7 @@ class CellaTypedHandler : TypedHandlerDelegate() {
 			'.' -> AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
 			' ' -> if (followsCompletionKeyword(editor, file))
 				AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-			'(' -> AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
+			'(', ',' -> AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
 		}
 		
 		return Result.CONTINUE
