@@ -45,7 +45,7 @@ Box[T: noref, A: Allocator = Heap]: pub own rec
 	*: op(mut self) -> mut[T] => mut *self.data
 }
 
-Box[T: noref, A: Allocator + default]: impl
+Box[T: noref, A: Allocator + new]: impl
 {
 	new: op(value: T)
 	{

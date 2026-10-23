@@ -1,39 +1,139 @@
 ﻿mod std.containers
 
+use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout]
+use std.[Option, Span, View]
 
 List[T: noref, A: Allocator = Heap]: pub own rec
 {
 	data: pvt req ptr[T]
 	count: pvt set usize
-	capacity: pvt set req usize
+	capacity: pvt set usize
 	alloc: pvt req A
 	
-	new: op(value: T, allocator: A)
+	new: op(alloc: A)
 	{
-		self.alloc = allocator
+		self.alloc = alloc
 		
-		// TODO Move to const after const functions exist
-		val layout = Layout.arrayOf[T]()
+		val layout = Layout.arrayOf[T](0)
+		self.data = ptr[T](self.alloc.allocate(layout))
+	}
+	
+	grow: pvt fun(mut self)
+	{
+		val newCapacity = match self.capacity
+		{
+			< 4 => 4
+			else => self.capacity * 2
+		}
 		
-		val p = self.alloc.allocate(layout)
-		if p == null
-			panic "out of memory"
+		// Existing layout, not new layout
+		val layout = Layout.arrayOf[T](self.capacity)
+		self.data = ptr[T](self.alloc.resize(self.data, layout, newCapacity))
+		self.capacity = newCapacity
+	}
+	
+	growIfNeeded: pvt fun(mut self)
+	{
+		if self.count == self.capacity
+			self.grow()
+	}
+	
+	add: fun(mut self, value: T)
+	{
+		self.growIfNeeded()
+		own self.data[self.count] = value
+		self.count += 1
+	}
+	
+	insert: fun(mut self, value: T, index: usize)
+	{
+		if index > self.count
+			panic "index out of bounds"
+			
+		if index == self.count
+		{
+			self.add(value)
+			ret
+		}
 		
-		self.data = ptr[T](p)
-		own *self.data = value
+		self.growIfNeeded()
+		
+		// Shift all succeeding elements up by 1
+		for i in 1..=(self.count - index)
+			own self.data[self.count - i + 1] = own self.data[self.count - i]
+		
+		// Write new element
+		own self.data[index] = value
+		
+		self.count += 1
+	}
+	
+	removeAt: fun(mut self, index: usize) -> T
+	{
+		if index >= self.count
+			panic "index out of bounds"
+		
+		val value = own self.data[index]
+		for i in index..(self.count - 1)
+			own self.data[i] = own self.data[i + 1]
+		
+		self.count -= 1
+		ret value
+	}
+	
+	in: op(imm self) -> ListCursor[T] => ListCursor[T](self.data, self.count)
+	
+	as: op(imm self) -> View[T] => View[T](self.data, self.count)
+	as: op(mut self) -> Span[T] => Span[T](self.data, self.count)
+	
+	[]: op(mut self, index: usize) -> mut[T]
+	{
+		if (index >= self.count)
+			panic "index out of bounds"
+		
+		ret mut self.data[index]
 	}
 }
 
-Test: own rec impl Allocator
+List[T: noref, A: Allocator + new]: impl
 {
-	allocate: fun(mut self, layout: Layout) -> ptr => panic
-	release: fun(mut self, memory: ptr, layout: Layout) => panic
-	drop: op {}
+	new: op
+	{
+		self = List[T, A](A())
+	}
 }
 
-f: fun
+List[T: noref + Eq, A: Allocator]: impl
 {
-	val l1 = List[i32, Test](3, Test())
-	val l2 = List[i32, Heap](3, Heap())
+	remove: fun(mut self, value: T) -> Option[T]
+	{
+		for v, i in self
+			if v == value
+				ret self.removeAt(i)
+		
+		ret none
+	}
+}
+
+ListCursor[T: noref]: pub ref rec
+{
+	data: pvt ptr[T]
+	length: pvt usize
+	position: pvt usize
+	
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position += 1
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> mut[T] => mut self.data[self.position - 1]
 }
