@@ -35,6 +35,7 @@ public sealed class SemanticModel
 	private readonly Func<GlobalSymbol, GlobalInfo?>? _globals;
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
 	private readonly Func<EnumSymbol, EnumCaseSymbol, BigInteger>? _caseValues;
+	private readonly Func<FileSymbol, ImportEnvironment?>? _imports;
 	private readonly List<SourceLocation> _inactiveCalls = [];
 	private readonly Lazy<Dictionary<string, Dictionary<TextRange, List<SymbolReference>>>> _usages;
 	private readonly Lazy<Dictionary<string, SymbolReference>> _types;
@@ -46,9 +47,11 @@ public sealed class SemanticModel
 		Func<TypeSymbol, bool>? needsDrop = null, Func<FunctionSymbol, FunctionInfo?>? functions = null,
 		Func<GlobalSymbol, GlobalInfo?>? globals = null,
 		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null,
-		Func<EnumSymbol, EnumCaseSymbol, BigInteger>? caseValues = null)
+		Func<EnumSymbol, EnumCaseSymbol, BigInteger>? caseValues = null,
+		Func<FileSymbol, ImportEnvironment?>? imports = null)
 	{
 		_needsDrop = needsDrop;
+		_imports = imports;
 		_functions = functions;
 		_globals = globals;
 		_typeConstants = typeConstants;
@@ -115,6 +118,16 @@ public sealed class SemanticModel
 		}
 		
 		return best;
+	}
+	
+	public IEnumerable<ImportUse> FindImportSources(FileSymbol file, Symbol symbol)
+	{
+		if (_imports?.Invoke(file) is not { } imports)
+			return [];
+		
+		return symbol is TypeSymbol { OriginalDefinition: var original } && original != symbol
+			? imports.SourcesOf(symbol).Concat(imports.SourcesOf(original))
+			: imports.SourcesOf(symbol);
 	}
 	
 	public IReadOnlyList<SymbolReference> GetReferences(string path) =>

@@ -7,6 +7,8 @@ namespace Cella.LanguageServer;
 
 public static class Refactorings
 {
+	private const string ReturnKeyword = "ret";
+	
 	public static IEnumerable<DiagnosticFix> Find(ResolvedFileNode file, TextRange requested)
 	{
 		if (file.Syntax is not FileNode syntax)
@@ -14,14 +16,31 @@ public static class Refactorings
 		
 		foreach (var function in FindFunctions(syntax.Declarations))
 		{
-			if (function.Body is null || !Touches(Header(function), requested))
+			if (function.Body is null)
 				continue;
 			
-			if (function.BodyArrow is { } arrow && ToBlockBody(function, arrow) is { } block)
-				yield return block;
-			else if (function.Body is BlockStatementNode body && ToExpressionBody(function, body) is { } expression)
+			var touchesHeader = Touches(Header(function), requested);
+			if (function.BodyArrow is { } arrow)
+			{
+				if (touchesHeader && ToBlockBody(function, arrow) is { } block)
+					yield return block;
+			}
+			else if (function.Body is BlockStatementNode body && (touchesHeader || TouchesBody(body, requested)) &&
+			         ToExpressionBody(function, body) is { } expression)
 				yield return expression;
 		}
+	}
+	
+	private static bool TouchesBody(BlockStatementNode body, TextRange requested)
+	{
+		var range = body.SourceLocation.Range;
+		if (Touches(new(range.Start, range.Start + 1), requested) || Touches(new(range.End - 1, range.End), requested))
+			return true;
+		
+		return body.StatementNodes is [ExpressionStatementNode { ExpressionNode: ReturnExpressionNode returned }] &&
+		       Touches(
+			       new(returned.SourceLocation.Range.Start, returned.SourceLocation.Range.Start + ReturnKeyword.Length),
+			       requested);
 	}
 	
 	private static IEnumerable<FunctionNode> FindFunctions(IEnumerable<IDeclarationNode> declarations)

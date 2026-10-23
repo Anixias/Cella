@@ -24,6 +24,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -34,6 +35,7 @@ import org.eclipse.lsp4j.CodeAction
 import org.eclipse.lsp4j.CodeActionContext
 import org.eclipse.lsp4j.CodeActionKind
 import org.eclipse.lsp4j.CodeActionParams
+import org.eclipse.lsp4j.CreateFile
 import org.eclipse.lsp4j.Location
 import org.eclipse.lsp4j.Position
 import org.eclipse.lsp4j.PrepareRenameParams
@@ -65,12 +67,31 @@ private fun applyEdits(document: Document, edits: List<TextEdit>) {
 
 internal fun applyWorkspaceEdit(project: Project, title: String, edit: WorkspaceEdit) {
 	WriteCommandAction.runWriteCommandAction(project, title, null, {
-		for ((uri, edits) in edit.changes.orEmpty()) {
-			val document = documentOf(uri) ?: continue
-			applyEdits(document, edits)
-			PsiDocumentManager.getInstance(project).commitDocument(document)
+		for ((uri, edits) in edit.changes.orEmpty())
+			applyEdits(project, uri, edits)
+
+		for (change in edit.documentChanges.orEmpty()) {
+			if (change.isLeft)
+				applyEdits(project, change.left.textDocument.uri, change.left.edits)
+			else
+				(change.right as? CreateFile)?.let { createFile(it.uri) }
 		}
 	})
+}
+
+private fun applyEdits(project: Project, uri: String, edits: List<TextEdit>) {
+	val document = documentOf(uri) ?: return
+	applyEdits(document, edits)
+	PsiDocumentManager.getInstance(project).commitDocument(document)
+}
+
+private fun createFile(uri: String) {
+	val path = Path.of(URI(uri))
+	if (LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path) != null)
+		return
+
+	val folder = VfsUtil.createDirectoryIfMissing(path.parent.toString()) ?: return
+	folder.createChildData(CellaCodeAction::class.java, path.fileName.toString())
 }
 
 class CellaCodeAction(private val action: CodeAction) : IntentionAction {

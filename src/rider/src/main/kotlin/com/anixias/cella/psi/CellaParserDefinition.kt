@@ -34,9 +34,16 @@ private val flatParser = PsiParser { root, builder ->
 	builder.treeBuilt
 }
 
+private val structureParser = PsiParser { root, builder ->
+	val file = builder.mark()
+	parseStructure(builder)
+	file.done(root)
+	builder.treeBuilt
+}
+
 class CellaParserDefinition : ParserDefinition {
 	override fun createLexer(project: Project?) = CellaLexer()
-	override fun createParser(project: Project?) = flatParser
+	override fun createParser(project: Project?) = structureParser
 	override fun getFileNodeType() = CellaTokenTypes.FILE
 	override fun getCommentTokens() = CellaTokenTypes.COMMENTS
 	override fun getStringLiteralElements() = CellaTokenTypes.STRINGS

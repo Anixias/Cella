@@ -35,6 +35,7 @@
 		                      implementationClass="com.anixias.cella.editor.CellaSpellcheckingStrategy"/>
 		<spellchecker.support language="CellaProject"
 		                      implementationClass="com.anixias.cella.editor.CelpSpellcheckingStrategy"/>
+		<breadcrumbsInfoProvider implementation="com.anixias.cella.psi.CellaBreadcrumbsProvider"/>
 		<lineIndentProvider implementation="com.anixias.cella.editor.CellaLineIndentProvider"/>
 		<typedHandler implementation="com.anixias.cella.editor.CellaBraceIndentHandler"/>
 <langCodeStyleSettingsProvider implementation="com.anixias.cella.editor.CellaCodeStyleSettingsProvider"/>

@@ -15,6 +15,7 @@ public sealed class EnumNode
 ) : IDeclarationNode
 {
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
+	public SourceLocation Extent { get; init; } = identifier.SourceLocation;
 	public Token Identifier { get; } = identifier;
 	public ImmutableArray<Token> Modifiers { get; } = modifiers.ToImmutableArray();
 	public Token? Visibility { get; init; }

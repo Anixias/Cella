@@ -25,6 +25,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.problems.WolfTheProblemSolver
+import com.intellij.util.concurrency.AppExecutorUtil
 import java.net.URI
 import java.nio.file.Path
 import javax.swing.Icon
@@ -91,6 +92,7 @@ class CellaProblems(override val project: Project) : ProblemsProvider {
 
 	private val problems = linkedMapOf<VirtualFile, List<CellaProblem>>()
 	private val roots = mutableListOf<CellaProblemsRoot>()
+	private val solverQueue = AppExecutorUtil.createBoundedApplicationPoolExecutor("Cella problems", 1)
 	private val hidden = PropertiesComponent.getInstance(project).getValue(HiddenKey).orEmpty()
 		.split(',')
 		.mapNotNull { name -> CellaProblemLevel.entries.firstOrNull { it.name == name } }
@@ -132,11 +134,18 @@ class CellaProblems(override val project: Project) : ProblemsProvider {
 			else
 				problems[file] = updated
 			
-			val solver = WolfTheProblemSolver.getInstance(project)
-			if (updated.any { it.level == CellaProblemLevel.Error })
-				solver.reportProblemsFromExternalSource(file, this)
-			else
-				solver.clearProblemsFromExternalSource(file, this)
+			val hasErrors = updated.any { it.level == CellaProblemLevel.Error }
+			if (hasErrors != previous.any { it.level == CellaProblemLevel.Error })
+				solverQueue.execute {
+					if (project.isDisposed)
+						return@execute
+					
+					val solver = WolfTheProblemSolver.getInstance(project)
+					if (hasErrors)
+						solver.reportProblemsFromExternalSource(file, this)
+					else
+						solver.clearProblemsFromExternalSource(file, this)
+				}
 
 			for (root in roots.toList()) {
 				previous.filter { it !in updated && isShown(it) }.forEach(root::problemDisappeared)

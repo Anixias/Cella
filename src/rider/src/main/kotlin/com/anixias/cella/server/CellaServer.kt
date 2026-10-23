@@ -65,7 +65,9 @@ import org.eclipse.lsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.TextDocumentPositionParams
 import org.eclipse.lsp4j.TextDocumentItem
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier
+import org.eclipse.lsp4j.ResourceOperationKind
 import org.eclipse.lsp4j.WorkspaceClientCapabilities
+import org.eclipse.lsp4j.WorkspaceEditCapabilities
 import org.eclipse.lsp4j.WorkspaceFolder
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification
@@ -347,6 +349,10 @@ class CellaServer(private val project: Project) : Disposable {
 				capabilities = ClientCapabilities().apply {
 					workspace = WorkspaceClientCapabilities().apply {
 						semanticTokens = SemanticTokensWorkspaceCapabilities(true)
+						workspaceEdit = WorkspaceEditCapabilities().apply {
+							documentChanges = true
+							resourceOperations = listOf(ResourceOperationKind.Create)
+						}
 					}
 					textDocument = TextDocumentClientCapabilities().apply {
 						completion = CompletionCapabilities(CompletionItemCapabilities(true).apply {

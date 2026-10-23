@@ -63,6 +63,8 @@ public sealed class ImportEnvironment
 	
 	public void MarkResolved(Symbol symbol) => MarkUsed(_sources[symbol]);
 	
+	public IEnumerable<ImportUse> SourcesOf(Symbol symbol) => _sources[symbol];
+	
 	public IEnumerable<ImportUse> FindUnused()
 	{
 		lock (_used)

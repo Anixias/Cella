@@ -290,7 +290,7 @@ public sealed class Server
 	
 	private async Task<JsonNode?> FindCodeActionsAsync(JsonObject? parameters, CancellationToken ct)
 	{
-		var (diagnostics, file, text) = await _workspace.GetFileAsync(GetUri(parameters), ct);
+		var (diagnostics, file, project, text) = await _workspace.GetFileAsync(GetUri(parameters), ct);
 		if (text is null)
 			return new JsonArray();
 		
@@ -311,7 +311,11 @@ public sealed class Server
 			..file is null
 				? []
 				: Refactorings.Find(file, requested).Select(fix =>
-					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf))
+					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf)),
+			..file is not null && project is not null &&
+			  TypeMoves.Find(project, file, requested, _workspace.UriOf) is { } move
+				? [move]
+				: Array.Empty<JsonNode>()
 		]);
 	}
 	
@@ -446,7 +450,7 @@ public sealed class Server
 			["renameProvider"] = new JsonObject { ["prepareProvider"] = true },
 			["codeActionProvider"] = new JsonObject
 			{
-				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite)
+				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite, TypeMoves.Kind)
 			},
 			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".", " ") },
 			["signatureHelpProvider"] = new JsonObject

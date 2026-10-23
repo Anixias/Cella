@@ -32,6 +32,7 @@ public sealed partial class FileParser
 		
 		return new(identifier, modifiers.Tokens, isRef, members)
 		{
+			Extent = Span(identifier, Tokens[index - 1]),
 			Body = hasBody ? Span(openBrace, Tokens[index - 1]) : null,
 			LastHeaderToken = lastHeaderToken,
 			Visibility = modifiers.Visibility,
@@ -146,6 +147,7 @@ public sealed partial class FileParser
 		
 		return new(identifier, modifiers.Tokens, members)
 		{
+			Extent = Span(identifier, Tokens[index - 1]),
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
 			Requirements = new(identifier, keywords, traits, constructors)
@@ -359,6 +361,7 @@ public sealed partial class FileParser
 		if (!Match(ref index, out var openBrace, TokenType.OpOpenBrace))
 			return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, [], [])
 			{
+				Extent = Span(identifier, Tokens[index - 1]),
 				Visibility = modifiers.Visibility,
 				TypeParameters = [..typeParameters],
 				MatchedType = matchedType,
@@ -373,6 +376,7 @@ public sealed partial class FileParser
 		
 		return new(identifier, modifiers.Tokens, isExternal, isRef, tagType, cases, members)
 		{
+			Extent = Span(identifier, Tokens[index - 1]),
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
 			MatchedType = matchedType,

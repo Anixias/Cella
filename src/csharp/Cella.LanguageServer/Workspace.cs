@@ -40,11 +40,13 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	
 	private readonly List<string> _roots = [];
 	private readonly Dictionary<string, Checker> _checkers = new(Protocol.PathComparer);
+	private readonly Dictionary<string, Checker> _probers = new(Protocol.PathComparer);
 	private readonly Dictionary<string, HashSet<string>> _published = new(Protocol.PathComparer);
+	private readonly Dictionary<string, string> _publishedDiagnostics = new(Protocol.PathComparer);
 	private readonly Dictionary<string, BuildResult> _results = new(Protocol.PathComparer);
 	private readonly SemaphoreSlim _changes = new(0);
-	private readonly SemaphoreSlim _urgent = new(0);
 	private readonly SemaphoreSlim _building = new(1, 1);
+	private readonly SemaphoreSlim _probing = new(1, 1);
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? checking;
 	private Dictionary<string, string> checkedTexts = new(Protocol.PathComparer);
@@ -83,7 +85,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	{
 		var path = Protocol.ToPath(uri);
 		lock (_lock)
+		{
 			_documents[path] = (uri, text, version);
+			_publishedDiagnostics.Remove(path);
+		}
 		
 		if (!IsInRoot(path) && FindProjectDirectory(path) is { } directory)
 			AddRoot(directory);
@@ -102,7 +107,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	public void Close(string uri)
 	{
 		lock (_lock)
+		{
 			_documents.Remove(Protocol.ToPath(uri));
+			_publishedDiagnostics.Remove(Protocol.ToPath(uri));
+		}
 		
 		RequestCheck();
 	}
@@ -185,8 +193,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		return (references, FindFile(projects, path)?.Syntax is FileNode file ? file.ContextualKeywords : []);
 	}
 	
-	public async Task<(IReadOnlyList<Diagnostic> Diagnostics, ResolvedFileNode? File, string? Text)> GetFileAsync(
-		string uri, CancellationToken ct)
+	public async Task<(IReadOnlyList<Diagnostic> Diagnostics, ResolvedFileNode? File, ProjectCheck? Project,
+		string? Text)> GetFileAsync(string uri, CancellationToken ct)
 	{
 		var path = Protocol.ToPath(uri);
 		var (projects, text) = await GetCheckedProjectsAsync(path, ct);
@@ -195,7 +203,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			.Where(diagnostic => Protocol.PathComparer.Equals(diagnostic.SourceLocation.Source.FilePath, path))
 			.ToList();
 		
-		return (diagnostics, FindFile(projects, path), text);
+		var project = projects.FirstOrDefault(project =>
+			project.Files.Any(file => Protocol.PathComparer.Equals(file.Symbol.FullPath, path)));
+		
+		return (diagnostics, FindFile(projects, path), project, text);
 	}
 	
 	public async Task<IReadOnlyList<(FunctionInfo Function, SourceLocation Name, bool IsMain)>> GetRunnablesAsync(
@@ -238,7 +249,6 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			
 			if (!isCurrent)
 			{
-				_urgent.Release();
 				using var stopping = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token, ct);
 				await completed.WaitAsync(stopping.Token);
 				continue;
@@ -369,14 +379,11 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			while (true)
 			{
 				await _changes.WaitAsync(ct);
-				if (debounce > TimeSpan.Zero)
+				while (debounce > TimeSpan.Zero && await _changes.WaitAsync(debounce, ct))
 				{
-					using var waiting = CancellationTokenSource.CreateLinkedTokenSource(ct);
-					await Task.WhenAny(Task.Delay(debounce, waiting.Token), _urgent.WaitAsync(waiting.Token));
-					await waiting.CancelAsync();
 				}
 				
-				while (_changes.Wait(0) || _urgent.Wait(0))
+				while (_changes.Wait(0))
 				{
 				}
 				
@@ -444,12 +451,30 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		
 		unsaved[path] = text;
 		var probe = new CompletionProbe(path, offset);
+		var target = FindOwningProject(path) ?? root;
 		using var stopping = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token, ct);
-		return await RunAsync(root, builder => builder.CompleteAsync(root, unsaved, probe, _stopping.Token),
-			stopping.Token) is null
-			? null
-			: probe;
+		await _probing.WaitAsync(stopping.Token);
+		try
+		{
+			foreach (var stale in _probers.Keys.Where(key => !Protocol.PathComparer.Equals(key, target)).ToList())
+				_probers.Remove(stale);
+			
+			return await RunAsync(_probers, target,
+				builder => builder.CompleteAsync(target, unsaved, probe, _stopping.Token)) is null
+				? null
+				: probe;
+		}
+		finally
+		{
+			_probing.Release();
+		}
 	}
+	
+	private static string? FindOwningProject(string path) =>
+		FindProjectDirectory(path) is { } directory &&
+		Directory.EnumerateFiles(directory, "*.celp").ToList() is [var project]
+			? project
+			: null;
 	
 	private async Task<BuildResult?> RunAsync(string root, Func<Builder, Task<BuildResult>> build,
 		CancellationToken ct)
@@ -457,38 +482,44 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		await _building.WaitAsync(ct);
 		try
 		{
-			BuildOptions options;
-			lock (_lock)
-				options = buildOptions;
-			
-			if (!_checkers.TryGetValue(root, out var checker) || checker.Options != options)
-			{
-				var output = new CollectedOutput();
-				_checkers[root] = checker = new(new Builder(options, output), output, options);
-			}
-			
-			checker.Output.Lines.Clear();
-			BuildResult result;
-			try
-			{
-				result = await CompilerThread.Run(() => build(checker.Builder));
-			}
-			catch (Exception exception) when (exception is not OperationCanceledException)
-			{
-				_checkers.Remove(root);
-				await LogAsync(ErrorMessage, $"Checking '{root}' failed: {exception}");
-				return null;
-			}
-			
-			foreach (var line in checker.Output.Lines)
-				await LogAsync(InfoMessage, line);
-			
-			return result;
+			return await RunAsync(_checkers, root, build);
 		}
 		finally
 		{
 			_building.Release();
 		}
+	}
+	
+	private async Task<BuildResult?> RunAsync(Dictionary<string, Checker> checkers, string root,
+		Func<Builder, Task<BuildResult>> build)
+	{
+		BuildOptions options;
+		lock (_lock)
+			options = buildOptions;
+		
+		if (!checkers.TryGetValue(root, out var checker) || checker.Options != options)
+		{
+			var output = new CollectedOutput();
+			checkers[root] = checker = new(new Builder(options, output), output, options);
+		}
+		
+		checker.Output.Lines.Clear();
+		BuildResult result;
+		try
+		{
+			result = await CompilerThread.Run(() => build(checker.Builder));
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			checkers.Remove(root);
+			await LogAsync(ErrorMessage, $"Checking '{root}' failed: {exception}");
+			return null;
+		}
+		
+		foreach (var line in checker.Output.Lines)
+			await LogAsync(InfoMessage, line);
+		
+		return result;
 	}
 	
 	public string? GetText(string uri) => TextAt(Protocol.ToPath(uri));
@@ -569,6 +600,15 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			parameters["uri"] = document.Uri;
 			if (document.Version is { } version)
 				parameters["version"] = version;
+		}
+		
+		var published = parameters.ToJsonString();
+		lock (_lock)
+		{
+			if (_publishedDiagnostics.TryGetValue(path, out var previous) && previous == published)
+				return Task.CompletedTask;
+			
+			_publishedDiagnostics[path] = published;
 		}
 		
 		return notify(Protocol.Notification("textDocument/publishDiagnostics", parameters));

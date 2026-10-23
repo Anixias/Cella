@@ -6,45 +6,73 @@ namespace Cella.Core.Binding;
 
 public static class ImportEdits
 {
-	public static TextEdit Create(FileNode file, string module, string name)
+	public const string Wildcard = "*";
+	
+	public static TextEdit Create(FileNode file, string module, string name) => Create(file, module, [name]).Single();
+	
+	public static IEnumerable<TextEdit> Create(FileNode file, string module, IReadOnlyCollection<string> names)
 	{
 		var source = file.SourceLocation.Source;
 		var imports = file.Imports
 			.Where(static candidate => !candidate.IsPrelude && candidate.SourceLocation.Range.IsValid)
 			.ToList();
 		
-		var merged = imports
-			.Where(candidate => !candidate.HasSyntaxErrors && candidate.ModuleName.Text == module)
-			.OrderBy(static candidate => candidate.Import is ListImport ? 0 : 1)
-			.FirstOrDefault(static candidate => candidate.Import is TokenImport or ListImport);
+		List<string> sorted = names.Contains(Wildcard) ? [Wildcard] : [..names.Distinct().Order(Comparer)];
+		var merged = sorted is [Wildcard]
+			? default
+			: imports
+				.Where(candidate => !candidate.HasSyntaxErrors && candidate.ModuleName.Text == module)
+				.OrderBy(static candidate => candidate.Import is ListImport ? 0 : 1)
+				.FirstOrDefault(static candidate => candidate.Import is TokenImport or ListImport);
 		
 		switch (merged.Import)
 		{
 			case ListImport { Tokens: [.., var last] } list:
-				var following = list.Tokens.FirstOrDefault(token => CompareNames(name, token.Text) < 0);
-				return following.Text is null
-					? Insert(last.SourceLocation.Range.End, $", {name}")
-					: Insert(following.SourceLocation.Range.Start, $"{name}, ");
+				foreach (var group in sorted.GroupBy(name =>
+					         list.Tokens.IndexOf(
+						         list.Tokens.FirstOrDefault(token => CompareNames(name, token.Text) < 0))))
+				{
+					yield return group.Key < 0
+						? Insert(last.SourceLocation.Range.End, string.Concat(group.Select(static name => $", {name}")))
+						: Insert(list.Tokens[group.Key].SourceLocation.Range.Start,
+							string.Concat(group.Select(static name => $"{name}, ")));
+				}
+				
+				yield break;
 			
 			case TokenImport { Token: var single }:
-				string[] names = [single.Text, name];
-				Array.Sort(names, CompareNames);
-				return new(single.SourceLocation, $"[{string.Join(", ", names)}]");
+				yield return new(single.SourceLocation,
+					$"[{string.Join(", ", sorted.Append(single.Text).Order(Comparer))}]");
+				
+				yield break;
 		}
 		
 		var newline = source.FindNewline();
-		var line = $"use {module}.{name}";
-		string[] path = [..module.Split('.'), name];
+		var line = $"use {module}.{(sorted is [var only] ? only : $"[{string.Join(", ", sorted)}]")}";
+		string[] path = [..module.Split('.'), sorted[0]];
 		var next = imports.FirstOrDefault(candidate => ComparePaths(path, PathOf(candidate)) < 0);
 		if (next.Import is not null)
-			return Insert(next.SourceLocation.Range.Start, line + newline);
-		
-		if (imports.Count > 0)
-			return Insert(imports.Max(static candidate => candidate.SourceLocation.Range.End), newline + line);
-		
-		return Insert((file.ImportCondition ?? file.ModuleName.SourceLocation).Range.End, newline + newline + line);
+			yield return Insert(next.SourceLocation.Range.Start, line + newline);
+		else if (imports.Count > 0)
+			yield return Insert(imports.Max(static candidate => candidate.SourceLocation.Range.End), newline + line);
+		else
+			yield return Insert((file.ImportCondition ?? file.ModuleName.SourceLocation).Range.End,
+				newline + newline + line);
 		
 		TextEdit Insert(int offset, string text) => new(new(source, new(offset, offset)), text);
+	}
+	
+	public static IComparer<string> Comparer { get; } = Comparer<string>.Create(CompareNames);
+	
+	public static int ComparePaths(IReadOnlyList<string> left, IReadOnlyList<string> right)
+	{
+		for (var i = 0; i < Math.Min(left.Count, right.Count); i++)
+		{
+			if (CompareNames(left[i], right[i]) is not 0 and var result)
+				return result;
+		}
+		
+		return left.Count.CompareTo(right.Count);
 	}
 	
 	private static string[] PathOf(ImportExpression import) =>
@@ -57,17 +85,6 @@ public static class ImportEdits
 			_ => "*"
 		}
 	];
-	
-	private static int ComparePaths(string[] left, string[] right)
-	{
-		for (var i = 0; i < Math.Min(left.Length, right.Length); i++)
-		{
-			if (CompareNames(left[i], right[i]) is not 0 and var result)
-				return result;
-		}
-		
-		return left.Length.CompareTo(right.Length);
-	}
 	
 	private static int CompareNames(string left, string right) =>
 		StringComparer.OrdinalIgnoreCase.Compare(left, right) is not 0 and var result

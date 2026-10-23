@@ -261,6 +261,8 @@ public sealed partial class SignatureCollector
 	
 	public ImportEnvironment GetImports(FileSymbol file) => _builder.ImportEnvironments[file];
 	
+	public ImportEnvironment? FindImports(FileSymbol file) => _builder.ImportEnvironments.GetValueOrDefault(file);
+	
 	public IEnumerable<KeyValuePair<string, FunctionSymbol>> PanicTargets =>
 		_dependencyTable.PanicTargets.Concat(_builder.PanicTargets);
 	

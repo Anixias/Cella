@@ -43,6 +43,36 @@ public sealed partial class LanguageServerTests
 		return Apply(text, (JsonArray)action["edit"]!["changes"]![SourceUri]!);
 	}
 	
+	private async Task<Dictionary<string, string>> MoveAsync(string marked, string title)
+	{
+		var (text, actions) = await CodeActionsAtAsync(marked);
+		var action = actions.FirstOrDefault(action => (string)action!["title"]! == title);
+		Assert.True(action is not null,
+			$"No '{title}' among: {string.Join(", ", actions.Select(static action => (string)action!["title"]!))}");
+		
+		var files = new Dictionary<string, string>(StringComparer.Ordinal);
+		foreach (var change in (JsonArray)action["edit"]!["documentChanges"]!)
+		{
+			var uri = (string?)change!["uri"] ?? (string)change["textDocument"]!["uri"]!;
+			var path = Protocol.ToPath(uri);
+			var name = Path.GetFileName(path);
+			if ((string?)change["kind"] == "create")
+			{
+				files[name] = "";
+				continue;
+			}
+			
+			if (!files.TryGetValue(name, out var current))
+				current = Protocol.PathComparer.Equals(path, SourcePath)
+					? text
+					: (await File.ReadAllTextAsync(path, Token)).ReplaceLineEndings("\n");
+			
+			files[name] = Apply(current, (JsonArray)change["edits"]!);
+		}
+		
+		return files;
+	}
+	
 	private async Task<IEnumerable<string>> ActionTitlesAsync(string marked) =>
 		(await CodeActionsAtAsync(marked)).Actions.Select(static action => (string)action!["title"]!);
 	
@@ -88,6 +118,12 @@ public sealed partial class LanguageServerTests
 		
 		Assert.DoesNotContain("Convert to expression body",
 			await ActionTitlesAsync("mod test\n\nma‸in: fun -> i32\n{\n\tval x = 1\n\tret x\n}\n"));
+		
+		Assert.Equal(expression, await FixAsync(block.Replace("{\n\tret", "‸{\n\tret"), "Convert to expression body"));
+		Assert.Equal(expression, await FixAsync(block.Replace("\tret x", "\tr‸et x"), "Convert to expression body"));
+		Assert.Equal(expression, await FixAsync(block.Replace("2\n}", "2\n}‸"), "Convert to expression body"));
+		Assert.DoesNotContain("Convert to expression body",
+			await ActionTitlesAsync(block.Replace("ret x * 2", "ret x * ‸2")));
 		
 		Assert.Equal(0, await ShutDownAsync());
 	}
@@ -142,6 +178,45 @@ public sealed partial class LanguageServerTests
 			})
 			.Order(StringComparer.Ordinal)
 			.ToList();
+	}
+	
+	[Fact]
+	public async Task MovesTypesToTheirOwnFiles()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),
+			"mod test.util\n\nhelper: pub fun -> i32 => 1\n\nMeters: pub rec\n{\n\tvalue: i32\n}\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "measured.ce"),
+			"mod test\n\nuse test.util.helper\n\ntwice: fun -> i32 => helper() * 2\n", Token);
+		
+		const string source =
+			"mod test\n\nuse test.util.[helper, Meters]\n\n// A point.\nPoint: rec\n{\n\tx: Meters\n}\n\n" +
+			"Measured: trait\n{\n\tmeasure: fun(imm self) -> Meters\n}\n\n" +
+			"main: fun -> i32 => helper()\n";
+		
+		var moved = await MoveAsync(source.Replace("Point: rec", "Po‸int: rec"), "Move to 'point.ce'");
+		Assert.Equal("mod test\n\nuse test.util.Meters\n\n// A point.\nPoint: rec\n{\n\tx: Meters\n}\n",
+			moved["point.ce"]);
+		
+		Assert.Equal(source.Replace("// A point.\nPoint: rec\n{\n\tx: Meters\n}\n\n", ""), moved["main.ce"]);
+		
+		moved = await MoveAsync(source.Replace("Measured: trait", "Measured‸: trait"), "Move to 'measured.ce'");
+		Assert.Equal("mod test\n\nuse test.util.[helper, Meters]\n\ntwice: fun -> i32 => helper() * 2\n\n" +
+		             "Measured: trait\n{\n\tmeasure: fun(imm self) -> Meters\n}\n", moved["measured.ce"]);
+		
+		Assert.Equal(source.Replace("Measured: trait\n{\n\tmeasure: fun(imm self) -> Meters\n}\n\n", ""),
+			moved["main.ce"]);
+		
+		Assert.DoesNotContain("Move to 'main.ce'",
+			await ActionTitlesAsync("mod test\n\nMa‸in: rec\n{\n}\n\nmain: fun -> i32 => 0\n"));
+		
+		Assert.DoesNotContain("Move to 'secret.ce'", await ActionTitlesAsync(
+			"mod test\n\nSec‸ret: pvt rec\n{\n\tvalue: i32\n}\n\nmain: fun -> i32 => Secret(1).value\n"));
+		
+		Assert.DoesNotContain("Move to 'holder.ce'", await ActionTitlesAsync(
+			"mod test\n\nHid: pvt rec\n{\n}\n\nHol‸der: rec\n{\n\thid: Hid\n}\n\nmain: fun -> i32 => 0\n"));
+		
+		Assert.Equal(0, await ShutDownAsync());
 	}
 	
 	[Fact]
