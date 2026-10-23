@@ -5,9 +5,37 @@ Option[T]: pub enum
 	none
 	some(value: T)
 	
+	hasValue: get(imm self) -> bool => self is some(_)
+	
+	unwrap: fun(self) -> T => match self
+	{
+		some(val value) => value
+		none => panic "called '{nameOf(unwrap)}' on '{nameOf(none)}'"
+	}
+	
+	expect: fun(self, message: str) -> T => match self
+	{
+		some(val value) => value
+		none => panic message
+	}
+	
+	valueOr: fun(self, fallback: T) -> T => match self
+	{
+		some(val value) => value
+		none => fallback
+	}
+	
+	map[U]: fun(self, imm selector: fun[T -> U]) -> Option[U] => match self
+	{
+		some(val value) => some(selector(value))
+		none => none
+	}
+	
 	?: op(self) -> T => match self
 	{
 		some(val value) => value
 		none => ret none
 	}
+	
+	as: op(value: T) -> Option[T] => some(value)
 }

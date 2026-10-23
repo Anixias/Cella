@@ -5,6 +5,33 @@ Result[T, E]: pub enum
 	ok(value: T)
 	err(error: E)
 	
+	isOk: get(imm self) -> bool => self is ok(_)
+	isErr: get(imm self) -> bool => self is err(_)
+	
+	unwrap: fun(self) -> T => match self
+	{
+		ok(val value) => value
+		err(_) => panic "called '{nameOf(unwrap)}' on '{nameOf(err)}'"
+	}
+	
+	expect: fun(self, message: str) -> T => match self
+	{
+		ok(val value) => value
+		err(_) => panic message
+	}
+	
+	valueOr: fun(self, fallback: T) -> T => match self
+	{
+		ok(val value) => value
+		err(_) => fallback
+	}
+	
+	map[U]: fun(self, imm selector: fun[T -> U]) -> Result[U, E] => match self
+	{
+		ok(val value) => ok(selector(value))
+		err(val error) => err(error)
+	}
+	
 	?: op(self) -> T => match self
 	{
 		ok(val value) => value
