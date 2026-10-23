@@ -11,15 +11,22 @@ public sealed partial class FileParser
 	{
 		var declarationStart = index;
 		var openBracket = Tokens[index];
-		if (ParseTypeParameters(ref index, true) is not { } typeParameters)
+		var typeParameters = ParseTypeParameters(ref index, true, out var isPartial);
+		if (typeParameters is null || isPartial)
 		{
-			ResyncTopLevel(ref index, insideBlock);
+			if (typeParameters is not null)
+				KeepIncompleteHeader(openBracket, typeParameters);
+			
+			if (typeParameters is null || !Peek(index, TokenType.OpOpenBracket))
+				ResyncTopLevel(ref index, insideBlock);
+			
 			return true;
 		}
 		
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			ReportExpected(index, "':'");
+			KeepIncompleteHeader(openBracket, typeParameters);
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
@@ -28,6 +35,7 @@ public sealed partial class FileParser
 		if (!Match(ref index, out var implKeyword, _topLevelContextualKeywords, TokenType.KeywordImpl))
 		{
 			ReportExpected(index, "'impl'");
+			KeepIncompleteHeader(openBracket, typeParameters);
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
 		}
@@ -50,6 +58,12 @@ public sealed partial class FileParser
 		return true;
 	}
 	
+	private void KeepIncompleteHeader(Token identifier, List<TypeParameterNode> typeParameters)
+	{
+		if (typeParameters.Count > 0)
+			_incompleteHeaders.Add(new(identifier, typeParameters));
+	}
+	
 	private bool ParseNamedDeclaration(ref int index, List<IDeclarationNode> declarations, Token? block,
 		bool insideBlock)
 	{
@@ -62,10 +76,16 @@ public sealed partial class FileParser
 		
 		var target = ParseImplTarget(ref index, identifier);
 		SkipStray(ref index, TokenType.OpOpenBracket);
-		if (ParseTypeParameters(ref index) is not { } typeParameters)
+		var typeParameters = ParseTypeParameters(ref index, false, out var isPartial);
+		if (typeParameters is null || isPartial)
 		{
 			_droppedNames.Add(identifier);
-			ResyncTopLevel(ref index, insideBlock);
+			if (typeParameters is not null)
+				KeepIncompleteHeader(identifier, typeParameters);
+			
+			if (typeParameters is null || !Peek(index, TokenType.OpOpenBracket))
+				ResyncTopLevel(ref index, insideBlock);
+			
 			return true;
 		}
 		
@@ -73,6 +93,7 @@ public sealed partial class FileParser
 		if (!Match(ref index, TokenType.OpColon))
 		{
 			Report(IsOnSameLine(index) ? Tokens[index] : identifier, $"Expected ':' after '{identifier.Text}'");
+			KeepIncompleteHeader(identifier, typeParameters);
 			_droppedNames.Add(identifier);
 			ResyncTopLevel(ref index, insideBlock);
 			return true;
@@ -230,6 +251,7 @@ public sealed partial class FileParser
 			
 			if (function is null)
 			{
+				KeepIncompleteHeader(identifier, typeParameters);
 				_droppedNames.Add(identifier);
 				SkipDeclaration(ref index, declarationStart, insideBlock);
 			}
@@ -243,6 +265,7 @@ public sealed partial class FileParser
 		
 		// Unknown declaration
 		index = kindIndex;
+		KeepIncompleteHeader(identifier, typeParameters);
 		_droppedNames.Add(identifier);
 		if (!AtEnd(index) && !IsOnSameLine(index))
 		{

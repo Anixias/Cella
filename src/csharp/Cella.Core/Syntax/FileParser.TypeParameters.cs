@@ -5,8 +5,14 @@ namespace Cella.Core.Syntax;
 
 public sealed partial class FileParser
 {
-	private List<TypeParameterNode>? ParseTypeParameters(ref int index, bool startsDeclaration = false)
+	private List<TypeParameterNode>? ParseTypeParameters(ref int index, bool startsDeclaration = false) =>
+		ParseTypeParameters(ref index, startsDeclaration, out var isPartial) is { } parameters && !isPartial
+			? parameters
+			: null;
+	
+	private List<TypeParameterNode>? ParseTypeParameters(ref int index, bool startsDeclaration, out bool isPartial)
 	{
+		isPartial = false;
 		var parameters = new List<TypeParameterNode>();
 		if (!startsDeclaration && !IsOnSameLine(index) ||
 		    !Match(ref index, out var openBracket, TokenType.OpOpenBracket))
@@ -21,7 +27,8 @@ public sealed partial class FileParser
 				else
 					ReportExpected(index, "a type parameter name");
 				
-				return null;
+				isPartial = !IsOnSameLine(index);
+				return isPartial ? parameters : null;
 			}
 			
 			var keywords = new List<Token>();
@@ -29,21 +36,30 @@ public sealed partial class FileParser
 			var constructors = new List<ConstructorConstraintNode>();
 			ITypeNode? valueType = null;
 			var hasConstraints = Match(ref index, TokenType.OpColon);
-			if (hasConstraints && Match(ref index, TokenType.KeywordConst))
+			if (hasConstraints && Match(ref index, TokenType.KeywordConst)
+				    ? (valueType = ParseConstraintType(ref index)) is null
+				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false))
 			{
-				if ((valueType = ParseConstraintType(ref index)) is null)
+				if (IsOnSameLine(index))
 					return null;
+				
+				parameters.Add(new(name, keywords, traits, constructors));
+				isPartial = true;
+				return parameters;
 			}
-			else if (hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false))
-				return null;
 			
 			ITypeNode? defaultType = null;
 			IExpressionNode? defaultValue = null;
-			if (Match(ref index, TokenType.OpEqual))
+			if (Match(ref index, TokenType.OpEqual) &&
+			    (valueType is null && (defaultType = ParseConstraintType(ref index)) is null ||
+			     valueType is not null && (defaultValue = ParseDefaultValue(ref index)) is null))
 			{
-				if (valueType is null && (defaultType = ParseConstraintType(ref index)) is null ||
-				    valueType is not null && (defaultValue = ParseDefaultValue(ref index)) is null)
+				if (IsOnSameLine(index))
 					return null;
+				
+				parameters.Add(new(name, keywords, traits, constructors) { ValueType = valueType });
+				isPartial = true;
+				return parameters;
 			}
 			
 			parameters.Add(new(name, keywords, traits, constructors)
@@ -58,7 +74,8 @@ public sealed partial class FileParser
 			return parameters;
 		
 		ReportExpected(index, "',' or ']'", openBracket);
-		return null;
+		isPartial = !IsOnSameLine(index);
+		return isPartial ? parameters : null;
 	}
 	
 	private bool ParseConstraints(ref int index, List<Token> keywords, List<ITypeNode> traits,

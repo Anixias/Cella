@@ -84,7 +84,15 @@ public sealed partial class SignatureCollector
 	private ImmutableArray<TraitType> RegisterConstraintList(TypeParameterNode node, TypeParameterSymbol parameter,
 		ResolutionContext context, Symbol? owner)
 	{
-		var deferring = context with { DeferConstraintCheck = DeferAlways, TraitSelf = parameter };
+		var deferring = context with
+		{
+			DeferConstraintCheck = DeferAlways,
+			TraitSelf = parameter,
+			TraitPlace = owner is TraitSymbol trait && trait.Self == parameter
+				? CompletionPlace.Requirement
+				: CompletionPlace.Constraint
+		};
+		
 		var bounds = node.Traits.Select(deferring.ResolveTraitReference).ToList();
 		ReportRepeatedTraits(node.Traits, bounds);
 		if (owner is not null)
@@ -110,6 +118,39 @@ public sealed partial class SignatureCollector
 			_pendingConstructorBounds.Add((node, parameter, context, owner, CurrentOwner));
 		
 		return [..bounds.OfType<TraitType>().Distinct()];
+	}
+	
+	private void ResolveIncompleteHeaders(FileNode node)
+	{
+		foreach (var header in node.IncompleteHeaders)
+		{
+			using var frame = Own(new ErrorContainment.Owner(null, true));
+			var parameters = SymbolCollector.CreateTypeParameters(header.TypeParameters, header.Identifier.Text);
+			var context = _fileContexts[node] with { TypeParameters = parameters };
+			for (var i = 0; i < parameters.Length; i++)
+			{
+				var parameter = header.TypeParameters[i];
+				RecordName?.Invoke(parameter.Identifier, parameters[i]);
+				if (parameter.ValueType is { } valueType)
+					context.ResolveType(valueType);
+				
+				var constraints = context with
+				{
+					DeferConstraintCheck = DeferAlways,
+					TraitSelf = parameters[i],
+					TraitPlace = CompletionPlace.Constraint
+				};
+				
+				foreach (var trait in parameter.Traits)
+					constraints.ResolveTraitReference(trait);
+				
+				foreach (var type in parameter.Constructors.SelectMany(static constructor => constructor.Types))
+					context.ResolveType(type);
+				
+				if (parameter.DefaultType is { } defaultType)
+					context.ResolveType(defaultType);
+			}
+		}
 	}
 	
 	private TypeSymbol ResolveValueType(ITypeNode node, ResolutionContext context)

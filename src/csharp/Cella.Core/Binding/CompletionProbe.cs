@@ -10,6 +10,8 @@ public enum CompletionPlace
 	Member,
 	Type,
 	Trait,
+	Constraint,
+	Requirement,
 	Label
 }
 

@@ -19,7 +19,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public SymbolTable Build() => _builder.Build();
 	
-	private static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
+	public static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
 		ImmutableArray<TypeParameterNode> parameters, string owner) => parameters
 		.Select(parameter => new TypeParameterSymbol(parameter.Identifier.Text, GetConstraintKeywords(parameter))
 		{

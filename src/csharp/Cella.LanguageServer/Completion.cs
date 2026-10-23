@@ -45,6 +45,11 @@ public static class Completion
 	
 	private static readonly string[] _typeKeywords = ["dyn", "fun", "imm", "mut", ..NativeSymbols.GenericNames];
 	
+	private static readonly string[] _requirementKeywords =
+		["copy", "noref", "default", "ext", "drop", "null", "atomic", "new", "fun"];
+	
+	private static readonly string[] _constraintKeywords = ["const", "trait", .._requirementKeywords];
+	
 	private static readonly string[] _declarationKeywords =
 	[
 		"fun", "rec", "enum", "union", "trait", "impl", "ref", "const", "val", "var", "ext", "pub", "pvt", "mod", "op",
@@ -86,6 +91,8 @@ public static class Completion
 				.Distinct(),
 			(CompletionPlace.Name, _) => _expressionKeywords,
 			(CompletionPlace.Type, _) => _typeKeywords,
+			(CompletionPlace.Constraint, _) => _constraintKeywords,
+			(CompletionPlace.Requirement, _) => _requirementKeywords,
 			(CompletionPlace.Member or CompletionPlace.Trait or CompletionPlace.Label, _) => [],
 			(_, CompletionSite.Declaration) => _declarationKeywords,
 			(_, CompletionSite.TopLevel) => _topLevelKeywords,

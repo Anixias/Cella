@@ -44,6 +44,7 @@ public sealed partial class FileParser
 	private void ResyncTopLevel(ref int index, bool insideBlock = false)
 	{
 		// Skip until another declaration starts. If we encounter braces, keep skipping until closed
+		var start = index;
 		var braceCount = 0;
 		var groupCount = 0;
 		var loop = true;
@@ -51,6 +52,11 @@ public sealed partial class FileParser
 		{
 			switch (Tokens[index].Type)
 			{
+				case TokenType.OpOpenBracket when index > start && braceCount == 0 && groupCount == 0 &&
+				                                  !IsOnSameLine(index):
+					loop = false;
+					break;
+				
 				case TokenType.OpOpenBrace:
 					braceCount++;
 					index++;
@@ -494,6 +500,7 @@ public sealed partial class FileParser
 		_brokenStatements.RemoveWhere(statement => statement.SourceLocation.Range.Start >= offset);
 		_brokenDeclarations.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
 		_declarationsWithErrors.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
+		_incompleteHeaders.RemoveAll(header => header.Identifier.SourceLocation.Range.Start >= offset);
 		var cleared = Math.Min(end + 1, _lexicalReported.Length) - state.Index;
 		if (cleared > 0)
 			Array.Clear(_lexicalReported, state.Index, cleared);

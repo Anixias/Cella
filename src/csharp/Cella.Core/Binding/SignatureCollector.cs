@@ -49,6 +49,7 @@ public sealed partial class SignatureCollector
 	private readonly SignatureTable _dependencyTable;
 	private readonly SignatureTable.Builder _builder = new();
 	private readonly Dictionary<Symbol, Declaration> _declarations = [];
+	private readonly Dictionary<FileNode, ResolutionContext> _fileContexts = [];
 	private readonly Dictionary<SourceLocation, Diagnostic> _projectImportFailures = [];
 	private readonly HashSet<Token> _repeatedProjectImports = [];
 	private List<ModulePathSymbol?>? projectModules;
@@ -151,6 +152,9 @@ public sealed partial class SignatureCollector
 		
 		foreach (var file in files)
 			RegisterConstraints(file);
+		
+		foreach (var file in files)
+			ResolveIncompleteHeaders(file);
 		
 		ReportRequirementCycles(files);
 		InheritSelfConstraints();
@@ -545,6 +549,7 @@ public sealed partial class SignatureCollector
 		var imports = CollectImports(node, context);
 		_builder.ImportEnvironments[file] = imports;
 		context = context with { Imports = imports };
+		_fileContexts[node] = context;
 		
 		foreach (var declaration in node.Declarations)
 		{

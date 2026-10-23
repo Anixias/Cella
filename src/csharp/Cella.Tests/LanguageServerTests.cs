@@ -1742,6 +1742,94 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesTraitConstantsInTypes()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Bytes: trait
+		                                 {
+		                                 	bytes: const usize
+		                                 }
+		                                 
+		                                 getBytes[T: Bytes]: pub fun(imm value: T) -> array[u8, T.bytes]
+		                                 {
+		                                 	val count = T.bytes
+		                                 	val buffer: array[u8, T.bytes] = undef
+		                                 	ret buffer
+		                                 }
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"7:57:5 variable readonly static", "9:15:5 variable readonly static",
+			"10:25:5 variable readonly static"
+		];
+		
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesUnfinishedGenericHeaders()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Sized: trait
+		                                 {
+		                                 }
+		                                 
+		                                 getBytes[T: Sized, U:
+		                                 
+		                                 [V: Sized]:
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"6:9:1 typeParameter declaration", "6:12:5 interface", "6:19:1 typeParameter declaration",
+			"8:1:1 typeParameter declaration", "8:4:5 interface", "10:0:4 function declaration"
+		];
+		
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesConstraintKeywords()
+	{
+		await InitializeAsync();
+		const string prefix = "mod test\n\nSized: trait\n{\n}\n\n";
+		await SetTextAsync(prefix + "getBytes[T: \n\nmain: fun -> i32 => 0\n");
+		var constraints = ItemsOf(await AskAsync("textDocument/completion", 6, 12));
+		Assert.Contains("Sized", constraints.Keys);
+		Assert.Contains("copy", constraints.Keys);
+		Assert.Contains("const", constraints.Keys);
+		
+		await SetTextAsync(prefix + "Bytes: trait req copy + \n");
+		var requirements = ItemsOf(await AskAsync("textDocument/completion", 6, 24));
+		Assert.Contains("default", requirements.Keys);
+		Assert.Contains("Sized", requirements.Keys);
+		Assert.DoesNotContain("const", requirements.Keys);
+		
+		await SetTextAsync(prefix + "Point: rec\n{\n}\n\nPoint: impl \n");
+		var traits = ItemsOf(await AskAsync("textDocument/completion", 10, 12));
+		Assert.Contains("Sized", traits.Keys);
+		Assert.DoesNotContain("copy", traits.Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task OrdersCompletionsByScopeThenProject()
 	{
 		await WriteImportableModulesAsync();

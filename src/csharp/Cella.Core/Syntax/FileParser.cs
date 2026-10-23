@@ -101,6 +101,7 @@ public sealed partial class FileParser
 	private int attributedErrors;
 	private int droppedMembers;
 	private readonly List<Token> _droppedNames = [];
+	private readonly List<IncompleteHeaderNode> _incompleteHeaders = [];
 	private readonly List<TextRange> _inactiveRanges = [];
 	
 	private static Dictionary<string, TokenType> BuildContextualKeywords(params IEnumerable<TokenType> tokenTypes) =>
@@ -387,6 +388,7 @@ public sealed partial class FileParser
 			BrokenDeclarations = _brokenDeclarations,
 			DeclarationsWithSyntaxErrors = _declarationsWithErrors,
 			DroppedNames = [.._droppedNames],
+			IncompleteHeaders = [.._incompleteHeaders],
 			InactiveCode =
 			[
 				.._inactiveRanges

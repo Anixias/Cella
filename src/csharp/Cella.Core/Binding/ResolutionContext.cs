@@ -38,6 +38,7 @@ public readonly struct ResolutionContext
 	public TraitSymbol? Trait { get; init; }
 	public ImplSymbol? ImplBlock { get; init; }
 	public TypeSymbol? TraitSelf { get; init; }
+	public CompletionPlace? TraitPlace { get; init; }
 	public Func<string, Symbol?>? ResolveSiblingMember { get; init; }
 	public Func<ConstraintCheck, bool>? DeferConstraintCheck { get; init; }
 	public Func<string, Symbol?>? Capture { get; init; }
@@ -851,7 +852,7 @@ public readonly struct ResolutionContext
 	private void ProbeTrait(Token name)
 	{
 		if (Probe?.Covers(name) == true)
-			Probe.Capture(CompletionPlace.Trait, GetAllSymbols().Distinct()
+			Probe.Capture(TraitPlace ?? CompletionPlace.Trait, GetAllSymbols().Distinct()
 					.Where(static symbol =>
 						symbol is TraitSymbol or TypeParameterSymbol { IsTrait: true } or ModulePathSymbol)
 					.Select(static symbol => new CompletionCandidate(symbol)), null, File.Syntax,
@@ -1077,7 +1078,10 @@ public readonly struct ResolutionContext
 				    ? new TypeConstantUse(owner, bound, constant)
 				    : null)
 			    .OfType<TypeConstantUse>().Distinct().ToList() is [var use])
+		{
+			RecordName?.Invoke(projected.Member, use.Constant);
 			return TypePool.GetConstantProjection(use);
+		}
 		
 		var named = expression is VarExpressionNode or AccessExpressionNode ? FindNamed(expression) : null;
 		return named switch
