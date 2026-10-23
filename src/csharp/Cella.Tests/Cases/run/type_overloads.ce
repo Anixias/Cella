@@ -1,0 +1,95 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Option: enum
+{
+	none
+	other
+}
+
+Option[T]: enum
+{
+	none
+	some(value: T)
+
+	describe: fun -> cstr => "{nameOf(Option.other)} {nameOf(Option[T].some)}"
+}
+
+Pair[A]: rec
+{
+	first: A
+}
+
+Pair[A, B]: rec
+{
+	first: A
+	second: B
+
+	make: fun(first: A, second: B) -> Pair[A, B] => Pair[A, B](first, second)
+}
+
+Grid[T]: rec
+{
+	cell: T
+}
+
+Grid[size: const usize]: rec
+{
+	cells: array[i32, size]
+}
+
+Named: trait
+{
+	label: fun(self) -> cstr
+}
+
+Named[T]: trait
+{
+	labelWith: fun(self, value: T) -> cstr
+}
+
+Option: impl Named
+{
+	label: fun(self) -> cstr => "plain"
+}
+
+Option[T]: impl Named
+{
+	label: fun(self) -> cstr => "generic"
+}
+
+Pair[A]: impl Named[i32]
+{
+	labelWith: fun(self, value: i32) -> cstr => "pair"
+}
+
+show[T: Named]: fun(value: T) => printf("%s\n", value.label())
+
+main: fun -> i32
+{
+	val plain = Option.other
+	val typed = Option[i32].some(3)
+	val one = Pair[i32](1)
+	val two = Pair[i32, bool](1, true)
+	val made = Pair[i32, u8].make(2, 7)
+	val grid = Grid[u8](4)
+	val sized = Grid[3]([1, 2, 3])
+	show(plain)
+	show(typed)
+	printf("%s %d %d %d %d %d\n", Option[i32].describe(), one.first, made.second, i32(grid.cell), sized.cells[2], i32(sizeOf(Pair[u8, u8])))
+	printf("%s\n", one.labelWith(5))
+	match typed
+	{
+		some(val v) => printf("%d\n", v)
+		none => printf("none\n")
+	}
+	match two
+	{
+		Pair(val first, val second) => printf("%d %d\n", first, second)
+	}
+	ret 0
+}

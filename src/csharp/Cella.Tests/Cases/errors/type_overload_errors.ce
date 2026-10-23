@@ -1,0 +1,72 @@
+mod test
+
+Box[T]: rec
+{
+	value: T
+}
+
+Box[T, A = i32]: rec
+{
+	value: T
+}
+
+Text: rec
+
+Text[T = u8]: rec
+
+Same[T]: rec
+
+Same[U]: rec
+
+Shape: rec
+
+Shape: trait
+
+Pair[A]: rec
+{
+	first: A
+}
+
+Pair[A, B]: rec
+{
+	first: A
+	second: B
+
+	make: fun(first: A, second: B) -> Pair[A, B] => Pair[A, B](first, second)
+}
+
+Named[T]: trait
+
+Named[A, B]: trait
+
+Grid[T]: rec
+{
+	cell: T
+}
+
+Grid[size: const usize]: rec
+
+Marker: trait
+
+main: fun -> i32
+{
+	val a = Pair(1)
+	val b = Pair.make(1, 2)
+	val c: Pair = Pair[i32](1)
+	val d = Pair[i32, i32, i32](1, 2, 3)
+	val e = Pair
+	val f = sizeOf(Pair)
+	val g = Grid[Marker](1)
+	val h = nameOf(Pair)
+	val i = nameOf(Pair.make)
+	val j = nameOf(Pair.missing)
+	ret 0
+}
+
+constrained[T: Named]: fun(value: T)
+{
+}
+
+Pair: impl Marker
+{
+}

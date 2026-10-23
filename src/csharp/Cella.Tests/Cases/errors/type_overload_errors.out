@@ -1,0 +1,91 @@
+Error at type_overload_errors.ce:3:1
+2 │ 
+3 │ Box[T]: rec
+    ╘═╛ 'Box' declarations cannot take the same generic arguments
+
+Error at type_overload_errors.ce:8:1
+7 │ 
+8 │ Box[T, A = i32]: rec
+    ╘═╛ 'Box' declarations cannot take the same generic arguments
+
+Error at type_overload_errors.ce:13:1
+12 │ 
+13 │ Text: rec
+     ╘══╛ 'Text' declarations cannot take the same generic arguments
+
+Error at type_overload_errors.ce:15:1
+14 │ 
+15 │ Text[T = u8]: rec
+     ╘══╛ 'Text' declarations cannot take the same generic arguments
+
+Error at type_overload_errors.ce:17:1
+16 │ 
+17 │ Same[T]: rec
+     ╘══╛ 'Same' is declared more than once in this module
+
+Error at type_overload_errors.ce:19:1
+18 │ 
+19 │ Same[U]: rec
+     ╘══╛ 'Same' is declared more than once in this module
+
+Error at type_overload_errors.ce:21:1
+20 │ 
+21 │ Shape: rec
+     ╘═══╛ 'Shape' is declared more than once in this module
+
+Error at type_overload_errors.ce:23:1
+22 │ 
+23 │ Shape: trait
+     ╘═══╛ 'Shape' is declared more than once in this module
+
+Error at type_overload_errors.ce:53:10
+52 │ {
+53 │     val a = Pair(1)
+                 ╘══╛ 'Pair' needs generic arguments
+
+Error at type_overload_errors.ce:54:10
+53 │ val a = Pair(1)
+54 │ val b = Pair.make(1, 2)
+             ╘══╛ 'Pair' needs generic arguments
+
+Error at type_overload_errors.ce:55:9
+54 │ val b = Pair.make(1, 2)
+55 │ val c: Pair = Pair[i32](1)
+            ╘══╛ 'Pair' needs generic arguments
+
+Error at type_overload_errors.ce:56:10
+55 │ val c: Pair = Pair[i32](1)
+56 │ val d = Pair[i32, i32, i32](1, 2, 3)
+             ╘══╛ No 'Pair' takes 3 generic arguments
+
+Error at type_overload_errors.ce:57:10
+56 │ val d = Pair[i32, i32, i32](1, 2, 3)
+57 │ val e = Pair
+             ╘══╛ Cannot use types as values
+
+Error at type_overload_errors.ce:58:17
+57 │ val e = Pair
+58 │ val f = sizeOf(Pair)
+                    ╘══╛ 'Pair' needs generic arguments
+
+Error at type_overload_errors.ce:59:10
+58 │ val f = sizeOf(Pair)
+59 │ val g = Grid[Marker](1)
+             ╘══╛ No 'Grid' accepts these generic arguments
+
+Error at type_overload_errors.ce:62:22
+61 │ val i = nameOf(Pair.make)
+62 │ val j = nameOf(Pair.missing)
+                         ╘═════╛ No 'Pair' has a member 'missing'
+
+Error at type_overload_errors.ce:66:16
+65 │ 
+66 │ constrained[T: Named]: fun(value: T)
+                    ╘═══╛ 'Named' needs generic arguments
+
+Error at type_overload_errors.ce:70:1
+69 │ 
+70 │ Pair: impl Marker
+     ╘══╛ 'Pair' needs generic arguments
+
+[compilation failed]

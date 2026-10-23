@@ -115,6 +115,11 @@ public sealed partial class SignatureCollector
 			return null;
 		
 		var location = GetIdentifier(declaration).SourceLocation;
+		if (others.All(other => TypeOverloads.CanOverload(symbol, other)))
+			return DescribeTypeConflict(symbol, others) is { } typeConflict
+				? new(DiagnosticSeverity.Error, location, typeConflict)
+				: null;
+		
 		if (symbol is not FunctionSymbol function || others.Any(static s => s is not FunctionSymbol))
 			return new(DiagnosticSeverity.Error, location,
 				$"'{symbol.Name}' is declared more than once in this module");
@@ -133,6 +138,13 @@ public sealed partial class SignatureCollector
 		
 		return message is null ? null : new(DiagnosticSeverity.Error, location, message);
 	}
+	
+	private static string? DescribeTypeConflict(Symbol symbol, List<Symbol> others) =>
+		others.Any(other => TypeOverloads.HaveSameParameters(symbol, other))
+			? $"'{symbol.Name}' is declared more than once in this module"
+			: others.Any(other => TypeOverloads.Overlap(symbol, other))
+				? $"'{symbol.Name}' declarations cannot take the same generic arguments"
+				: null;
 	
 	private string? DescribeDefaultedConflict(FunctionSymbol function, IEnumerable<FunctionSymbol> overloads) =>
 		overloads

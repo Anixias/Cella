@@ -1,0 +1,25 @@
+mod test
+
+use shapes.Size
+use shapes.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holder: rec
+{
+	count: i32
+}
+
+main: fun -> i32
+{
+	val plain = Size(1)
+	val typed = Size[u8](2)
+	val local = Holder(3)
+	val imported = Holder[i32](4)
+	val qualified = shapes.Size[i32](5)
+	printf("%d %d %d %d %d %d\n", plain.value, i32(typed.value), local.count, imported.item, qualified.value, typed.doubled())
+	ret 0
+}

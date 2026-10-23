@@ -250,13 +250,14 @@ public sealed partial class Resolver
 		var context = CurrentResolutionContext;
 		if (syntax.TypePath.IsEmpty)
 			return enumType.Cases.Any(enumCase => enumCase.Name == syntax.CaseName.Text) ||
-			       context.Resolve(syntax.CaseName.Text) is null or TypeSymbol;
+			       context.Resolve(syntax.CaseName.Text) is null or TypeSymbol ||
+			       TypeOverloads.FindFamily(context.Resolve(syntax.CaseName.Text)) is [NamedTypeSymbol, ..];
 		
 		var symbol = context.Resolve(syntax.TypePath[0].Text);
 		foreach (var part in syntax.TypePath.Skip(1))
 			symbol = symbol is ModulePathSymbol module ? context.ResolveMember(module, part.Text) : null;
 		
-		return symbol is null or TypeSymbol;
+		return symbol is null or TypeSymbol || TypeOverloads.FindFamily(symbol) is [NamedTypeSymbol, ..];
 	}
 	
 	private ResolvedPattern? ResolveTestPattern(PatternNode syntax, TypeSymbol subjectType)
@@ -365,7 +366,11 @@ public sealed partial class Resolver
 	{
 		var context = CurrentResolutionContext;
 		var typeNode = CreatePatternTypeNode(syntax);
-		var symbol = context.ResolveTypeName(typeNode);
+		var symbol = context.ResolveTypeName(typeNode, true);
+		if (TypeOverloads.FindFamily(symbol) is { } family)
+			symbol = family.FirstOrDefault(member => member == (type as NamedTypeSymbol)?.Definition) ??
+			         TypeOverloads.ChooseBare(symbol);
+		
 		if (symbol is null)
 		{
 			context.ResolveType(typeNode);
@@ -564,7 +569,13 @@ public sealed partial class Resolver
 	private bool IsEnumName(ImmutableArray<Token> typePath, EnumSymbol enumType)
 	{
 		var context = CurrentResolutionContext;
-		var symbol = typePath is [var name] ? context.Resolve(name.Text) : context.ResolveQualifiedName(typePath);
+		var symbol = typePath is [var name]
+			? context.ResolveAll(name.Text)
+			: context.ResolveQualifiedName(typePath, true);
+		
+		if (TypeOverloads.FindFamily(symbol) is { } family)
+			symbol = family.FirstOrDefault(member => member == enumType.Definition) ?? TypeOverloads.ChooseBare(symbol);
+		
 		switch (symbol)
 		{
 			case not null when symbol == enumType || symbol == enumType.Definition:

@@ -14,6 +14,9 @@ public sealed partial class Resolver
 {
 	public IResolvedExpressionNode Visit(AccessExpressionNode node)
 	{
+		if (RejectOverloadedType(node) is { } overloaded)
+			return overloaded;
+		
 		if (FindTraitView(node.Target) is var (trait, view))
 			return VisitTraitMember(node, trait, view);
 		
@@ -369,6 +372,9 @@ public sealed partial class Resolver
 		ImmutableArray<IResolvedExpressionNode> parts = [];
 		if (CurrentResolutionContext.TryResolveExpressionAsType(targetNode) is { } type)
 			target = RequireTypeArguments(type, targetNode);
+		else if (IsOverloadedType(targetNode))
+			return Error(node, $"'{targetNode.SourceLocation.GetText()}' needs generic arguments", CurrentTargetType,
+				targetNode);
 		else
 		{
 			var value = Decay(MaterializeAsDefault(VisitNode(targetNode)));
@@ -496,6 +502,30 @@ public sealed partial class Resolver
 					return false;
 				
 				named.Add(enumCase);
+				return true;
+			
+			case AccessExpressionNode access when TypeOverloads.FindFamily(context.FindNamed(access.Target)) is
+				{ } family:
+				List<Symbol> found =
+				[
+					..family.Select(member => member switch
+					{
+						TypeSymbol type => FindNamedMember(type, access.Member.Text),
+						TraitSymbol trait => trait.GetFunctions(access.Member.Text).FirstOrDefault()?.Function,
+						_ => null
+					}).OfType<Symbol>()
+				];
+				
+				if (found.Count == 0)
+				{
+					Diagnostics.Add(new(DiagnosticSeverity.Error, access.Member.SourceLocation,
+						$"No '{access.Target.SourceLocation.GetText()}' has a member '{access.Member.Text}'"));
+					
+					return false;
+				}
+				
+				found.ForEach(MarkUsed);
+				named.AddRange(found);
 				return true;
 			
 			case AccessExpressionNode access when FindIndexer(access.Target) is { } indexer:

@@ -144,6 +144,9 @@ public sealed partial class Resolver
 	
 	private IResolvedExpressionNode VisitCall(CallExpressionNode node)
 	{
+		if (RejectOverloadedType(node) is { } overloaded)
+			return overloaded;
+		
 		if (node.Target is VarExpressionNode callee && ResolveTargetCase(callee.Identifier, node) is { } targetCase)
 			return targetCase;
 		

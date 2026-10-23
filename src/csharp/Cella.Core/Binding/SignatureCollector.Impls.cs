@@ -183,7 +183,23 @@ public sealed partial class SignatureCollector
 		if (node.IsBlanket)
 			return ResolveBlanketTarget(impl, node);
 		
-		switch (context.ResolveTypeName(node.Target))
+		var symbol = context.ResolveTypeName(node.Target, true);
+		if (TypeOverloads.FindFamily(symbol) is { } family)
+		{
+			List<GenericArgumentKind?> kinds = [..impl.TargetArguments.Select(GetTargetKind)];
+			symbol = family.FirstOrDefault(member =>
+				TypeOverloads.GetParameters(member).Length == kinds.Count && TypeOverloads.Accepts(member, kinds));
+			
+			if (symbol is null)
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location,
+					ResolutionContext.DescribeMissingOverload(name, kinds.Count)));
+				
+				return null;
+			}
+		}
+		
+		switch (symbol)
 		{
 			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TypeParameters.Length:
 				return named;
@@ -237,6 +253,13 @@ public sealed partial class SignatureCollector
 				return null;
 		}
 	}
+	
+	private static GenericArgumentKind GetTargetKind(TypeSymbol argument) => argument switch
+	{
+		TypeParameterSymbol parameter => TypeOverloads.GetKind(parameter),
+		ValueArgumentType => GenericArgumentKind.Value,
+		_ => GenericArgumentKind.Type
+	};
 	
 	private TypeSymbol? ResolveBlanketTarget(ImplSymbol impl, ImplNode node)
 	{

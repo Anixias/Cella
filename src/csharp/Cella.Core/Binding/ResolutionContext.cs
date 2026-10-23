@@ -134,6 +134,8 @@ public readonly struct ResolutionContext
 	
 	public Symbol? Resolve(Token name) => Record(name, Resolve(name.Text));
 	
+	public Symbol? ResolveAll(Token name) => Record(name, ResolveAll(name.Text));
+	
 	private Symbol? Record(Token name, Symbol? symbol)
 	{
 		if (symbol is TypeSymbol or TraitSymbol or ModulePathSymbol)
@@ -142,7 +144,10 @@ public readonly struct ResolutionContext
 		return symbol;
 	}
 	
-	public Symbol? Resolve(string name, Func<TypeSymbol, string, Symbol?>? findMember = null)
+	public Symbol? Resolve(string name, Func<TypeSymbol, string, Symbol?>? findMember = null) =>
+		TypeOverloads.ChooseBare(ResolveAll(name, findMember));
+	
+	public Symbol? ResolveAll(string name, Func<TypeSymbol, string, Symbol?>? findMember = null)
 	{
 		if (NativeSymbols.IsBuiltInTypeName(name))
 			return NativeSymbols.Resolve(name);
@@ -179,7 +184,8 @@ public readonly struct ResolutionContext
 	
 	private static bool IsKeptBeside(ImportEnvironment imports, Symbol import, List<Symbol> module) =>
 		module.Count == 0 || imports.IsExplicit(import) ||
-		import is FunctionSymbol && module.All(static symbol => symbol is FunctionSymbol);
+		import is FunctionSymbol && module.All(static symbol => symbol is FunctionSymbol) ||
+		module.All(symbol => TypeOverloads.CanOverload(import, symbol) && !TypeOverloads.Overlap(import, symbol));
 	
 	public Symbol? ResolveNear(string name) =>
 		ResolveScoped(name) ?? ResolveFrom(name, [..GetModuleSymbols(name).Where(IsVisible)]);
@@ -281,6 +287,9 @@ public readonly struct ResolutionContext
 	}
 	
 	public Symbol? ResolveMember(ModulePathSymbol module, string name) =>
+		TypeOverloads.ChooseBare(ResolveAllMembers(module, name));
+	
+	public Symbol? ResolveAllMembers(ModulePathSymbol module, string name) =>
 		module.Members.TryGetValue(name, out var members) &&
 		ResolveFrom(name, [..members.Where(IsVisible)]) is { } member
 			? member
@@ -346,11 +355,18 @@ public readonly struct ResolutionContext
 				if (generic.Qualifiers.IsEmpty)
 					ProbeTrait(generic.Identifier);
 				
-				symbol = generic.Qualifiers.IsEmpty ? Resolve(generic.Identifier) : ResolveQualifiedName(parts);
+				symbol = generic.Qualifiers.IsEmpty
+					? ResolveAll(generic.Identifier)
+					: ResolveQualifiedName(parts, true);
+				
 				if (symbol is null && !generic.Qualifiers.IsEmpty)
 					return null;
 				
 				arguments = generic.Arguments;
+				if (!TryChooseOverload(ref symbol, arguments, text, location))
+					return null;
+				
+				Record(generic.Identifier, symbol);
 				break;
 			
 			default:
@@ -378,8 +394,14 @@ public readonly struct ResolutionContext
 				
 				return null;
 			
-			case AmbiguousSymbol:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{text}' is ambiguous"));
+			case AmbiguousSymbol ambiguous:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, location, TypeOverloads.FindFamily(ambiguous) switch
+				{
+					[TraitSymbol, ..] => $"'{text}' needs generic arguments",
+					[NamedTypeSymbol, ..] => $"'{text}' is not a trait",
+					_ => $"'{text}' is ambiguous"
+				}));
+				
 				return null;
 			
 			default:
@@ -387,6 +409,112 @@ public readonly struct ResolutionContext
 				return null;
 		}
 	}
+	
+	public static string DescribeMissingOverload(string name, int count) => count == 0
+		? $"'{name}' needs generic arguments"
+		: $"No '{name}' takes {DescribeGenericArguments(count)}";
+	
+	private static string DescribeAmbiguousType(AmbiguousSymbol symbol, string? written = null) =>
+		TypeOverloads.FindFamily(symbol) switch
+		{
+			[NamedTypeSymbol, ..] => $"'{written ?? symbol.Name}' needs generic arguments",
+			[TraitSymbol, ..] => $"'{written ?? symbol.Name}' is not a type",
+			_ => $"'{written ?? symbol.Name}' is ambiguous"
+		};
+	
+	private static Token? FindNamedToken(IExpressionNode name) => name switch
+	{
+		VarExpressionNode variable => variable.Identifier,
+		AccessExpressionNode access => access.Member,
+		_ => null
+	};
+	
+	private bool TryChooseOverload(ref Symbol? symbol, IReadOnlyList<IGenericArgumentNode> arguments, string name,
+		SourceLocation location)
+	{
+		if (TypeOverloads.FindFamily(symbol) is not { } family)
+			return true;
+		
+		List<Symbol> counted = [..family.Where(member => TypeOverloads.AcceptsCount(member, arguments.Count))];
+		var fitting = counted;
+		if (counted.Count > 1)
+		{
+			List<GenericArgumentKind?> kinds = [..arguments.Select(ClassifyArgument)];
+			fitting = kinds.Contains(null)
+				? [counted[0]]
+				: [..counted.Where(member => TypeOverloads.Accepts(member, kinds))];
+		}
+		
+		if (fitting is [var chosen])
+		{
+			symbol = chosen;
+			return true;
+		}
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, location, counted.Count == 0
+			? DescribeMissingOverload(name, arguments.Count)
+			: fitting.Count == 0
+				? $"No '{name}' accepts these generic arguments"
+				: $"'{name}' is ambiguous"));
+		
+		return false;
+	}
+	
+	private GenericArgumentKind? ClassifyArgument(IGenericArgumentNode node) => node switch
+	{
+		TypeArgumentNode { Type: IdentifierTypeNode type } => ClassifyName(Resolve(type.Token.Text)),
+		TypeArgumentNode { Type: QualifiedTypeNode type } => ClassifyName(FindQualifiedQuietly(type.Parts)),
+		TypeArgumentNode { Type: GenericTypeNode type } =>
+			ClassifyName(FindQualifiedQuietly([..type.Qualifiers, type.Identifier])) == GenericArgumentKind.Trait
+				? GenericArgumentKind.Trait
+				: GenericArgumentKind.Type,
+		TypeArgumentNode => GenericArgumentKind.Type,
+		IdentifierArgumentNode argument => ClassifyName(Resolve(argument.Identifier.Text)),
+		ExpressionArgumentNode argument => ClassifyExpression(argument.Expression),
+		_ => null
+	};
+	
+	private GenericArgumentKind? ClassifyExpression(IExpressionNode expression) => expression switch
+	{
+		VarExpressionNode variable => ClassifyName(Resolve(variable.Identifier.Text)),
+		IndexerExpressionNode indexer =>
+			ClassifyExpression(indexer.Target) == GenericArgumentKind.Trait
+				? GenericArgumentKind.Trait
+				: GenericArgumentKind.Type,
+		AccessExpressionNode access when FindQualifiedQuietly(access) is { } member => ClassifyName(member),
+		TypeExpressionNode or BorrowExpressionNode => GenericArgumentKind.Type,
+		_ => GenericArgumentKind.Value
+	};
+	
+	private static GenericArgumentKind? ClassifyName(Symbol? symbol) => symbol switch
+	{
+		TraitSymbol or TypeParameterSymbol { IsTrait: true } => GenericArgumentKind.Trait,
+		TypeParameterSymbol { IsValue: true } or VariableSymbol => GenericArgumentKind.Value,
+		TypeSymbol => GenericArgumentKind.Type,
+		AmbiguousSymbol when TypeOverloads.FindFamily(symbol) is [TraitSymbol, ..] => GenericArgumentKind.Trait,
+		AmbiguousSymbol when TypeOverloads.FindFamily(symbol) is not null => GenericArgumentKind.Type,
+		_ => null
+	};
+	
+	private Symbol? FindQualifiedQuietly(ImmutableArray<Token> parts)
+	{
+		var symbol = Resolve(parts[0].Text);
+		foreach (var part in parts.Skip(1))
+			symbol = symbol is ModulePathSymbol module ? ResolveAllMembers(module, part.Text) : null;
+		
+		return symbol;
+	}
+	
+	private Symbol? FindQualifiedQuietly(AccessExpressionNode access) => access.Target switch
+	{
+		VarExpressionNode root => Resolve(root.Identifier.Text) is ModulePathSymbol module
+			? ResolveAllMembers(module, access.Member.Text)
+			: null,
+		AccessExpressionNode inner => FindQualifiedQuietly(inner) is ModulePathSymbol module
+			? ResolveAllMembers(module, access.Member.Text)
+			: null,
+		_ => null
+	};
 	
 	public TraitType? InstantiateTrait(TraitSymbol trait, IReadOnlyList<TypeSymbol> arguments,
 		IReadOnlyList<SourceLocation> locations, SourceLocation location)
@@ -446,18 +574,18 @@ public readonly struct ResolutionContext
 		}
 	}
 	
-	public Symbol? ResolveTypeName(ITypeNode node) => node switch
+	public Symbol? ResolveTypeName(ITypeNode node, bool keepsOverloads = false) => node switch
 	{
-		IdentifierTypeNode identifier => Resolve(identifier.Token),
-		QualifiedTypeNode qualified => ResolveQualifiedName(qualified.Parts),
+		IdentifierTypeNode identifier => keepsOverloads ? ResolveAll(identifier.Token) : Resolve(identifier.Token),
+		QualifiedTypeNode qualified => ResolveQualifiedName(qualified.Parts, keepsOverloads),
 		_ => null
 	};
 	
-	public Symbol? ResolveQualifiedName(ImmutableArray<Token> parts)
+	public Symbol? ResolveQualifiedName(ImmutableArray<Token> parts, bool keepsOverloads = false)
 	{
 		var first = parts[0];
-		if (Resolve(first) is { } symbol)
-			return ResolveMembers(symbol, parts, 1);
+		if ((keepsOverloads && parts.Length == 1 ? ResolveAll(first) : Resolve(first)) is { } symbol)
+			return ResolveMembers(symbol, parts, 1, keepsOverloads);
 		
 		Diagnostics.Add(DiagnosticReporter.ReportUndefinedModule(first.SourceLocation, first.Text,
 			GetAllSymbols().OfType<ModulePathSymbol>().Select(static m => m.Name).Distinct()));
@@ -465,7 +593,7 @@ public readonly struct ResolutionContext
 		return null;
 	}
 	
-	public Symbol? ResolveMembers(Symbol symbol, ImmutableArray<Token> parts, int start)
+	public Symbol? ResolveMembers(Symbol symbol, ImmutableArray<Token> parts, int start, bool keepsOverloads = false)
 	{
 		for (var i = start; i < parts.Length; i++)
 		{
@@ -475,7 +603,11 @@ public readonly struct ResolutionContext
 				return null;
 			}
 			
-			if (Record(parts[i], ResolveMember(module, parts[i].Text)) is not { } member)
+			var found = keepsOverloads && i == parts.Length - 1
+				? ResolveAllMembers(module, parts[i].Text)
+				: ResolveMember(module, parts[i].Text);
+			
+			if (Record(parts[i], found) is not { } member)
 			{
 				Diagnostics.Add(ReportUndefinedMember(parts[i].SourceLocation, module, parts[i].Text));
 				return null;
@@ -798,8 +930,8 @@ public readonly struct ResolutionContext
 				ReportUndefinedType(name);
 				break;
 			
-			case AmbiguousSymbol:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, $"'{name.Text}' is ambiguous"));
+			case AmbiguousSymbol ambiguous:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation, DescribeAmbiguousType(ambiguous)));
 				break;
 			
 			default:
@@ -824,8 +956,10 @@ public readonly struct ResolutionContext
 			case null:
 				break;
 			
-			case AmbiguousSymbol:
-				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, $"'{name}' is ambiguous"));
+			case AmbiguousSymbol ambiguous:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+					DescribeAmbiguousType(ambiguous, name)));
+				
 				break;
 			
 			default:
@@ -898,12 +1032,41 @@ public readonly struct ResolutionContext
 	public TypeSymbol? ResolveTraitArgument(IExpressionNode expression) => expression switch
 	{
 		IndexerExpressionNode { Target: VarExpressionNode or AccessExpressionNode } indexer when
-			FindNamed(indexer.Target) is TraitSymbol trait => InstantiateTrait(trait,
-				ResolveGenericArguments(indexer.Arguments, trait.TypeParameters, ResolveGenericArgumentExpression),
-				[..indexer.Arguments.Select(static argument => argument.SourceLocation)],
-				indexer.SourceLocation) ?? (TypeSymbol)NativeSymbols.Invalid,
+			FindIndexedTrait(indexer) is { } found => found is TraitSymbol trait
+				? InstantiateTrait(trait,
+					ResolveGenericArguments(indexer.Arguments, trait.TypeParameters,
+						ResolveGenericArgumentExpression),
+					[..indexer.Arguments.Select(static argument => argument.SourceLocation)],
+					indexer.SourceLocation) ?? (TypeSymbol)NativeSymbols.Invalid
+				: NativeSymbols.Invalid,
 		_ => AsTraitArgument(FindNamed(expression), expression.SourceLocation)
 	};
+	
+	private Symbol? FindIndexedTrait(IndexerExpressionNode indexer)
+	{
+		var symbol = FindNamed(indexer.Target);
+		if (symbol is TraitSymbol)
+			return symbol;
+		
+		var all = indexer.Target is AccessExpressionNode access
+			? FindQualifiedQuietly(access)
+			: ResolveAll(((VarExpressionNode)indexer.Target).Identifier.Text);
+		
+		if (TypeOverloads.FindFamily(all) is not [TraitSymbol, ..])
+			return null;
+		
+		ImmutableArray<IGenericArgumentNode> arguments =
+			[..indexer.Arguments.Select(static argument => new ExpressionArgumentNode(argument))];
+		
+		if (!TryChooseOverload(ref all, arguments, indexer.Target.SourceLocation.GetText().ToString(),
+			    indexer.Target.SourceLocation))
+			return NativeSymbols.Invalid;
+		
+		if (FindNamedToken(indexer.Target) is { } name)
+			Record(name, all);
+		
+		return all;
+	}
 	
 	public TypeSymbol ResolveGenericArgumentExpression(IExpressionNode expression, TypeParameterSymbol? parameter)
 	{
@@ -1037,12 +1200,25 @@ public readonly struct ResolutionContext
 			? null
 			: node.Target switch
 			{
-				VarExpressionNode variable => Resolve(variable.Identifier),
+				VarExpressionNode variable => ResolveAll(variable.Identifier),
 				AccessExpressionNode access => ResolveModule(access.Target) is { } module
-					? Record(access.Member, ResolveMember(module, access.Member.Text))
+					? ResolveAllMembers(module, access.Member.Text)
 					: null,
 				_ => null
 			};
+		
+		if (TypeOverloads.FindFamily(symbol) is [NamedTypeSymbol, ..])
+		{
+			ImmutableArray<IGenericArgumentNode> arguments =
+				[..node.Arguments.Select(static argument => new ExpressionArgumentNode(argument))];
+			
+			if (!TryChooseOverload(ref symbol, arguments, node.Target.SourceLocation.GetText().ToString(),
+				    node.Target.SourceLocation))
+				return NativeSymbols.Invalid;
+		}
+		
+		if (FindNamedToken(node.Target) is { } nameToken)
+			Record(nameToken, symbol);
 		
 		return builtin is not null || symbol is TypeSymbol type && !IsNonType(type)
 			? ResolveGenericApplication(symbol, builtin,
@@ -1191,6 +1367,13 @@ public readonly struct ResolutionContext
 			case not null:
 				return type;
 			
+			case null when FindNamed(expression) is AmbiguousSymbol ambiguous &&
+			               TypeOverloads.FindFamily(ambiguous) is not null:
+				Report(expression,
+					DescribeAmbiguousType(ambiguous, expression.SourceLocation.GetText().ToString()));
+				
+				return NativeSymbols.Invalid;
+			
 			default:
 				Report(expression, IsUndeclaredNever(expression)
 					? "'never' can only be a return type"
@@ -1214,8 +1397,10 @@ public readonly struct ResolutionContext
 				AsTraitArgument(Resolve(type.Token), type.SourceLocation) is { } trait => trait,
 			TypeArgumentNode { Type: QualifiedTypeNode type } when
 				AsTraitArgument(FindQualified(type.Parts), type.SourceLocation) is { } trait => trait,
-			TypeArgumentNode { Type: GenericTypeNode type } when FindQualified([..type.Qualifiers, type.Identifier]) is
-				TraitSymbol => ResolveTrait(type) ?? (TypeSymbol)NativeSymbols.Invalid,
+			TypeArgumentNode { Type: GenericTypeNode type } when
+				FindQualifiedQuietly([..type.Qualifiers, type.Identifier]) is var named &&
+				(named is TraitSymbol || TypeOverloads.FindFamily(named) is [TraitSymbol, ..]) =>
+				ResolveTrait(type) ?? (TypeSymbol)NativeSymbols.Invalid,
 			TypeArgumentNode argument => ResolveType(argument.Type),
 			IdentifierArgumentNode argument => Resolve(argument.Identifier) switch
 			{
@@ -1262,7 +1447,12 @@ public readonly struct ResolutionContext
 		if (builtin is not null)
 			return ResolveGenericApplication(null, builtin, node.Arguments, node.SourceLocation);
 		
-		var symbol = node.Qualifiers.IsEmpty ? Resolve(name) : ResolveQualifiedName([..node.Qualifiers, name]);
+		ImmutableArray<Token> parts = [..node.Qualifiers, name];
+		var symbol = node.Qualifiers.IsEmpty ? ResolveAll(name) : ResolveQualifiedName(parts, true);
+		if (!TryChooseOverload(ref symbol, node.Arguments, string.Join('.', parts.Select(static part => part.Text)),
+			    GetSpan(parts)))
+			return NativeSymbols.Invalid;
+		
 		switch (symbol)
 		{
 			case NamedTypeSymbol { IsGenericDefinition: true } generic when

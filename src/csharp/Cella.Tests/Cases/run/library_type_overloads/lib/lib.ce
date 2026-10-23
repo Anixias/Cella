@@ -1,0 +1,18 @@
+mod shapes
+
+Size: pub rec
+{
+	value: i32
+}
+
+Size[T]: pub rec
+{
+	value: T
+
+	doubled: fun(self) -> i32 => 2
+}
+
+Holder[T]: pub rec
+{
+	item: T
+}

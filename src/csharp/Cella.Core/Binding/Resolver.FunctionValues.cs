@@ -232,6 +232,11 @@ public sealed partial class Resolver
 			case VariableSymbol v:
 				return new ResolvedVarExpressionNode(v, _signatures.GetVariableType(v), node);
 			
+			case AmbiguousSymbol when TypeOverloads.FindFamily(symbol) is [var member, ..]:
+				return RejectNamedValue(node, member, member is TraitSymbol
+					? "Cannot use traits as values"
+					: "Cannot use types as values");
+			
 			case FunctionSymbol or AmbiguousSymbol:
 				return ResolveFunctionValue(node, symbol);
 			
