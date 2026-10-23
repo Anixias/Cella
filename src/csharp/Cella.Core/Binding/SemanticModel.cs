@@ -456,8 +456,11 @@ public sealed class SemanticModel
 					if (method.Function.Syntax is IFunctionNode function)
 						Add(function.Identifier, method, $"{method.Name}: fun");
 					
-					if (method.Function.Syntax is FunctionNode { Body: null } &&
-					    _functions?.Invoke(method.Function) is { } info)
+					if (method.Function.Syntax is not FunctionNode { Body: null } bodyless)
+						continue;
+					
+					AddTypeParameters(bodyless.TypeParameters, method.Function.DeclaredTypeParameters);
+					if (_functions?.Invoke(method.Function) is { } info)
 						AddParameters(info);
 				}
 				

@@ -1707,6 +1707,41 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesTraitMethodTypeParameters()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Builder: trait
+		                                 {
+		                                 	add: fun(mut self, value: i32)
+		                                 }
+		                                 
+		                                 Hashed: trait
+		                                 {
+		                                 	hash[H: Builder]: fun(imm self, mut builder: H)
+		                                 	twice[H: Builder]: fun(imm self, mut builder: H)
+		                                 	{
+		                                 	}
+		                                 }
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"9:6:1 typeParameter declaration", "9:46:1 typeParameter", "10:7:1 typeParameter declaration",
+			"10:47:1 typeParameter"
+		];
+		
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task OrdersCompletionsByScopeThenProject()
 	{
 		await WriteImportableModulesAsync();
