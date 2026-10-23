@@ -1,0 +1,43 @@
+﻿mod std
+
+use std.mem.[Bytes, getLittleBytes]
+
+Hash: pub trait
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H)
+}
+
+HashBuilder: pub trait
+{
+	writeBytes: fun(mut self, ...bytes: View[u8])
+	getHash: fun(imm self) -> u64
+}
+
+DefHashBuilder: pub rec impl HashBuilder
+{
+	initialState: pvt const u64 = 0xCBF29CE484222325
+	shift: pvt const u64 = 0x100000001B3
+	
+	state: pvt u64
+	
+	new: op
+	{
+		self.state = initialState
+	}
+	
+	writeBytes: fun(mut self, ...bytes: View[u8])
+	{
+		for b in bytes
+		{
+			self.state ^= b
+			self.state *%= shift
+		}
+	}
+	
+	getHash: fun(imm self) -> u64 => self.state
+}
+
+[T: Bytes]: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...getLittleBytes(self))
+}

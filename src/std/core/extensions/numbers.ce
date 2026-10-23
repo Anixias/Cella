@@ -1,0 +1,613 @@
+﻿mod std.extensions
+
+use std.mem.Bitcast
+use std.num.[Float, SignedInteger, UnsignedInteger]
+
+// TODO Port these to Cella to guarantee exact computation on all platforms
+pvt ext
+{
+	sqrtF32: ext("sqrtf") fun(x: f32) -> f32
+	sqrtF64: ext("sqrt") fun(x: f64) -> f64
+	sinF32: ext("sinf") fun(x: f32) -> f32
+	sinF64: ext("sin") fun(x: f64) -> f64
+	cosF32: ext("cosf") fun(x: f32) -> f32
+	cosF64: ext("cos") fun(x: f64) -> f64
+	expF32: ext("expf") fun(x: f32) -> f32
+	expF64: ext("exp") fun(x: f64) -> f64
+	logF32: ext("logf") fun(x: f32) -> f32
+	logF64: ext("log") fun(x: f64) -> f64
+	powF32: ext("powf") fun(x: f32, e: f32) -> f32
+	powF64: ext("pow") fun(x: f64, e: f64) -> f64
+	fmaF32: ext("fmaf") fun(x: f32, y: f32, z: f32) -> f32
+	fmaF64: ext("fma") fun(x: f64, y: f64, z: f64) -> f64
+}
+
+i8: impl SignedInteger
+{
+	minValue: const i8 = -0x80
+	maxValue: const i8 =  0x7F
+	zero: const i8 = 0
+	one: const i8 = 1
+}
+
+u8: impl UnsignedInteger
+{
+	minValue: const u8 = 0
+	maxValue: const u8 = 0xFF
+	zero: const u8 = 0
+	one: const u8 = 1
+}
+
+i16: impl SignedInteger
+{
+	minValue: const i16 = -0x8000
+	maxValue: const i16 =  0x7FFF
+	zero: const i16 = 0
+	one: const i16 = 1
+}
+
+u16: impl UnsignedInteger
+{
+	minValue: const u16 = 0
+	maxValue: const u16 = 0xFFFF
+	zero: const u16 = 0
+	one: const u16 = 1
+}
+
+i32: impl SignedInteger
+{
+	minValue: const i32 = -0x80000000
+	maxValue: const i32 =  0x7FFFFFFF
+	zero: const i32 = 0
+	one: const i32 = 1
+}
+
+u32: impl UnsignedInteger
+{
+	minValue: const u32 = 0
+	maxValue: const u32 = 0xFFFFFFFF
+	zero: const u32 = 0
+	one: const u32 = 1
+}
+
+i64: impl SignedInteger
+{
+	minValue: const i64 = -0x80000000_00000000
+	maxValue: const i64 =  0x7FFFFFFF_FFFFFFFF
+	zero: const i64 = 0
+	one: const i64 = 1
+}
+
+u64: impl UnsignedInteger
+{
+	minValue: const u64 = 0
+	maxValue: const u64 = 0xFFFFFFFF_FFFFFFFF
+	zero: const u64 = 0
+	one: const u64 = 1
+}
+
+i128: impl SignedInteger
+{
+	minValue: const i128 = -0x80000000_00000000_00000000_00000000
+	maxValue: const i128 =  0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
+	zero: const i128 = 0
+	one: const i128 = 1
+}
+
+u128: impl UnsignedInteger
+{
+	minValue: const u128 = 0
+	maxValue: const u128 = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
+	zero: const u128 = 0
+	one: const u128 = 1
+}
+
+isize: impl SignedInteger
+{
+	minValue: const isize = -isize.maxValue - 1
+	maxValue: const isize = isize(usize.maxValue >> 1)
+	zero: const isize = 0
+	one: const isize = 1
+}
+
+usize: impl UnsignedInteger
+{
+	minValue: const usize = 0
+	maxValue: const usize = ~0
+	zero: const usize = 0
+	one: const usize = 1
+}
+
+f32: impl
+{
+	bits: pvt get(imm self) -> u32 => Bitcast[f32, u32](self).to
+	sign: pvt get(imm self) -> u32 => self.bits >> 31
+	exponentBits: pvt get(imm self) -> u32 => (self.bits >> 23) & 0xFF
+	fractionBits: pvt get(imm self) -> u32 => self.bits & 0x7FFFFF
+	fromBits: pvt fun(bits: u32) -> f32 => Bitcast[u32, f32](bits).to
+}
+
+f32: impl Float
+{
+	minValue: const f32 = Bitcast[u32, f32](0xFF7FFFFFu32).to
+	maxValue: const f32 = Bitcast[u32, f32](0x7F7FFFFFu32).to
+	zero: const f32 = 0
+	one: const f32 = 1
+	posInf: const f32 = Bitcast[u32, f32](0x7F800000u32).to
+	negInf: const f32 = Bitcast[u32, f32](0xFF800000u32).to
+	nan: const f32 = Bitcast[u32, f32](0x7FC00000u32).to
+	epsilon: const f32 = Bitcast[u32, f32](0x34000000u32).to
+	subnormal: const f32 = Bitcast[u32, f32](0x00000001u32).to
+	normal: const f32 = Bitcast[u32, f32](0x00800000u32).to
+	pi: const f32 = Bitcast[u32, f32](0x40490FDBu32).to
+	tau: const f32 = Bitcast[u32, f32](0x40C90FDBu32).to
+	e: const f32 = Bitcast[u32, f32](0x402DF854u32).to
+	
+	approxEq: fun(a: f32, b: f32) -> bool => a == b || abs(a - b) <= epsilon * max(abs(a), abs(b))
+	
+	min: fun(a: f32, b: f32) -> f32
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret fromBits(a.bits | b.bits)
+		
+		ret match a < b { true => a, else => b }
+	}
+	
+	max: fun(a: f32, b: f32) -> f32
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret fromBits(a.bits & b.bits)
+		
+		ret match a > b { true => a, else => b }
+	}
+	
+	clamp: fun(x: f32, min: f32, max: f32) -> f32
+	{
+		// Catches NaN this way too
+		if !(min <= max)
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
+	
+	lerp: fun(a: f32, b: f32, t: f32) -> f32
+	{
+		if (a <= zero && b >= zero) || (a >= zero && b <= zero)
+			ret t * b + (one - t) * a
+		
+		if t == one
+			ret b
+		
+		val x = a + t * (b - a)
+		if (t > one) == (b > a)
+			ret match b < x { true => x, else => b }
+		
+		ret match b > x { true => x, else => b }
+	}
+	
+	abs: fun(x: f32) -> f32 => fromBits(x.bits & 0x7FFFFFFFu32)
+	copySign: fun(x: f32, sign: f32) -> f32 => fromBits((x.bits & 0x7FFFFFFF) | (sign.bits & 0x80000000))
+	
+	sign: fun(x: f32) -> f32
+	{
+		if isNan(x) || isZero(x)
+			ret x
+	
+		ret match x.sign { 0 => 1, else => -1 }
+	}
+	
+	isNan: fun(x: f32) -> bool => x.exponentBits == 0xFF && x.fractionBits != 0
+	isInf: fun(x: f32) -> bool => x.exponentBits == 0xFF && x.fractionBits == 0
+	isPosInf: fun(x: f32) -> bool => x == posInf
+	isNegInf: fun(x: f32) -> bool => x == negInf
+	isFinite: fun(x: f32) -> bool => x.exponentBits != 0xFF
+	isZero: fun(x: f32) -> bool => (x.bits & 0x7FFFFFFF) == 0
+	isSubnormal: fun(x: f32) -> bool => x.exponentBits == 0 && x.fractionBits != 0
+	isNormal: fun(x: f32) -> bool => x.exponentBits != 0 && x.exponentBits != 0xFF
+	isPositive: fun(x: f32) -> bool => x.sign == 0
+	isNegative: fun(x: f32) -> bool => x.sign != 0
+	
+	trunc: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < 0
+			ret fromBits(x.bits & 0x80000000)
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	floor: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 31) == 0
+				ret fromBits(0)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret -1.0f32
+		}
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 31) != 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	ceil: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 31) != 0
+				ret fromBits(0x80000000)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret 1.0f32
+		}
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 31) == 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	round: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x80000000)
+		
+		if exponent == -1
+			ret fromBits((x.bits & 0x80000000) | 0x3F800000)
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		ret fromBits((x.bits + (0x400000u32 >> u32(exponent))) & ~mask)
+	}
+	
+	roundEven: fun(x: f32) -> f32
+	{
+		val exponent = i32(x.exponentBits) - 127
+		if exponent >= 23
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x80000000)
+		
+		if exponent == -1
+			ret match (x.bits & 0x7FFFFFFF) == 0x3F000000
+			{
+				true => fromBits(x.bits & 0x80000000)
+				else => fromBits((x.bits & 0x80000000) | 0x3F800000)
+			}
+		
+		val mask = 0x7FFFFFu32 >> u32(exponent)
+		val half = 0x400000u32 >> u32(exponent)
+		val fraction = x.bits & mask
+		if fraction == 0
+			ret x
+		
+		if fraction > half || (fraction == half && (x.bits & (half << 1)) != 0)
+			ret fromBits((x.bits + half) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	fract: fun(x: f32) -> f32
+	{
+		if isInf(x)
+			ret copySign(zero, x)
+		
+		ret copySign(x - trunc(x), x)
+	}
+	
+	fractPos: fun(x: f32) -> f32
+	{
+		if !isFinite(x)
+			ret nan
+		
+		val result = x - floor(x)
+		ret match result < one { true => result, else => fromBits(0x3F7FFFFFu32) }
+	}
+	
+	sqrt: fun(x: f32) -> f32 => sqrtF32(x)
+	sin: fun(x: f32) -> f32 => sinF32(x)
+	cos: fun(x: f32) -> f32 => cosF32(x)
+	exp: fun(x: f32) -> f32 => expF32(x)
+	log: fun(x: f32) -> f32 => logF32(x)
+	pow: fun(x: f32, e: f32) -> f32 => powF32(x, e)
+	fma: fun(x: f32, y: f32, z: f32) -> f32 => fmaF32(x, y, z)
+}
+
+f64: impl
+{
+	bits: pvt get(imm self) -> u64 => Bitcast[f64, u64](self).to
+	sign: pvt get(imm self) -> u64 => self.bits >> 63
+	exponentBits: pvt get(imm self) -> u64 => (self.bits >> 52) & 0x7FF
+	fractionBits: pvt get(imm self) -> u64 => self.bits & 0xFFFFFFFFFFFFF
+	fromBits: pvt fun(bits: u64) -> f64 => Bitcast[u64, f64](bits).to
+}
+
+f64: impl Float
+{
+	minValue: const f64 = Bitcast[u64, f64](0xFFEFFFFFFFFFFFFFu64).to
+	maxValue: const f64 = Bitcast[u64, f64](0x7FEFFFFFFFFFFFFFu64).to
+	zero: const f64 = 0
+	one: const f64 = 1
+	posInf: const f64 = Bitcast[u64, f64](0x7FF0000000000000u64).to
+	negInf: const f64 = Bitcast[u64, f64](0xFFF0000000000000u64).to
+	nan: const f64 = Bitcast[u64, f64](0x7FF8000000000000u64).to
+	epsilon: const f64 = Bitcast[u64, f64](0x3CB0000000000000u64).to
+	subnormal: const f64 = Bitcast[u64, f64](0x0000000000000001u64).to
+	normal: const f64 = Bitcast[u64, f64](0x0010000000000000u64).to
+	pi: const f64 = Bitcast[u64, f64](0x400921FB54442D18u64).to
+	tau: const f64 = Bitcast[u64, f64](0x401921FB54442D18u64).to
+	e: const f64 = Bitcast[u64, f64](0x4005BF0A8B145769u64).to
+	
+	approxEq: fun(a: f64, b: f64) -> bool => a == b || abs(a - b) <= epsilon * max(abs(a), abs(b))
+	
+	min: fun(a: f64, b: f64) -> f64
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret fromBits(a.bits | b.bits)
+		
+		ret match a < b { true => a, else => b }
+	}
+	
+	max: fun(a: f64, b: f64) -> f64
+	{
+		if isNan(a)
+			ret b
+		
+		if isNan(b)
+			ret a
+		
+		if a == b
+			ret fromBits(a.bits & b.bits)
+		
+		ret match a > b { true => a, else => b }
+	}
+	
+	clamp: fun(x: f64, min: f64, max: f64) -> f64
+	{
+		// Catches NaN this way too
+		if !(min <= max)
+			panic "{nameOf(clamp)}'s lower bound is greater than its upper bound"
+		
+		if x < min
+			ret min
+		
+		if x > max
+			ret max
+		
+		ret x
+	}
+	
+	lerp: fun(a: f64, b: f64, t: f64) -> f64
+	{
+		if (a <= zero && b >= zero) || (a >= zero && b <= zero)
+			ret t * b + (one - t) * a
+		
+		if t == one
+			ret b
+		
+		val x = a + t * (b - a)
+		if (t > one) == (b > a)
+			ret match b < x { true => x, else => b }
+		
+		ret match b > x { true => x, else => b }
+	}
+	
+	abs: fun(x: f64) -> f64 => fromBits(x.bits & 0x7FFFFFFFFFFFFFFFu64)
+	
+	copySign: fun(x: f64, sign: f64) -> f64 =>
+		fromBits((x.bits & 0x7FFFFFFFFFFFFFFFu64) | (sign.bits & 0x8000000000000000u64))
+	
+	sign: fun(x: f64) -> f64
+	{
+		if isNan(x) || isZero(x)
+			ret x
+	
+		ret match x.sign { 0 => 1, else => -1 }
+	}
+	
+	isNan: fun(x: f64) -> bool => x.exponentBits == 0x7FF && x.fractionBits != 0
+	isInf: fun(x: f64) -> bool => x.exponentBits == 0x7FF && x.fractionBits == 0
+	isPosInf: fun(x: f64) -> bool => x == posInf
+	isNegInf: fun(x: f64) -> bool => x == negInf
+	isFinite: fun(x: f64) -> bool => x.exponentBits != 0x7FF
+	isZero: fun(x: f64) -> bool => (x.bits & 0x7FFFFFFFFFFFFFFF) == 0
+	isSubnormal: fun(x: f64) -> bool => x.exponentBits == 0 && x.fractionBits != 0
+	isNormal: fun(x: f64) -> bool => x.exponentBits != 0 && x.exponentBits != 0x7FF
+	isPositive: fun(x: f64) -> bool => x.sign == 0
+	isNegative: fun(x: f64) -> bool => x.sign != 0
+	
+	trunc: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < 0
+			ret fromBits(x.bits & 0x8000000000000000)
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	floor: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 63) == 0
+				ret fromBits(0)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret -1.0f64
+		}
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 63) != 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	ceil: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < 0
+		{
+			if (x.bits >> 63) != 0
+				ret fromBits(0x8000000000000000)
+			
+			if (x.bits << 1) == 0
+				ret x
+			
+			ret 1.0f64
+		}
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		if (x.bits >> 63) == 0
+			ret fromBits((x.bits + mask) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	round: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x8000000000000000)
+		
+		if exponent == -1
+			ret fromBits((x.bits & 0x8000000000000000) | 0x3FF0000000000000)
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		if (x.bits & mask) == 0
+			ret x
+		
+		ret fromBits((x.bits + (0x8000000000000u64 >> u64(exponent))) & ~mask)
+	}
+	
+	roundEven: fun(x: f64) -> f64
+	{
+		val exponent = i64(x.exponentBits) - 1023
+		if exponent >= 52
+			ret x
+		
+		if exponent < -1
+			ret fromBits(x.bits & 0x8000000000000000)
+		
+		if exponent == -1
+			ret match (x.bits & 0x7FFFFFFFFFFFFFFF) == 0x3FE0000000000000
+			{
+				true => fromBits(x.bits & 0x8000000000000000)
+				else => fromBits((x.bits & 0x8000000000000000) | 0x3FF0000000000000)
+			}
+		
+		val mask = 0xFFFFFFFFFFFFFu64 >> u64(exponent)
+		val half = 0x8000000000000u64 >> u64(exponent)
+		val fraction = x.bits & mask
+		if fraction == 0
+			ret x
+		
+		if fraction > half || (fraction == half && (x.bits & (half << 1)) != 0)
+			ret fromBits((x.bits + half) & ~mask)
+		
+		ret fromBits(x.bits & ~mask)
+	}
+	
+	fract: fun(x: f64) -> f64
+	{
+		if isInf(x)
+			ret copySign(zero, x)
+		
+		ret copySign(x - trunc(x), x)
+	}
+	
+	fractPos: fun(x: f64) -> f64
+	{
+		if !isFinite(x)
+			ret nan
+		
+		val result = x - floor(x)
+		ret match result < one { true => result, else => fromBits(0x3FEFFFFFFFFFFFFFu64) }
+	}
+	
+	sqrt: fun(x: f64) -> f64 => sqrtF64(x)
+	sin: fun(x: f64) -> f64 => sinF64(x)
+	cos: fun(x: f64) -> f64 => cosF64(x)
+	exp: fun(x: f64) -> f64 => expF64(x)
+	log: fun(x: f64) -> f64 => logF64(x)
+	pow: fun(x: f64, e: f64) -> f64 => powF64(x, e)
+	fma: fun(x: f64, y: f64, z: f64) -> f64 => fmaF64(x, y, z)
+}

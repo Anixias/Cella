@@ -1,7 +1,7 @@
 ﻿mod std.containers
 
 use std.cmp.Eq
-use std.mem.[Allocator, Heap, Layout]
+use std.mem.[Allocator, Heap, Layout, swap]
 use std.[Option, Span, View]
 
 List[T: noref, A: Allocator = Heap]: pub own rec
@@ -80,6 +80,23 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 		
 		self.count -= 1
 		ret value
+	}
+	
+	replaceAt: fun(mut self, value: T, index: usize) -> T
+	{
+		if index >= self.count
+			panic "index out of bounds"
+		
+		val oldValue = own self.data[index]
+		own self.data[index] = value
+		ret oldValue
+	}
+	
+	reverse: fun(mut self)
+	{
+		val count = self.count
+		for i in 0..count / 2
+			swap(mut self[i], mut self[count - 1 - i])
 	}
 	
 	in: op(imm self) -> ListCursor[T] => ListCursor[T](self.data, self.count)

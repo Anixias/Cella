@@ -1,0 +1,63 @@
+﻿mod std.mem
+
+Bytes: pub trait req ext + default
+{
+	bytes: const usize = sizeOf(Self)
+}
+
+isLittleEndian: pub const bool = Bitcast[u16, array[u8, 2]](1u16).to[0] == 1
+
+getBytes[T: Bytes]: pub fun(value: T) -> array[u8, T.bytes] => Bitcast[T, array[u8, T.bytes]](value).to
+
+getLittleBytes[T: Bytes]: pub fun(value: T) -> array[u8, T.bytes]
+{
+	var bytes = getBytes(value)
+	if !isLittleEndian
+		bytes.reverse()
+	
+	ret bytes
+}
+
+getBigBytes[T: Bytes]: pub fun(value: T) -> array[u8, T.bytes]
+{
+	var bytes = getBytes(value)
+	if isLittleEndian
+		bytes.reverse()
+	
+	ret bytes
+}
+
+fromBytes[T: Bytes]: pub fun(bytes: array[u8, T.bytes]) -> T => Bitcast[array[u8, T.bytes], T](bytes).to
+
+fromLittleBytes[T: Bytes]: pub fun(bytes: array[u8, T.bytes]) -> T
+{
+	if !isLittleEndian
+		bytes.reverse()
+	
+	ret fromBytes[T](bytes)
+}
+
+fromBigBytes[T: Bytes]: pub fun(bytes: array[u8, T.bytes]) -> T
+{
+	if isLittleEndian
+		bytes.reverse()
+	
+	ret fromBytes[T](bytes)
+}
+
+i8: impl Bytes
+u8: impl Bytes
+i16: impl Bytes
+u16: impl Bytes
+i32: impl Bytes
+u32: impl Bytes
+i64: impl Bytes
+u64: impl Bytes
+i128: impl Bytes
+u128: impl Bytes
+isize: impl Bytes
+usize: impl Bytes
+f32: impl Bytes
+f64: impl Bytes
+bool: impl Bytes
+char: impl Bytes

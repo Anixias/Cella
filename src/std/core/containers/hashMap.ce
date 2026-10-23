@@ -1,0 +1,10 @@
+﻿mod std.containers
+
+use std.cmp.Eq
+use std.Hash
+use std.mem.[Allocator, Heap]
+
+HashMap[K: noref + Hash + Eq, V: noref, A: Allocator = Heap]: pub own rec
+{
+	
+}

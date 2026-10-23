@@ -1,0 +1,12 @@
+﻿mod std.extensions
+
+use std.mem.swap
+
+array[T: noref, length: const usize]: pub impl
+{
+	reverse: fun(mut self)
+	{
+		for i in 0..length / 2
+			swap(mut self[i], mut self[length - 1 - i])
+	}
+}
