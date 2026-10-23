@@ -13,6 +13,7 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
@@ -239,9 +240,9 @@ class CellaServer(private val project: Project) : Disposable {
 			return
 		
 		val text = document.text
-		val language = if (file.fileType == CellaFileType) "cella" else "cella-project"
 		sender.execute {
-			connect()?.server?.textDocumentService?.didOpen(DidOpenTextDocumentParams(TextDocumentItem(uri, language, 1, text)))
+			connect()?.server?.textDocumentService?.didOpen(
+				DidOpenTextDocumentParams(TextDocumentItem(uri, languageOf(uri), 1, text)))
 		}
 		
 		highlighter.request(document, uri, 1)
@@ -319,7 +320,25 @@ class CellaServer(private val project: Project) : Disposable {
 		open(document, file)
 	}
 	
+	private fun languageOf(uri: String) = if (uri.endsWith(".celp", ignoreCase = true)) "cella-project" else "cella"
+	
+	private fun reopenDocuments(server: CellaLanguageServer) {
+		CellaProblems.get(project).clear()
+		ApplicationManager.getApplication().invokeLater({
+			for ((document, _) in documents.values)
+				painter.paint(document, emptyList())
+		}, project.disposed)
+		
+		for ((uri, entry) in documents) {
+			val (document, version) = entry
+			val text = ReadAction.compute<String, Throwable> { document.text }
+			server.textDocumentService.didOpen(DidOpenTextDocumentParams(TextDocumentItem(uri, languageOf(uri), version,
+				text)))
+		}
+	}
+	
 	private fun connect(): Connection? {
+		val isReconnecting = connection != null
 		connection?.let {
 			if (it.process.isAlive)
 				return it
@@ -374,7 +393,11 @@ class CellaServer(private val project: Project) : Disposable {
 			val libraryRoots = experimental?.get("libraryRoots")?.takeIf { it.isJsonArray }?.asJsonArray
 				?.mapNotNull { root -> root.takeIf { it.isJsonPrimitive }?.asString }.orEmpty()
 			Connection(process, server, result.capabilities.semanticTokensProvider?.legend, supportsProjects, libraryRoots)
-				.also { connection = it }
+				.also {
+					connection = it
+					if (isReconnecting)
+						reopenDocuments(server)
+				}
 		} catch (exception: Exception) {
 			log.warn("Couldn't start ${command.joinToString(" ")}", exception)
 			val exited = started?.takeIf { it.waitFor(1, TimeUnit.SECONDS) }

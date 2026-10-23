@@ -154,6 +154,13 @@ class CellaProblems(override val project: Project) : ProblemsProvider {
 		}, project.disposed)
 	}
 
+	fun clear() {
+		ApplicationManager.getApplication().invokeLater({
+			for (file in problems.keys.toList())
+				publish(CellaServer.uriOf(file), emptyList())
+		}, project.disposed)
+	}
+	
 	fun listen(root: CellaProblemsRoot) {
 		roots += root
 	}

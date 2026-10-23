@@ -629,6 +629,9 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 				DiagnosticsAt(inactive.Source.FilePath).Add(Protocol.ToInactiveLsp(inactive));
 		}
 		
+		foreach (var path in opened.Keys.Where(path => Contains(root, path)))
+			DiagnosticsAt(path);
+		
 		var current = new HashSet<string>(byFile.Keys.Where(path => Contains(root, path) || opened.ContainsKey(path)),
 			Protocol.PathComparer);
 		

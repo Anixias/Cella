@@ -112,6 +112,16 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClearsDiagnosticsOfCleanOpenFilesOnFirstCheck()
+	{
+		await InitializeAsync();
+		await OpenSourceAsync(ValidSource);
+		var published = await ReadDiagnosticsAsync(static _ => true);
+		Assert.Empty((JsonArray)published["params"]!["diagnostics"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task PublishesDiagnosticsForEdits()
 	{
 		await InitializeAsync();
