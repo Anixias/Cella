@@ -16,11 +16,14 @@ public sealed class Server
 	private const int RequestCancelled = -32800;
 	private const int RequestFailed = -32803;
 	private const int FullSync = 1;
+	private const int FileCreated = 1;
+	private const int FileDeleted = 3;
 	
 	private readonly MessageConnection _connection;
 	private readonly Workspace _workspace;
 	private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new();
 	private bool hoversPlainText;
+	private bool resolvesActions;
 	
 	public Server(Stream input, Stream output, TimeSpan debounce)
 	{
@@ -100,6 +103,10 @@ public sealed class Server
 					(string?)parameters?["capabilities"]?["textDocument"]?["hover"]?["contentFormat"]?[0] ==
 					"plaintext";
 				
+				resolvesActions =
+					parameters?["capabilities"]?["textDocument"]?["codeAction"]?["resolveSupport"]?["properties"] is
+						JsonArray properties && properties.Any(static property => (string?)property == "edit");
+				
 				_workspace.Initialize(parameters);
 				return (true, Capabilities());
 			
@@ -120,7 +127,15 @@ public sealed class Server
 				_workspace.Close(GetUri(parameters));
 				return (true, null);
 			
-			case "textDocument/didSave" or "workspace/didChangeWatchedFiles":
+			case "textDocument/didSave":
+				_workspace.RequestCheck();
+				return (true, null);
+			
+			case "workspace/didChangeWatchedFiles":
+				if (parameters?["changes"] is JsonArray watched &&
+				    watched.Any(static change => ChangesProjects(change)))
+					_workspace.ForgetProjects();
+				
 				_workspace.RequestCheck();
 				return (true, null);
 			
@@ -171,6 +186,7 @@ public sealed class Server
 			"textDocument/completion" => ct => CompleteAsync(parameters, ct),
 			"textDocument/signatureHelp" => ct => HelpSignatureAsync(parameters, ct),
 			"textDocument/codeAction" => ct => FindCodeActionsAsync(parameters, ct),
+			"codeAction/resolve" => ct => ResolveCodeActionAsync(parameters, ct),
 			"textDocument/prepareRename" => ct => PrepareRenameAsync(parameters, ct),
 			"textDocument/rename" => ct => RenameAsync(parameters, ct),
 			"cella/visibleGlobals" => ct => FindVisibleGlobalsAsync(parameters, ct),
@@ -306,17 +322,75 @@ public sealed class Server
 				? await ExpandRenamesAsync(uri, diagnostic, ct)
 				: diagnostic);
 		
+		JsonNode? moveAction = null;
+		if (file is not null && project is not null &&
+		    TypeMoves.Find(project, file, requested, _workspace.UriOf) is { } move)
+			moveAction = resolvesActions ? Defer(move, uri) : await CompleteMoveAsync(move, diagnostics, ct);
+		
 		return new JsonArray([
 			..CodeActions.FromDiagnostics(expanded, requested, _workspace.UriOf),
 			..file is null
 				? []
 				: Refactorings.Find(file, requested).Select(fix =>
 					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf)),
-			..file is not null && project is not null &&
-			  TypeMoves.Find(project, file, requested, _workspace.UriOf) is { } move
-				? [move]
-				: Array.Empty<JsonNode>()
+			..moveAction is null ? [] : new[] { moveAction }
 		]);
+	}
+	
+	private static JsonObject Defer(TypeMove move, string uri)
+	{
+		var action = (JsonObject)move.Action.DeepClone();
+		action.Remove("edit");
+		action["data"] = new JsonObject { ["uri"] = uri, ["offset"] = move.Offset };
+		return action;
+	}
+	
+	private async Task<JsonNode?> ResolveCodeActionAsync(JsonObject? action, CancellationToken ct)
+	{
+		if (action?["data"] is not JsonObject { } data || (string?)data["uri"] is not { } uri ||
+		    (int?)data["offset"] is not { } offset)
+			return action;
+		
+		var (diagnostics, file, project, _) = await _workspace.GetFileAsync(uri, ct);
+		if (file is null || project is null ||
+		    TypeMoves.Find(project, file, new(offset, offset), _workspace.UriOf) is not { } move)
+			return action;
+		
+		return await CompleteMoveAsync(move, diagnostics, ct);
+	}
+	
+	private async Task<JsonObject> CompleteMoveAsync(TypeMove move, IReadOnlyList<Diagnostic> diagnostics,
+		CancellationToken ct)
+	{
+		var source = move.Source;
+		var removal = move.Removal;
+		var after = source.GetText(new(0, removal.Start)).ToString() +
+		            source.GetText(new(removal.End, source.Length)).ToString();
+		
+		var unused = diagnostics
+			.Where(static diagnostic => diagnostic.Lint == Lints.UnusedImport)
+			.Select(static diagnostic => diagnostic.SourceLocation.Range)
+			.ToHashSet();
+		
+		var end = -1;
+		var edits = new List<TextEdit>();
+		foreach (var edit in (await _workspace.CheckTextAsync(source.FilePath, after, ct))
+		         .Where(diagnostic => diagnostic.Lint == Lints.UnusedImport &&
+		                              diagnostic.SourceLocation.Range.End <= removal.Start &&
+		                              !unused.Contains(diagnostic.SourceLocation.Range))
+		         .SelectMany(static diagnostic => diagnostic.Fixes.Take(1))
+		         .SelectMany(static fix => fix.Edits)
+		         .OrderBy(static edit => edit.Location.Range.Start))
+		{
+			if (edit.Location.Range.Start < end || edit.Location.Range.End > removal.Start)
+				continue;
+			
+			edits.Add(edit);
+			end = edit.Location.Range.End;
+		}
+		
+		TypeMoves.AddSourceEdits(move, edits);
+		return move.Action;
 	}
 	
 	private async Task<Diagnostic> ExpandRenamesAsync(string uri, Diagnostic diagnostic, CancellationToken ct)
@@ -419,6 +493,14 @@ public sealed class Server
 	
 	private static string GetUri(JsonObject? parameters) => (string)parameters!["textDocument"]!["uri"]!;
 	
+	private static bool ChangesProjects(JsonNode? change)
+	{
+		var path = (string?)change?["uri"] ?? "";
+		return CellaProject.IsProjectFile(path) ||
+		       (int?)change?["type"] is FileCreated or FileDeleted &&
+		       !path.EndsWith(".ce", StringComparison.OrdinalIgnoreCase);
+	}
+	
 	private string GetProjectText(JsonObject? parameters) =>
 		(string?)parameters?["text"] ?? _workspace.GetText(GetUri(parameters)) ?? "";
 	
@@ -450,7 +532,8 @@ public sealed class Server
 			["renameProvider"] = new JsonObject { ["prepareProvider"] = true },
 			["codeActionProvider"] = new JsonObject
 			{
-				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite, TypeMoves.Kind)
+				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite, TypeMoves.Kind),
+				["resolveProvider"] = true
 			},
 			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".", " ") },
 			["signatureHelpProvider"] = new JsonObject

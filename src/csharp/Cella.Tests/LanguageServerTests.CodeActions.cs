@@ -183,9 +183,7 @@ public sealed partial class LanguageServerTests
 	[Fact]
 	public async Task MovesTypesToTheirOwnFiles()
 	{
-		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),
-			"mod test.util\n\nhelper: pub fun -> i32 => 1\n\nMeters: pub rec\n{\n\tvalue: i32\n}\n", Token);
-		
+		await WriteMoveUtilAsync();
 		await File.WriteAllTextAsync(Path.Combine(_directory, "measured.ce"),
 			"mod test\n\nuse test.util.helper\n\ntwice: fun -> i32 => helper() * 2\n", Token);
 		
@@ -207,6 +205,13 @@ public sealed partial class LanguageServerTests
 		Assert.Equal(source.Replace("Measured: trait\n{\n\tmeasure: fun(imm self) -> Meters\n}\n\n", ""),
 			moved["main.ce"]);
 		
+		const string single = "mod test\n\nuse test.util.[helper, Meters]\nuse test.util.other\n\n" +
+		                      "Point: rec\n{\n\tx: Meters\n}\n\nmain: fun -> i32 => helper()\n";
+		
+		moved = await MoveAsync(single.Replace("Point: rec", "Po‸int: rec"), "Move to 'point.ce'");
+		Assert.Equal("mod test\n\nuse test.util.helper\nuse test.util.other\n\nmain: fun -> i32 => helper()\n",
+			moved["main.ce"]);
+		
 		Assert.DoesNotContain("Move to 'main.ce'",
 			await ActionTitlesAsync("mod test\n\nMa‸in: rec\n{\n}\n\nmain: fun -> i32 => 0\n"));
 		
@@ -218,6 +223,42 @@ public sealed partial class LanguageServerTests
 		
 		Assert.Equal(0, await ShutDownAsync());
 	}
+	
+	[Fact]
+	public async Task ResolvesMovesWhenPicked()
+	{
+		await WriteMoveUtilAsync();
+		await InitializeAsync(new JsonObject
+		{
+			["textDocument"] = new JsonObject
+			{
+				["codeAction"] = new JsonObject
+				{
+					["resolveSupport"] = new JsonObject { ["properties"] = new JsonArray("edit") }
+				}
+			}
+		});
+		
+		isInitialized = true;
+		var (_, actions) = await CodeActionsAtAsync(
+			"mod test\n\nuse test.util.Meters\n\nPo‸int: rec\n{\n\tx: Meters\n}\n\n" +
+			"main: fun -> i32 => 0\n");
+		
+		var action = actions.Single(action => (string)action!["title"]! == "Move to 'point.ce'")!;
+		Assert.Null(action["edit"]);
+		
+		var resolved =
+			await ReadResponseAsync(await RequestAsync("codeAction/resolve", (JsonObject)action.DeepClone()));
+		
+		var changes = (JsonArray)resolved["result"]!["edit"]!["documentChanges"]!;
+		var source = changes.Last(change => change!["textDocument"] is not null)!;
+		Assert.Equal(2, ((JsonArray)source["edits"]!).Count);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	private Task WriteMoveUtilAsync() => File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),
+		"mod test.util\n\nhelper: pub fun -> i32 => 1\n\nother: pub fun -> i32 => 2\n\n" +
+		"Meters: pub rec\n{\n\tvalue: i32\n}\n", Token);
 	
 	[Fact]
 	public async Task FadesAndRemovesUnusedImports()

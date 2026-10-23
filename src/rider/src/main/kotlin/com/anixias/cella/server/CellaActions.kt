@@ -107,7 +107,18 @@ class CellaCodeAction(private val action: CodeAction) : IntentionAction {
 		IntentionPreviewInfo.EMPTY
 	
 	override fun invoke(project: Project, editor: Editor?, file: PsiFile?) {
-		action.edit?.let { applyWorkspaceEdit(project, action.title, it) }
+		val edit = action.edit ?: resolve(project) ?: return
+		applyWorkspaceEdit(project, action.title, edit)
+	}
+
+	private fun resolve(project: Project): WorkspaceEdit? {
+		val server = CellaServer.get(project)
+		var resolved: WorkspaceEdit? = null
+		ProgressManager.getInstance().runProcessWithProgressSynchronously({
+			resolved = server.await(server.request { it.textDocumentService.resolveCodeAction(action) }, 30000)?.edit
+		}, action.title, true, project)
+
+		return resolved
 	}
 }
 

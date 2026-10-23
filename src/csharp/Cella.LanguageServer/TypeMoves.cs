@@ -9,11 +9,13 @@ using Cella.Diagnostics;
 
 namespace Cella.LanguageServer;
 
+public sealed record TypeMove(JsonObject Action, ISource Source, int Offset, TextRange Removal);
+
 public static class TypeMoves
 {
 	public const string Kind = "refactor.move";
 	
-	public static JsonObject? Find(ProjectCheck project, ResolvedFileNode file, TextRange requested,
+	public static TypeMove? Find(ProjectCheck project, ResolvedFileNode file, TextRange requested,
 		Func<string, string> uriOf)
 	{
 		if (file.Syntax is not FileNode syntax || project.Model?.Value is not { } model)
@@ -48,7 +50,8 @@ public static class TypeMoves
 				return null;
 			
 			var imports = FindImports(model, file, extent, references);
-			return Move(syntax, extent, target, targetFile, imports, uriOf);
+			var (action, removal) = Move(syntax, extent, target, targetFile, imports, uriOf);
+			return new(action, source, start, removal);
 		}
 		
 		return null;
@@ -135,8 +138,21 @@ public static class TypeMoves
 		return imports;
 	}
 	
-	private static JsonObject Move(FileNode syntax, SourceLocation extent, string target, FileNode? targetFile,
-		SortedDictionary<string, SortedSet<string>> imports, Func<string, string> uriOf)
+	public static void AddSourceEdits(TypeMove move, IEnumerable<TextEdit> edits)
+	{
+		var changes = (JsonArray)move.Action["edit"]!["documentChanges"]!;
+		var sourceEdits = (JsonArray)changes[^1]!["edits"]!;
+		var index = 0;
+		foreach (var edit in edits)
+			sourceEdits.Insert(index++, new JsonObject
+			{
+				["range"] = Protocol.ToRange(edit.Location),
+				["newText"] = edit.NewText
+			});
+	}
+	
+	private static (JsonObject Action, TextRange Removal) Move(FileNode syntax, SourceLocation extent, string target,
+		FileNode? targetFile, SortedDictionary<string, SortedSet<string>> imports, Func<string, string> uriOf)
 	{
 		var source = syntax.SourceLocation.Source;
 		var newline = source.FindNewline();
@@ -189,20 +205,21 @@ public static class TypeMoves
 			})));
 		}
 		
+		var removal = Removal(source, start, end);
 		changes.Add(DocumentEdit(uriOf(syntax.FullPath), [
 			new JsonObject
 			{
-				["range"] = Protocol.ToRange(new(source, Removal(source, start, end))),
+				["range"] = Protocol.ToRange(new(source, removal)),
 				["newText"] = ""
 			}
 		]));
 		
-		return new JsonObject
+		return (new JsonObject
 		{
 			["title"] = $"Move to '{Path.GetFileName(target)}'",
 			["kind"] = Kind,
 			["edit"] = new JsonObject { ["documentChanges"] = changes }
-		};
+		}, removal);
 		
 		static JsonObject Origin() => new() { ["line"] = 0, ["character"] = 0 };
 	}

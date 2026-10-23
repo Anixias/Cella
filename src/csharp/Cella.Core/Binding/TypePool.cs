@@ -70,6 +70,8 @@ public sealed partial class TypePool
 	
 	private readonly HashSet<TypeParameterSymbol> _blanketBoundsInProgress = [];
 	private readonly HashSet<(TypeSymbol Type, TraitSymbol Trait)> _blanketLookupsInProgress = [];
+	private Dictionary<TypeSymbol, IReadOnlyList<Conformance>>? conformanceCache;
+	private Dictionary<TypeSymbol, IReadOnlyList<ImplSymbol>>? memberBlockCache;
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TraitType>> _bounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<TypeParameterSymbol>> _parameterBounds = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionInfo>> _constructorBounds = [];

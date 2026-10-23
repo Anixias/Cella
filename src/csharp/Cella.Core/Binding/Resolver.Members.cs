@@ -366,6 +366,29 @@ public sealed partial class Resolver
 	
 	private IEnumerable<MethodSymbol> GetMethods(TypeSymbol type, string name)
 	{
+		if (!_typePool.CachesConformances)
+			return FindMethods(type, name);
+		
+		if (methodCacheVersion != _typePool.ConformanceVersion)
+		{
+			_methodCache.Clear();
+			methodCacheVersion = _typePool.ConformanceVersion;
+		}
+		
+		var key = (CurrentResolutionContext.File, type, name);
+		if (_methodCache.TryGetValue(key, out var cached))
+			return cached;
+		
+		var isSettled = _typePool.IsSettled;
+		List<MethodSymbol> found = [..FindMethods(type, name)];
+		if (isSettled && _typePool.IsSettled && methodCacheVersion == _typePool.ConformanceVersion)
+			_methodCache[key] = found;
+		
+		return found;
+	}
+	
+	private IEnumerable<MethodSymbol> FindMethods(TypeSymbol type, string name)
+	{
 		var own = type.GetFunctions(name).ToList();
 		return own.Concat(GetTraitMethods(type, name).Where(method =>
 			method.Function.Impl is not { IsExtension: true } impl ||

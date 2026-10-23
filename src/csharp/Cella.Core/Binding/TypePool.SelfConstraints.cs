@@ -14,6 +14,7 @@ public sealed partial class TypePool
 	
 	public void InheritSelfConstraints(TypeParameterSymbol parameter)
 	{
+		InvalidateConformanceCache();
 		var traits = GetInheritedTraits(parameter);
 		parameter.InheritedConstraints =
 		[
@@ -82,7 +83,11 @@ public sealed partial class TypePool
 	private static IEnumerable<TokenType> GetSelfConstraints(IEnumerable<TraitType> traits) =>
 		traits.SelectMany(static trait => trait.Trait.Self.DeclaredConstraints);
 	
-	public void ResetFacts() => _facts.Clear();
+	public void ResetFacts()
+	{
+		InvalidateConformanceCache();
+		_facts.Clear();
+	}
 	
 	private List<TraitType> GetInheritedTraits(TypeParameterSymbol parameter) =>
 		[..AddRequiredTraits(GetDeclaredBounds(parameter), parameter).Where(trait => trait.Trait.Self != parameter)];

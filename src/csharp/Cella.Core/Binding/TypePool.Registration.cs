@@ -211,6 +211,7 @@ public sealed partial class TypePool
 	
 	public void RegisterMember(TypeSymbol containingType, TypedMemberSymbol member, TypeSymbol memberType)
 	{
+		InvalidateConformanceCache();
 		_members.GetOrAdd(containingType)[member.Name] = member;
 		_memberTypes[member] = memberType;
 	}

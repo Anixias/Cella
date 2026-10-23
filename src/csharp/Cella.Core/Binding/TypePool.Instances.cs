@@ -19,8 +19,11 @@ public sealed partial class TypePool
 	
 	public void CompleteGenericInstance(TypeSymbol type)
 	{
-		if (type is NamedTypeSymbol { IsGenericInstance: true } instance)
-			CompleteInstance(instance);
+		if (type is not NamedTypeSymbol { IsGenericInstance: true } instance)
+			return;
+		
+		InvalidateConformanceCache();
+		CompleteInstance(instance);
 	}
 	
 	public TypeSymbol Instantiate(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments)

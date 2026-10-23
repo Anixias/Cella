@@ -38,6 +38,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import org.eclipse.lsp4j.ClientCapabilities
+import org.eclipse.lsp4j.CodeActionCapabilities
+import org.eclipse.lsp4j.CodeActionResolveSupportCapabilities
 import org.eclipse.lsp4j.CompletionCapabilities
 import org.eclipse.lsp4j.CompletionItemCapabilities
 import org.eclipse.lsp4j.Diagnostic
@@ -359,6 +361,9 @@ class CellaServer(private val project: Project) : Disposable {
 							labelDetailsSupport = true
 						})
 						hover = HoverCapabilities(listOf("plaintext"), false)
+						codeAction = CodeActionCapabilities().apply {
+							resolveSupport = CodeActionResolveSupportCapabilities(listOf("edit"))
+						}
 					}
 				}
 			}).get(30, TimeUnit.SECONDS)

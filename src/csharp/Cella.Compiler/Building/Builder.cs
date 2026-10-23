@@ -30,6 +30,13 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private readonly List<ProjectDiagnostic> _problems = [];
 	private readonly HashSet<string> _unchecked = [];
 	private readonly Dictionary<string, string> _outputDirectories = [];
+	private readonly Dictionary<string, string> _canonicalPaths = new(StringComparer.OrdinalIgnoreCase);
+	
+	private readonly Dictionary<string, (string Stamp, CellaProject? Project, List<ProjectDiagnostic> Errors)>
+		_loadedProjects = [];
+	
+	private readonly Dictionary<string, (DateTime Stamp, List<string> Names)> _siblingProjects = [];
+	private readonly Dictionary<string, List<string>> _foundProjects = [];
 	private string? entryProjectPath;
 	private string? programProjectPath;
 	private string? programPath;
@@ -37,6 +44,21 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private CompletionProbe? probe;
 	private int probeRun;
 	private bool generatesCode;
+	
+	public bool RemembersProjects { get; init; }
+	
+	public void ForgetProjects() => _foundProjects.Clear();
+	
+	private IEnumerable<string> FindProjects(string directory)
+	{
+		if (!RemembersProjects)
+			return CellaProject.FindProjects(directory);
+		
+		if (!_foundProjects.TryGetValue(directory, out var found))
+			_foundProjects[directory] = found = [..CellaProject.FindProjects(directory)];
+		
+		return found.Where(File.Exists);
+	}
 	
 	public async Task<BuildResult> CompleteAsync(string sourcePath, IReadOnlyDictionary<string, string> unsavedFiles,
 		CompletionProbe completion, CancellationToken ct = default)
@@ -70,7 +92,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		var projectPaths = new HashSet<string>();
 		
 		if (Directory.Exists(sourcePath))
-			projectPaths.UnionWith(CellaProject.FindProjects(sourcePath));
+			projectPaths.UnionWith(FindProjects(sourcePath));
 		else if (File.Exists(sourcePath) && !CellaProject.IsProjectFile(sourcePath))
 		{
 			output.WriteLine($"'{sourcePath}' is not a project file");
@@ -422,12 +444,76 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 		return canonical;
 	}
 	
+	private string FindCanonicalPath(string path)
+	{
+		var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+		return OperatingSystem.IsWindows() && Path.GetPathRoot(full) is { Length: > 0 } ? Canonicalize(full) : full;
+	}
+	
+	private string Canonicalize(string full)
+	{
+		if (_canonicalPaths.TryGetValue(full, out var known))
+			return known;
+		
+		if (Path.GetDirectoryName(full) is not { } parent)
+			return full.ToUpperInvariant();
+		
+		var parentPath = Canonicalize(parent);
+		var name = Path.GetFileName(full);
+		var match = Directory.Exists(parentPath)
+			? Directory.EnumerateFileSystemEntries(parentPath, name).FirstOrDefault()
+			: null;
+		
+		if (match is null)
+			return Path.Combine(parentPath, name);
+		
+		_canonicalPaths[full] = match;
+		return match;
+	}
+	
+	private async Task<CellaProject?> LoadProjectAsync(string path, CancellationToken ct)
+	{
+		var stamp = openFiles.TryGetValue(Path.GetFullPath(path), out var text)
+			? "text:" + text
+			: new FileInfo(path) is { Exists: true } file
+				? $"file:{file.Length}:{file.LastWriteTimeUtc.Ticks}"
+				: null;
+		
+		if (stamp is not null && _loadedProjects.TryGetValue(path, out var cached) && cached.Stamp == stamp)
+		{
+			_problems.AddRange(cached.Errors);
+			return cached.Project;
+		}
+		
+		var errors = new List<ProjectDiagnostic>();
+		CellaProject? loaded;
+		await using (var stream = await OpenProjectFileAsync(path, ct))
+			loaded = await CellaProject.LoadAsync(stream, path, errors);
+		
+		if (stamp is not null)
+			_loadedProjects[path] = (stamp, loaded, errors);
+		
+		_problems.AddRange(errors);
+		return loaded;
+	}
+	
+	private List<string> FindSiblingProjects(string path)
+	{
+		var stamp = Directory.GetLastWriteTimeUtc(Path.GetDirectoryName(path) ?? ".");
+		if (_siblingProjects.TryGetValue(path, out var cached) && cached.Stamp == stamp)
+			return cached.Names;
+		
+		List<string> names = [..CellaProject.FindSiblingProjects(path)];
+		_siblingProjects[path] = (stamp, names);
+		return names;
+	}
+	
 	private async Task<DependencyGraph<ProjectInfo>> MapDependenciesAsync(HashSet<string> projectPaths,
 		CancellationToken ct)
 	{
 		var projectLookup = new Dictionary<string, ProjectInfo>();
 		var projectDependencies = new Dictionary<ProjectInfo, HashSet<string>>();
-		var projectQueue = new Queue<string>(projectPaths.Select(GetCanonicalPath));
+		var projectQueue = new Queue<string>(projectPaths.Select(FindCanonicalPath));
 		var processedPaths = new HashSet<string>();
 		var graph = new DependencyGraph<ProjectInfo>();
 		var failed = new HashSet<string>();
@@ -440,17 +526,14 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			if (!processedPaths.Add(path))
 				continue;
 			
-			CellaProject? loaded;
-			await using (var stream = await OpenProjectFileAsync(path, ct))
-				loaded = await CellaProject.LoadAsync(stream, path, _problems);
-			
+			var loaded = await LoadProjectAsync(path, ct);
 			if (loaded is null)
 			{
 				failed.Add(path);
 				continue;
 			}
 			
-			if (CellaProject.FindSiblingProjects(path).Select(static name => $"'{name}'").ToList() is [_, ..] siblings)
+			if (FindSiblingProjects(path).Select(static name => $"'{name}'").ToList() is [_, ..] siblings)
 				_problems.Add(ProjectDiagnostic.In(path, $"Cannot share a directory with {string.Join(", ", siblings)}")
 					with
 					{
@@ -475,7 +558,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 					continue;
 				}
 				
-				var libraryPath = GetCanonicalPath(library);
+				var libraryPath = FindCanonicalPath(library);
 				projectDependencies.GetOrAdd(projectInfo).Add(libraryPath);
 				if (!processedPaths.Contains(libraryPath))
 					projectQueue.Enqueue(libraryPath);
@@ -497,7 +580,7 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 			
 			foreach (var reference in references)
 			{
-				var dependencyPath = GetCanonicalPath(Path.Combine(projectDirectory, reference.Path!));
+				var dependencyPath = FindCanonicalPath(Path.Combine(projectDirectory, reference.Path!));
 				if (!File.Exists(dependencyPath))
 				{
 					_problems.Add(ProjectDiagnostic.In(path, $"Project '{reference.Path}' not found") with

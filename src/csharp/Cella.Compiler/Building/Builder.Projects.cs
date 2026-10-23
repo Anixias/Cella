@@ -200,7 +200,15 @@ public sealed partial class Builder
 		ImmutableArray<ResolvedFileNode> resolvedFiles;
 		IReadOnlyDictionary<string, FunctionInfo> panicAdapters;
 		{
-			(resolvedFiles, panicAdapters) = resolver.AddPanicAdapters([..files.Select(resolver.Resolve)]);
+			typePool.CacheConformances(true);
+			try
+			{
+				(resolvedFiles, panicAdapters) = resolver.AddPanicAdapters([..files.Select(resolver.Resolve)]);
+			}
+			finally
+			{
+				typePool.CacheConformances(false);
+			}
 			
 			resolver.ReportInfiniteInstantiations();
 			resolver.ReportAtomicInstances();

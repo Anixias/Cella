@@ -44,6 +44,8 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private readonly ConstantEvaluator _evaluator;
 	private readonly PatternCoverage _coverage;
 	private readonly TypePool _typePool;
+	private readonly Dictionary<(FileSymbol File, TypeSymbol Type, string Name), List<MethodSymbol>> _methodCache = [];
+	private int methodCacheVersion;
 	private readonly ConversionTable _conversionTable;
 	private readonly OperatorRegistry _operatorRegistry;
 	private readonly uint _pointerBitSize;

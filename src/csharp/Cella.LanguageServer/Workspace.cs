@@ -31,7 +31,10 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		}
 	}
 	
-	private sealed record Checker(Builder Builder, CollectedOutput Output, BuildOptions Options);
+	private sealed record Checker(Builder Builder, CollectedOutput Output, BuildOptions Options)
+	{
+		public int Generation { get; set; }
+	}
 	
 	private readonly Lock _lock = new();
 	
@@ -49,9 +52,12 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	private readonly SemaphoreSlim _probing = new(1, 1);
 	private readonly CancellationTokenSource _stopping = new();
 	private Task? checking;
+	private Task warming = Task.CompletedTask;
+	private string? probedProject;
 	private Dictionary<string, string> checkedTexts = new(Protocol.PathComparer);
 	private TaskCompletionSource checkCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
 	private bool hasChecked;
+	private int projectGeneration;
 	private bool refreshesTokens;
 	private int refreshCount;
 	
@@ -94,6 +100,22 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			AddRoot(directory);
 		
 		RequestCheck();
+		if (FindOwningProject(path) is { } project &&
+		    !Protocol.PathComparer.Equals(Volatile.Read(ref probedProject), project))
+			lock (_lock)
+				warming = WarmAsync(warming, path, text);
+	}
+	
+	private async Task WarmAsync(Task previous, string path, string text)
+	{
+		await previous;
+		try
+		{
+			await CheckTextAsync(path, text, _stopping.Token);
+		}
+		catch (OperationCanceledException)
+		{
+		}
 	}
 	
 	public void Change(string uri, string text, int? version)
@@ -116,6 +138,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	}
 	
 	public void RequestCheck() => _changes.Release();
+	
+	public void ForgetProjects() => Interlocked.Increment(ref projectGeneration);
 	
 	public void Configure(JsonObject? configuration)
 	{
@@ -333,6 +357,12 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		await _stopping.CancelAsync();
 		if (checking is not null)
 			await checking;
+		
+		Task warmed;
+		lock (_lock)
+			warmed = warming;
+		
+		await warmed;
 	}
 	
 	private void AddRoot(string path)
@@ -437,6 +467,30 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 	
 	public async Task<CompletionProbe?> ProbeAsync(string path, string text, int offset, CancellationToken ct)
 	{
+		var probe = new CompletionProbe(path, offset);
+		return await RunProbeAsync(path, text,
+			(builder, target, unsaved) => builder.CompleteAsync(target, unsaved, probe, _stopping.Token), ct) is null
+			? null
+			: probe;
+	}
+	
+	public async Task<IReadOnlyList<Diagnostic>> CheckTextAsync(string path, string text, CancellationToken ct)
+	{
+		var result = await RunProbeAsync(path, text,
+			(builder, target, unsaved) => builder.BuildAsync(target, unsaved, _stopping.Token), ct);
+		
+		return
+		[
+			..result?.Projects
+				  .SelectMany(static project => project.Diagnostics)
+				  .Where(diagnostic => Protocol.PathComparer.Equals(diagnostic.SourceLocation.Source.FilePath, path)) ??
+			  []
+		];
+	}
+	
+	private async Task<BuildResult?> RunProbeAsync(string path, string text,
+		Func<Builder, string, Dictionary<string, string>, Task<BuildResult>> build, CancellationToken ct)
+	{
 		string? root;
 		Dictionary<string, string> unsaved;
 		lock (_lock)
@@ -450,7 +504,6 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			return null;
 		
 		unsaved[path] = text;
-		var probe = new CompletionProbe(path, offset);
 		var target = FindOwningProject(path) ?? root;
 		using var stopping = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token, ct);
 		await _probing.WaitAsync(stopping.Token);
@@ -459,10 +512,8 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 			foreach (var stale in _probers.Keys.Where(key => !Protocol.PathComparer.Equals(key, target)).ToList())
 				_probers.Remove(stale);
 			
-			return await RunAsync(_probers, target,
-				builder => builder.CompleteAsync(target, unsaved, probe, _stopping.Token)) is null
-				? null
-				: probe;
+			Volatile.Write(ref probedProject, target);
+			return await RunAsync(_probers, target, builder => build(builder, target, unsaved));
 		}
 		finally
 		{
@@ -500,7 +551,14 @@ public sealed class Workspace(Func<JsonObject, Task> notify, TimeSpan debounce)
 		if (!checkers.TryGetValue(root, out var checker) || checker.Options != options)
 		{
 			var output = new CollectedOutput();
-			checkers[root] = checker = new(new Builder(options, output), output, options);
+			checkers[root] = checker = new(new Builder(options, output) { RemembersProjects = true }, output, options);
+		}
+		
+		var generation = Volatile.Read(ref projectGeneration);
+		if (checker.Generation != generation)
+		{
+			checker.Builder.ForgetProjects();
+			checker.Generation = generation;
 		}
 		
 		checker.Output.Lines.Clear();

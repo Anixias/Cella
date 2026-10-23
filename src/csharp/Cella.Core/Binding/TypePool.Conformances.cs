@@ -9,8 +9,46 @@ namespace Cella.Core.Binding;
 
 public sealed partial class TypePool
 {
+	public void CacheConformances(bool isEnabled)
+	{
+		conformanceCache = isEnabled ? new() : null;
+		memberBlockCache = isEnabled ? new() : null;
+		ConformanceVersion++;
+	}
+	
+	public bool CachesConformances => conformanceCache is not null;
+	
+	public int ConformanceVersion { get; private set; }
+	
+	private void InvalidateConformanceCache()
+	{
+		conformanceCache?.Clear();
+		memberBlockCache?.Clear();
+		ConformanceVersion++;
+	}
+	
+	public bool IsSettled => _blanketBoundsInProgress.Count == 0 && _blanketLookupsInProgress.Count == 0;
+	
+	private IReadOnlyList<T> Memoize<T>(Dictionary<TypeSymbol, IReadOnlyList<T>>? cache, TypeSymbol type,
+		Func<TypeSymbol, IEnumerable<T>> compute)
+	{
+		if (cache is null)
+			return [..compute(type)];
+		
+		if (cache.TryGetValue(type, out var cached))
+			return cached;
+		
+		var isSettled = IsSettled;
+		IReadOnlyList<T> computed = [..compute(type)];
+		if (isSettled && IsSettled)
+			cache[type] = computed;
+		
+		return computed;
+	}
+	
 	public void AddConformance(Conformance conformance)
 	{
+		InvalidateConformanceCache();
 		_conformances.Add(conformance);
 		if (conformance.Target is TypeParameterSymbol)
 			_blanketConformances.Add(conformance);
@@ -32,11 +70,12 @@ public sealed partial class TypePool
 		_ => _conformancesByTarget.GetValueOrDefault(type.OriginalDefinition) ?? []
 	};
 	
-	public IEnumerable<Conformance> FindConformances(TypeSymbol type)
+	public IEnumerable<Conformance> FindConformances(TypeSymbol type) => type is TypeParameterSymbol
+		? []
+		: Memoize(conformanceCache, type, ComputeConformances);
+	
+	private IEnumerable<Conformance> ComputeConformances(TypeSymbol type)
 	{
-		if (type is TypeParameterSymbol)
-			return [];
-		
 		var explicitOnes = GetExplicitCandidates(type).Where(conformance => Matches(conformance, type)).ToList();
 		var blankets = _blanketConformances.Where(blanket => Matches(blanket, type)).ToList();
 		return explicitOnes.Concat(blankets.Where(blanket =>
@@ -118,8 +157,11 @@ public sealed partial class TypePool
 	private ImmutableArray<TypeSymbol> GetTargetArguments(Conformance conformance, TypeSymbol type) =>
 		conformance.Target is TypeParameterSymbol ? [type] : GetShapeArguments(type);
 	
-	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits) =>
+	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits)
+	{
+		InvalidateConformanceCache();
 		_bounds[parameter] = traits;
+	}
 	
 	public ImmutableArray<TraitType> GetDeclaredBounds(TypeParameterSymbol parameter) =>
 		_bounds.GetValueOrDefault(parameter, []);
@@ -127,11 +169,17 @@ public sealed partial class TypePool
 	public ImmutableArray<TraitType> GetBounds(TypeParameterSymbol parameter) =>
 		AddRequiredTraits([..GetDeclaredBounds(parameter).Concat(GetBlanketTraits(parameter)).Distinct()], parameter);
 	
-	public void SetParameterBounds(TypeParameterSymbol parameter, ImmutableArray<TypeParameterSymbol> traits) =>
+	public void SetParameterBounds(TypeParameterSymbol parameter, ImmutableArray<TypeParameterSymbol> traits)
+	{
+		InvalidateConformanceCache();
 		_parameterBounds[parameter] = traits;
+	}
 	
-	public void SetFunctionBounds(TypeParameterSymbol parameter, ImmutableArray<FunctionType> functions) =>
+	public void SetFunctionBounds(TypeParameterSymbol parameter, ImmutableArray<FunctionType> functions)
+	{
+		InvalidateConformanceCache();
 		_functionBounds[parameter] = functions;
+	}
 	
 	public ImmutableArray<FunctionType> GetFunctionBounds(TypeParameterSymbol parameter) =>
 		_functionBounds.GetValueOrDefault(parameter, []);
@@ -156,14 +204,20 @@ public sealed partial class TypePool
 	public ImmutableArray<TypeParameterSymbol> GetParameterBounds(TypeParameterSymbol parameter) =>
 		_parameterBounds.GetValueOrDefault(parameter, []);
 	
-	public void SetConstructorBounds(TypeParameterSymbol parameter, ImmutableArray<FunctionInfo> constructors) =>
+	public void SetConstructorBounds(TypeParameterSymbol parameter, ImmutableArray<FunctionInfo> constructors)
+	{
+		InvalidateConformanceCache();
 		_constructorBounds[parameter] = constructors;
+	}
 	
 	public ImmutableArray<FunctionInfo> GetConstructorBounds(TypeParameterSymbol parameter) =>
 		_constructorBounds.GetValueOrDefault(parameter, []);
 	
-	public void SetRequiredTraits(TraitSymbol trait, ImmutableArray<TraitType> required) =>
+	public void SetRequiredTraits(TraitSymbol trait, ImmutableArray<TraitType> required)
+	{
+		InvalidateConformanceCache();
 		_requiredTraits[trait] = required;
+	}
 	
 	public ImmutableArray<TraitType> GetRequiredTraits(TraitSymbol trait) =>
 		_requiredTraits.GetValueOrDefault(trait, []);
@@ -348,9 +402,16 @@ public sealed partial class TypePool
 			.FirstOrDefault(static violation => violation is not null);
 	}
 	
-	public void AddMemberBlock(ImplSymbol impl, TypeSymbol target) => _memberBlocks.Add((impl, target));
+	public void AddMemberBlock(ImplSymbol impl, TypeSymbol target)
+	{
+		InvalidateConformanceCache();
+		_memberBlocks.Add((impl, target));
+	}
 	
-	public IEnumerable<ImplSymbol> FindMemberBlocks(TypeSymbol type) => _memberBlocks
+	public IEnumerable<ImplSymbol> FindMemberBlocks(TypeSymbol type) =>
+		Memoize(memberBlockCache, type, ComputeMemberBlocks);
+	
+	private IEnumerable<ImplSymbol> ComputeMemberBlocks(TypeSymbol type) => _memberBlocks
 		.Where(block => block.Target is TypeParameterSymbol
 			? Satisfies(block.Impl.TypeParameters, [type])
 			: type is not TypeParameterSymbol && block.Target == type.OriginalDefinition &&
