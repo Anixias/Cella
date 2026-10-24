@@ -1,0 +1,50 @@
+﻿mod std.time
+
+use std.cmp.[Ord, Ordering]
+use std.math.round
+
+Duration: pub rec
+{
+	nanoseconds: pvt set u64
+	
+	microseconds: get(self) -> f64 => f64(self.nanoseconds) / 1_000.0
+	milliseconds: get(self) -> f64 => f64(self.nanoseconds) / 1_000_000.0
+	seconds: get(self) -> f64 => f64(self.nanoseconds) / 1_000_000_000.0
+	
+	new: op = default
+	
+	new: pvt op(nanoseconds: u64)
+	{
+		self.nanoseconds = nanoseconds
+	}
+	
+	fromNanoseconds: fun(count: u64) -> Duration => Duration(count)
+	fromMicroseconds: fun(count: u64) -> Duration => Duration(count * 1_000)
+	fromMilliseconds: fun(count: u64) -> Duration => Duration(count * 1_000_000)
+	fromSeconds: fun(count: u64) -> Duration => Duration(count * 1_000_000_000)
+	
+	+: op(left: Duration, right: Duration) -> Duration => Duration(left.nanoseconds + right.nanoseconds)
+	-: op(left: Duration, right: Duration) -> Duration => Duration(left.nanoseconds - right.nanoseconds)
+	*: op(value: Duration, factor: f64) -> Duration => Duration(u64(round(f64(value.nanoseconds) * factor)))
+	/: op(value: Duration, factor: f64) -> Duration => Duration(u64(round(f64(value.nanoseconds) / factor)))
+	
+	+=: op(mut self, other: Duration) => self.nanoseconds += other.nanoseconds
+	-=: op(mut self, other: Duration) => self.nanoseconds -= other.nanoseconds
+}
+
+Duration: impl Ord
+{
+	compare: fun(left: Duration, right: Duration) -> Ordering
+	{
+		if left.nanoseconds == right.nanoseconds
+			ret equal
+		
+		if left.nanoseconds < right.nanoseconds
+			ret less
+		
+		ret greater
+	}
+	
+	==: op(left: Duration, right: Duration) -> bool => left.nanoseconds == right.nanoseconds
+	!=: op(left: Duration, right: Duration) -> bool => left.nanoseconds != right.nanoseconds
+}
