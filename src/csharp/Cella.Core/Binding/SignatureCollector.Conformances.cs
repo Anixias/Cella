@@ -562,15 +562,37 @@ public sealed partial class SignatureCollector
 		var memberIndent = closeIndent + "\t";
 		var isEmpty = source.GetText(new(braces.Range.Start + 1, close)).ToString().Trim().Length == 0;
 		var added = JoinMembers(members, memberIndent, newline);
-		var separates = !isEmpty && (members[0].IsFunction || existing.IsDefaultOrEmpty ||
-		                             existing[^1] is not (GlobalNode or FieldNode));
+		if (isEmpty)
+			return DiagnosticFix.Replace("Implement missing members", new(source, new(braces.Range.Start + 1, close)),
+				newline + added + newline + closeIndent);
+		
+		var separates = members[0].IsFunction || existing.IsDefaultOrEmpty ||
+		                existing[^1] is not (GlobalNode or FieldNode);
 		
 		if (lineStart > 0 && source[lineStart - 1] == '\n')
-			return DiagnosticFix.Replace("Implement missing members", new(source, new(lineStart, lineStart)),
+			return DiagnosticFix.Replace("Implement missing members",
+				new(source, new(SkipBlankLinesBackward(source, lineStart, braces.Range.Start), lineStart)),
 				(separates ? memberIndent + newline : "") + added + newline);
 		
 		return DiagnosticFix.Replace("Implement missing members", new(source, new(close, close)),
 			newline + added + newline + closeIndent);
+	}
+	
+	private static int SkipBlankLinesBackward(ISource source, int lineStart, int limit)
+	{
+		while (lineStart > limit + 1 && source[lineStart - 1] == '\n')
+		{
+			var previous = lineStart - 1;
+			while (previous > limit + 1 && source[previous - 1] != '\n')
+				previous--;
+			
+			if (source.GetText(new(previous, lineStart)).ToString().Trim().Length > 0)
+				break;
+			
+			lineStart = previous;
+		}
+		
+		return lineStart;
 	}
 	
 	private static string JoinMembers(List<(bool IsFunction, Func<string, string> Describe)> members, string indent,
