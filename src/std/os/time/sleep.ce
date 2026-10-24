@@ -1,0 +1,86 @@
+﻿mod std.time
+
+use std.time.Duration
+
+when windows
+{
+	pvt ext
+	{
+		CreateWaitableTimerExW: fun(attributes: ptr, name: ptr, flags: u32, access: u32) -> ptr
+		SetWaitableTimer: fun(timer: ptr, dueTime: ptr[i64], period: i32, routine: ptr, argument: ptr,
+			resume: i32) -> i32
+		WaitForSingleObject: fun(handle: ptr, milliseconds: u32) -> u32
+		CloseHandle: fun(handle: ptr) -> i32
+		Sleep: fun(milliseconds: u32)
+	}
+	
+	highResolution: pvt const u32 = 0x2
+	allTimerAccess: pvt const u32 = 0x1F0003
+	infinite: pvt const u32 = 0xFFFFFFFF
+	
+	sleep: pub fun(length: Duration)
+	{
+		if length.nanoseconds == 0
+			ret
+		
+		val timer = CreateWaitableTimerExW(null, null, highResolution, allTimerAccess)
+		if timer == null
+		{
+			sleepMilliseconds(length)
+			ret
+		}
+		
+		var ticks = length.nanoseconds / 100
+		if length.nanoseconds % 100 != 0
+			ticks += 1
+		
+		var dueTime = -i64(ticks)
+		if SetWaitableTimer(timer, @dueTime, 0, null, null, 0) != 0
+			WaitForSingleObject(timer, infinite)
+		else
+			sleepMilliseconds(length)
+		
+		CloseHandle(timer)
+	}
+	
+	sleepMilliseconds: pvt fun(length: Duration)
+	{
+		var remaining = length.nanoseconds / 1_000_000
+		if length.nanoseconds % 1_000_000 != 0
+			remaining += 1
+		
+		while remaining > 0
+		{
+			var chunk = remaining
+			if chunk >= u64(infinite)
+				chunk = u64(infinite) - 1
+			
+			Sleep(u32(chunk))
+			remaining -= chunk
+		}
+	}
+}
+else
+{
+	TimeSpec: pvt rec
+	{
+		seconds: i64
+		nanoseconds: i64
+	}
+	
+	ext
+	{
+		clock_nanosleep: pvt fun(clock: i32, flags: i32, request: ptr[TimeSpec], remaining: ptr[TimeSpec]) -> i32
+	}
+	
+	monotonicClock: pvt const i32 = 1
+	interrupted: pvt const i32 = 4
+	
+	sleep: pub fun(length: Duration)
+	{
+		var request = TimeSpec(i64(length.nanoseconds / 1_000_000_000), i64(length.nanoseconds % 1_000_000_000))
+		var remaining: TimeSpec
+		while clock_nanosleep(monotonicClock, 0, @request, @remaining) == interrupted
+			request = remaining
+	}
+}
