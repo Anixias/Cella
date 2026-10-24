@@ -477,7 +477,7 @@ public sealed unsafe partial class CodeGenerator : IDisposable
 			errorList.Free();
 		}
 		
-		return Emit(merged, _assemblySymbol.Name, _assemblySymbol.Name, states);
+		return Emit(merged, _assemblySymbol.Name, _config.OutputConfig.Name, states);
 	}
 	
 	private string? LinkBitcode(LLVMModuleRef target, string path, List<string> errors)
@@ -898,6 +898,7 @@ public sealed record CodeGenConfig
 public sealed record OutputConfig
 (
 	string Directory,
+	string Name,
 	bool EmitIR = false,
 	bool EmitAssembly = false
 );

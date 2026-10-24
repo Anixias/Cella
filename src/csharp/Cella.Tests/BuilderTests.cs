@@ -118,12 +118,13 @@ public sealed class BuilderTests : IDisposable
 		CompilerThread.Run(() => builder.BuildAsync(_directory, unsavedFiles, Token));
 	
 	private async Task<(BuildResult Result, string Output, List<(string Project, string Path)> Outputs)>
-		BuildProgramAsync()
+		BuildProgramAsync(OptimizeMode optimizeMode = OptimizeMode.Debug)
 	{
 		var output = new RecordingOutput();
 		var builder = new Builder(new BuildOptions
 		{
-			Target = TargetTriple.FromHost().WithDefaultAbi()
+			Target = TargetTriple.FromHost().WithDefaultAbi(),
+			OptimizeMode = optimizeMode
 		}, output);
 		
 		var result = await CompilerThread.Run(() =>
@@ -173,15 +174,17 @@ public sealed class BuilderTests : IDisposable
 		Assert.True(result.Succeeded, output);
 	}
 	
-	[Fact]
-	public async Task BuildsTheStandardLibraryIntoTheProgram()
+	[Theory]
+	[InlineData(OptimizeMode.Debug)]
+	[InlineData(OptimizeMode.Release)]
+	public async Task BuildsTheStandardLibraryIntoTheProgram(OptimizeMode optimizeMode)
 	{
 		Directory.CreateDirectory(Path.Combine(_directory, "app"));
 		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"), "OutputType = \"Executable\"\n",
 			Token);
 		
 		await File.WriteAllTextAsync(ProgramPath, ValidSource, Token);
-		var (result, output, outputs) = await BuildProgramAsync();
+		var (result, output, outputs) = await BuildProgramAsync(optimizeMode);
 		Assert.True(result.Succeeded, output);
 		var (project, path) = Assert.Single(outputs);
 		Assert.Equal("test", project);

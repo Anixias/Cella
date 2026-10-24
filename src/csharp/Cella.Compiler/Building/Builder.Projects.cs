@@ -108,7 +108,7 @@ public sealed partial class Builder
 				.ToList();
 		
 		var objDir = Path.Combine(isEntry ? GetEntryDirectory(project) : GetOutputDirectory(project), "obj");
-		var outputConfig = new OutputConfig(objDir, options.EmitsIr, options.EmitsAssembly);
+		var outputConfig = new OutputConfig(objDir, project.Name, options.EmitsIr, options.EmitsAssembly);
 		var targetConfig = new TargetConfig(targetTriple.ToLlvm(), targetTriple.ToSystem(),
 			targetTriple.ToArchitecture(),
 			Features: targetTriple.ToLlvmFeatures());
