@@ -26,6 +26,7 @@ public sealed class Conformance
 	public ImplSymbol? Impl { get; } = impl;
 	public SourceLocation Location { get; } = location;
 	public bool IsImplied { get; init; }
+	public bool IsForwarded { get; init; }
 	public Conformance? Template { get; init; }
 	public ImmutableArray<TypeSymbol> FreeArguments { get; init; } = [];
 	public bool IsTemplate => Template is null && Impl is { FreeParameters.IsEmpty: false };
@@ -37,6 +38,7 @@ public sealed class Conformance
 	public ErrorContainment.Owner Owner { get; set; }
 }
 
+public readonly record struct BorrowForwarding(bool ThroughImm, bool ThroughMut, bool CopiesSelf);
 public abstract record Witness;
 public sealed record FunctionWitness(FunctionSymbol Function, FunctionInfo Info) : Witness;
 public sealed record NativeWitness(OperationImpl Operation, bool IsCompound = false) : Witness;

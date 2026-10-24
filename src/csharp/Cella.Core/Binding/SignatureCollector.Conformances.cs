@@ -270,6 +270,66 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private void RecordBorrowForwarding()
+	{
+		foreach (var trait in _declarations.Keys.OfType<TraitSymbol>())
+			_typePool.SetBorrowForwarding(trait, DescribeBorrowForwarding(trait));
+	}
+	
+	private BorrowForwarding DescribeBorrowForwarding(TraitSymbol trait)
+	{
+		if (!trait.Constructors.IsEmpty || trait.Constants.Any(constant =>
+			    GetGlobalInfo(constant) is not { } info || MentionsSelf(trait, info.Type)))
+			return default;
+		
+		var (throughImm, copiesSelf) = (true, false);
+		foreach (var function in GetTraitMembers(trait))
+		{
+			var signature = GetFunctionInfo(function).Signature;
+			if (MentionsSelf(trait, signature.ReturnType))
+				return default;
+			
+			for (var i = 0; i < signature.ParameterTypes.Length; i++)
+			{
+				var type = signature.GetMode(i) == ParameterMode.Mut &&
+				           signature.ParameterTypes[i] is PointerType pointer
+					? pointer.BaseType
+					: signature.ParameterTypes[i];
+				
+				if (type != trait.Self)
+				{
+					if (MentionsSelf(trait, type))
+						return default;
+					
+					continue;
+				}
+				
+				switch (signature.GetMode(i))
+				{
+					case ParameterMode.Mut:
+						throughImm = false;
+						break;
+					
+					case ParameterMode.Value:
+						copiesSelf = true;
+						break;
+				}
+			}
+		}
+		
+		return new(throughImm, true, copiesSelf);
+	}
+	
+	private static bool MentionsSelf(TraitSymbol trait, TypeSymbol type) =>
+		TypePool.FindTypeParameters(type).Contains(trait.Self);
+	
+	private static IEnumerable<FunctionSymbol> GetTraitMembers(TraitSymbol trait) => trait.Functions
+		.Select(static method => method.Function)
+		.Concat(trait.Properties
+			.SelectMany(static property => new[] { property.Getter, property.Setter })
+			.OfType<FunctionAccessor>()
+			.Select(static accessor => accessor.Function));
+	
 	private void ReportOverlaps(List<Conformance> conformances)
 	{
 		foreach (var conformance in conformances)

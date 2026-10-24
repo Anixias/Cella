@@ -1,0 +1,57 @@
+mod test
+
+Grow: trait
+{
+	grow: fun(mut self)
+}
+
+Describe: trait
+{
+	describe: fun(self) -> i32
+}
+
+Make: trait
+{
+	make: fun -> Self
+}
+
+Counter: rec
+{
+	count: i32
+}
+
+Owned: own rec
+{
+	count: i32
+
+	drop: op { }
+}
+
+Counter: impl Grow + Make
+{
+	grow: fun(mut self) => self.count += 1
+	make: fun -> Counter => Counter(0)
+}
+
+Owned: impl Describe
+{
+	describe: fun(self) -> i32 => self.count
+}
+
+poke[T: Grow]: fun(mut item: T) => item.grow()
+
+fresh[T: Make]: fun -> T => T.make()
+
+tell[T: Describe]: fun(item: T) -> i32 => item.describe()
+
+main: fun -> i32
+{
+	var counter = Counter(1)
+	var owned = Owned(2)
+	var reading = imm counter
+	var writing = mut counter
+	poke[imm[Counter]](mut reading)
+	val made = fresh[mut[Counter]]()
+	val told = tell[imm[Owned]](imm owned)
+	ret 0
+}

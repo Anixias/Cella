@@ -20,30 +20,66 @@ public sealed unsafe partial class CodeGenerator
 		if (FindDynDispatch(info) is { } dyn)
 			return EmitDynCall(info, dyn, v, builder);
 		
+		LLVMValueRef[] args = [..v.Arguments.Select(a => EmitValue(a, builder))];
+		if (FindForwardedCall(info) is var (target, borrow))
+			return EmitResolvedCall(target, ForwardArguments(info, borrow, args, builder), v.SourceLocation, builder);
+		
+		return EmitResolvedCall(info, args, v.SourceLocation, builder);
+	}
+	
+	private (FunctionInfo Target, BorrowType Borrow)? FindForwardedCall(FunctionInfo info)
+	{
+		if (info.Symbol.Trait is not { } trait || info.TypeArguments.IsDefaultOrEmpty ||
+		    info.TypeArguments[0] is not BorrowType borrow || TypePool.ContainsTypeParameters(borrow) ||
+		    _typePool.FindConformance(borrow, _typePool.GetTraitType(trait, TypePool.GetTraitArguments(info))) is not
+			    { IsForwarded: true })
+			return null;
+		
+		return (_typePool.InstantiateFunction(info, [borrow.Target, ..info.TypeArguments.Skip(1)]), borrow);
+	}
+	
+	private LLVMValueRef[] ForwardArguments(FunctionInfo info, BorrowType borrow, LLVMValueRef[] args,
+		LLVMBuilderRef builder)
+	{
+		var self = info.Symbol.Trait!.Self;
+		var declared = info.DeclaredSignature;
+		return
+		[
+			..args.Select((arg, i) => i >= declared.ParameterTypes.Length || !IsSelfParameter(declared, i, self)
+				? arg
+				: declared.GetMode(i) == ParameterMode.Value
+					? LoadValue(builder, borrow.Target, arg, "forwarded")
+					: builder.BuildLoad2(OpaquePointer, arg, "forwarded"))
+		];
+	}
+	
+	private static bool IsSelfParameter(FunctionSignature signature, int index, TypeParameterSymbol self) =>
+		signature.ParameterTypes[index] == self || signature.GetMode(index) == ParameterMode.Mut &&
+		signature.ParameterTypes[index] is PointerType { BaseType: var target } && target == self;
+	
+	private LLVMValueRef EmitResolvedCall(FunctionInfo info, LLVMValueRef[] args, SourceLocation location,
+		LLVMBuilderRef builder)
+	{
 		switch (FindWitness(info))
 		{
 			case NativeWitness native:
-				return EmitNativeWitness(info, native, [..v.Arguments.Select(a => EmitValue(a, builder))],
-					v.SourceLocation, builder);
+				return EmitNativeWitness(info, native, [..args], location, builder);
 			
 			case ConversionWitness conversion:
-				return EmitConversionWitness(info, conversion.Conversion,
-					[..v.Arguments.Select(a => EmitValue(a, builder))], v.SourceLocation, builder);
+				return EmitConversionWitness(info, conversion.Conversion, [..args], location, builder);
 			
 			case SelfConversionWitness conversion:
-				return EmitSelfConversionWitness(info, conversion.Conversion,
-					[..v.Arguments.Select(a => EmitValue(a, builder))], v.SourceLocation, builder);
+				return EmitSelfConversionWitness(info, conversion.Conversion, [..args], location, builder);
 		}
 		
 		GetFunctionValue(info);
 		var function = current.Functions[info];
-		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		if (function.CSignature is not { } signature)
 			return BuildInternalCall(builder, function.FunctionType, function.FunctionValue, info.Signature.ReturnType,
-				[], args);
+				[], [..args]);
 		
 		return EmitCCall(signature, function.FunctionType, function.FunctionValue, info.Signature.ParameterTypes,
-			info.Signature.ReturnType, args, builder);
+			info.Signature.ReturnType, [..args], builder);
 	}
 	
 	private LLVMValueRef EmitIndirectCall(IndirectCallValue v, LLVMBuilderRef builder)

@@ -72,6 +72,8 @@ public sealed partial class TypePool
 	private readonly HashSet<TypeParameterSymbol> _blanketBoundsInProgress = [];
 	private readonly HashSet<(TypeSymbol Type, TraitSymbol Trait)> _blanketLookupsInProgress = [];
 	private readonly HashSet<(Conformance Template, TypeSymbol Type)> _instancesInProgress = [];
+	private readonly Dictionary<TraitSymbol, BorrowForwarding> _borrowForwarding = [];
+	private readonly Dictionary<BorrowType, IReadOnlyList<Conformance>> _forwardedConformances = [];
 	
 	private readonly Dictionary<(Conformance Template, TypeSymbol Type), IReadOnlyList<Conformance>>
 		_conformanceInstances = [];

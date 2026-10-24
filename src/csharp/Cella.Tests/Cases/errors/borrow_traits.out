@@ -1,0 +1,19 @@
+Error at borrow_traits.ce:53:7
+52 │ var writing = mut counter
+53 │ poke[imm[Counter]](mut reading)
+          ╘══════════╛ 'poke' requires 'T: Grow'
+                     | 'imm[Counter]' doesn't implement 'Grow'
+
+Error at borrow_traits.ce:54:19
+53 │ poke[imm[Counter]](mut reading)
+54 │ val made = fresh[mut[Counter]]()
+                      ╘══════════╛ 'fresh' requires 'T: Make'
+                                 | 'mut[Counter]' doesn't implement 'Make'
+
+Error at borrow_traits.ce:55:18
+54 │ val made = fresh[mut[Counter]]()
+55 │ val told = tell[imm[Owned]](imm owned)
+                     ╘════════╛ 'tell' requires 'T: Describe'
+                              | 'imm[Owned]' doesn't implement 'Describe'
+
+[compilation failed]

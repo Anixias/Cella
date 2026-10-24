@@ -185,6 +185,7 @@ public sealed partial class SignatureCollector
 		ReportBorrowingVariables();
 		LinkRefinedDefaults(files);
 		CheckConformances();
+		RecordBorrowForwarding();
 		CheckImplBlocks();
 		ReportVariadicTypes();
 		_typePool.TypeCompleter = null;

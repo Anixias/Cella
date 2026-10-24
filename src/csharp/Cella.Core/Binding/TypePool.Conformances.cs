@@ -25,6 +25,7 @@ public sealed partial class TypePool
 		conformanceCache?.Clear();
 		memberBlockCache?.Clear();
 		_conformanceInstances.Clear();
+		_forwardedConformances.Clear();
 		ConformanceVersion++;
 	}
 	
@@ -61,6 +62,50 @@ public sealed partial class TypePool
 		else
 			_conformancesByTarget.GetOrAdd(conformance.Target).Add(conformance);
 	}
+	
+	public void SetBorrowForwarding(TraitSymbol trait, BorrowForwarding forwarding)
+	{
+		InvalidateConformanceCache();
+		_borrowForwarding[trait] = forwarding;
+	}
+	
+	private IReadOnlyList<Conformance> GetForwardedConformances(BorrowType borrow)
+	{
+		if (_forwardedConformances.TryGetValue(borrow, out var cached))
+			return cached;
+		
+		List<TraitType> traits = borrow.Target is TypeParameterSymbol parameter
+			? [..GetBounds(parameter).Distinct()]
+			:
+			[
+				..FindConformances(borrow.Target)
+					.Select(conformance => GetConformanceTrait(conformance, borrow.Target))
+					.Distinct()
+			];
+		
+		IReadOnlyList<Conformance> forwarded =
+		[
+			..traits.Where(trait => Forwards(trait, borrow, traits)).Select(trait =>
+				new Conformance(trait.Trait, trait.Arguments, borrow, [], null, SourceLocation.None)
+					{ IsForwarded = true })
+		];
+		
+		if (IsSettled)
+			_forwardedConformances[borrow] = forwarded;
+		
+		return forwarded;
+	}
+	
+	private bool Forwards(TraitType trait, BorrowType borrow, List<TraitType> traits) =>
+		_borrowForwarding.TryGetValue(trait.Trait, out var forwarding) &&
+		(borrow.IsMutable ? forwarding.ThroughMut : forwarding.ThroughImm) &&
+		(!forwarding.CopiesSelf || IsCopy(borrow.Target)) && FindSelfViolation(trait, borrow) is null &&
+		GetRequiredTraits(trait, borrow.Target).All(required => traits.Contains(required) &&
+		                                                        Forwards(required, borrow, traits));
+	
+	private Conformance? FindForwardedConformance(BorrowType borrow, TraitType trait) =>
+		GetForwardedConformances(borrow).FirstOrDefault(conformance =>
+			conformance.Trait == trait.Trait && conformance.Arguments.SequenceEqual(trait.Arguments));
 	
 	private IEnumerable<Conformance> GetConformanceCandidates(TypeSymbol type) =>
 		type is TypeParameterSymbol ? [] : GetExplicitCandidates(type).Concat(GetBlanketCandidates(type));
@@ -137,7 +182,10 @@ public sealed partial class TypePool
 	
 	private IEnumerable<Conformance> ComputeConformances(TypeSymbol type)
 	{
-		var explicitOnes = GetExplicitCandidates(type).Where(conformance => Matches(conformance, type)).ToList();
+		var explicitOnes = type is BorrowType borrow
+			? [..GetForwardedConformances(borrow)]
+			: GetExplicitCandidates(type).Where(conformance => Matches(conformance, type)).ToList();
+		
 		var blankets = GetBlanketCandidates(type).Where(blanket => Matches(blanket, type)).ToList();
 		return explicitOnes.Concat(blankets.Where(blanket =>
 			!explicitOnes.Any(conformance => Overrides(conformance, blanket, type)) &&
@@ -392,6 +440,9 @@ public sealed partial class TypePool
 		if (type is TypeParameterSymbol)
 			return null;
 		
+		if (type is BorrowType borrow && FindForwardedConformance(borrow, trait) is { } forwarded)
+			return forwarded;
+		
 		if (GetExplicitCandidates(type).FirstOrDefault(conformance => Provides(conformance, type, trait)) is { } found)
 			return found;
 		
@@ -416,7 +467,8 @@ public sealed partial class TypePool
 			                                      Satisfies(blanket.Parameters, [parameter]) &&
 			                                      GetConformanceArguments(blanket, parameter)
 				                                      .SequenceEqual(trait.Arguments))
-			: GetConformanceCandidates(type).Any(conformance => conformance != except &&
+			: type is BorrowType borrow && FindForwardedConformance(borrow, trait) is not null ||
+			  GetConformanceCandidates(type).Any(conformance => conformance != except &&
 			                                                    Provides(conformance, type, trait));
 	
 	private bool Provides(Conformance conformance, TypeSymbol type, TraitType trait) =>

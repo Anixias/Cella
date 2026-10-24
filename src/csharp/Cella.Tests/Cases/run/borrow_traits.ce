@@ -1,0 +1,87 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Same: trait
+{
+	same: fun(imm self, imm other: Self) -> bool
+}
+
+Ordered: trait req Same
+{
+	before: fun(imm self, imm other: Self) -> bool
+}
+
+Grow: trait
+{
+	grow: fun(mut self)
+}
+
+Describe: trait
+{
+	describe: fun(self) -> i32
+}
+
+Counter: rec
+{
+	count: i32
+}
+
+Counter: impl Ordered + Grow + Describe
+{
+	same: fun(imm self, imm other: Counter) -> bool => self.count == other.count
+	before: fun(imm self, imm other: Counter) -> bool => self.count < other.count
+	grow: fun(mut self) => self.count += 1
+	describe: fun(self) -> i32 => self.count * 10
+}
+
+Wrapper[T]: rec
+{
+	value: T
+}
+
+Wrapper[T: Same]: impl
+{
+	matches: fun(imm self, imm other: T) -> bool => self.value.same(imm other)
+}
+
+equal[T: Same]: fun(imm a: T, imm b: T) -> bool => a.same(imm b)
+
+earlier[T: Ordered]: fun(imm a: T, imm b: T) -> bool => a.before(imm b) && !a.same(imm b)
+
+poke[T: Grow]: fun(mut item: T) => item.grow()
+
+tell[T: Describe]: fun(item: T) -> i32 => item.describe()
+
+throughGeneric[X: Same]: fun(imm a: X, imm b: X) -> bool
+{
+	val left = a
+	val right = b
+	ret equal[imm[X]](imm left, imm right)
+}
+
+main: fun -> i32
+{
+	var first = Counter(1)
+	val second = Counter(1)
+	val third = Counter(5)
+	val r1 = imm first
+	val r2 = imm second
+	val r3 = imm third
+	printf("%d %d\n", equal[imm[Counter]](imm r1, imm r2), equal[imm[Counter]](imm r1, imm r3))
+	printf("%d %d\n", earlier[imm[Counter]](imm r1, imm r3), earlier[imm[Counter]](imm r3, imm r1))
+
+	val wrapped = Wrapper(imm second)
+	printf("%d %d\n", wrapped.matches(imm r1), wrapped.matches(imm r3))
+	printf("%d\n", tell[imm[Counter]](r3))
+	printf("%d %d\n", throughGeneric(imm second, imm third), throughGeneric(imm second, imm second))
+
+	var growing = mut first
+	poke[mut[Counter]](mut growing)
+	poke[mut[Counter]](mut growing)
+	printf("%d\n", first.count)
+	ret 0
+}

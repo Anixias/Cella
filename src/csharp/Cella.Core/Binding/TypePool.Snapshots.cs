@@ -72,6 +72,8 @@ public sealed partial class TypePool
 		snapshot.Save(_blanketBoundsInProgress);
 		snapshot.Save(_blanketLookupsInProgress);
 		snapshot.Save(_instancesInProgress);
+		snapshot.Save(_borrowForwarding);
+		snapshot.Save(_forwardedConformances);
 		snapshot.Save(_conformanceInstances);
 		snapshot.Save(_bounds);
 		snapshot.Save(_parameterBounds);
