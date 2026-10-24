@@ -1,10 +1,357 @@
 ﻿mod std.containers
 
 use std.cmp.Eq
-use std.Hash
-use std.mem.[Allocator, Heap]
+use std.[DefHashBuilder, Hash, HashBuilder, Option]
+use std.mem.[Allocator, fillBytes, Heap, Layout]
 
-HashMap[K: noref + Hash + Eq, V: noref, A: Allocator = Heap]: pub own rec
+HashSlot[K: noref + Hash + Eq, V: noref]: mod enum
 {
+	empty
+	deleted
+	full(key: K, value: V)
+}
+
+SlotSearch: pvt rec
+{
+	index: usize
+	found: bool
+}
+
+HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy = DefHashBuilder, A: Allocator = Heap]: pub own rec
+{
+	data: pvt ptr[HashSlot[K, V]]
+	count: pvt set usize
+	used: pvt usize
+	capacity: pvt set usize
+	hashBuilder: pvt H
+	alloc: pvt A
 	
+	isEmpty: get(imm self) -> bool => self.count == 0
+	
+	new: op(hashBuilder: H, alloc: A)
+	{
+		self.hashBuilder = hashBuilder
+		self.alloc = alloc
+		
+		val layout = Layout.arrayOf[HashSlot[K, V]](0)
+		self.data = ptr[HashSlot[K, V]](self.alloc.allocate(layout))
+	}
+	
+	drop: op
+	{
+		for i in 0..self.capacity
+			drop self.data[i]
+		
+		val layout = Layout.arrayOf[HashSlot[K, V]](self.capacity)
+		self.alloc.release(self.data, layout)
+	}
+	
+	insert: fun(mut self, key: K, value: V) -> Option[V]
+	{
+		// 75% grow threshold
+		if (self.used + 1) * 4 > self.capacity * 3
+			self.grow()
+		
+		val search = self.findSlot(imm key)
+		if search.found
+		{
+			val old = own self.data[search.index]
+			own self.data[search.index] = full(key, value)
+			ret match old
+			{
+				full(_, val previous) => some(previous)
+				else => none
+			}
+		}
+		
+		if self.data[search.index] is empty
+			self.used += 1
+		
+		own self.data[search.index] = full(key, value)
+		self.count += 1
+		ret none
+	}
+	
+	get: fun(imm self, imm key: K) -> Option[imm[V]]
+	{
+		if self.capacity == 0
+			ret none
+		
+		val search = self.findSlot(imm key)
+		if !search.found
+			ret none
+		
+		ret match self.data[search.index]
+		{
+			full(_, val value) => some(imm value)
+			else => none
+		}
+	}
+	
+	contains: fun(imm self, imm key: K) -> bool => self.capacity > 0 && self.findSlot(imm key).found
+	
+	remove: fun(mut self, imm key: K) -> Option[V]
+	{
+		if self.capacity == 0
+			ret none
+		
+		val search = self.findSlot(imm key)
+		if !search.found
+			ret none
+		
+		val old = own self.data[search.index]
+		own self.data[search.index] = deleted
+		self.count -= 1
+		ret match old
+		{
+			full(_, val value) => some(value)
+			else => none
+		}
+	}
+	
+	hashOf: pvt fun(imm self, imm key: K) -> u64
+	{
+		var builder = self.hashBuilder
+		key.hash(mut builder)
+		ret builder.getHash()
+	}
+	
+	findSlot: pvt fun(imm self, imm key: K) -> SlotSearch
+	{
+		val mask = self.capacity - 1
+		var index = usize(self.hashOf(imm key) & u64(mask))
+		var reusable = self.capacity
+		loop
+		{
+			match self.data[index]
+			{
+				empty => ret SlotSearch(match reusable == self.capacity { true => index, else => reusable }, false)
+				deleted =>
+				{
+					if reusable == self.capacity
+						reusable = index
+				}
+				full(val stored, _) =>
+				{
+					if stored == key
+						ret SlotSearch(index, true)
+				}
+			}
+			
+			index = (index + 1) & mask
+		}
+	}
+
+	grow: pvt fun(mut self)
+	{
+		val oldData = self.data
+		val oldCapacity = self.capacity
+		var newCapacity = oldCapacity
+		if oldCapacity == 0
+			newCapacity = 8
+		else if self.count * 2 >= oldCapacity
+			newCapacity = oldCapacity * 2
+		
+		val newLayout = Layout.arrayOf[HashSlot[K, V]](newCapacity)
+		self.data = ptr[HashSlot[K, V]](self.alloc.allocate(newLayout))
+		if self.data == null
+			panic "out of memory"
+		
+		fillBytes(self.data, 0, newLayout.size)
+		self.capacity = newCapacity
+		self.used = self.count
+		
+		for i in 0..oldCapacity
+		{
+			val slot = own oldData[i]
+			match slot
+			{
+				full(val key, val value) => self.place(key, value)
+				else => { }
+			}
+		}
+		
+		self.alloc.release(oldData, Layout.arrayOf[HashSlot[K, V]](oldCapacity))
+	}
+	
+	place: pvt fun(mut self, key: K, value: V)
+	{
+		val mask = self.capacity - 1
+		var index = usize(self.hashOf(imm key) & u64(mask))
+		while !(self.data[index] is empty)
+			index = (index + 1) & mask
+		
+		own self.data[index] = full(key, value)
+	}
+	
+	in: op(imm self) -> HashMapCursor[K, V] => HashMapCursor[K, V](self.data, self.capacity)
+	keys: fun(imm self) -> HashMapKeys[K, V] => HashMapKeys[K, V](self.data, self.capacity)
+	values: fun(imm self) -> HashMapValues[K, V] => HashMapValues[K, V](self.data, self.capacity)
+	editEntries: fun(mut self) -> HashMapEntryEditor[K, V] => HashMapEntryEditor[K, V](self.data, self.capacity)
+	editValues: fun(mut self) -> HashMapValueEditor[K, V] => HashMapValueEditor[K, V](self.data, self.capacity)
+}
+
+HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy + new, A: Allocator + new]: impl
+{
+	new: op
+	{
+		self = HashMap[K, V, H, A](H(), A())
+	}
+}
+
+KeyValue[K, V]: pub ref rec
+{
+	key: imm[K]
+	value: imm[V]
+}
+
+EditableKeyValue[K, V]: pub ref rec
+{
+	key: imm[K]
+	value: mut[V]
+}
+
+nextFull[K: noref + Hash + Eq, V: noref]: pvt fun(data: ptr[HashSlot[K, V]], length: usize, position: usize) -> usize
+{
+	var next = position + 1
+	while next <= length && !(data[next - 1] is full(_, _))
+		next += 1
+	
+	ret next
+}
+
+HashMapCursor[K: noref + Hash + Eq, V: noref]: pub ref rec
+{
+	data: pvt ptr[HashSlot[K, V]]
+	length: pvt usize
+	position: pvt usize
+	
+	new: mod op(data: ptr[HashSlot[K, V]], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position = nextFull(self.data, self.length, self.position)
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> KeyValue[K, V] => match self.data[self.position - 1]
+	{
+		full(val key, val value) => KeyValue[K, V](imm key, imm value)
+		else => panic "cursor is not on an entry"
+	}
+}
+
+HashMapKeys[K: noref + Hash + Eq, V: noref]: pub ref rec
+{
+	data: pvt ptr[HashSlot[K, V]]
+	length: pvt usize
+	position: pvt usize
+	
+	new: mod op(data: ptr[HashSlot[K, V]], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position = nextFull(self.data, self.length, self.position)
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> imm[K] => match self.data[self.position - 1]
+	{
+		full(val key, _) => imm key
+		else => panic "cursor is not on an entry"
+	}
+}
+
+HashMapValues[K: noref + Hash + Eq, V: noref]: pub ref rec
+{
+	data: pvt ptr[HashSlot[K, V]]
+	length: pvt usize
+	position: pvt usize
+	
+	new: mod op(data: ptr[HashSlot[K, V]], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position = nextFull(self.data, self.length, self.position)
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> imm[V] => match self.data[self.position - 1]
+	{
+		full(_, val value) => imm value
+		else => panic "cursor is not on an entry"
+	}
+}
+
+HashMapEntryEditor[K: noref + Hash + Eq, V: noref]: pub ref rec
+{
+	data: pvt ptr[HashSlot[K, V]]
+	length: pvt usize
+	position: pvt usize
+	
+	new: mod op(data: ptr[HashSlot[K, V]], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position = nextFull(self.data, self.length, self.position)
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> EditableKeyValue[K, V] => match mut self.data[self.position - 1]
+	{
+		full(val key, mut value) => EditableKeyValue[K, V](imm key, mut value)
+		else => panic "cursor is not on an entry"
+	}
+}
+
+HashMapValueEditor[K: noref + Hash + Eq, V: noref]: pub ref rec
+{
+	data: pvt ptr[HashSlot[K, V]]
+	length: pvt usize
+	position: pvt usize
+	
+	new: mod op(data: ptr[HashSlot[K, V]], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position = nextFull(self.data, self.length, self.position)
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> imm[V] => match self.data[self.position - 1]
+	{
+		full(_, val value) => imm value
+		else => panic "cursor is not on an entry"
+	}
+	
+	*: op(mut self) -> mut[V] => match mut self.data[self.position - 1]
+	{
+		full(_, mut value) => mut value
+		else => panic "cursor is not on an entry"
+	}
 }
