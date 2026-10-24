@@ -39,12 +39,13 @@ class CelpCommenter : Commenter {
 	override fun getCommentedBlockCommentSuffix(): String? = null
 }
 
-private val cellaWords = setOf(
+private val cellaOperands = setOf(
 	CellaToken.IDENTIFIER, CellaToken.DECLARATION_KEYWORD, CellaToken.CONTROL_KEYWORD, CellaToken.MODIFIER_KEYWORD,
-	CellaToken.VALUE_KEYWORD, CellaToken.OPERATOR_KEYWORD, CellaToken.BUILTIN_TYPE, CellaToken.INTEGER, CellaToken.FLOAT
+	CellaToken.VALUE_KEYWORD, CellaToken.OPERATOR_KEYWORD, CellaToken.BUILTIN_TYPE, CellaToken.INTEGER, CellaToken.FLOAT,
+	CellaToken.STRING, CellaToken.CHAR
 )
 
-private val celpWords = setOf(CelpToken.KEY, CelpToken.NUMBER, CelpToken.BOOLEAN)
+private val celpOperands = setOf(CelpToken.KEY, CelpToken.NUMBER, CelpToken.BOOLEAN, CelpToken.STRING)
 
 class CellaBraceMatcher : PairedBraceMatcher {
 	private val pairs = arrayOf(
@@ -56,7 +57,7 @@ class CellaBraceMatcher : PairedBraceMatcher {
 	
 	override fun getPairs() = pairs
 	override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?) =
-		CellaTokenTypes.tokenOf(contextType) !in cellaWords
+		CellaTokenTypes.tokenOf(contextType) !in cellaOperands
 	override fun getCodeConstructStart(file: PsiFile?, openingBraceOffset: Int) = openingBraceOffset
 }
 
@@ -68,7 +69,7 @@ class CelpBraceMatcher : PairedBraceMatcher {
 	
 	override fun getPairs() = pairs
 	override fun isPairedBracesAllowedBeforeType(lbraceType: IElementType, contextType: IElementType?) =
-		CelpTokenTypes.tokenOf(contextType) !in celpWords
+		CelpTokenTypes.tokenOf(contextType) !in celpOperands
 	override fun getCodeConstructStart(file: PsiFile?, openingBraceOffset: Int) = openingBraceOffset
 }
 
