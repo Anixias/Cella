@@ -83,6 +83,40 @@ public sealed partial class SignatureCollector
 		CompleteMembers(node.Members, "impl blocks");
 		var target = GetImplTarget(impl);
 		ReportMembers(target.Name, target, node.Members);
+		ReportUnusedFreeParameters(impl, node);
+	}
+	
+	private void ReportUnusedFreeParameters(ImplSymbol impl, ImplNode node)
+	{
+		if (impl.FreeParameters.IsEmpty || !node.Traits.IsEmpty)
+			return;
+		
+		foreach (var member in node.Members)
+		{
+			(Token Name, IEnumerable<FunctionNode> Functions)? named = member switch
+			{
+				FunctionNode function => (function.Identifier, [function]),
+				PropertyNode property => (property.Identifier, property.Accessors),
+				_ => null
+			};
+			
+			if (named is var (name, functions) && functions
+				    .Select(function => FindUnusedFreeParameter(impl,
+					    (FunctionSymbol)_symbolTable.DeclarationSymbols[function]))
+				    .FirstOrDefault(static unused => unused is not null) is { } missing)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, name.SourceLocation,
+					$"'{name.Text}' has no parameter using '{missing.Name}'"));
+		}
+	}
+	
+	private TypeParameterSymbol? FindUnusedFreeParameter(ImplSymbol impl, FunctionSymbol function)
+	{
+		var used = GetFunctionInfo(function).Signature.ParameterTypes
+			.Skip(function.Kind == FunctionKind.Method ? 1 : 0)
+			.SelectMany(TypePool.FindTypeParameters)
+			.ToHashSet();
+		
+		return impl.FreeParameters.FirstOrDefault(parameter => !used.Contains(parameter));
 	}
 	
 	private void CompleteMembers(IEnumerable<IDeclarationNode> members, string kind)
@@ -142,6 +176,7 @@ public sealed partial class SignatureCollector
 	private string? DescribeConstructorPlace(ImplSymbol impl) =>
 		!impl.Node.Traits.IsEmpty ? "trait impls"
 		: impl.IsExtension ? "extension blocks"
+		: impl.FreeParameters is [var free, ..] ? $"blocks that declare '{free.Name}'"
 		: GetImplTarget(impl).OriginalDefinition is EnumSymbol ? "enums"
 		: null;
 	

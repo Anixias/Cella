@@ -39,6 +39,7 @@ public sealed class TypeParameterNode
 	public ITypeNode? DefaultType { get; init; }
 	public IExpressionNode? DefaultValue { get; init; }
 	public ImmutableArray<TypeParameterNode> Nested { get; init; } = [];
+	public ImmutableArray<TypeParameterNode> Declared { get; init; } = [];
 	
 	public static IEnumerable<TypeParameterNode> CollectNestedLeaves(IEnumerable<TypeParameterNode> nodes) => nodes
 		.SelectMany(static node => node.Nested.IsEmpty
@@ -46,6 +47,25 @@ public sealed class TypeParameterNode
 			: node.Nested.SelectMany(static child => child.Nested.IsEmpty
 				? [child]
 				: CollectNestedLeaves([child])));
+	
+	public static IEnumerable<TypeParameterNode> CollectDeclared(IEnumerable<TypeParameterNode> nodes) => nodes
+		.SelectMany(static node => node.Declared
+			.Concat(CollectDeclared(node.Declared))
+			.Concat(CollectDeclared(node.Nested)));
+	
+	public static IEnumerable<Token> CollectBareNames(IEnumerable<TypeParameterNode> nodes) => nodes
+		.SelectMany(static node => node.Traits.SelectMany(CollectBareNames)
+			.Concat(CollectBareNames(node.Declared))
+			.Concat(CollectBareNames(node.Nested)));
+	
+	private static IEnumerable<Token> CollectBareNames(ITypeNode type) => type is GenericTypeNode generic
+		? generic.Arguments.SelectMany(static argument => argument switch
+		{
+			IdentifierArgumentNode identifier => [identifier.Identifier],
+			TypeArgumentNode typeArgument => CollectBareNames(typeArgument.Type),
+			_ => []
+		})
+		: [];
 }
 
 public sealed class ConstructorConstraintNode

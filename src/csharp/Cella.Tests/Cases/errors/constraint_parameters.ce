@@ -1,0 +1,113 @@
+mod test
+
+Match: trait
+{
+	matches: fun(imm self, imm other: Self) -> bool
+}
+
+i32: impl Match
+{
+	matches: fun(imm self, imm other: i32) -> bool => self == other
+}
+
+Shows[Q]: trait
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool
+}
+
+Counts[Q]: trait
+{
+	tally: fun(imm self) -> i32
+}
+
+Named: trait
+{
+	name: fun(imm self) -> i32
+}
+
+Describe: trait
+{
+	describe: fun(imm self) -> i32
+}
+
+i32: impl Shows[i32]
+{
+	show: fun(imm self, imm check: fun[imm i32 -> bool]) -> bool => check(imm self)
+}
+
+Pair[T]: rec
+{
+	first: T
+	second: T
+}
+
+Pair[T: Shows[Q: Match]]: impl
+{
+	contains: fun(imm self, imm value: Q) -> bool => self.first.show(fun(imm item: Q) -> bool => item.matches(imm value))
+	size: fun(imm self) -> i32 => 2
+	label: get(imm self) -> i32 => 0
+
+	new: op(first: T)
+	{
+		self.first = first
+		self.second = first
+	}
+}
+
+Pair[T: Shows[R: Match]]: impl Describe
+{
+	describe: fun(imm self) -> i32 => 0
+}
+
+pick[T: Shows[S: Match]]: fun(imm value: T) -> i32 => 0
+
+Wrapper[T: Shows[U: Match]]: rec
+{
+	value: T
+}
+
+Pair[T: Shows[V: Match]]: impl
+{
+	find[W: Shows[X: Match]]: fun(imm self, imm value: V, imm other: W) -> bool => false
+}
+
+Pair[T: Shows[Y: Missing]]: impl
+{
+	other: fun(imm self, imm value: Y) -> bool => false
+}
+
+Pair[T: Shows[A: Match] + Counts[A: Match]]: impl
+{
+	one: fun(imm self, imm value: A) -> bool => false
+}
+
+Pair[T: Shows[T: Match]]: impl
+{
+	two: fun(imm self, imm value: T) -> bool => false
+}
+
+Pair[T: Shows[item]]: impl
+{
+	three: fun(imm self, imm value: item) -> bool => false
+}
+
+Pair[T: Shows[Z]]: impl Named
+{
+	name: fun(imm self) -> i32 => 0
+}
+
+choose[T: Shows[B]]: fun(imm value: T) -> i32 => 0
+
+Plain: rec
+{
+	value: i32
+}
+
+main: fun -> i32
+{
+	val plain = Pair(Plain(1), Plain(2))
+	val numbers = Pair(1, 2)
+	val a = plain.contains(imm 1)
+	val b = numbers.contains(imm 1.5)
+	ret 0
+}

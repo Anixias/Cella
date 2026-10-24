@@ -85,7 +85,8 @@ public sealed partial class SignatureCollector
 	private void AddDefaults(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> parameters,
 		Func<ResolutionContext> context)
 	{
-		foreach (var nested in nodes.Where(static node => !node.Nested.IsEmpty))
+		foreach (var nested in nodes.Where(static node => !node.Nested.IsEmpty)
+			         .Concat(TypeParameterNode.CollectDeclared(nodes)))
 			Diagnostics.Add(new(DiagnosticSeverity.Error, nested.Identifier.SourceLocation,
 				"Cannot declare nested type parameters outside impl blocks"));
 		

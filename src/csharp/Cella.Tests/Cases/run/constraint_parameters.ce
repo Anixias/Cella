@@ -1,0 +1,128 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Match: trait
+{
+	matches: fun(imm self, imm other: Self) -> bool
+}
+
+i32: impl Match
+{
+	matches: fun(imm self, imm other: i32) -> bool => self == other
+}
+
+i64: impl Match
+{
+	matches: fun(imm self, imm other: i64) -> bool => self == other
+}
+
+Shows[Q]: trait
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool
+}
+
+[T]: impl Shows[T]
+{
+	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm self)
+}
+
+Holder[T]: rec
+{
+	value: T
+}
+
+Holder[T]: impl Shows[T]
+{
+	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm self.value)
+}
+
+Code: rec
+{
+	high: i32
+	low: i32
+}
+
+Code: impl Shows[i64]
+{
+	show: fun(imm self, imm check: fun[imm i64 -> bool]) -> bool
+	{
+		val combined = i64(self.high) * 100 + i64(self.low)
+		ret check(imm combined)
+	}
+}
+
+Pair[T]: rec
+{
+	first: T
+	second: T
+}
+
+Pair[T: Shows[Q: Match]]: impl
+{
+	contains: fun(imm self, imm value: Q) -> bool
+	{
+		val test = fun(imm item: Q) -> bool => item.matches(imm value)
+		ret self.first.show(imm test) || self.second.show(imm test)
+	}
+
+	count: fun(imm self, imm test: fun[imm Q -> bool]) -> i32
+	{
+		var found = 0
+		if self.first.show(imm test)
+			found += 1
+
+		if self.second.show(imm test)
+			found += 1
+
+		ret found
+	}
+
+	containsBoth: fun(imm self, imm a: Q, imm b: Q) -> bool => self.contains(imm a) && self.contains(imm b)
+}
+
+Map[K, V]: rec
+{
+	key: K
+	value: V
+}
+
+Map[Holder[S: Shows[Q: Match]], V]: impl
+{
+	keyHas: fun(imm self, imm value: Q) -> bool => self.key.value.show(fun(imm item: Q) -> bool => item.matches(imm value))
+}
+
+Pair[T: Shows[Item]]: impl
+{
+	any: fun(imm self, imm test: fun[imm Item -> bool]) -> bool => self.first.show(imm test) || self.second.show(imm test)
+}
+
+hasFour[X: Shows[i32]]: fun(imm pair: Pair[X]) -> bool => pair.contains(imm 4)
+
+main: fun -> i32
+{
+	val plain = Pair(3, 4)
+	printf("%d %d\n", plain.contains(imm 4), plain.contains(imm 5))
+
+	val held = Pair(Holder(7), Holder(8))
+	val eight = 8
+	printf("%d %d %d\n", held.contains(imm 7), held.contains(imm eight), held.contains(imm 9))
+
+	val wide = Pair[i64](5, 9)
+	printf("%d %d\n", wide.contains(imm 9), wide.contains(imm 6))
+
+	val codes = Pair(Code(1, 2), Code(3, 4))
+	printf("%d %d\n", codes.contains(imm 102), codes.contains(imm 304))
+	printf("%d\n", codes.count(imm fun(imm value: i64) -> bool => value > 200))
+
+	printf("%d %d\n", hasFour(imm plain), hasFour(imm held))
+	printf("%d %d\n", held.containsBoth(imm 7, imm 8), held.containsBoth(imm 7, imm 9))
+
+	val map = Map(Holder(Holder(5)), true)
+	printf("%d %d\n", map.keyHas(imm 5), map.keyHas(imm 6))
+	printf("%d %d\n", plain.any(imm fun(imm value: i32) -> bool => value > 3), plain.any(imm fun(imm value: i32) -> bool => value > 9))
+	ret 0
+}

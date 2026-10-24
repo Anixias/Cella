@@ -49,16 +49,17 @@ public sealed partial class FileParser
 			var keywords = new List<Token>();
 			var traits = new List<ITypeNode>();
 			var constructors = new List<ConstructorConstraintNode>();
+			var declared = new List<TypeParameterNode>();
 			ITypeNode? valueType = null;
 			var hasConstraints = Match(ref index, TokenType.OpColon);
 			if (hasConstraints && Match(ref index, TokenType.KeywordConst)
 				    ? (valueType = ParseConstraintType(ref index)) is null
-				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false))
+				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false, declared))
 			{
 				if (IsOnSameLine(index))
 					return null;
 				
-				parameters.Add(new(name, keywords, traits, constructors));
+				parameters.Add(new(name, keywords, traits, constructors) { Declared = [..declared] });
 				isPartial = true;
 				return parameters;
 			}
@@ -72,7 +73,12 @@ public sealed partial class FileParser
 				if (IsOnSameLine(index))
 					return null;
 				
-				parameters.Add(new(name, keywords, traits, constructors) { ValueType = valueType });
+				parameters.Add(new(name, keywords, traits, constructors)
+				{
+					ValueType = valueType,
+					Declared = [..declared]
+				});
+				
 				isPartial = true;
 				return parameters;
 			}
@@ -81,7 +87,8 @@ public sealed partial class FileParser
 			{
 				ValueType = valueType,
 				DefaultType = defaultType,
-				DefaultValue = defaultValue
+				DefaultValue = defaultValue,
+				Declared = [..declared]
 			});
 		} while (MatchSeparator(ref index, TokenType.OpCloseBracket));
 		
@@ -94,7 +101,7 @@ public sealed partial class FileParser
 	}
 	
 	private bool ParseConstraints(ref int index, List<Token> keywords, List<ITypeNode> traits,
-		List<ConstructorConstraintNode> constructors, bool isOnOneLine)
+		List<ConstructorConstraintNode> constructors, bool isOnOneLine, List<TypeParameterNode>? declared = null)
 	{
 		do
 		{
@@ -129,7 +136,7 @@ public sealed partial class FileParser
 				ReportExpected(index, "a constraint");
 				return Peek(index, TokenType.OpCloseBracket) || Peek(index, TokenType.OpComma);
 			}
-			else if (ParseConstraintType(ref index) is { } trait)
+			else if (ParseConstraintType(ref index, declared) is { } trait)
 				traits.Add(trait);
 			else
 				return false;
@@ -180,11 +187,18 @@ public sealed partial class FileParser
 	                                      Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordDyn) ||
 	                                      Peek(index, TokenType.KeywordFun) || Peek(index, TokenType.KeywordRef);
 	
-	private ITypeNode? ParseConstraintType(ref int index)
+	private ITypeNode? ParseConstraintType(ref int index, List<TypeParameterNode>? declared = null)
 	{
 		try
 		{
-			return ParseType(ref index);
+			return declared is null
+				? ParseType(ref index)
+				: new TypeParser(Tokens, ContextualKeywords)
+				{
+					ReportRecovered = Diagnostics.Add,
+					ParseDeclaredParameter = ParseDeclaredParameter,
+					Declared = declared
+				}.Parse(ref index);
 		}
 		catch (ParseException e)
 		{
@@ -192,6 +206,24 @@ public sealed partial class FileParser
 		}
 		
 		return null;
+	}
+	
+	private TypeParameterNode ParseDeclaredParameter(ref int index)
+	{
+		var name = Tokens[index];
+		index += 2;
+		var keywords = new List<Token>();
+		var traits = new List<ITypeNode>();
+		var constructors = new List<ConstructorConstraintNode>();
+		var declared = new List<TypeParameterNode>();
+		var reported = Diagnostics.Count;
+		if (ParseConstraints(ref index, keywords, traits, constructors, false, declared))
+			return new(name, keywords, traits, constructors) { Declared = [..declared] };
+		
+		if (Diagnostics.Count == reported)
+			ReportExpected(index, "a constraint");
+		
+		throw new ParseException(Diagnostics.Last());
 	}
 	
 	private IExpressionNode? ParseDefaultValue(ref int index)

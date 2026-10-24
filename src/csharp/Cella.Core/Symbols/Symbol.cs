@@ -137,8 +137,8 @@ public sealed class FunctionSymbol
 	public FunctionSymbol? Refines { get; internal set; }
 	public ImmutableArray<TypeSymbol> RefinedArguments { get; internal set; } = [];
 	public ImplSymbol? Impl { get; internal set; }
-	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
-	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; init; } = [];
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; internal set; } = [];
+	public ImmutableArray<TypeParameterSymbol> DeclaredTypeParameters { get; internal set; } = [];
 	public ImmutableArray<NamePart> QualifiedName { get; internal set; } = [];
 	public ImmutableArray<LocalVariableSymbol> Captures { get; internal set; } = [];
 	public bool OwnsCaptures { get; internal set; }
@@ -917,6 +917,8 @@ public sealed class ImplSymbol
 	public ImmutableArray<FunctionSymbol> Constructors { get; init; } = [];
 	public ImmutableArray<TypeParameterSymbol> NestedParameters { get; init; } = [];
 	public ImmutableArray<TypeSymbol> NestedArguments { get; set; } = [];
+	public ImmutableArray<TypeParameterSymbol> FreeParameters { get; set; } = [];
+	public ImmutableArray<TypeParameterSymbol> FreeCandidates { get; init; } = [];
 	
 	public bool Declares(TypeParameterSymbol parameter) =>
 		TargetArguments.Contains(parameter) || NestedArguments.Contains(parameter);

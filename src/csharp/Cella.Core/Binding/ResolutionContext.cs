@@ -215,6 +215,9 @@ public readonly struct ResolutionContext
 			    { } blockParameter)
 			return blockParameter;
 		
+		if (ImplBlock?.FreeParameters.FirstOrDefault(p => p.Name == name) is { } freeParameter)
+			return freeParameter;
+		
 		if (ImplBlock is { } impl && ResolveStatic(impl.Functions, impl.Properties, name) is { } blockMember)
 			return blockMember;
 		
@@ -471,6 +474,7 @@ public readonly struct ResolutionContext
 				: GenericArgumentKind.Type,
 		TypeArgumentNode => GenericArgumentKind.Type,
 		IdentifierArgumentNode argument => ClassifyName(Resolve(argument.Identifier.Text)),
+		DeclaredArgumentNode => GenericArgumentKind.Type,
 		ExpressionArgumentNode argument => ClassifyExpression(argument.Expression),
 		_ => null
 	};
@@ -1413,6 +1417,7 @@ public readonly struct ResolutionContext
 				VariableSymbol => ResolveValueExpression(new VarExpressionNode(argument.Identifier), parameter),
 				var symbol => AsTraitArgument(symbol, argument.SourceLocation) ?? ResolveNamedType(argument.Identifier)
 			},
+			DeclaredArgumentNode argument => ResolveDeclaredArgument(argument),
 			ExpressionArgumentNode argument => ResolveGenericArgumentExpression(argument.Expression, parameter),
 			_ => NativeSymbols.Invalid
 		};
@@ -1435,11 +1440,21 @@ public readonly struct ResolutionContext
 				or NamedTypeSymbol { IsGenericDefinition: true } => ResolveNamedType(i.Identifier),
 			var symbol => symbol as TypeSymbol
 		},
+		DeclaredArgumentNode d => ResolveDeclaredArgument(d),
 		ExpressionArgumentNode e => TryResolveExpressionAsType(e.Expression) is { } type
 			? CheckTypeExpression(e.Expression, type)
 			: null,
 		_ => null
 	};
+	
+	private TypeSymbol ResolveDeclaredArgument(DeclaredArgumentNode node)
+	{
+		if (ImplBlock is null || Resolve(node.Identifier.Text) is not TypeSymbol type)
+			return NativeSymbols.Invalid;
+		
+		Record(node.Identifier, type);
+		return type;
+	}
 	
 	private void Report(IExpressionNode node, string message) =>
 		Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation, message));

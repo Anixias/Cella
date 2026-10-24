@@ -13,6 +13,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	private readonly Stack<Visibility> _typeVisibilities = [];
 	private readonly Stack<PropertyNode> _properties = [];
 	private readonly Stack<ImmutableArray<TypeParameterSymbol>> _typeParameters = [];
+	private readonly Stack<ImmutableArray<TypeParameterSymbol>> _freeParameters = [];
 	
 	private ImmutableArray<TypeParameterSymbol> CurrentTypeParameters =>
 		_typeParameters.TryPeek(out var parameters) ? parameters : [];
@@ -135,7 +136,9 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			? GetMemberVisibility(node.Visibility ?? property?.Visibility)
 			: Visibility.FromKeyword(node.Visibility);
 		
-		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
+		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text)
+			.AddRange(_freeParameters.TryPeek(out var free) ? free : []);
+		
 		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind)
 		{
 			DeclaredName = isAccessor ? $"{property!.Identifier.Text}.{node.Identifier.Text}" : node.Identifier.Text,
@@ -377,6 +380,16 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var slots = CreateTypeParameters(node.TypeParameters, owner);
 		var nested = CreateTypeParameters([..TypeParameterNode.CollectNestedLeaves(node.TypeParameters)], owner);
 		var typeParameters = slots.AddRange(nested);
+		ImmutableArray<TypeParameterNode> declared = [..TypeParameterNode.CollectDeclared(node.TypeParameters)];
+		var free = CreateTypeParameters(declared, owner);
+		ImmutableArray<TypeParameterSymbol> candidates =
+		[
+			..TypeParameterNode.CollectBareNames(node.TypeParameters)
+				.Where(name => declared.All(parameter => parameter.Identifier.Text != name.Text))
+				.DistinctBy(static name => name.Text)
+				.Select(name => new TypeParameterSymbol(name.Text, []) { Owner = owner, Definition = name })
+		];
+		
 		var target = node.IsBlanket
 			? $"[{node.Target.SourceLocation.GetText()}]"
 			: node.Target.SourceLocation.GetText().ToString();
@@ -385,10 +398,12 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		_typeStack.Push(node.Traits.IsEmpty ? target : $"{target}.{traits}");
 		_typeVisibilities.Push(Visibility.Public);
 		_typeParameters.Push(typeParameters);
+		_freeParameters.Push(node.Traits.IsEmpty ? free.AddRange(candidates) : []);
 		var (functions, properties, constructors) = CollectMembers(node.Members);
 		_typeStack.Pop();
 		_typeVisibilities.Pop();
 		_typeParameters.Pop();
+		_freeParameters.Pop();
 		
 		var impl = new ImplSymbol(node, typeParameters, functions, properties)
 		{
@@ -396,7 +411,9 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			Constructors = [..constructors],
 			TargetArguments = [..slots],
 			NestedParameters = nested,
-			NestedArguments = [..nested]
+			NestedArguments = [..nested],
+			FreeParameters = free,
+			FreeCandidates = candidates
 		};
 		
 		foreach (var constant in impl.Constants)

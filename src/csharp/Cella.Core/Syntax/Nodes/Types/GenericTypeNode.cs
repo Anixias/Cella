@@ -29,6 +29,12 @@ public sealed class IdentifierArgumentNode(Token identifier) : IGenericArgumentN
 	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
 }
 
+public sealed class DeclaredArgumentNode(Token identifier) : IGenericArgumentNode
+{
+	public Token Identifier { get; } = identifier;
+	public SourceLocation SourceLocation { get; } = identifier.SourceLocation;
+}
+
 public sealed class TypeArgumentNode(ITypeNode type) : IGenericArgumentNode
 {
 	public ITypeNode Type { get; } = type;

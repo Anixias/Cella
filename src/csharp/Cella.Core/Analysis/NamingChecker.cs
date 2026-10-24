@@ -25,12 +25,17 @@ public sealed class NamingChecker(IReadOnlyDictionary<NamingCategory, NamingPatt
 	}
 	
 	public IReadOnlyList<Diagnostic> CheckImplTypeParameters(IEnumerable<FileNode> files,
-		Func<ImplNode, int, bool> declares)
+		Func<ImplNode, int, bool> declares, Func<ImplNode, IEnumerable<Token>> freeNames)
 	{
 		_diagnostics.Clear();
 		foreach (var impl in files.SelectMany(static file => file.Declarations).OfType<ImplNode>())
+		{
 			CheckTypeParameters(impl.TypeParameters.Concat(TypeParameterNode.CollectNestedLeaves(impl.TypeParameters))
 				.Where((_, i) => declares(impl, i)));
+			
+			foreach (var name in freeNames(impl))
+				CheckName(name, NamingCategory.TypeParameters);
+		}
 		
 		return [.._diagnostics];
 	}

@@ -483,6 +483,10 @@ public sealed class SemanticModel
 					..TypeParameterNode.CollectNestedLeaves(n.Symbol.Node.TypeParameters)
 				], [..n.Symbol.TypeParameters.Where(n.Symbol.Declares)]);
 				
+				foreach (var parameter in n.Symbol.FreeParameters)
+					if (parameter.Definition is { } definition)
+						Add(definition, parameter, DescribeType(parameter));
+				
 				foreach (var constant in n.Symbol.Constants)
 					AddGlobal(constant, _globals?.Invoke(constant));
 				

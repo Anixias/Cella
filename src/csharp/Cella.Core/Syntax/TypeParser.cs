@@ -11,7 +11,11 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 	private static readonly Dictionary<string, TokenType> _externalKeywords =
 		new[] { TokenType.KeywordExt }.ToDictionary(static t => t.Representation);
 	
+	public delegate TypeParameterNode DeclaredParameterParser(ref int index);
+	
 	public Action<Diagnostic>? ReportRecovered { get; init; }
+	public DeclaredParameterParser? ParseDeclaredParameter { get; init; }
+	public List<TypeParameterNode>? Declared { get; init; }
 	
 	public override ITypeNode Parse(ref int index) => ParseType(ref index);
 	
@@ -236,6 +240,15 @@ public sealed class TypeParser(ImmutableArray<Token> tokens, List<Token>? contex
 	
 	private IGenericArgumentNode ParseGenericArgument(ref int index)
 	{
+		if (ParseDeclaredParameter is { } parseDeclared && Declared is { } declared &&
+		    Peek(index, TokenType.Identifier) && Peek(index + 1, TokenType.OpColon) &&
+		    Tokens[index + 1].Line == Tokens[index].Line)
+		{
+			var parameter = parseDeclared(ref index);
+			declared.Add(parameter);
+			return new DeclaredArgumentNode(parameter.Identifier);
+		}
+		
 		if (Peek(index, TokenType.KeywordImm) || Peek(index, TokenType.KeywordMut) || Peek(index, TokenType.KeywordDyn))
 			return new TypeArgumentNode(ParseType(ref index));
 		

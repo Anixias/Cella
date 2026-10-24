@@ -168,7 +168,8 @@ public sealed partial class Builder
 		
 		resolver.Diagnostics.Gate = containment;
 		signatureCollector.Collect([..files], resolver);
-		diagnostics.Add(new(naming.CheckImplTypeParameters(files, signatureCollector.DeclaresTypeParameter)));
+		diagnostics.Add(new(naming.CheckImplTypeParameters(files, signatureCollector.DeclaresTypeParameter,
+			signatureCollector.GetFreeParameterNames)));
 		
 		var assemblySymbol = signatureCollector.FinishAssembly(GetIdentity(project));
 		var plainNames = GetPlainNames(assemblySymbol);

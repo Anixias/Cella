@@ -1,0 +1,87 @@
+Error at constraint_parameters.ce:47:2
+46 │ contains: fun(imm self, imm value: Q) -> bool => self.first.show(fun(imm item: Q) -> bool => item.matches(imm value))
+47 │ size: fun(imm self) -> i32 => 2
+     ╘══╛ 'size' has no parameter using 'Q'
+
+Error at constraint_parameters.ce:48:2
+47 │ size: fun(imm self) -> i32 => 2
+48 │ label: get(imm self) -> i32 => 0
+     ╘═══╛ 'label' has no parameter using 'Q'
+
+Error at constraint_parameters.ce:50:2
+49 │ 
+50 │ new: op(first: T)
+     ╘═╛ Cannot declare constructors in blocks that declare 'Q'
+
+Error at constraint_parameters.ce:57:15
+56 │ 
+57 │ Pair[T: Shows[R: Match]]: impl Describe
+                   ^ Cannot declare type parameters in trait impl constraints
+
+Error at constraint_parameters.ce:62:15
+61 │ 
+62 │ pick[T: Shows[S: Match]]: fun(imm value: T) -> i32 => 0
+                   ^ Cannot declare nested type parameters outside impl blocks
+
+Error at constraint_parameters.ce:64:18
+63 │ 
+64 │ Wrapper[T: Shows[U: Match]]: rec
+                      ^ Cannot declare nested type parameters outside impl blocks
+
+Error at constraint_parameters.ce:71:16
+70 │ {
+71 │     find[W: Shows[X: Match]]: fun(imm self, imm value: V, imm other: W) -> bool => false
+                       ^ Cannot declare nested type parameters outside impl blocks
+
+Error at constraint_parameters.ce:74:18
+73 │ 
+74 │ Pair[T: Shows[Y: Missing]]: impl
+                      ╘═════╛ Trait 'Missing' not found in this scope
+
+Error at constraint_parameters.ce:79:15
+78 │ 
+79 │ Pair[T: Shows[A: Match] + Counts[A: Match]]: impl
+                   ^ Type parameter 'A' is declared more than once
+
+Error at constraint_parameters.ce:79:34
+78 │ 
+79 │ Pair[T: Shows[A: Match] + Counts[A: Match]]: impl
+                                      ^ Type parameter 'A' is declared more than once
+
+Error at constraint_parameters.ce:84:6
+83 │ 
+84 │ Pair[T: Shows[T: Match]]: impl
+          ^ Type parameter 'T' is declared more than once
+
+Error at constraint_parameters.ce:84:15
+83 │ 
+84 │ Pair[T: Shows[T: Match]]: impl
+                   ^ Type parameter 'T' is declared more than once
+
+Hint at constraint_parameters.ce:89:15
+88 │ 
+89 │ Pair[T: Shows[item]]: impl
+                   ╘══╛ 'item' doesn't match {PascalCase}
+
+Error at constraint_parameters.ce:94:15
+93 │ 
+94 │ Pair[T: Shows[Z]]: impl Named
+                   ^ Cannot declare type parameters in trait impl constraints
+
+Error at constraint_parameters.ce:99:17
+98 │ 
+99 │ choose[T: Shows[B]]: fun(imm value: T) -> i32 => 0
+                     ^ Type 'B' not found in this scope
+
+Error at constraint_parameters.ce:110:16
+109 │ val numbers = Pair(1, 2)
+110 │ val a = plain.contains(imm 1)
+                    ╘══════╛ 'contains' requires 'T: Shows[Q]'
+                           | 'Plain' doesn't implement 'Shows[Q]'
+
+Error at constraint_parameters.ce:111:27
+110 │ val a = plain.contains(imm 1)
+111 │ val b = numbers.contains(imm 1.5)
+                               ╘═════╛ Cannot convert type 'imm[f64]' to 'i32'
+
+[compilation failed]

@@ -433,6 +433,84 @@ public sealed partial class TypePool
 			.FirstOrDefault(static violation => violation is not null);
 	}
 	
+	private bool SatisfiesBlock(ImplSymbol impl, ImmutableArray<TypeSymbol> arguments) =>
+		arguments.Length == impl.TypeParameters.Length && FindBlockViolation(impl, arguments) is null;
+	
+	private DiagnosticText? FindBlockViolation(ImplSymbol impl, ImmutableArray<TypeSymbol> arguments,
+		string? owner = null)
+	{
+		if (impl.FreeParameters.IsEmpty)
+			return FindViolation(impl.TypeParameters, arguments, owner);
+		
+		ImmutableArray<TypeParameterSymbol> parameters = [..impl.TypeParameters, ..impl.FreeParameters];
+		DiagnosticText? first = null;
+		foreach (var binding in FindFreeBindings(impl, arguments))
+		{
+			var violation = FindViolation(parameters,
+				[
+					..arguments,
+					..impl.FreeParameters.Select(parameter => binding.GetValueOrDefault(parameter, parameter))
+				],
+				owner);
+			
+			if (violation is null)
+				return null;
+			
+			first ??= violation;
+		}
+		
+		return first ?? FindViolation(parameters, [..arguments, ..impl.FreeParameters], owner);
+	}
+	
+	public IReadOnlyList<Dictionary<TypeParameterSymbol, TypeSymbol>> FindFreeBindings(ImplSymbol impl,
+		ImmutableArray<TypeSymbol> arguments)
+	{
+		var map = CreateMap(impl.TypeParameters, arguments);
+		var variables = new OrderedSet<TypeParameterSymbol>(impl.FreeParameters);
+		var requirements = impl.TypeParameters.Concat(impl.FreeParameters)
+			.SelectMany(parameter => GetDeclaredBounds(parameter)
+				.Where(bound => FindTypeParameters(bound).Any(variables.Contains))
+				.Select(bound => (Subject: (TypeSymbol)parameter, Bound: SubstituteTrait(bound, map))))
+			.ToList();
+		
+		var results = new List<Dictionary<TypeParameterSymbol, TypeSymbol>>();
+		BindFrom(0, []);
+		return results;
+		
+		void BindFrom(int index, Dictionary<TypeParameterSymbol, TypeSymbol> bindings)
+		{
+			if (index == requirements.Count)
+			{
+				results.Add(bindings);
+				return;
+			}
+			
+			var (subject, bound) = requirements[index];
+			subject = Substitute(Substitute(subject, map), bindings);
+			if (subject is TypeParameterSymbol unbound && variables.Contains(unbound))
+			{
+				BindFrom(index + 1, bindings);
+				return;
+			}
+			
+			foreach (var candidate in GetTraitTypes(subject, bound.Trait))
+			{
+				var attempt = new Dictionary<TypeParameterSymbol, TypeSymbol>(bindings);
+				if (TryUnify(bound, candidate, variables, attempt))
+					BindFrom(index + 1, attempt);
+			}
+		}
+	}
+	
+	private IEnumerable<TraitType> GetTraitTypes(TypeSymbol type, TraitSymbol trait) => type switch
+	{
+		InvalidType => [],
+		TypeParameterSymbol parameter => GetBounds(parameter).Where(bound => bound.Trait == trait),
+		_ => FindConformances(type)
+			.Where(conformance => conformance.Trait == trait)
+			.Select(conformance => GetConformanceTrait(conformance, type))
+	};
+	
 	public void AddMemberBlock(ImplSymbol impl, TypeSymbol target)
 	{
 		InvalidateConformanceCache();
@@ -447,7 +525,7 @@ public sealed partial class TypePool
 			? Satisfies(block.Impl.TypeParameters, [type])
 			: type is not TypeParameterSymbol && HasShape(block.Target, type) &&
 			  BindBlock(block.Impl, GetShapeArguments(type)) is { } arguments &&
-			  Satisfies(block.Impl.TypeParameters, arguments))
+			  SatisfiesBlock(block.Impl, arguments))
 		.Select(static block => block.Impl);
 	
 	public TypeSymbol? GetMemberBlockTarget(ImplSymbol impl) =>
@@ -464,8 +542,8 @@ public sealed partial class TypePool
 			                BindBlock(block.Impl, GetShapeArguments(type)) is not null &&
 			                (block.Impl.Functions.Any(method => method.Name == name) ||
 			                 block.Impl.Properties.Any(property => property.Name == name)))
-			.Select(block => FindViolation(block.Impl.TypeParameters,
-				BindBlock(block.Impl, GetShapeArguments(type))!.Value, name))
+			.Select(block =>
+				FindBlockViolation(block.Impl, BindBlock(block.Impl, GetShapeArguments(type))!.Value, name))
 			.FirstOrDefault(static violation => violation is not null);
 	
 	public IEnumerable<FunctionSymbol> GetWitnessFunctions() => _conformances

@@ -91,6 +91,11 @@ public sealed partial class SignatureCollector
 		_symbolTable.DeclarationSymbols.GetValueOrDefault(node) is not ImplSymbol impl ||
 		index >= impl.TypeParameters.Length || impl.Declares(impl.TypeParameters[index]);
 	
+	public IEnumerable<Token> GetFreeParameterNames(ImplNode node) =>
+		_symbolTable.DeclarationSymbols.GetValueOrDefault(node) is ImplSymbol impl
+			? impl.FreeParameters.Select(static parameter => parameter.Definition).OfType<Token>()
+			: [];
+	
 	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
 	{
 		var leaves = TypeParameterNode.CollectNestedLeaves(node.TypeParameters).ToList();
@@ -107,8 +112,12 @@ public sealed partial class SignatureCollector
 				: ResolveNestedTarget(impl, entry, context, ref nestedIndex))
 		];
 		
+		DeclareFreeParameters(impl, node, context with { ImplBlock = impl });
 		RegisterBounds(node.TypeParameters, impl.TypeParameters, context with { ImplBlock = impl });
 		RegisterBounds([..leaves], impl.NestedParameters, context with { ImplBlock = impl });
+		RegisterBounds([..TypeParameterNode.CollectDeclared(node.TypeParameters)], impl.FreeParameters,
+			context with { ImplBlock = impl });
+		
 		ReportDuplicateNestedParameters(impl, node, leaves);
 		if (ResolveImplTarget(impl, node, context) is not { } target)
 			return;
@@ -178,6 +187,43 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private void DeclareFreeParameters(ImplSymbol impl, ImplNode node, ResolutionContext context)
+	{
+		var unused = impl.FreeCandidates
+			.Where(candidate =>
+				context.ResolveTypeName(new IdentifierTypeNode(candidate.Definition!.Value)) is not null)
+			.Concat(impl.FreeParameters.Where((parameter, i) =>
+				impl.TypeParameters.Any(other => impl.Declares(other) && other.Name == parameter.Name) ||
+				impl.FreeParameters.Take(i).Any(other => other.Name == parameter.Name)))
+			.ToHashSet();
+		
+		impl.FreeParameters =
+		[
+			..impl.FreeParameters.Concat(impl.FreeCandidates).Where(parameter => !unused.Contains(parameter))
+		];
+		
+		if (unused.Count > 0)
+			foreach (var function in GetBlockFunctions(impl))
+			{
+				function.DeclaredTypeParameters = [..function.DeclaredTypeParameters.Where(p => !unused.Contains(p))];
+				function.TypeParameters = [..function.TypeParameters.Where(p => !unused.Contains(p))];
+			}
+		
+		if (node.Traits.IsEmpty)
+			return;
+		
+		foreach (var parameter in impl.FreeParameters)
+			Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.Definition!.Value.SourceLocation,
+				"Cannot declare type parameters in trait impl constraints"));
+	}
+	
+	private static IEnumerable<FunctionSymbol> GetBlockFunctions(ImplSymbol impl) => impl.Functions
+		.Select(static method => method.Function)
+		.Concat(impl.Properties
+			.SelectMany(static property => new[] { property.Getter, property.Setter })
+			.OfType<FunctionAccessor>()
+			.Select(static accessor => accessor.Function));
+	
 	private TypeSymbol ResolveNestedTarget(ImplSymbol impl, TypeParameterNode entry, ResolutionContext context,
 		ref int nestedIndex)
 	{
@@ -223,7 +269,10 @@ public sealed partial class SignatureCollector
 			.Where((entry, i) => entry.Nested.IsEmpty && impl.TargetArguments[i] is TypeParameterSymbol)
 			.ToList();
 		
-		var nested = leaves.Where((_, i) => impl.NestedArguments[i] is TypeParameterSymbol).ToList();
+		var nested = leaves.Where((_, i) => impl.NestedArguments[i] is TypeParameterSymbol)
+			.Concat(TypeParameterNode.CollectDeclared(node.TypeParameters))
+			.ToList();
+		
 		var all = slots.Concat(nested).ToList();
 		foreach (var parameter in all.Where(parameter => all.Any(other => other != parameter &&
 		                                                                  other.Identifier.Text ==

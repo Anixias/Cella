@@ -1,0 +1,38 @@
+mod lib
+
+Match: pub trait
+{
+	matches: fun(imm self, imm other: Self) -> bool
+}
+
+i32: impl Match
+{
+	matches: fun(imm self, imm other: i32) -> bool => self == other
+}
+
+Shows[Q]: pub trait
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool
+}
+
+[T]: impl Shows[T]
+{
+	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm self)
+}
+
+Pair[T]: pub rec
+{
+	first: T
+	second: T
+}
+
+Pair[T: Shows[Q: Match]]: impl
+{
+	contains: fun(imm self, imm value: Q) -> bool
+	{
+		val test = fun(imm item: Q) -> bool => item.matches(imm value)
+		ret self.first.show(imm test) || self.second.show(imm test)
+	}
+}
+
+hasSeven: pub fun -> bool => Pair(7, 8).contains(imm 7)

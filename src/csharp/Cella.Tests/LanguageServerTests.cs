@@ -406,6 +406,66 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task LinksConstraintTypeParameters()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Shows[Q]: trait
+		                                         {
+		                                         	show: fun(imm self) -> i32
+		                                         }
+		                                         
+		                                         Pair[T]: rec { first: T }
+		                                         
+		                                         Pair[T: Shows[Item: copy]]: impl
+		                                         {
+		                                         	take: fun(imm self, value: Item) -> i32 => 0
+		                                         }
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("Item"), await HoverAsync(11, 29));
+		var definition = await DefinitionAsync(11, 29);
+		Assert.Equal(9, (int)definition!["range"]!["start"]!["line"]!);
+		Assert.Equal(14, (int)definition["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task LinksBareConstraintTypeParameters()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Shows[Q]: trait
+		                                         {
+		                                         	show: fun(imm self) -> i32
+		                                         }
+		                                         
+		                                         Pair[T]: rec { first: T }
+		                                         
+		                                         Pair[T: Shows[Item]]: impl
+		                                         {
+		                                         	take: fun(imm self, value: Item) -> i32 => 0
+		                                         }
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("Item"), await HoverAsync(11, 29));
+		var definition = await DefinitionAsync(11, 29);
+		Assert.Equal(9, (int)definition!["range"]!["start"]!["line"]!);
+		Assert.Equal(14, (int)definition["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task NamesValuesInPatterns()
 	{
 		await File.WriteAllTextAsync(SourcePath, """

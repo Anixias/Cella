@@ -90,12 +90,16 @@ public sealed partial class Resolver
 		}
 		else
 		{
+			var chosen = ChooseFreeLiteralTypes(info, candidate, args, open);
 			var inputs = args
 				.Take(candidate.ParameterTypes.Length)
-				.Select((arg, i) => CreateInferenceInput(candidate.ParameterTypes[i], candidate.GetMode(i), arg));
+				.Select((arg, i) => GetFreeTarget(candidate.ParameterTypes[i]) is { } free && chosen.ContainsKey(free)
+					? null
+					: CreateInferenceInput(candidate.ParameterTypes[i], candidate.GetMode(i), arg))
+				.OfType<InferenceInput>()
+				.Concat(chosen.Select(static pair => new InferenceInput(pair.Key, pair.Value) { IsExact = true }));
 			
-			var result = _inference.Infer(open, inputs.OfType<InferenceInput>(), candidate.ReturnType,
-				ExpectedType);
+			var result = _inference.Infer(open, inputs, candidate.ReturnType, ExpectedType);
 			
 			if (!result.Succeeded)
 			{
@@ -126,6 +130,54 @@ public sealed partial class Resolver
 		RecordGenericUses(args, specialized);
 		return specialized;
 	}
+	
+	private Dictionary<TypeParameterSymbol, TypeSymbol> ChooseFreeLiteralTypes(FunctionInfo info,
+		ICallable candidate, IReadOnlyList<IResolvedExpressionNode> args, ImmutableArray<TypeParameterSymbol> open)
+	{
+		var chosen = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		if (info.Symbol.Impl is not { FreeParameters.IsEmpty: false } impl || info.TypeArguments.IsDefaultOrEmpty)
+			return chosen;
+		
+		var bindings = _typePool.FindFreeBindings(impl, [..info.TypeArguments.Take(impl.TypeParameters.Length)]);
+		foreach (var free in impl.FreeParameters.Where(open.Contains))
+		{
+			var inputs = args
+				.Take(candidate.ParameterTypes.Length)
+				.Where((_, i) => GetFreeTarget(candidate.ParameterTypes[i]) == free)
+				.Select(static arg => arg is ResolvedBorrowExpressionNode { IsMutable: false } borrowed
+					? borrowed.Place
+					: arg)
+				.ToList();
+			
+			if (inputs.Count == 0 || inputs.Any(static input => input is not ResolvedLiteralExpressionNode))
+				continue;
+			
+			var literals = inputs.Cast<ResolvedLiteralExpressionNode>().ToList();
+			var shown = bindings
+				.Select(binding => binding.GetValueOrDefault(free))
+				.OfType<TypeSymbol>()
+				.Where(type => type != free)
+				.Distinct()
+				.ToList();
+			
+			var fitting = shown.Count == 1
+				? shown
+				: [..shown.Where(type => literals.All(literal => LiteralAccepts(literal, type)))];
+			
+			if (fitting is [var only])
+				chosen[free] = only;
+		}
+		
+		return chosen;
+	}
+	
+	private static TypeParameterSymbol? GetFreeTarget(TypeSymbol parameter) =>
+		(parameter is BorrowType { IsMutable: false } borrow ? borrow.Target : parameter) as TypeParameterSymbol;
+	
+	private bool LiteralAccepts(ResolvedLiteralExpressionNode literal, TypeSymbol type) =>
+		(literal.Type as UntypedType ?? literal.UntypedSource) is { } untyped &&
+		untyped.MaterializationCost(type, MaterializationMode.Overload) < int.MaxValue &&
+		(type is not IntegerType integer || literal.IntegerValue is not { } value || FitsInType(value, integer));
 	
 	private void RecordGenericUses(IReadOnlyList<IResolvedExpressionNode> args, ICallable instantiated)
 	{
@@ -449,6 +501,18 @@ public sealed partial class Resolver
 		{
 			if (_typePool.FindConstraintViolation(parameters[i], arguments[i], map) is { } violation)
 				return violation.At(locate(i));
+		}
+		
+		if (owner?.Symbol is not { Impl.FreeParameters: [var free, ..] } function ||
+		    !function.Impl.FreeParameters.All(map.ContainsKey))
+			return null;
+		
+		var index = Math.Max(0, parameters.IndexOf(free));
+		foreach (var parameter in function.Impl.TypeParameters)
+		{
+			if (map.GetValueOrDefault(parameter) is { } argument &&
+			    _typePool.FindConstraintViolation(parameter, argument, map, function.DeclaredName) is { } violation)
+				return violation.At(locate(index));
 		}
 		
 		return null;

@@ -227,7 +227,8 @@ public sealed partial class Resolver
 		FunctionNode function => VisitFunctionMember(function),
 		ConstructorNode constructor when CurrentResolutionContext is
 		{
-			ImplBlock: { Node.Traits.IsEmpty: true, IsExtension: false }, ContainingType: RecordSymbol
+			ImplBlock: { Node.Traits.IsEmpty: true, IsExtension: false, FreeParameters.IsEmpty: true },
+			ContainingType: RecordSymbol
 		} => [VisitNode(constructor)],
 		_ => []
 	};
