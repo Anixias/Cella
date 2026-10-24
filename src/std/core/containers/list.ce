@@ -11,6 +11,8 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 	capacity: pvt set usize
 	alloc: pvt req A
 	
+	isEmpty: get(imm self) -> bool => self.count == 0
+	
 	new: op(alloc: A)
 	{
 		self.alloc = alloc
@@ -109,6 +111,7 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 	}
 	
 	in: op(imm self) -> ListCursor[T] => ListCursor[T](self.data, self.count)
+	in: op(mut self) -> ListEditor[T] => ListEditor[T](self.data, self.count)
 	
 	as: op(imm self) -> View[T] => View[T](self.data, self.count)
 	as: op(mut self) -> Span[T] => Span[T](self.data, self.count)
@@ -161,5 +164,28 @@ ListCursor[T: noref]: pub ref rec
 		ret self.position <= self.length
 	}
 	
-	*: op(self) -> mut[T] => mut self.data[self.position - 1]
+	*: op(self) -> imm[T] => imm self.data[self.position - 1]
+}
+
+ListEditor[T: noref]: pub ref rec
+{
+	data: pvt ptr[T]
+	length: pvt usize
+	position: pvt usize
+	
+	new: op(data: ptr[T], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.position += 1
+		ret self.position <= self.length
+	}
+	
+	*: op(self) -> imm[T] => imm self.data[self.position - 1]
+	*: op(mut self) -> mut[T] => mut self.data[self.position - 1]
 }
