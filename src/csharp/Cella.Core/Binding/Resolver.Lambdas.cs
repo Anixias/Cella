@@ -130,7 +130,7 @@ public sealed partial class Resolver
 			takesVariadic);
 		
 		var type = node.Own is null
-			? signature
+			? _typePool.GetLambdaType(signature, info, info.MangledName!)
 			: (TypeSymbol)_typePool.GetClosureType(info,
 				[..captures.Select(static capture => ((PointerType)capture.Binding.Type).BaseType)], signature,
 				info.MangledName!);

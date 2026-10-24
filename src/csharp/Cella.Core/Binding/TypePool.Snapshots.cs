@@ -41,6 +41,7 @@ public sealed partial class TypePool
 		snapshot.Save(_dynMemberInfos);
 		snapshot.Save(_functionTypes);
 		snapshot.Save(_closureTypes);
+		snapshot.Save(_lambdaTypes);
 		snapshot.Save(_functionDynTypes);
 		snapshot.Save(_functionBounds);
 		snapshot.Save(_memberTypes);

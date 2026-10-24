@@ -319,6 +319,11 @@ public sealed partial class Resolver
 		return new ResolvedFunctionGroupExpressionNode(new FunctionGroupType(name, infos, typeName), node);
 	}
 	
+	private FunctionType GetArgumentFunctionType(FunctionInfo function) =>
+		!function.Symbol.IsExternal && GetFunctionInfo(function.Symbol).MangledName is { } name
+			? _typePool.GetLambdaType(GetNaturalType(function), function, name)
+			: GetNaturalType(function);
+	
 	private FunctionType GetNaturalType(FunctionInfo function)
 	{
 		var signature = function.Signature;
@@ -356,7 +361,7 @@ public sealed partial class Resolver
 				NativeSymbols.Invalid));
 		
 		TrackFunctionUse(function, node.Syntax);
-		return new ResolvedFunctionReferenceExpressionNode(function, GetNaturalType(function), node.Syntax);
+		return new ResolvedFunctionReferenceExpressionNode(function, GetArgumentFunctionType(function), node.Syntax);
 	}
 	
 	private FunctionInfo? FindFunction(FunctionGroupType group, FunctionType type)

@@ -87,6 +87,9 @@ public static class Mangling
 			$"array[{MangleType(array.ElementType, modules)};{length.Name}]",
 		ValueArgumentType value => value.Value.ToString(),
 		ArrayType array => $"array[{MangleType(array.ElementType, modules)};{array.Length}]",
+		FunctionType { Lambda.TypeArguments.IsDefaultOrEmpty: true, LambdaName: { } name } => $"ref[{name}]",
+		FunctionType { Lambda: { } lambda, LambdaName: { } name } =>
+			$"ref[{MangleInstantiation(name, lambda.TypeArguments, modules)}]",
 		FunctionType function => MangleFunctionType(function, modules),
 		ClosureType { Function.TypeArguments.IsDefaultOrEmpty: true } closure => $"own[{closure.DefinitionName}]",
 		ClosureType closure =>

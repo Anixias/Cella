@@ -37,6 +37,7 @@ public sealed partial class TypePool
 	private readonly Dictionary<TraitSymbol, ImmutableArray<FunctionInfo>> _dynMemberInfos = [];
 	private readonly List<FunctionType> _functionTypes = [];
 	private readonly List<ClosureType> _closureTypes = [];
+	private readonly Dictionary<(FunctionType Shared, FunctionInfo Lambda), FunctionType> _lambdaTypes = [];
 	private readonly Dictionary<FunctionType, DynType> _functionDynTypes = [];
 	private readonly Dictionary<TypeParameterSymbol, ImmutableArray<FunctionType>> _functionBounds = [];
 	private readonly Dictionary<TypedMemberSymbol, TypeSymbol> _memberTypes = [];

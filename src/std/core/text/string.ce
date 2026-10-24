@@ -63,7 +63,7 @@ String[A: Allocator]: impl Hash
 
 String[A: Allocator]: impl Shows[str]
 {
-	show: fun(imm self, imm check: fun[imm str -> bool]) -> bool
+	show[F: fun[imm str -> bool]]: fun(imm self, imm check: F) -> bool
 	{
 		val text: str = self
 		ret check(imm text)

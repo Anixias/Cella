@@ -2,11 +2,11 @@
 
 Shows[Q]: pub trait
 {
-	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool
+	show[F: fun[imm Q -> bool]]: fun(imm self, imm check: F) -> bool
 }
 
 [T]: impl Shows[T]
 {
-	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm self)
+	show[F: fun[imm T -> bool]]: fun(imm self, imm check: F) -> bool => check(imm self)
 }
 

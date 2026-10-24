@@ -1,4 +1,5 @@
 ﻿using Cella.Core.Binding;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Lowering;
 using Cella.Core.Symbols;
 using Cella.Core.Text;
@@ -48,6 +49,9 @@ public sealed unsafe partial class CodeGenerator
 	private LLVMValueRef EmitIndirectCall(IndirectCallValue v, LLVMBuilderRef builder)
 	{
 		var functionType = (FunctionType)Substitute(v.FunctionType);
+		if (FindKnownLambda(v.Target) is var (lambdaType, source))
+			return EmitLambdaCall(v, functionType, lambdaType, source, builder);
+		
 		var target = EmitValue(v.Target, builder);
 		var args = v.Arguments.Select(a => EmitValue(a, builder)).ToList();
 		
@@ -65,6 +69,37 @@ public sealed unsafe partial class CodeGenerator
 		var signature = ClassifyC(functionType.ParameterTypes, functionType.ReturnType);
 		return EmitCCall(signature, signature.CreateFunctionType(functionType.IsVariadic), target,
 			functionType.ParameterTypes, functionType.ReturnType, args, builder);
+	}
+	
+	private (FunctionType Lambda, Value Source)? FindKnownLambda(Value target)
+	{
+		if (target is ConversionValue { Conversion: CallableConversion conversion } converted &&
+		    Substitute(conversion.From) is FunctionType { Lambda: not null } converting)
+			return (converting, converted.Source);
+		
+		return Substitute(target.Type) is FunctionType { Lambda: not null } lambda ? (lambda, target) : null;
+	}
+	
+	private LLVMValueRef EmitLambdaCall(IndirectCallValue v, FunctionType called, FunctionType lambdaType,
+		Value source, LLVMBuilderRef builder)
+	{
+		var lambda = lambdaType.Lambda!.Value;
+		var value = EmitValue(source, builder);
+		if (source != v.Target)
+			value = builder.BuildLoad2(MapTypeSymbol(lambdaType), value, "lambda");
+		
+		LLVMValueRef[] args = [..v.Arguments.Select(a => EmitValue(a, builder))];
+		if (source != v.Target)
+			args = LoadCopies(called, lambdaType, args, builder);
+		
+		GetFunctionValue(lambda);
+		var known = current.Functions[lambda];
+		if (known.CSignature is { } signature)
+			return EmitCCall(signature, known.FunctionType, known.FunctionValue, lambda.Signature.ParameterTypes,
+				lambda.Signature.ReturnType, [..args], builder);
+		
+		return BuildInternalCall(builder, known.FunctionType, known.FunctionValue, lambdaType.ReturnType,
+			lambda.Symbol.Captures.IsEmpty ? [] : [builder.BuildExtractValue(value, 1, "env")], [..args]);
 	}
 	
 	private LLVMValueRef EmitCCall(CSignature signature, LLVMTypeRef functionType, LLVMValueRef callee,

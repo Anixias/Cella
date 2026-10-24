@@ -53,6 +53,24 @@ public sealed partial class TypePool
 		return closure;
 	}
 	
+	public FunctionType GetLambdaType(FunctionType shared, FunctionInfo lambda, string name)
+	{
+		if (_lambdaTypes.TryGetValue((shared, lambda), out var existing))
+			return existing;
+		
+		var type = new FunctionType(shared.IsExternal, shared.IsRef, shared.ParameterTypes, shared.ParameterModes,
+			shared.ReturnType, shared.IsVariadic, shared.HasVariadicParameter)
+		{
+			Lambda = lambda,
+			Shared = shared,
+			LambdaName = name
+		};
+		
+		_lambdaTypes[(shared, lambda)] = type;
+		SizeTable.Register(type, StorageSize.Sum(StorageSize.Ptr, StorageSize.Ptr));
+		return type;
+	}
+	
 	public FunctionType GetFunctionType(bool isExternal, IEnumerable<TypeSymbol> parameterTypes,
 		IEnumerable<ParameterMode> parameterModes, TypeSymbol returnType, bool isRef = false, bool isVariadic = false,
 		bool hasVariadicParameter = false)

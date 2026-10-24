@@ -537,6 +537,8 @@ public sealed class TypeChecker
 		ResolvedIndexerExpressionNode e => IsLValue(e.Target),
 		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } => true,
 		ResolvedAssignmentExpressionNode e => IsLValue(e.Left),
+		ResolvedConversionExpressionNode { Source.Type: FunctionType { Shared: { } shared } } e when
+			e.Type == shared => IsLValue(e.Source),
 		_ => false
 	};
 	

@@ -298,9 +298,9 @@ public sealed partial class Resolver
 		return arg switch
 		{
 			ResolvedFunctionGroupExpressionNode { Group.Functions: [var single] } when
-				GetOpenTypeParameters(single).IsEmpty => new(parameter, GetNaturalType(single)),
+				GetOpenTypeParameters(single).IsEmpty => new(parameter, GetArgumentFunctionType(single)),
 			ResolvedFunctionGroupExpressionNode group when FindBoundFunction(parameter, group.Group) is { } bound =>
-				new(parameter, GetNaturalType(bound)),
+				new(parameter, GetArgumentFunctionType(bound)),
 			ResolvedCaseNameExpressionNode => null,
 			_ when type is NeverType or FunctionGroupType or InvalidType => null,
 			_ when type is UntypedType literal => new(parameter, GetDefaultType(arg)) { Literal = literal },

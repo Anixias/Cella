@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+apply[F: fun[i32 -> i32]]: fun(imm f: F, value: i32) -> i32 => f(value)
+
+twice[F: fun[i32 -> i32]]: fun(imm f: F, value: i32) -> i32 => apply(imm f, apply(imm f, value))
+
+Holder[T]: rec
+{
+	value: T
+}
+
+mapped[T]: fun(imm holder: Holder[T], extra: i32) -> i32
+{
+	val first = fun(x: i32) -> i32 => x + extra
+	val second = fun(x: i32) -> i32 => x * extra + i32(sizeOf(T))
+	ret twice(imm first, 1) + twice(imm second, 1)
+}
+
+negate: fun(x: i32) -> i32 => -x
+
+same[T]: fun(x: T) -> T => x
+
+shifted: pub fun(x: i32) -> i32 => x + 100
+
+Slot[T]: rec
+{
+	value: T
+}
+
+keep[T]: fun(value: T) -> Slot[T] => Slot(value)
+
+Caller[F: fun[i32 -> i32]]: rec
+{
+	call: F
+}
+
+main: fun -> i32
+{
+	val base = 10
+	val add = fun(x: i32) -> i32 => x + base
+	val double = fun(x: i32) -> i32 => x * 2
+	printf("%d %d %d\n", apply(imm add, 1), twice(imm add, 1), twice(imm double, 3))
+
+	var chosen = fun(x: i32) -> i32 => x + base
+	chosen = fun(x: i32) -> i32 => x - base
+	printf("%d\n", apply(imm chosen, 1))
+	printf("%d %d\n", mapped(imm Holder(1i8), 3), mapped(imm Holder(1i64), 3))
+
+	val typed: Slot[ref fun[i32 -> i32]] = keep(fun(x: i32) -> i32 => x + base)
+	var slot = keep(fun(x: i32) -> i32 => x + base)
+	slot = keep(fun(x: i32) -> i32 => x - base)
+	val caller: Caller[ref fun[i32 -> i32]] = Caller(fun(x: i32) -> i32 => x * base)
+	val direct = Caller(fun(x: i32) -> i32 => x + 1)
+	printf("%d %d %d %d\n", typed.value(1), slot.value(1), caller.call(2), direct.call(2))
+	printf("%d %d %d %d\n", apply(imm negate, 4), twice(imm negate, 4), apply(imm same[i32], 5), twice(imm shifted, 1))
+	ret 0
+}

@@ -248,6 +248,12 @@ public sealed partial class Resolver
 			type = NativeSymbols.Invalid;
 		}
 		
+		if (type is null && node.IsMutable && initializer is { Type: FunctionType { Shared: { } shared } })
+		{
+			initializer = CoerceToType(initializer, shared);
+			type = shared;
+		}
+		
 		type ??= initializer?.Type ?? NativeSymbols.Invalid;
 		if (TypePool.FindValueDyn(type) is { } valueDyn)
 		{

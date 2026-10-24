@@ -476,6 +476,9 @@ public sealed class FunctionType : TypeSymbol
 	public bool IsVariadic { get; }
 	public bool HasVariadicParameter { get; }
 	public string PlainName { get; }
+	public FunctionInfo? Lambda { get; init; }
+	public FunctionType? Shared { get; init; }
+	public string? LambdaName { get; init; }
 	
 	public FunctionType(bool isExternal, bool isRef, ImmutableArray<TypeSymbol> parameterTypes,
 		ImmutableArray<ParameterMode> parameterModes, TypeSymbol returnType, bool isVariadic = false,

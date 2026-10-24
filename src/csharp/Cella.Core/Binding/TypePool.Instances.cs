@@ -215,6 +215,10 @@ public sealed partial class TypePool
 		BorrowType borrow => FindTypeParameters(borrow.Target),
 		ArrayType { LengthParameter: { } length } array => FindTypeParameters(array.ElementType).Append(length),
 		ArrayType array => FindTypeParameters(array.ElementType),
+		FunctionType { Lambda: { } lambda } function => function.ParameterTypes.Append(function.ReturnType)
+			.Concat(GetLambdaArguments(lambda))
+			.SelectMany(FindTypeParameters)
+			.Distinct(),
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType).SelectMany(FindTypeParameters),
 		ClosureType closure => closure.CaptureTypes
 			.SelectMany(FindTypeParameters)
@@ -238,6 +242,9 @@ public sealed partial class TypePool
 		PointerType pointer => ContainsTypeParameters(pointer.BaseType),
 		BorrowType borrow => ContainsTypeParameters(borrow.Target),
 		ArrayType array => array.LengthParameter is not null || ContainsTypeParameters(array.ElementType),
+		FunctionType { Lambda: { } lambda } function => function.ParameterTypes.Append(function.ReturnType)
+			.Concat(GetLambdaArguments(lambda))
+			.Any(ContainsTypeParameters),
 		FunctionType function => function.ParameterTypes.Append(function.ReturnType).Any(ContainsTypeParameters),
 		ClosureType closure => closure.CaptureTypes.Any(ContainsTypeParameters) ||
 		                       ContainsTypeParameters(closure.Signature) ||
@@ -274,6 +281,8 @@ public sealed partial class TypePool
 				ArrayType { LengthParameter: { } length } array =>
 					GetArrayType(Substitute(array.ElementType, map), SubstituteParameter(length, map)),
 				ArrayType array => GetArrayType(Substitute(array.ElementType, map), array.Length),
+				FunctionType { Lambda: { } lambda, Shared: { } shared, LambdaName: { } name } => GetLambdaType(
+					SubstituteFunctionType(shared, map), SubstituteLambda(lambda, map), name),
 				FunctionType function => SubstituteFunctionType(function, map),
 				ClosureType closure => SubstituteClosure(closure, map),
 				_ => type
@@ -281,16 +290,17 @@ public sealed partial class TypePool
 	
 	private ClosureType SubstituteClosure(ClosureType closure, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
 	{
-		var function = closure.Function.Symbol.TypeParameters.IsEmpty
-			? closure.Function
-			: InstantiateFunction(closure.Function, [
-				..GetLambdaArguments(closure.Function).Select(argument =>
-					Substitute(argument, map))
-			]);
-		
-		return GetClosureType(function, [..closure.CaptureTypes.Select(type => Substitute(type, map))],
+		return GetClosureType(SubstituteLambda(closure.Function, map),
+			[..closure.CaptureTypes.Select(type => Substitute(type, map))],
 			SubstituteFunctionType(closure.Signature, map), closure.DefinitionName);
 	}
+	
+	private FunctionInfo SubstituteLambda(FunctionInfo function,
+		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		function.Symbol.TypeParameters.IsEmpty
+			? function
+			: InstantiateFunction(function,
+				[..GetLambdaArguments(function).Select(argument => Substitute(argument, map))]);
 	
 	public bool TryUnify(TypeSymbol first, TypeSymbol second, OrderedSet<TypeParameterSymbol> variables,
 		Dictionary<TypeParameterSymbol, TypeSymbol> bindings)

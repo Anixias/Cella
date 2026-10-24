@@ -376,6 +376,77 @@ public sealed class BuilderTests : IDisposable
 	}
 	
 	[Fact]
+	public async Task InlinesLambdasPassedToGenericFunctionsInRelease()
+	{
+		Directory.CreateDirectory(Path.GetDirectoryName(ProgramPath)!);
+		await File.WriteAllTextAsync(Path.Combine(_directory, "app", "test.celp"), OptedOut("Executable"), Token);
+		await File.WriteAllTextAsync(ProgramPath, """
+		                                          mod test
+		                                          
+		                                          Shows[Q]: trait
+		                                          {
+		                                          	show[F: fun[imm Q -> bool]]: fun(imm self, imm check: F) -> bool
+		                                          }
+		                                          
+		                                          [T]: impl Shows[T]
+		                                          {
+		                                          	show[F: fun[imm T -> bool]]: fun(imm self, imm check: F) -> bool => check(imm self)
+		                                          }
+		                                          
+		                                          Holder[T]: rec
+		                                          {
+		                                          	value: T
+		                                          }
+		                                          
+		                                          Holder[T: Shows[Q]]: impl Shows[Q]
+		                                          {
+		                                          	show[F: fun[imm Q -> bool]]: fun(imm self, imm check: F) -> bool => self.value.show(imm check)
+		                                          }
+		                                          
+		                                          count[T: Shows[i32]]: fun(imm first: T, imm second: T, limit: i32) -> i32
+		                                          {
+		                                          	var found = 0
+		                                          	if first.show(imm fun(imm value: i32) -> bool => value > limit)
+		                                          		found += 1
+		                                          
+		                                          	if second.show(imm fun(imm value: i32) -> bool => value > limit)
+		                                          		found += 1
+		                                          
+		                                          	ret found
+		                                          }
+		                                          
+		                                          apply[F: fun[i32 -> i32]]: fun(imm f: F, value: i32) -> i32 => f(value)
+		                                          
+		                                          negate: fun(value: i32) -> i32 => -value
+		                                          
+		                                          main: fun -> i32 => count(imm Holder(1), imm Holder(5), 0) * 10 + count(imm Holder(Holder(3)), imm Holder(Holder(4)), 3) +
+		                                          	apply(imm negate, 0)
+		                                          
+		                                          """, Token);
+		
+		var output = new RecordingOutput();
+		var builder = new Builder(new BuildOptions
+		{
+			Target = TargetTriple.FromHost().WithDefaultAbi(),
+			OptimizeMode = OptimizeMode.Release,
+			EmitsIr = true
+		}, output);
+		
+		var result = await CompilerThread.Run(() =>
+			builder.BuildAsync(Path.Combine(_directory, "app", "test.celp"), null, Token));
+		
+		Assert.True(result.Succeeded,
+			string.Join('\n', output.Lines.Concat(output.Diagnostics.Select(static d => d.Message))));
+		
+		var ir = await File.ReadAllTextAsync(
+			Assert.Single(Directory.GetFiles(Path.Combine(_directory, "app"), "*.ll", SearchOption.AllDirectories)),
+			Token);
+		
+		Assert.DoesNotContain("call ", ir);
+		Assert.Contains("ret i32 21", ir);
+	}
+	
+	[Fact]
 	public async Task ChecksPlainNamesOfContainedLibraries()
 	{
 		const string settings = "StandardLibrary = \"None\"\nSystemLinkPreference = \"Dynamic\"\n";

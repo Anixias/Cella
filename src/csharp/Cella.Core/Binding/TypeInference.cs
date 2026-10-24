@@ -29,13 +29,15 @@ public sealed class TypeInference(TypePool typePool)
 		var inferred = new TypeSymbol?[parameters.Length];
 		for (var i = 0; i < parameters.Length; i++)
 		{
-			if (Fix(bounds.Exact[i], bounds.Lower[i], out var conflict) is { } type)
+			if (Fix(ForParameter(parameters[i], bounds.Exact[i]), ForParameter(parameters[i], bounds.Lower[i]),
+				    out var conflict) is { } type)
 				inferred[i] = type;
 			else if (!conflict.IsEmpty)
 				return new() { Conflicted = parameters[i], Candidates = conflict, WrittenCandidates = conflict };
 		}
 		
 		FillFromTarget(parameters, inferred, null, returnType, target);
+		PreferTargetFunctions(parameters, inferred, returnType, target);
 		InferFromBounds(parameters, inferred);
 		
 		for (var i = 0; i < parameters.Length; i++)
@@ -83,7 +85,10 @@ public sealed class TypeInference(TypePool typePool)
 				continue;
 			}
 			
-			inferred[i] = Fix(bounds.Exact[i], bounds.Lower[i], out var conflict);
+			inferred[i] = Fix(ForParameter(parameters[i], bounds.Exact[i]),
+				ForParameter(parameters[i], bounds.Lower[i]),
+				out var conflict);
+			
 			conflicted[i] = !conflict.IsEmpty;
 		}
 		
@@ -124,6 +129,30 @@ public sealed class TypeInference(TypePool typePool)
 		{
 			if (skipped?[i] != true)
 				inferred[i] ??= Fix(expected.Exact[i], expected.Lower[i], out _);
+		}
+	}
+	
+	private List<TypeSymbol> ForParameter(TypeParameterSymbol parameter, List<TypeSymbol> types) =>
+		typePool.GetFunctionBounds(parameter).IsEmpty &&
+		types.Any(static type => type is FunctionType { Shared: not null })
+			? [..types.Select(static type => type is FunctionType { Shared: { } shared } ? shared : type)]
+			: types;
+	
+	private void PreferTargetFunctions(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred,
+		TypeSymbol? returnType, TypeSymbol? target)
+	{
+		if (returnType is null || target is null ||
+		    !inferred.Any(static type => type is FunctionType { Shared: not null }))
+			return;
+		
+		var expected = new Bounds(parameters, typePool);
+		expected.Unify(returnType, target, false);
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			if (inferred[i] is FunctionType { Shared: not null } lambda &&
+			    Fix(expected.Exact[i], expected.Lower[i], out _) is FunctionType { Lambda: null } wanted &&
+			    ConvertsTo(lambda, wanted))
+				inferred[i] = wanted;
 		}
 	}
 	
@@ -216,8 +245,11 @@ public sealed class TypeInference(TypePool typePool)
 	private TypeSymbol? Fix(List<TypeSymbol> exact, List<TypeSymbol> lower, out ImmutableArray<TypeSymbol> conflict)
 	{
 		conflict = [];
-		var exactTypes = exact.Distinct().ToList();
+		var exactTypes = ShareLambdas(exact.Distinct().ToList());
 		var lowerTypes = lower.Distinct().ToList();
+		if (lowerTypes.Count > 1 || exactTypes.Count > 0)
+			lowerTypes = ShareLambdas(lowerTypes);
+		
 		switch (exactTypes)
 		{
 			case [_, _, ..]:
@@ -242,6 +274,11 @@ public sealed class TypeInference(TypePool typePool)
 		conflict = [..lowerTypes];
 		return null;
 	}
+	
+	private static List<TypeSymbol> ShareLambdas(List<TypeSymbol> types) =>
+		types.Count > 1 && types.Any(static type => type is FunctionType { Shared: not null })
+			? [..types.Select(static type => type is FunctionType { Shared: { } shared } ? shared : type).Distinct()]
+			: types;
 	
 	private TypeSymbol? FixLiterals(List<(TypeSymbol Default, UntypedType Literal)> literals,
 		out ImmutableArray<TypeSymbol> conflict)
