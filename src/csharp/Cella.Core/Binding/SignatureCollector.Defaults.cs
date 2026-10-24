@@ -57,7 +57,8 @@ public sealed partial class SignatureCollector
 					break;
 				
 				case ImplNode implNode:
-					foreach (var parameter in implNode.TypeParameters)
+					foreach (var parameter in implNode.TypeParameters.Concat(
+						         TypeParameterNode.CollectNestedLeaves(implNode.TypeParameters)))
 						if (GetDefaultLocation(parameter) is { } location)
 							Diagnostics.Add(new(DiagnosticSeverity.Error, location,
 								"Cannot declare defaults in impl blocks"));
@@ -84,6 +85,10 @@ public sealed partial class SignatureCollector
 	private void AddDefaults(ImmutableArray<TypeParameterNode> nodes, ImmutableArray<TypeParameterSymbol> parameters,
 		Func<ResolutionContext> context)
 	{
+		foreach (var nested in nodes.Where(static node => !node.Nested.IsEmpty))
+			Diagnostics.Add(new(DiagnosticSeverity.Error, nested.Identifier.SourceLocation,
+				"Cannot declare nested type parameters outside impl blocks"));
+		
 		var hasDefaults = false;
 		for (var i = 0; i < nodes.Length && i < parameters.Length; i++)
 		{

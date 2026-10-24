@@ -38,6 +38,14 @@ public sealed class TypeParameterNode
 	public ITypeNode? ValueType { get; init; }
 	public ITypeNode? DefaultType { get; init; }
 	public IExpressionNode? DefaultValue { get; init; }
+	public ImmutableArray<TypeParameterNode> Nested { get; init; } = [];
+	
+	public static IEnumerable<TypeParameterNode> CollectNestedLeaves(IEnumerable<TypeParameterNode> nodes) => nodes
+		.SelectMany(static node => node.Nested.IsEmpty
+			? []
+			: node.Nested.SelectMany(static child => child.Nested.IsEmpty
+				? [child]
+				: CollectNestedLeaves([child])));
 }
 
 public sealed class ConstructorConstraintNode

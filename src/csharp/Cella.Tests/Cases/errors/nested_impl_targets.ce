@@ -1,0 +1,78 @@
+mod test
+
+Alloc: trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Heap: rec impl Alloc
+{
+	tag: fun(imm self) -> i32 => 1
+}
+
+Text[A: Alloc = Heap]: rec
+{
+	length: i32
+}
+
+Map[K, V]: rec
+{
+	key: K
+	value: V
+}
+
+Show: trait
+{
+	show: fun(imm self) -> i32
+}
+
+Map[Text[S], V]: impl
+{
+	first: fun(imm self) -> i32 => 1
+}
+
+Map[Text[S: Alloc, Extra], V]: impl
+{
+	second: fun(imm self) -> i32 => 2
+}
+
+Map[Missing[S], V]: impl
+{
+	third: fun(imm self) -> i32 => 3
+}
+
+Map[i32[S], V]: impl
+{
+	fourth: fun(imm self) -> i32 => 4
+}
+
+Map[Text[V: Alloc], V]: impl
+{
+	fifth: fun(imm self) -> i32 => 5
+}
+
+Box[T[U]]: rec
+{
+	value: i32
+}
+
+Map[Text[S: Alloc], V]: impl Show
+{
+	show: fun(imm self) -> i32 => 1
+}
+
+Map[Text[B: Alloc], W]: impl Show
+{
+	show: fun(imm self) -> i32 => 2
+}
+
+Map[Text[C: Alloc = Heap], V]: impl
+{
+	sixth: fun(imm self) -> i32 => 6
+}
+
+main: fun -> i32
+{
+	val plain = Map(1, 2)
+	ret plain.first()
+}

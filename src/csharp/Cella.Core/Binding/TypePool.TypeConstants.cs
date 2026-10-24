@@ -39,6 +39,10 @@ public sealed partial class TypePool
 			if (impl.TargetArguments[i] is TypeParameterSymbol parameter)
 				map[parameter] = arguments[i];
 		
+		if (!impl.NestedParameters.IsEmpty && BindBlock(impl, arguments) is { } bound)
+			for (var i = 0; i < impl.NestedParameters.Length; i++)
+				map[impl.NestedParameters[i]] = bound[impl.TargetArguments.Length + i];
+		
 		return map;
 	}
 	

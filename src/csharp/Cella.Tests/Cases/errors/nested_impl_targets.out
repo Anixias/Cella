@@ -1,0 +1,57 @@
+Error at nested_impl_targets.ce:29:10
+28 │ 
+29 │ Map[Text[S], V]: impl
+              ^ 'Text' requires 'A: Alloc'
+              | 'S' doesn't implement 'Alloc'
+
+Error at nested_impl_targets.ce:34:5
+33 │ 
+34 │ Map[Text[S: Alloc, Extra], V]: impl
+         ╘══╛ 'Text' takes one generic argument
+
+Error at nested_impl_targets.ce:39:5
+38 │ 
+39 │ Map[Missing[S], V]: impl
+         ╘═════╛ Type 'Missing' not found in this scope
+
+Error at nested_impl_targets.ce:44:5
+43 │ 
+44 │ Map[i32[S], V]: impl
+         ╘═╛ 'i32' takes no generic arguments
+
+Error at nested_impl_targets.ce:49:10
+48 │ 
+49 │ Map[Text[V: Alloc], V]: impl
+              ^ Type parameter 'V' is declared more than once
+
+Error at nested_impl_targets.ce:49:21
+48 │ 
+49 │ Map[Text[V: Alloc], V]: impl
+                         ^ Type parameter 'V' is declared more than once
+
+Error at nested_impl_targets.ce:54:5
+53 │ 
+54 │ Box[T[U]]: rec
+         ^ Cannot declare nested type parameters outside impl blocks
+
+Error at nested_impl_targets.ce:59:30
+58 │ 
+59 │ Map[Text[S: Alloc], V]: impl Show
+                                  ╘══╛ 'Map[Text[S], V]' implements 'Show' more than once
+
+Error at nested_impl_targets.ce:64:30
+63 │ 
+64 │ Map[Text[B: Alloc], W]: impl Show
+                                  ╘══╛ 'Map[Text[B], V]' implements 'Show' more than once
+
+Error at nested_impl_targets.ce:69:21
+68 │ 
+69 │ Map[Text[C: Alloc = Heap], V]: impl
+                         ╘══╛ Cannot declare defaults in impl blocks
+
+Error at nested_impl_targets.ce:77:12
+76 │ val plain = Map(1, 2)
+77 │ ret plain.first()
+               ╘═══╛ Type 'Map[i32, i32]' has no member 'first'
+
+[compilation failed]

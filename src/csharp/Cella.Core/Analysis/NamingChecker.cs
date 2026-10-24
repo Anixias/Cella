@@ -29,7 +29,8 @@ public sealed class NamingChecker(IReadOnlyDictionary<NamingCategory, NamingPatt
 	{
 		_diagnostics.Clear();
 		foreach (var impl in files.SelectMany(static file => file.Declarations).OfType<ImplNode>())
-			CheckTypeParameters(impl.TypeParameters.Where((_, i) => declares(impl, i)));
+			CheckTypeParameters(impl.TypeParameters.Concat(TypeParameterNode.CollectNestedLeaves(impl.TypeParameters))
+				.Where((_, i) => declares(impl, i)));
 		
 		return [.._diagnostics];
 	}

@@ -31,6 +31,21 @@ public sealed partial class FileParser
 				return isPartial ? parameters : null;
 			}
 			
+			if (IsOnSameLine(index) && Peek(index, TokenType.OpOpenBracket))
+			{
+				if (ParseTypeParameters(ref index, false, out var nestedPartial) is not { } nested)
+					return null;
+				
+				parameters.Add(new(name, [], [], []) { Nested = [..nested] });
+				if (nestedPartial)
+				{
+					isPartial = true;
+					return parameters;
+				}
+				
+				continue;
+			}
+			
 			var keywords = new List<Token>();
 			var traits = new List<ITypeNode>();
 			var constructors = new List<ConstructorConstraintNode>();

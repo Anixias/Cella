@@ -915,8 +915,11 @@ public sealed class ImplSymbol
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 	public ImmutableArray<GlobalSymbol> Constants { get; init; } = [];
 	public ImmutableArray<FunctionSymbol> Constructors { get; init; } = [];
+	public ImmutableArray<TypeParameterSymbol> NestedParameters { get; init; } = [];
+	public ImmutableArray<TypeSymbol> NestedArguments { get; set; } = [];
 	
-	public bool Declares(TypeParameterSymbol parameter) => TargetArguments.Contains(parameter);
+	public bool Declares(TypeParameterSymbol parameter) =>
+		TargetArguments.Contains(parameter) || NestedArguments.Contains(parameter);
 	
 	public FileSymbol? ExtensionFile { get; set; }
 	public string? ExtensionAssembly { get; set; }

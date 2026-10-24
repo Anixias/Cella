@@ -1,0 +1,24 @@
+mod test
+
+use lib
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Arena: rec impl lib.Alloc
+{
+	pad: i64
+
+	tag: fun(imm self) -> i32 => 2
+}
+
+main: fun -> i32
+{
+	val heapKey = lib.Map(lib.Text(3, lib.Heap()), true)
+	val arenaKey = lib.Map(lib.Text(5, Arena(0)), 1.5)
+	printf("%d %zu %d %zu %d\n", heapKey.keyTag(), heapKey.allocSize(), arenaKey.keyTag(), arenaKey.allocSize(),
+		lib.heapTag())
+	ret 0
+}

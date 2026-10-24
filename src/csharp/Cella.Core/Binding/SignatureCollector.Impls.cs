@@ -93,12 +93,23 @@ public sealed partial class SignatureCollector
 	
 	private void RegisterImpl(ImplSymbol impl, ImplNode node, ResolutionContext context)
 	{
+		var leaves = TypeParameterNode.CollectNestedLeaves(node.TypeParameters).ToList();
+		impl.NestedArguments =
+		[
+			..leaves.Select((leaf, i) => ResolveTargetArgument(leaf, context) ?? impl.NestedParameters[i])
+		];
+		
+		var nestedIndex = 0;
 		impl.TargetArguments =
 		[
-			..node.TypeParameters.Select((entry, i) => ResolveTargetArgument(entry, context) ?? impl.TypeParameters[i])
+			..node.TypeParameters.Select((entry, i) => entry.Nested.IsEmpty
+				? ResolveTargetArgument(entry, context) ?? impl.TypeParameters[i]
+				: ResolveNestedTarget(impl, entry, context, ref nestedIndex))
 		];
 		
 		RegisterBounds(node.TypeParameters, impl.TypeParameters, context with { ImplBlock = impl });
+		RegisterBounds([..leaves], impl.NestedParameters, context with { ImplBlock = impl });
+		ReportDuplicateNestedParameters(impl, node, leaves);
 		if (ResolveImplTarget(impl, node, context) is not { } target)
 			return;
 		
@@ -167,6 +178,61 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private TypeSymbol ResolveNestedTarget(ImplSymbol impl, TypeParameterNode entry, ResolutionContext context,
+		ref int nestedIndex)
+	{
+		var arguments = new List<TypeSymbol>();
+		foreach (var child in entry.Nested)
+			arguments.Add(child.Nested.IsEmpty
+				? impl.NestedArguments[nestedIndex++]
+				: ResolveNestedTarget(impl, child, context, ref nestedIndex));
+		
+		var symbol = context.ResolveTypeName(new IdentifierTypeNode(entry.Identifier), true);
+		if (TypeOverloads.FindFamily(symbol) is { } family)
+			symbol = family.FirstOrDefault(member => TypeOverloads.GetParameters(member).Length == arguments.Count);
+		
+		if (symbol is not NamedTypeSymbol { IsGenericDefinition: true } definition)
+		{
+			Diagnostics.Add(new(DiagnosticSeverity.Error, entry.Identifier.SourceLocation, symbol is null
+				? $"Type '{entry.Identifier.Text}' not found in this scope"
+				: $"'{entry.Identifier.Text}' takes no generic arguments"));
+			
+			return NativeSymbols.Invalid;
+		}
+		
+		if (definition.TypeParameters.Length != arguments.Count)
+		{
+			Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(entry.Identifier.SourceLocation,
+				definition.Name, definition.TypeParameters.Length));
+			
+			return NativeSymbols.Invalid;
+		}
+		
+		var map = TypePool.CreateMap(definition.TypeParameters, arguments);
+		for (var i = 0; i < arguments.Count; i++)
+			DeferAlways(new(definition.TypeParameters[i], arguments[i], map, entry.Nested[i].SourceLocation));
+		
+		return arguments.Any(static argument => argument is InvalidType)
+			? NativeSymbols.Invalid
+			: _typePool.Instantiate(definition, [..arguments]);
+	}
+	
+	private void ReportDuplicateNestedParameters(ImplSymbol impl, ImplNode node, List<TypeParameterNode> leaves)
+	{
+		var slots = node.TypeParameters
+			.Where((entry, i) => entry.Nested.IsEmpty && impl.TargetArguments[i] is TypeParameterSymbol)
+			.ToList();
+		
+		var nested = leaves.Where((_, i) => impl.NestedArguments[i] is TypeParameterSymbol).ToList();
+		var all = slots.Concat(nested).ToList();
+		foreach (var parameter in all.Where(parameter => all.Any(other => other != parameter &&
+		                                                                  other.Identifier.Text ==
+		                                                                  parameter.Identifier.Text &&
+		                                                                  (nested.Contains(other) ||
+		                                                                   nested.Contains(parameter)))))
+			Diagnostics.Add(ReportDuplicateTypeParameter(parameter));
+	}
+	
 	private static TypeSymbol? ResolveTargetArgument(TypeParameterNode entry, ResolutionContext context)
 	{
 		if (entry is not { Keywords.IsEmpty: true, Traits.IsEmpty: true, Constructors.IsEmpty: true, ValueType: null })
@@ -201,7 +267,7 @@ public sealed partial class SignatureCollector
 		
 		switch (symbol)
 		{
-			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TypeParameters.Length:
+			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TargetArguments.Length:
 				return named;
 			
 			case NamedTypeSymbol named:
@@ -210,17 +276,17 @@ public sealed partial class SignatureCollector
 				
 				return null;
 			
-			case PrimitiveType primitive when impl.TypeParameters.IsEmpty:
+			case PrimitiveType primitive when impl.TargetArguments.IsEmpty:
 				return primitive;
 			
 			case PrimitiveType:
 				Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{name}' takes no generic arguments"));
 				return null;
 			
-			case PointerType when impl.TypeParameters.IsEmpty:
+			case PointerType when impl.TargetArguments.IsEmpty:
 				return NativeSymbols.VoidPtr;
 			
-			case PointerType when impl.TypeParameters.Length == 1:
+			case PointerType when impl.TargetArguments.Length == 1:
 				return ReportParameterViolations(NativeSymbols.GenericPointer.TypeParameters, impl, node)
 					? _typePool.GetPointerType(impl.TargetArguments[0])
 					: null;
@@ -285,7 +351,7 @@ public sealed partial class SignatureCollector
 	private TypeSymbol? ResolveArrayImplTarget(ImplSymbol impl, ImplNode node)
 	{
 		var declared = NativeSymbols.GenericArray.TypeParameters;
-		if (impl.TypeParameters.Length != declared.Length)
+		if (impl.TargetArguments.Length != declared.Length)
 		{
 			Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(node.Target.SourceLocation,
 				NativeSymbols.GenericArray.Name, declared.Length));

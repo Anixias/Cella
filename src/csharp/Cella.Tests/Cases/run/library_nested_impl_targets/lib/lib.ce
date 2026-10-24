@@ -1,0 +1,31 @@
+mod lib
+
+Alloc: pub trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Heap: pub rec impl Alloc
+{
+	tag: fun(imm self) -> i32 => 1
+}
+
+Text[A: Alloc = Heap]: pub rec
+{
+	length: i32
+	alloc: A
+}
+
+Map[K, V]: pub rec
+{
+	key: K
+	value: V
+}
+
+Map[Text[S: Alloc], V]: impl
+{
+	keyTag: fun(imm self) -> i32 => self.key.length * 10 + self.key.alloc.tag()
+	allocSize: fun(imm self) -> usize => sizeOf(S)
+}
+
+heapTag: pub fun -> i32 => Map(Text(4, Heap()), 0).keyTag()

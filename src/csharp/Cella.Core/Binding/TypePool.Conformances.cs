@@ -155,7 +155,10 @@ public sealed partial class TypePool
 		CreateMap(conformance.Parameters, GetTargetArguments(conformance, type));
 	
 	private ImmutableArray<TypeSymbol> GetTargetArguments(Conformance conformance, TypeSymbol type) =>
-		conformance.Target is TypeParameterSymbol ? [type] : GetShapeArguments(type);
+		conformance.Target is TypeParameterSymbol ? [type] : BindArguments(conformance.Impl, GetShapeArguments(type));
+	
+	private ImmutableArray<TypeSymbol> BindArguments(ImplSymbol? impl, ImmutableArray<TypeSymbol> arguments) =>
+		impl is not null && BindBlock(impl, arguments) is { } bound ? bound : arguments;
 	
 	public void SetBounds(TypeParameterSymbol parameter, ImmutableArray<TraitType> traits)
 	{
@@ -371,8 +374,8 @@ public sealed partial class TypePool
 	private bool Matches(Conformance conformance, TypeSymbol type) => conformance.Target is TypeParameterSymbol
 		? type is not TypeParameterSymbol && Satisfies(conformance.Parameters, [type])
 		: type is not TypeParameterSymbol && HasShape(conformance.Target, type) &&
-		  Fits(conformance.Impl, GetShapeArguments(type)) &&
-		  Satisfies(conformance.Parameters, GetShapeArguments(type));
+		  (conformance.Impl is null ? GetShapeArguments(type) : BindBlock(conformance.Impl, GetShapeArguments(type)))
+		  is { } arguments && Satisfies(conformance.Parameters, arguments);
 	
 	private static bool HasShape(TypeSymbol target, TypeSymbol type) =>
 		target is ArrayType ? type is ArrayType
@@ -381,10 +384,36 @@ public sealed partial class TypePool
 	
 	private static bool IsTypedPointer(TypeSymbol type) => type is PointerType && type != NativeSymbols.VoidPtr;
 	
-	private static bool Fits(ImplSymbol? impl, ImmutableArray<TypeSymbol> arguments) => impl is null ||
-		impl.TargetArguments.Length == arguments.Length && impl.TargetArguments
-			.Zip(arguments)
-			.All(static pair => pair.First is TypeParameterSymbol || pair.First == pair.Second);
+	public ImmutableArray<TypeSymbol>? BindBlock(ImplSymbol impl, ImmutableArray<TypeSymbol> arguments)
+	{
+		if (impl.TargetArguments.Length != arguments.Length)
+			return null;
+		
+		if (impl.NestedParameters.IsEmpty)
+			return impl.TargetArguments.Zip(arguments)
+				.All(static pair => pair.First is TypeParameterSymbol || pair.First == pair.Second)
+				? arguments
+				: null;
+		
+		var variables = new OrderedSet<TypeParameterSymbol>(impl.NestedParameters);
+		var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		for (var i = 0; i < arguments.Length; i++)
+		{
+			if (impl.TargetArguments[i] is TypeParameterSymbol slot && !variables.Contains(slot))
+				continue;
+			
+			if (!TryUnify(impl.TargetArguments[i], arguments[i], variables, bindings))
+				return null;
+		}
+		
+		return
+		[
+			..arguments,
+			..impl.NestedParameters.Select((parameter, i) => impl.NestedArguments[i] is TypeParameterSymbol
+				? bindings.GetValueOrDefault(parameter, parameter)
+				: impl.NestedArguments[i])
+		];
+	}
 	
 	private ImmutableArray<TypeSymbol> GetShapeArguments(TypeSymbol type) => type switch
 	{
@@ -417,8 +446,8 @@ public sealed partial class TypePool
 		.Where(block => block.Target is TypeParameterSymbol
 			? Satisfies(block.Impl.TypeParameters, [type])
 			: type is not TypeParameterSymbol && HasShape(block.Target, type) &&
-			  Fits(block.Impl, GetShapeArguments(type)) &&
-			  Satisfies(block.Impl.TypeParameters, GetShapeArguments(type)))
+			  BindBlock(block.Impl, GetShapeArguments(type)) is { } arguments &&
+			  Satisfies(block.Impl.TypeParameters, arguments))
 		.Select(static block => block.Impl);
 	
 	public TypeSymbol? GetMemberBlockTarget(ImplSymbol impl) =>
@@ -432,11 +461,11 @@ public sealed partial class TypePool
 				.Where(static conformance => conformance.Impl is not null)
 				.Select(static conformance => (Target: conformance.Target.OriginalDefinition, Impl: conformance.Impl!)))
 			.Where(block => HasShape(block.Target, type) &&
-			                block.Impl.TypeParameters.Length == GetShapeArguments(type).Length &&
-			                Fits(block.Impl, GetShapeArguments(type)) &&
+			                BindBlock(block.Impl, GetShapeArguments(type)) is not null &&
 			                (block.Impl.Functions.Any(method => method.Name == name) ||
 			                 block.Impl.Properties.Any(property => property.Name == name)))
-			.Select(block => FindViolation(block.Impl.TypeParameters, GetShapeArguments(type), name))
+			.Select(block => FindViolation(block.Impl.TypeParameters,
+				BindBlock(block.Impl, GetShapeArguments(type))!.Value, name))
 			.FirstOrDefault(static violation => violation is not null);
 	
 	public IEnumerable<FunctionSymbol> GetWitnessFunctions() => _conformances
@@ -528,7 +557,7 @@ public sealed partial class TypePool
 			return [self, ..declared];
 		
 		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
-			return [..GetShapeArguments(self), ..declared];
+			return [..BindArguments(witness.Impl, GetShapeArguments(self)), ..declared];
 		
 		var map = CreateMap(conformance.Parameters, GetTargetArguments(conformance, self));
 		return [..witness.Impl.TypeParameters.Select(parameter => map[parameter]), ..declared];
@@ -553,10 +582,12 @@ public sealed partial class TypePool
 		type is TypeParameterSymbol
 			? []
 			: GetBlockConstructors(type)
-				.Select(block => (block.Info,
-					Violation: FindViolation(block.Impl.TypeParameters, type.TypeArguments, "new")))
+				.Select(block => (block.Info, Arguments: BindArguments(block.Impl, GetShapeArguments(type)),
+					block.Impl))
+				.Select(block => (block.Info, block.Arguments,
+					Violation: FindViolation(block.Impl.TypeParameters, block.Arguments, "new")))
 				.Where(static block => block.Violation is not null)
-				.Select(block => (InstantiateFunction(block.Info, type.TypeArguments), block.Violation!));
+				.Select(block => (InstantiateFunction(block.Info, block.Arguments), block.Violation!));
 	
 	private IReadOnlyList<FunctionInfo> GetBodyConstructors(TypeSymbol type)
 	{
@@ -573,15 +604,18 @@ public sealed partial class TypePool
 		List<FunctionInfo> blocks =
 		[
 			..GetBlockConstructors(type)
-				.Where(block => includesUnmet || Satisfies(block.Impl.TypeParameters, type.TypeArguments))
-				.Select(block => InstantiateFunction(block.Info, type.TypeArguments))
+				.Select(block => (block.Impl, block.Info,
+					Arguments: BindArguments(block.Impl, GetShapeArguments(type))))
+				.Where(block => includesUnmet || Satisfies(block.Impl.TypeParameters, block.Arguments))
+				.Select(block => InstantiateFunction(block.Info, block.Arguments))
 		];
 		
 		return blocks.Count == 0 ? declared : [..declared, ..blocks];
 	}
 	
 	private IEnumerable<(ImplSymbol Impl, FunctionInfo Info)> GetBlockConstructors(TypeSymbol type) =>
-		_blockConstructors.Where(block => IsBlockOf(block.Impl, type) && Fits(block.Impl, type.TypeArguments));
+		_blockConstructors.Where(block =>
+			IsBlockOf(block.Impl, type) && BindBlock(block.Impl, GetShapeArguments(type)) is not null);
 	
 	private bool IsBlockOf(ImplSymbol impl, TypeSymbol type) =>
 		GetMemberBlockTarget(impl) is { } target and not TypeParameterSymbol &&

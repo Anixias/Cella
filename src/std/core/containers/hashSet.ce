@@ -3,6 +3,7 @@
 use std.[DefHashBuilder, Hash, HashBuilder]
 use std.cmp.Eq
 use std.mem.[Allocator, fillBytes, Heap, Layout]
+use std.text.String
 
 SetSlot[T: noref + Hash + Eq]: mod enum
 {
@@ -163,6 +164,50 @@ HashSet[T: noref + Hash + Eq, H: HashBuilder + copy + new, A: Allocator + new]: 
 	new: op
 	{
 		self = HashSet[T, H, A](H(), A())
+	}
+}
+
+HashSet[String[S: Allocator + noref], H: HashBuilder + copy, A: Allocator]: impl
+{
+	contains: fun(imm self, value: str) -> bool => self.findText(value).found
+
+	remove: fun(mut self, value: str) -> bool
+	{
+		val search = self.findText(value)
+		if !search.found
+			ret false
+
+		drop self.data[search.index]
+		own self.data[search.index] = deleted
+		self.count -= 1
+		ret true
+	}
+
+	findText: pvt fun(imm self, value: str) -> SetSearch
+	{
+		if self.capacity == 0
+			ret SetSearch(0, false)
+
+		var builder = self.hashBuilder
+		value.hash(mut builder)
+		val mask = self.capacity - 1
+		var index = usize(builder.getHash() & u64(mask))
+		loop
+		{
+			match self.data[index]
+			{
+				empty => ret SetSearch(index, false)
+				full(val stored) =>
+				{
+					val storedText: str = stored
+					if storedText == value
+						ret SetSearch(index, true)
+				}
+				else => { }
+			}
+
+			index = (index + 1) & mask
+		}
 	}
 }
 

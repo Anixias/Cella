@@ -339,7 +339,8 @@ public sealed partial class LanguageServerTests
 		
 		Assert.Equal(start + "Square: impl Shape\n{\n\tarea: fun(imm self) -> f64 => self.side * self.side\n\t\n" +
 		             "\tscaled: fun(imm self, factor: f64) -> Square => panic\n}\n",
-			await FixAsync(start + "Square: impl ‸Shape\n{\n\tarea: fun(imm self) -> f64 => self.side * self.side\n\t\n\n}\n",
+			await FixAsync(
+				start + "Square: impl ‸Shape\n{\n\tarea: fun(imm self) -> f64 => self.side * self.side\n\t\n\n}\n",
 				"Implement missing members"));
 		
 		Assert.Equal(0, await ShutDownAsync());

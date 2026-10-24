@@ -373,7 +373,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	
 	public Symbol Visit(ImplNode node)
 	{
-		var typeParameters = CreateTypeParameters(node.TypeParameters, GetImplOwner(node.Target));
+		var owner = GetImplOwner(node.Target);
+		var slots = CreateTypeParameters(node.TypeParameters, owner);
+		var nested = CreateTypeParameters([..TypeParameterNode.CollectNestedLeaves(node.TypeParameters)], owner);
+		var typeParameters = slots.AddRange(nested);
 		var target = node.IsBlanket
 			? $"[{node.Target.SourceLocation.GetText()}]"
 			: node.Target.SourceLocation.GetText().ToString();
@@ -390,7 +393,10 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var impl = new ImplSymbol(node, typeParameters, functions, properties)
 		{
 			Constants = [..GetConstants(node.Members)],
-			Constructors = [..constructors]
+			Constructors = [..constructors],
+			TargetArguments = [..slots],
+			NestedParameters = nested,
+			NestedArguments = [..nested]
 		};
 		
 		foreach (var constant in impl.Constants)

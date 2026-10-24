@@ -379,6 +379,33 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task LinksNestedImplTypeParameters()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Box[T]: rec { value: T }
+		                                         
+		                                         Holder[K]: rec { key: K }
+		                                         
+		                                         Holder[Box[Inner]]: impl
+		                                         {
+		                                         	size: fun(imm self) -> usize => sizeOf(Inner)
+		                                         }
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("Inner"), await HoverAsync(8, 40));
+		var definition = await DefinitionAsync(8, 40);
+		Assert.Equal(6, (int)definition!["range"]!["start"]!["line"]!);
+		Assert.Equal(11, (int)definition["range"]!["start"]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task NamesValuesInPatterns()
 	{
 		await File.WriteAllTextAsync(SourcePath, """

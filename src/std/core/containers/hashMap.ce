@@ -3,6 +3,7 @@
 use std.[DefHashBuilder, Hash, HashBuilder, Option]
 use std.cmp.Eq
 use std.mem.[Allocator, fillBytes, Heap, Layout]
+use std.text.String
 
 MapSlot[K: noref + Hash + Eq, V: noref]: mod enum
 {
@@ -196,6 +197,67 @@ HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy + new, A: Allocato
 	new: op
 	{
 		self = HashMap[K, V, H, A](H(), A())
+	}
+}
+
+HashMap[String[S: Allocator + noref], V: noref, H: HashBuilder + copy, A: Allocator]: impl
+{
+	get: fun(imm self, key: str) -> Option[imm[V]]
+	{
+		val search = self.findText(key)
+		if !search.found
+			ret none
+
+		ret match self.data[search.index]
+		{
+			full(_, val value) => some(imm value)
+			else => none
+		}
+	}
+
+	contains: fun(imm self, key: str) -> bool => self.findText(key).found
+
+	remove: fun(mut self, key: str) -> Option[V]
+	{
+		val search = self.findText(key)
+		if !search.found
+			ret none
+
+		val old = own self.data[search.index]
+		own self.data[search.index] = deleted
+		self.count -= 1
+		ret match old
+		{
+			full(_, val value) => some(value)
+			else => none
+		}
+	}
+
+	findText: pvt fun(imm self, key: str) -> SlotSearch
+	{
+		if self.capacity == 0
+			ret SlotSearch(0, false)
+
+		var builder = self.hashBuilder
+		key.hash(mut builder)
+		val mask = self.capacity - 1
+		var index = usize(builder.getHash() & u64(mask))
+		loop
+		{
+			match self.data[index]
+			{
+				empty => ret SlotSearch(index, false)
+				full(val stored, _) =>
+				{
+					val storedText: str = stored
+					if storedText == key
+						ret SlotSearch(index, true)
+				}
+				else => { }
+			}
+
+			index = (index + 1) & mask
+		}
 	}
 }
 

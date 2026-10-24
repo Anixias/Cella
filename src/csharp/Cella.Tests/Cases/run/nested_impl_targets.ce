@@ -1,0 +1,90 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Alloc: trait
+{
+	tag: fun(imm self) -> i32
+}
+
+Heap: rec impl Alloc
+{
+	tag: fun(imm self) -> i32 => 1
+}
+
+Arena: rec impl Alloc
+{
+	tag: fun(imm self) -> i32 => 2
+}
+
+Text[A: Alloc = Heap]: rec
+{
+	length: i32
+	alloc: A
+}
+
+Pair[L, R]: rec
+{
+	left: L
+	right: R
+}
+
+Map[K, V]: rec
+{
+	key: K
+	value: V
+}
+
+Map[Text[S: Alloc], V]: impl
+{
+	keyLength: fun(imm self) -> i32 => self.key.length
+	keyTag: fun(imm self) -> i32 => self.key.alloc.tag()
+	allocSize: fun(imm self) -> usize => sizeOf(S)
+}
+
+Map[Pair[i32, R], V]: impl
+{
+	leftKey: fun(imm self) -> i32 => self.key.left
+}
+
+Show: trait
+{
+	show: fun(imm self) -> i32
+}
+
+Map[Text[S: Alloc], V]: impl Show
+{
+	show: fun(imm self) -> i32 => self.key.length * 100 + self.key.alloc.tag()
+}
+
+Map[Text[S: Alloc + default], V: default]: impl
+{
+	new: op(length: i32)
+	{
+		var alloc: S
+		var value: V
+		self.key = Text[S](length, alloc)
+		self.value = value
+	}
+}
+
+lengthOf[X: Alloc]: fun(imm map: Map[Text[X], i32]) -> i32 => map.keyLength() + map.keyTag() * 10
+
+display[T: Show]: fun(imm value: T) -> i32 => value.show()
+
+main: fun -> i32
+{
+	val heapKey = Map(Text(3, Heap()), 7)
+	val arenaKey = Map(Text(5, Arena()), true)
+	val paired = Map(Pair(9, 1.5), 0)
+	printf("%d %d %zu | %d %d | %d\n", heapKey.keyLength(), heapKey.keyTag(), heapKey.allocSize(),
+		arenaKey.keyLength(), arenaKey.keyTag(), paired.leftKey())
+
+	printf("%d %d\n", display(imm heapKey), display(imm arenaKey))
+	val made = Map[Text[Arena], i32](4)
+	printf("%d %d %d\n", lengthOf(imm heapKey), lengthOf(imm made), made.value)
+	ret 0
+}

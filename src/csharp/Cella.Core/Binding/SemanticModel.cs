@@ -477,7 +477,12 @@ public sealed class SemanticModel
 				break;
 			
 			case ResolvedImplNode n:
-				AddTypeParameters(n.Symbol.Node.TypeParameters, [..n.Symbol.TypeParameters.Where(n.Symbol.Declares)]);
+				AddTypeParameters(
+				[
+					..n.Symbol.Node.TypeParameters,
+					..TypeParameterNode.CollectNestedLeaves(n.Symbol.Node.TypeParameters)
+				], [..n.Symbol.TypeParameters.Where(n.Symbol.Declares)]);
+				
 				foreach (var constant in n.Symbol.Constants)
 					AddGlobal(constant, _globals?.Invoke(constant));
 				
