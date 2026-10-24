@@ -33,7 +33,8 @@ object CellaSelection {
 			.firstOrNull { pane -> pane.tree?.let { component === it || SwingUtilities.isDescendingFrom(component, it) } == true }
 			?: return emptyList()
 
-		return pane.getSelectedNodes()
+		val selected = event.getData(PlatformCoreDataKeys.SELECTED_ITEMS).orEmpty().filterIsInstance<AbstractTreeNode<*>>()
+		return selected.ifEmpty { pane.getSelectedNodes() }
 	}
 
 	fun project(event: AnActionEvent): VirtualFile? {
@@ -50,7 +51,7 @@ object CellaSelection {
 }
 
 abstract class CellaProjectAction : AnAction() {
-	override fun getActionUpdateThread() = ActionUpdateThread.EDT
+	override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
 class CellaPropertiesAction : CellaProjectAction() {
