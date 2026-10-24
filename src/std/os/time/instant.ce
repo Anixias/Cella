@@ -1,0 +1,79 @@
+﻿mod std.time
+
+use std.cmp.[Ord, Ordering]
+use std.time.Duration
+
+when windows
+{
+	ext
+	{
+		QueryPerformanceCounter: pvt fun(count: ptr[i64]) -> i32
+		QueryPerformanceFrequency: pvt fun(frequency: ptr[i64]) -> i32
+	}
+	
+	readClock: pvt fun -> u64
+	{
+		var ticks: i64
+		var frequency: i64
+		QueryPerformanceCounter(@ticks)
+		QueryPerformanceFrequency(@frequency)
+		
+		val whole = u64(ticks) / u64(frequency)
+		val rest = u64(ticks) % u64(frequency)
+		ret whole * 1_000_000_000 + rest * 1_000_000_000 / u64(frequency)
+	}
+}
+else
+{
+	TimeSpec: pvt rec
+	{
+		seconds: i64
+		nanoseconds: i64
+	}
+	
+	ext
+	{
+		clock_gettime: pvt fun(clock: i32, time: ptr[TimeSpec]) -> i32
+	}
+	
+	readClock: pvt fun -> u64
+	{
+		var time: TimeSpec
+		clock_gettime(1, @time)
+		ret u64(time.seconds) * 1_000_000_000 + u64(time.nanoseconds)
+	}
+}
+
+Instant: pub rec
+{
+	nanoseconds: pvt u64
+	
+	now: fun -> Instant => Instant(readClock())
+	elapsed: fun(self) -> Duration => now() - self
+	
+	+: op(time: Instant, length: Duration) -> Instant => Instant(time.nanoseconds + length.nanoseconds)
+	
+	-: op(later: Instant, earlier: Instant) -> Duration =>
+		Duration.fromNanoseconds(later.nanoseconds - earlier.nanoseconds)
+}
+
+Instant: impl Ord
+{
+	compare: fun(left: Instant, right: Instant) -> Ordering
+	{
+		if left.nanoseconds == right.nanoseconds
+			ret equal
+		
+		if left.nanoseconds < right.nanoseconds
+			ret less
+		
+		ret greater
+	}
+	
+	==: op(left: Instant, right: Instant) -> bool => left.nanoseconds == right.nanoseconds
+	!=: op(left: Instant, right: Instant) -> bool => left.nanoseconds != right.nanoseconds
+	>: op(left: Instant, right: Instant) -> bool => left.nanoseconds > right.nanoseconds
+	>=: op(left: Instant, right: Instant) -> bool => left.nanoseconds >= right.nanoseconds
+	<: op(left: Instant, right: Instant) -> bool => left.nanoseconds < right.nanoseconds
+	<=: op(left: Instant, right: Instant) -> bool => left.nanoseconds <= right.nanoseconds
+}

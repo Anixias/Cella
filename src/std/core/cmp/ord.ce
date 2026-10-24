@@ -22,4 +22,10 @@ Ord: pub trait req Eq
 	
 	>=: op(imm left: Self, imm right: Self) -> bool =>
 		match compare(imm left, imm right) { less => false, else => true }
+	
+	==: op(imm left: Self, imm right: Self) -> bool =>
+		match compare(imm left, imm right) { equal => true, else => false }
+	
+	!=: op(imm left: Self, imm right: Self) -> bool =>
+		match compare(imm left, imm right) { equal => false, else => true }
 }

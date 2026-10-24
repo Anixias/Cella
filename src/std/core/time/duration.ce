@@ -47,4 +47,8 @@ Duration: impl Ord
 	
 	==: op(left: Duration, right: Duration) -> bool => left.nanoseconds == right.nanoseconds
 	!=: op(left: Duration, right: Duration) -> bool => left.nanoseconds != right.nanoseconds
+	>: op(left: Duration, right: Duration) -> bool => left.nanoseconds > right.nanoseconds
+	>=: op(left: Duration, right: Duration) -> bool => left.nanoseconds >= right.nanoseconds
+	<: op(left: Duration, right: Duration) -> bool => left.nanoseconds < right.nanoseconds
+	<=: op(left: Duration, right: Duration) -> bool => left.nanoseconds <= right.nanoseconds
 }
