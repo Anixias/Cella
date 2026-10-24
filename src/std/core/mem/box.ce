@@ -1,5 +1,8 @@
 ﻿mod std.mem
 
+use std.[Hash, HashBuilder, Shows]
+use std.cmp.Eq
+
 Box[T: noref, A: Allocator = Heap]: pub own rec
 {
 	data: pvt req ptr[T]
@@ -51,4 +54,20 @@ Box[T: noref, A: Allocator + new]: impl
 	{
 		self = Box[T, A](value, A())
 	}
+}
+
+Box[T: noref, A: Allocator]: impl Shows[T]
+{
+	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm *self)
+}
+
+Box[T: noref + Hash, A: Allocator]: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => (*self).hash(mut hashBuilder)
+}
+
+Box[T: noref + Eq, A: Allocator]: impl Eq
+{
+	==: op(imm left: Box[T, A], imm right: Box[T, A]) -> bool => *left == *right
+	!=: op(imm left: Box[T, A], imm right: Box[T, A]) -> bool => !(*left == *right)
 }

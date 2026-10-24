@@ -1,6 +1,6 @@
 ﻿mod std.containers
 
-use std.[Option, Span, View]
+use std.[Option, Shows, Span, View]
 use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout, swap]
 
@@ -133,15 +133,27 @@ List[T: noref, A: Allocator + new]: impl
 	}
 }
 
-List[T: noref + Eq, A: Allocator]: impl
+List[T: noref + Shows[Q: Eq], A: Allocator]: impl
 {
-	remove: fun(mut self, value: T) -> Option[T]
+	contains: fun(imm self, imm value: Q) -> bool => self.findShown(imm value) < self.count
+	
+	remove: fun(mut self, imm value: Q) -> Option[T]
 	{
-		for v, i in self
-			if v == value
-				ret self.removeAt(i)
+		val index = self.findShown(imm value)
+		if index == self.count
+			ret none
 		
-		ret none
+		ret self.removeAt(index)
+	}
+	
+	findShown: pvt fun(imm self, imm value: Q) -> usize
+	{
+		val matches = fun(imm shown: Q) -> bool => shown == value
+		for item, i in self
+			if item.show(imm matches)
+				ret i
+		
+		ret self.count
 	}
 }
 

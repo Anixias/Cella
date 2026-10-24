@@ -1,9 +1,8 @@
 ﻿mod std.containers
 
-use std.[DefHashBuilder, Hash, HashBuilder, Option]
+use std.[DefHashBuilder, Hash, HashBuilder, Option, Shows]
 use std.cmp.Eq
 use std.mem.[Allocator, fillBytes, Heap, Layout]
-use std.text.String
 
 MapSlot[K: noref + Hash + Eq, V: noref]: mod enum
 {
@@ -71,43 +70,6 @@ HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy = DefHashBuilder, 
 		own self.data[search.index] = full(key, value)
 		self.count += 1
 		ret none
-	}
-	
-	get: fun(imm self, imm key: K) -> Option[imm[V]]
-	{
-		if self.capacity == 0
-			ret none
-		
-		val search = self.findSlot(imm key)
-		if !search.found
-			ret none
-		
-		ret match self.data[search.index]
-		{
-			full(_, val value) => some(imm value)
-			else => none
-		}
-	}
-	
-	contains: fun(imm self, imm key: K) -> bool => self.capacity > 0 && self.findSlot(imm key).found
-	
-	remove: fun(mut self, imm key: K) -> Option[V]
-	{
-		if self.capacity == 0
-			ret none
-		
-		val search = self.findSlot(imm key)
-		if !search.found
-			ret none
-		
-		val old = own self.data[search.index]
-		own self.data[search.index] = deleted
-		self.count -= 1
-		ret match old
-		{
-			full(_, val value) => some(value)
-			else => none
-		}
 	}
 	
 	hashOf: pvt fun(imm self, imm key: K) -> u64
@@ -200,11 +162,11 @@ HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy + new, A: Allocato
 	}
 }
 
-HashMap[String[S: Allocator + noref], V: noref, H: HashBuilder + copy, A: Allocator]: impl
+HashMap[K: noref + Hash + Eq + Shows[Q: Hash + Eq], V: noref, H: HashBuilder + copy, A: Allocator]: impl
 {
-	get: fun(imm self, key: str) -> Option[imm[V]]
+	get: fun(imm self, imm key: Q) -> Option[imm[V]]
 	{
-		val search = self.findText(key)
+		val search = self.findShown(imm key)
 		if !search.found
 			ret none
 
@@ -215,11 +177,11 @@ HashMap[String[S: Allocator + noref], V: noref, H: HashBuilder + copy, A: Alloca
 		}
 	}
 
-	contains: fun(imm self, key: str) -> bool => self.findText(key).found
+	contains: fun(imm self, imm key: Q) -> bool => self.findShown(imm key).found
 
-	remove: fun(mut self, key: str) -> Option[V]
+	remove: fun(mut self, imm key: Q) -> Option[V]
 	{
-		val search = self.findText(key)
+		val search = self.findShown(imm key)
 		if !search.found
 			ret none
 
@@ -233,7 +195,7 @@ HashMap[String[S: Allocator + noref], V: noref, H: HashBuilder + copy, A: Alloca
 		}
 	}
 
-	findText: pvt fun(imm self, key: str) -> SlotSearch
+	findShown: pvt fun(imm self, imm key: Q) -> SlotSearch
 	{
 		if self.capacity == 0
 			ret SlotSearch(0, false)
@@ -242,6 +204,7 @@ HashMap[String[S: Allocator + noref], V: noref, H: HashBuilder + copy, A: Alloca
 		key.hash(mut builder)
 		val mask = self.capacity - 1
 		var index = usize(builder.getHash() & u64(mask))
+		val matches = fun(imm shown: Q) -> bool => shown == key
 		loop
 		{
 			match self.data[index]
@@ -249,8 +212,7 @@ HashMap[String[S: Allocator + noref], V: noref, H: HashBuilder + copy, A: Alloca
 				empty => ret SlotSearch(index, false)
 				full(val stored, _) =>
 				{
-					val storedText: str = stored
-					if storedText == key
+					if stored.show(imm matches)
 						ret SlotSearch(index, true)
 				}
 				else => { }

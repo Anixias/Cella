@@ -1,9 +1,8 @@
 ﻿mod std.containers
 
-use std.[DefHashBuilder, Hash, HashBuilder]
+use std.[DefHashBuilder, Hash, HashBuilder, Shows]
 use std.cmp.Eq
 use std.mem.[Allocator, fillBytes, Heap, Layout]
-use std.text.String
 
 SetSlot[T: noref + Hash + Eq]: mod enum
 {
@@ -61,23 +60,6 @@ HashSet[T: noref + Hash + Eq, H: HashBuilder + copy = DefHashBuilder, A: Allocat
 
 		own self.data[search.index] = full(value)
 		self.count += 1
-		ret true
-	}
-
-	contains: fun(imm self, imm value: T) -> bool => self.capacity > 0 && self.findSlot(imm value).found
-
-	remove: fun(mut self, imm value: T) -> bool
-	{
-		if self.capacity == 0
-			ret false
-
-		val search = self.findSlot(imm value)
-		if !search.found
-			ret false
-
-		drop self.data[search.index]
-		own self.data[search.index] = deleted
-		self.count -= 1
 		ret true
 	}
 
@@ -167,13 +149,13 @@ HashSet[T: noref + Hash + Eq, H: HashBuilder + copy + new, A: Allocator + new]: 
 	}
 }
 
-HashSet[String[S: Allocator + noref], H: HashBuilder + copy, A: Allocator]: impl
+HashSet[T: noref + Hash + Eq + Shows[Q: Hash + Eq], H: HashBuilder + copy, A: Allocator]: impl
 {
-	contains: fun(imm self, value: str) -> bool => self.findText(value).found
+	contains: fun(imm self, imm value: Q) -> bool => self.findShown(imm value).found
 
-	remove: fun(mut self, value: str) -> bool
+	remove: fun(mut self, imm value: Q) -> bool
 	{
-		val search = self.findText(value)
+		val search = self.findShown(imm value)
 		if !search.found
 			ret false
 
@@ -183,7 +165,7 @@ HashSet[String[S: Allocator + noref], H: HashBuilder + copy, A: Allocator]: impl
 		ret true
 	}
 
-	findText: pvt fun(imm self, value: str) -> SetSearch
+	findShown: pvt fun(imm self, imm value: Q) -> SetSearch
 	{
 		if self.capacity == 0
 			ret SetSearch(0, false)
@@ -192,6 +174,7 @@ HashSet[String[S: Allocator + noref], H: HashBuilder + copy, A: Allocator]: impl
 		value.hash(mut builder)
 		val mask = self.capacity - 1
 		var index = usize(builder.getHash() & u64(mask))
+		val matches = fun(imm shown: Q) -> bool => shown == value
 		loop
 		{
 			match self.data[index]
@@ -199,8 +182,7 @@ HashSet[String[S: Allocator + noref], H: HashBuilder + copy, A: Allocator]: impl
 				empty => ret SetSearch(index, false)
 				full(val stored) =>
 				{
-					val storedText: str = stored
-					if storedText == value
+					if stored.show(imm matches)
 						ret SetSearch(index, true)
 				}
 				else => { }

@@ -1,6 +1,6 @@
 ﻿mod std.text
 
-use std.[Hash, HashBuilder, View]
+use std.[Hash, HashBuilder, Shows, View]
 use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout]
 
@@ -59,6 +59,15 @@ String[A: Allocator = Heap]: pub own rec
 String[A: Allocator]: impl Hash
 {
 	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...self)
+}
+
+String[A: Allocator]: impl Shows[str]
+{
+	show: fun(imm self, imm check: fun[imm str -> bool]) -> bool
+	{
+		val text: str = self
+		ret check(imm text)
+	}
 }
 
 String[A: Allocator]: impl Eq
