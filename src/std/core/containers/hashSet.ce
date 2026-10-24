@@ -1,0 +1,196 @@
+﻿mod std.containers
+
+use std.[DefHashBuilder, Hash, HashBuilder]
+use std.cmp.Eq
+use std.mem.[Allocator, fillBytes, Heap, Layout]
+
+SetSlot[T: noref + Hash + Eq]: mod enum
+{
+	empty
+	deleted
+	full(value: T)
+}
+
+SetSearch: pvt rec
+{
+	index: usize
+	found: bool
+}
+
+HashSet[T: noref + Hash + Eq, H: HashBuilder + copy = DefHashBuilder, A: Allocator = Heap]: pub own rec
+{
+	data: pvt ptr[SetSlot[T]]
+	count: pvt set usize
+	used: pvt usize
+	capacity: pvt set usize
+	hashBuilder: pvt H
+	alloc: pvt A
+
+	isEmpty: get(imm self) -> bool => self.count == 0
+
+	new: op(hashBuilder: H, alloc: A)
+	{
+		self.hashBuilder = hashBuilder
+		self.alloc = alloc
+
+		val layout = Layout.arrayOf[SetSlot[T]](0)
+		self.data = ptr[SetSlot[T]](self.alloc.allocate(layout))
+	}
+
+	drop: op
+	{
+		for i in 0..self.capacity
+			drop self.data[i]
+
+		val layout = Layout.arrayOf[SetSlot[T]](self.capacity)
+		self.alloc.release(self.data, layout)
+	}
+
+	insert: fun(mut self, value: T) -> bool
+	{
+		if (self.used + 1) * 4 > self.capacity * 3
+			self.grow()
+
+		val search = self.findSlot(imm value)
+		if search.found
+			ret false
+
+		if self.data[search.index] is empty
+			self.used += 1
+
+		own self.data[search.index] = full(value)
+		self.count += 1
+		ret true
+	}
+
+	contains: fun(imm self, imm value: T) -> bool => self.capacity > 0 && self.findSlot(imm value).found
+
+	remove: fun(mut self, imm value: T) -> bool
+	{
+		if self.capacity == 0
+			ret false
+
+		val search = self.findSlot(imm value)
+		if !search.found
+			ret false
+
+		drop self.data[search.index]
+		own self.data[search.index] = deleted
+		self.count -= 1
+		ret true
+	}
+
+	hashOf: pvt fun(imm self, imm value: T) -> u64
+	{
+		var builder = self.hashBuilder
+		value.hash(mut builder)
+		ret builder.getHash()
+	}
+
+	findSlot: pvt fun(imm self, imm value: T) -> SetSearch
+	{
+		val mask = self.capacity - 1
+		var index = usize(self.hashOf(imm value) & u64(mask))
+		var reusable = self.capacity
+		loop
+		{
+			match self.data[index]
+			{
+				empty => ret SetSearch(match reusable == self.capacity { true => index, else => reusable }, false)
+				deleted =>
+				{
+					if reusable == self.capacity
+						reusable = index
+				}
+				full(val stored) =>
+				{
+					if stored == value
+						ret SetSearch(index, true)
+				}
+			}
+
+			index = (index + 1) & mask
+		}
+	}
+
+	grow: pvt fun(mut self)
+	{
+		val oldData = self.data
+		val oldCapacity = self.capacity
+		var newCapacity = oldCapacity
+		if oldCapacity == 0
+			newCapacity = 8
+		else if self.count * 2 >= oldCapacity
+			newCapacity = oldCapacity * 2
+
+		val newLayout = Layout.arrayOf[SetSlot[T]](newCapacity)
+		self.data = ptr[SetSlot[T]](self.alloc.allocate(newLayout))
+		if self.data == null
+			panic "out of memory"
+
+		fillBytes(self.data, 0, newLayout.size)
+		self.capacity = newCapacity
+		self.used = self.count
+
+		for i in 0..oldCapacity
+		{
+			val slot = own oldData[i]
+			match slot
+			{
+				full(val value) => self.place(value)
+				else => { }
+			}
+		}
+
+		self.alloc.release(oldData, Layout.arrayOf[SetSlot[T]](oldCapacity))
+	}
+
+	place: pvt fun(mut self, value: T)
+	{
+		val mask = self.capacity - 1
+		var index = usize(self.hashOf(imm value) & u64(mask))
+		while !(self.data[index] is empty)
+			index = (index + 1) & mask
+
+		own self.data[index] = full(value)
+	}
+
+	in: op(imm self) -> HashSetCursor[T] => HashSetCursor[T](self.data, self.capacity)
+}
+
+HashSet[T: noref + Hash + Eq, H: HashBuilder + copy + new, A: Allocator + new]: impl
+{
+	new: op
+	{
+		self = HashSet[T, H, A](H(), A())
+	}
+}
+
+HashSetCursor[T: noref + Hash + Eq]: pub ref rec
+{
+	data: pvt ptr[SetSlot[T]]
+	length: pvt usize
+	position: pvt usize
+
+	new: mod op(data: ptr[SetSlot[T]], length: usize)
+	{
+		self.data = data
+		self.length = length
+		self.position = 0
+	}
+
+	for: op(mut self) -> bool
+	{
+		self.position += 1
+		while self.position <= self.length && !(self.data[self.position - 1] is full(_))
+			self.position += 1
+
+		ret self.position <= self.length
+	}
+
+	*: op(self) -> imm[T] => match self.data[self.position - 1]
+	{
+		full(val value) => imm value
+		else => panic "cursor is not on an element"
+	}
+}

@@ -1,8 +1,8 @@
 ﻿mod std.containers
 
+use std.[Option, Span, View]
 use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout, swap]
-use std.[Option, Span, View]
 
 List[T: noref, A: Allocator = Heap]: pub own rec
 {
