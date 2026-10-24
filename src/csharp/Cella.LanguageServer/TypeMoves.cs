@@ -176,7 +176,7 @@ public static class TypeMoves
 			
 			if (imports.Count > 0)
 				lines.AddRange([
-					..imports.OrderBy(PathOf, Comparer<string[]>.Create(ImportEdits.ComparePaths))
+					..imports.OrderBy(static import => import.Key, Comparer<string>.Create(ImportEdits.CompareModules))
 						.Select(static import => ImportLine(import.Key, import.Value)),
 					""
 				]);
@@ -258,9 +258,6 @@ public static class TypeMoves
 					: edit.NewText)));
 		}
 	}
-	
-	private static string[] PathOf(KeyValuePair<string, SortedSet<string>> import) =>
-		[..import.Key.Split('.'), import.Value.First()];
 	
 	private static string ImportLine(string module, SortedSet<string> names) =>
 		$"use {module}.{(names.Count == 1 ? names.First() : $"[{string.Join(", ", names)}]")}";

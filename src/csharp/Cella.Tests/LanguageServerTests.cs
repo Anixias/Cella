@@ -1501,6 +1501,21 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task InsertsImportsByModuleBeforeName()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "lib.ce"),
+			"mod test.lib\n\ngamma: pub fun -> i32 => 0\n", Token);
+		
+		await File.WriteAllTextAsync(Path.Combine(_directory, "cmp.ce"),
+			"mod test.lib.cmp\n\nEq: pub trait\n{\n}\n", Token);
+		
+		await InitializeAsync();
+		var items = await CompleteInAsync("mod test\n\nuse test.lib.cmp.Eq\n\nmain: fun -> i32 => gam|\n");
+		Assert.Equal("2:0-2:0 use test.lib.gamma\n", EditOf(items["gamma"]));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task CompletesUnqualifiedMembersOfEnclosingDeclarations()
 	{
 		await InitializeAsync();

@@ -49,8 +49,9 @@ public static class ImportEdits
 		
 		var newline = source.FindNewline();
 		var line = $"use {module}.{(sorted is [var only] ? only : $"[{string.Join(", ", sorted)}]")}";
-		string[] path = [..module.Split('.'), sorted[0]];
-		var next = imports.FirstOrDefault(candidate => ComparePaths(path, PathOf(candidate)) < 0);
+		var next = imports.FirstOrDefault(candidate =>
+			CompareImports(module, sorted[0], candidate.ModuleName.Text, FirstNameOf(candidate)) < 0);
+		
 		if (next.Import is not null)
 			yield return Insert(next.SourceLocation.Range.Start, line + newline);
 		else if (imports.Count > 0)
@@ -64,27 +65,28 @@ public static class ImportEdits
 	
 	public static IComparer<string> Comparer { get; } = Comparer<string>.Create(CompareNames);
 	
-	public static int ComparePaths(IReadOnlyList<string> left, IReadOnlyList<string> right)
+	public static int CompareModules(string left, string right)
 	{
-		for (var i = 0; i < Math.Min(left.Count, right.Count); i++)
+		var leftParts = left.Split('.');
+		var rightParts = right.Split('.');
+		for (var i = 0; i < Math.Min(leftParts.Length, rightParts.Length); i++)
 		{
-			if (CompareNames(left[i], right[i]) is not 0 and var result)
+			if (CompareNames(leftParts[i], rightParts[i]) is not 0 and var result)
 				return result;
 		}
 		
-		return left.Count.CompareTo(right.Count);
+		return leftParts.Length.CompareTo(rightParts.Length);
 	}
 	
-	private static string[] PathOf(ImportExpression import) =>
-	[
-		..import.ModuleName.Parts.Select(static part => part.Text),
-		import.Import switch
-		{
-			TokenImport single => single.Token.Text,
-			ListImport { Tokens: [var first, ..] } => first.Text,
-			_ => "*"
-		}
-	];
+	private static int CompareImports(string leftModule, string leftName, string rightModule, string rightName) =>
+		CompareModules(leftModule, rightModule) is not 0 and var result ? result : CompareNames(leftName, rightName);
+	
+	private static string FirstNameOf(ImportExpression import) => import.Import switch
+	{
+		TokenImport single => single.Token.Text,
+		ListImport { Tokens: [var first, ..] } => first.Text,
+		_ => Wildcard
+	};
 	
 	private static int CompareNames(string left, string right) =>
 		StringComparer.OrdinalIgnoreCase.Compare(left, right) is not 0 and var result
