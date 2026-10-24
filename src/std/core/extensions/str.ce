@@ -1,5 +1,6 @@
-﻿mod std.text
+﻿mod std.extensions
 
+use std.View
 use std.cmp.Eq
 
 StringComparison: pub enum
@@ -11,6 +12,8 @@ StringComparison: pub enum
 str: pub impl
 {
 	refEq: fun(imm left: str, imm right: str) -> bool => left.data == right.data
+	
+	as: op(imm self) -> View[u8] => View[u8](self.data, self.byteLength)
 }
 
 str: impl Eq

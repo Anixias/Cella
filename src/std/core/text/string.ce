@@ -1,5 +1,7 @@
 ﻿mod std.text
 
+use std.[Hash, HashBuilder, View]
+use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout]
 
 String[A: Allocator = Heap]: pub own rec
@@ -32,8 +34,6 @@ String[A: Allocator = Heap]: pub own rec
 			*(self.data + i) = text[i]
 	}
 	
-	as: op(imm self) -> str => str(self.data, self.length)
-	
 	drop: op
 	{
 		if self.data == null
@@ -42,6 +42,35 @@ String[A: Allocator = Heap]: pub own rec
 		val layout = Layout.arrayOf[u8](self.length)
 		self.alloc.release(self.data, layout)
 	}
+	
+	as: op(imm self) -> str => str(self.data, self.length)
+	as: op(imm self) -> View[u8] => View[u8](self.data, self.length)
+	
+	==[B: Allocator]: op(imm left: String[A], imm right: String[B]) -> bool
+	{
+		val leftText: str = left
+		val rightText: str = right
+		ret leftText == rightText
+	}
+	
+	!=[B: Allocator]: op(imm left: String[A], imm right: String[B]) -> bool => !(left == right)
+}
+
+String[A: Allocator]: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...self)
+}
+
+String[A: Allocator]: impl Eq
+{
+	==: op(imm left: String[A], imm right: String[A]) -> bool
+	{
+		val leftText: str = left
+		val rightText: str = right
+		ret leftText == rightText
+	}
+	
+	!=: op(imm left: String[A], imm right: String[A]) -> bool => !(left == right)
 }
 
 String[A: Allocator + default]: impl

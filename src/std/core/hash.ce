@@ -41,3 +41,8 @@ DefHashBuilder: pub rec impl HashBuilder
 {
 	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...getLittleBytes(self))
 }
+
+str: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...self)
+}
