@@ -1,0 +1,145 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Match: trait
+{
+	matches: fun(imm self, imm other: Self) -> bool
+}
+
+i64: impl Match
+{
+	matches: fun(imm self, imm other: i64) -> bool => self == other
+}
+
+i32: impl Match
+{
+	matches: fun(imm self, imm other: i32) -> bool => self == other
+}
+
+Shows[Q]: trait
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool
+}
+
+[T]: impl Shows[T]
+{
+	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm self)
+}
+
+Code: rec
+{
+	value: i32
+}
+
+Code: impl Shows[i32]
+{
+	show: fun(imm self, imm check: fun[imm i32 -> bool]) -> bool => check(imm self.value)
+}
+
+Holder[T]: rec
+{
+	value: T
+}
+
+Holder[T: Shows[Q]]: impl Shows[Q]
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool => self.value.show(imm check)
+}
+
+Pair[T]: rec
+{
+	first: T
+	second: T
+}
+
+Pair[T: Shows[Q: Match]]: impl
+{
+	contains: fun(imm self, imm value: Q) -> bool
+	{
+		val test = fun(imm item: Q) -> bool => item.matches(imm value)
+		ret self.first.show(imm test) || self.second.show(imm test)
+	}
+}
+
+Tag: rec
+{
+	value: i32
+}
+
+Tag: impl Shows[Holder[Tag]]
+{
+	show: fun(imm self, imm check: fun[imm Holder[Tag] -> bool]) -> bool => check(imm Holder(Tag(self.value + 100)))
+}
+
+Finds[Q]: trait
+{
+	finds: fun(imm self, imm value: Q) -> bool
+}
+
+[T: Shows[Q: Match]]: impl Finds[Q]
+{
+	finds: fun(imm self, imm value: Q) -> bool => self.show(fun(imm item: Q) -> bool => item.matches(imm value))
+}
+
+Echo[T]: rec
+{
+	value: T
+}
+
+Echo[T: Finds[Q]]: impl Shows[Q]
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool => false
+}
+
+Left[Q]: trait
+{
+	left: fun(imm self, imm value: Q) -> i32
+}
+
+Right[Q]: trait
+{
+	right: fun(imm self, imm value: Q) -> i32
+}
+
+[T: Right[Q]]: impl Left[Q]
+{
+	left: fun(imm self, imm value: Q) -> i32 => 1
+}
+
+[T: Left[Q]]: impl Right[Q]
+{
+	right: fun(imm self, imm value: Q) -> i32 => 2
+}
+
+i32: impl Left[bool]
+{
+	left: fun(imm self, imm value: bool) -> i32 => 3
+}
+
+main: fun -> i32
+{
+	val held = Pair(Holder(Code(1)), Holder(Code(2)))
+	printf("%d %d\n", held.contains(imm 2), held.contains(imm 3))
+
+	val deep = Pair(Holder(Holder(Code(5))), Holder(Holder(Code(6))))
+	printf("%d %d\n", deep.contains(imm 6), deep.contains(imm 7))
+
+	val wide = Pair(Holder(Holder(9i64)), Holder(Holder(8i64)))
+	printf("%d %d\n", wide.contains(5), wide.contains(8))
+
+	val single = Holder(Code(3))
+	printf("%d\n", single.show(fun(imm value: i32) -> bool => value == 3))
+
+	val wrapped = Holder(Tag(1))
+	printf("%d\n", wrapped.show(fun(imm inner: Holder[Tag]) -> bool => inner.value.value == 101))
+	printf("%d %d\n", Code(4).finds(imm 4), Holder(Code(4)).finds(imm 5))
+	printf("%d\n", Echo(Code(1)).show(fun(imm value: i32) -> bool => true))
+
+	val number = 5
+	printf("%d %d\n", number.left(imm true), number.right(imm true))
+	ret 0
+}

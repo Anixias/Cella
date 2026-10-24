@@ -96,6 +96,21 @@ Pair[T: Shows[Z]]: impl Named
 	name: fun(imm self) -> i32 => 0
 }
 
+Cover[T]: rec
+{
+	value: T
+}
+
+Cover[T: Shows[C]]: impl Shows[C]
+{
+	show: fun(imm self, imm check: fun[imm C -> bool]) -> bool => self.value.show(imm check)
+}
+
+Cover[T]: impl Shows[T]
+{
+	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm self.value)
+}
+
 choose[T: Shows[B]]: fun(imm value: T) -> i32 => 0
 
 Plain: rec

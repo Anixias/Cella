@@ -112,7 +112,7 @@ public sealed partial class SignatureCollector
 				: ResolveNestedTarget(impl, entry, context, ref nestedIndex))
 		];
 		
-		DeclareFreeParameters(impl, node, context with { ImplBlock = impl });
+		DeclareFreeParameters(impl, context with { ImplBlock = impl });
 		RegisterBounds(node.TypeParameters, impl.TypeParameters, context with { ImplBlock = impl });
 		RegisterBounds([..leaves], impl.NestedParameters, context with { ImplBlock = impl });
 		RegisterBounds([..TypeParameterNode.CollectDeclared(node.TypeParameters)], impl.FreeParameters,
@@ -145,6 +145,15 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			traits.Add(trait);
+			var used = trait.Arguments.SelectMany(TypePool.FindTypeParameters).ToHashSet();
+			if (impl.FreeParameters.FirstOrDefault(parameter => !used.Contains(parameter)) is { } unused)
+			{
+				Diagnostics.Add(new(DiagnosticSeverity.Error, traitNode.SourceLocation,
+					$"'{trait.Name}' has no argument using '{unused.Name}'"));
+				
+				continue;
+			}
+			
 			AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
 				traitNode.SourceLocation));
 		}
@@ -187,7 +196,7 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
-	private void DeclareFreeParameters(ImplSymbol impl, ImplNode node, ResolutionContext context)
+	private void DeclareFreeParameters(ImplSymbol impl, ResolutionContext context)
 	{
 		var unused = impl.FreeCandidates
 			.Where(candidate =>
@@ -208,13 +217,6 @@ public sealed partial class SignatureCollector
 				function.DeclaredTypeParameters = [..function.DeclaredTypeParameters.Where(p => !unused.Contains(p))];
 				function.TypeParameters = [..function.TypeParameters.Where(p => !unused.Contains(p))];
 			}
-		
-		if (node.Traits.IsEmpty)
-			return;
-		
-		foreach (var parameter in impl.FreeParameters)
-			Diagnostics.Add(new(DiagnosticSeverity.Error, parameter.Definition!.Value.SourceLocation,
-				"Cannot declare type parameters in trait impl constraints"));
 	}
 	
 	private static IEnumerable<FunctionSymbol> GetBlockFunctions(ImplSymbol impl) => impl.Functions

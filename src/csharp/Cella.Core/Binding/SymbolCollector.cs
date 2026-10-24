@@ -397,7 +397,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var traits = string.Join("+", node.Traits.Select(static trait => trait.SourceLocation.GetText().ToString()));
 		_typeStack.Push(node.Traits.IsEmpty ? target : $"{target}.{traits}");
 		_typeVisibilities.Push(Visibility.Public);
-		_typeParameters.Push(typeParameters);
+		_typeParameters.Push(node.Traits.IsEmpty ? typeParameters : typeParameters.AddRange(free).AddRange(candidates));
 		_freeParameters.Push(node.Traits.IsEmpty ? free.AddRange(candidates) : []);
 		var (functions, properties, constructors) = CollectMembers(node.Members);
 		_typeStack.Pop();

@@ -56,9 +56,9 @@ Box[T: noref, A: Allocator + new]: impl
 	}
 }
 
-Box[T: noref, A: Allocator]: impl Shows[T]
+Box[T: noref + Shows[Q], A: Allocator]: impl Shows[Q]
 {
-	show: fun(imm self, imm check: fun[imm T -> bool]) -> bool => check(imm *self)
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool => (*self).show(imm check)
 }
 
 Box[T: noref + Hash, A: Allocator]: impl Hash

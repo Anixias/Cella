@@ -296,7 +296,10 @@ public sealed partial class SignatureCollector
 	{
 		var renamed = TypePool.CreateMap(other.Parameters, [..conformance.Parameters]);
 		var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
-		var variables = new OrderedSet<TypeParameterSymbol>(conformance.Parameters);
+		var variables = new OrderedSet<TypeParameterSymbol>([
+			..conformance.Parameters, ..conformance.Impl?.FreeParameters ?? [], ..other.Impl?.FreeParameters ?? []
+		]);
+		
 		var pattern = GetPattern(conformance);
 		var otherPattern = GetPattern(other);
 		if (pattern.Length != otherPattern.Length)

@@ -13,10 +13,10 @@ Error at constraint_parameters.ce:50:2
 50 │ new: op(first: T)
      ╘═╛ Cannot declare constructors in blocks that declare 'Q'
 
-Error at constraint_parameters.ce:57:15
+Error at constraint_parameters.ce:57:32
 56 │ 
 57 │ Pair[T: Shows[R: Match]]: impl Describe
-                   ^ Cannot declare type parameters in trait impl constraints
+                                    ╘══════╛ 'Describe' has no argument using 'R'
 
 Error at constraint_parameters.ce:62:15
 61 │ 
@@ -63,25 +63,35 @@ Hint at constraint_parameters.ce:89:15
 89 │ Pair[T: Shows[item]]: impl
                    ╘══╛ 'item' doesn't match {PascalCase}
 
-Error at constraint_parameters.ce:94:15
+Error at constraint_parameters.ce:94:25
 93 │ 
 94 │ Pair[T: Shows[Z]]: impl Named
-                   ^ Cannot declare type parameters in trait impl constraints
+                             ╘═══╛ 'Named' has no argument using 'Z'
 
-Error at constraint_parameters.ce:99:17
-98 │ 
-99 │ choose[T: Shows[B]]: fun(imm value: T) -> i32 => 0
-                     ^ Type 'B' not found in this scope
+Error at constraint_parameters.ce:104:26
+103 │ 
+104 │ Cover[T: Shows[C]]: impl Shows[C]
+                               ╘══════╛ 'Cover[T]' implements 'Shows[T]' more than once
 
-Error at constraint_parameters.ce:110:16
-109 │ val numbers = Pair(1, 2)
-110 │ val a = plain.contains(imm 1)
+Error at constraint_parameters.ce:109:16
+108 │ 
+109 │ Cover[T]: impl Shows[T]
+                     ╘══════╛ 'Cover[T]' implements 'Shows[T]' more than once
+
+Error at constraint_parameters.ce:114:17
+113 │ 
+114 │ choose[T: Shows[B]]: fun(imm value: T) -> i32 => 0
+                      ^ Type 'B' not found in this scope
+
+Error at constraint_parameters.ce:125:16
+124 │ val numbers = Pair(1, 2)
+125 │ val a = plain.contains(imm 1)
                     ╘══════╛ 'contains' requires 'T: Shows[Q]'
                            | 'Plain' doesn't implement 'Shows[Q]'
 
-Error at constraint_parameters.ce:111:27
-110 │ val a = plain.contains(imm 1)
-111 │ val b = numbers.contains(imm 1.5)
+Error at constraint_parameters.ce:126:27
+125 │ val a = plain.contains(imm 1)
+126 │ val b = numbers.contains(imm 1.5)
                                ╘═════╛ Cannot convert type 'imm[f64]' to 'i32'
 
 [compilation failed]

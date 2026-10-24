@@ -24,10 +24,12 @@ public sealed partial class TypePool
 	{
 		conformanceCache?.Clear();
 		memberBlockCache?.Clear();
+		_conformanceInstances.Clear();
 		ConformanceVersion++;
 	}
 	
-	public bool IsSettled => _blanketBoundsInProgress.Count == 0 && _blanketLookupsInProgress.Count == 0;
+	public bool IsSettled => _blanketBoundsInProgress.Count == 0 && _blanketLookupsInProgress.Count == 0 &&
+	                         _instancesInProgress.Count == 0;
 	
 	private IReadOnlyList<T> Memoize<T>(Dictionary<TypeSymbol, IReadOnlyList<T>>? cache, TypeSymbol type,
 		Func<TypeSymbol, IEnumerable<T>> compute)
@@ -61,14 +63,73 @@ public sealed partial class TypePool
 	}
 	
 	private IEnumerable<Conformance> GetConformanceCandidates(TypeSymbol type) =>
-		type is TypeParameterSymbol ? [] : GetExplicitCandidates(type).Concat(_blanketConformances);
+		type is TypeParameterSymbol ? [] : GetExplicitCandidates(type).Concat(GetBlanketCandidates(type));
 	
-	private IReadOnlyList<Conformance> GetExplicitCandidates(TypeSymbol type) => type switch
+	private IEnumerable<Conformance> GetExplicitCandidates(TypeSymbol type) => Expand(type switch
 	{
 		ArrayType => _arrayConformances,
 		_ when IsTypedPointer(type) => _pointerConformances,
 		_ => _conformancesByTarget.GetValueOrDefault(type.OriginalDefinition) ?? []
-	};
+	}, type);
+	
+	private IEnumerable<Conformance> GetBlanketCandidates(TypeSymbol type) => Expand(_blanketConformances, type);
+	
+	private IEnumerable<Conformance> Expand(IEnumerable<Conformance> conformances, TypeSymbol type) =>
+		conformances.SelectMany(conformance =>
+			conformance.IsTemplate ? GetInstances(conformance, type) : [conformance]);
+	
+	private IReadOnlyList<Conformance> GetInstances(Conformance template, TypeSymbol type)
+	{
+		if (type is TypeParameterSymbol)
+			return [];
+		
+		if (_conformanceInstances.TryGetValue((template, type), out var cached))
+			return cached;
+		
+		if (!_instancesInProgress.Add((template, type)))
+			return [];
+		
+		IReadOnlyList<Conformance> instances;
+		try
+		{
+			instances = [..CreateInstances(template, type)];
+		}
+		finally
+		{
+			_instancesInProgress.Remove((template, type));
+		}
+		
+		if (IsSettled)
+			_conformanceInstances[(template, type)] = instances;
+		
+		return instances;
+	}
+	
+	private IEnumerable<Conformance> CreateInstances(Conformance template, TypeSymbol type)
+	{
+		var impl = template.Impl!;
+		ImmutableArray<TypeSymbol>? arguments = template.Target is TypeParameterSymbol
+			? [type]
+			: HasShape(template.Target, type)
+				? BindBlock(impl, GetShapeArguments(type))
+				: null;
+		
+		if (arguments is not { } bound)
+			return [];
+		
+		return FindFreeBindings(impl, bound)
+			.Select(binding => impl.FreeParameters.Select(parameter => binding.GetValueOrDefault(parameter)).ToList())
+			.Where(values => values.All(static value => value is not null))
+			.Select(static values => values.Select(static value => value!).ToImmutableArray())
+			.DistinctBy(static values => string.Join(",", values.Select(static value => value.Name)))
+			.Select(values => new Conformance(template.Trait, template.Arguments, template.Target,
+				[..template.Parameters, ..impl.FreeParameters], impl, template.Location)
+			{
+				Template = template,
+				FreeArguments = values,
+				IsImplied = template.IsImplied
+			});
+	}
 	
 	public IEnumerable<Conformance> FindConformances(TypeSymbol type) => type is TypeParameterSymbol
 		? []
@@ -77,7 +138,7 @@ public sealed partial class TypePool
 	private IEnumerable<Conformance> ComputeConformances(TypeSymbol type)
 	{
 		var explicitOnes = GetExplicitCandidates(type).Where(conformance => Matches(conformance, type)).ToList();
-		var blankets = _blanketConformances.Where(blanket => Matches(blanket, type)).ToList();
+		var blankets = GetBlanketCandidates(type).Where(blanket => Matches(blanket, type)).ToList();
 		return explicitOnes.Concat(blankets.Where(blanket =>
 			!explicitOnes.Any(conformance => Overrides(conformance, blanket, type)) &&
 			!blankets.Any(other => Overrides(other, blanket, type) && IsMoreConstrained(other, blanket))));
@@ -155,7 +216,10 @@ public sealed partial class TypePool
 		CreateMap(conformance.Parameters, GetTargetArguments(conformance, type));
 	
 	private ImmutableArray<TypeSymbol> GetTargetArguments(Conformance conformance, TypeSymbol type) =>
-		conformance.Target is TypeParameterSymbol ? [type] : BindArguments(conformance.Impl, GetShapeArguments(type));
+	[
+		..conformance.Target is TypeParameterSymbol ? [type] : BindArguments(conformance.Impl, GetShapeArguments(type)),
+		..conformance.FreeArguments
+	];
 	
 	private ImmutableArray<TypeSymbol> BindArguments(ImplSymbol? impl, ImmutableArray<TypeSymbol> arguments) =>
 		impl is not null && BindBlock(impl, arguments) is { } bound ? bound : arguments;
@@ -336,7 +400,7 @@ public sealed partial class TypePool
 		
 		try
 		{
-			var blankets = _blanketConformances.Where(blanket => Provides(blanket, type, trait)).ToList();
+			var blankets = GetBlanketCandidates(type).Where(blanket => Provides(blanket, type, trait)).ToList();
 			return blankets.FirstOrDefault(blanket => !blankets.Any(other => IsMoreConstrained(other, blanket)));
 		}
 		finally
@@ -371,11 +435,22 @@ public sealed partial class TypePool
 	public TraitType GetConformanceTrait(Conformance conformance, TypeSymbol type) =>
 		GetTraitType(conformance.Trait, GetConformanceArguments(conformance, type));
 	
-	private bool Matches(Conformance conformance, TypeSymbol type) => conformance.Target is TypeParameterSymbol
-		? type is not TypeParameterSymbol && Satisfies(conformance.Parameters, [type])
-		: type is not TypeParameterSymbol && HasShape(conformance.Target, type) &&
-		  (conformance.Impl is null ? GetShapeArguments(type) : BindBlock(conformance.Impl, GetShapeArguments(type)))
-		  is { } arguments && Satisfies(conformance.Parameters, arguments);
+	private bool Matches(Conformance conformance, TypeSymbol type) => !conformance.IsTemplate &&
+	                                                                  (conformance.Target is TypeParameterSymbol
+		                                                                  ? type is not TypeParameterSymbol &&
+		                                                                    Satisfies(conformance.Parameters,
+			                                                                    [type, ..conformance.FreeArguments])
+		                                                                  : type is not TypeParameterSymbol &&
+		                                                                    HasShape(conformance.Target, type) &&
+		                                                                    (conformance.Impl is null
+			                                                                    ? GetShapeArguments(type)
+			                                                                    : BindBlock(conformance.Impl,
+				                                                                    GetShapeArguments(type)))
+		                                                                    is { } arguments &&
+		                                                                    Satisfies(conformance.Parameters,
+		                                                                    [
+			                                                                    ..arguments, ..conformance.FreeArguments
+		                                                                    ]));
 	
 	private static bool HasShape(TypeSymbol target, TypeSymbol type) =>
 		target is ArrayType ? type is ArrayType
@@ -634,16 +709,34 @@ public sealed partial class TypePool
 		if (witness.Impl is { } blanket && GetMemberBlockTarget(blanket) is TypeParameterSymbol)
 			return [self, ..declared];
 		
-		if (witness.Impl is null || FindConformance(self, witness.Impl) is not { } conformance)
-			return [..BindArguments(witness.Impl, GetShapeArguments(self)), ..declared];
+		ImmutableArray<TypeSymbol> outer = witness.Impl is { Node.Traits.IsEmpty: false } traitImpl
+			? [..traitImpl.FreeParameters]
+			: [];
+		
+		if (witness.Impl is null || FindConformance(self, witness.Impl, traitArguments) is not { } conformance)
+			return [..BindArguments(witness.Impl, GetShapeArguments(self)), ..outer, ..declared];
 		
 		var map = CreateMap(conformance.Parameters, GetTargetArguments(conformance, self));
-		return [..witness.Impl.TypeParameters.Select(parameter => map[parameter]), ..declared];
+		return
+		[
+			..witness.Impl.TypeParameters.Select(parameter => map[parameter]),
+			..outer.Select(parameter => map.GetValueOrDefault((TypeParameterSymbol)parameter, parameter)),
+			..declared
+		];
 	}
 	
-	private Conformance? FindConformance(TypeSymbol self, ImplSymbol impl) =>
-		GetConformanceCandidates(self)
-			.FirstOrDefault(conformance => conformance.Impl == impl && Matches(conformance, self));
+	private Conformance? FindConformance(TypeSymbol self, ImplSymbol impl, ImmutableArray<TypeSymbol> traitArguments)
+	{
+		var matching = GetConformanceCandidates(self)
+			.Where(conformance => conformance.Impl == impl && Matches(conformance, self))
+			.ToList();
+		
+		return traitArguments.IsDefaultOrEmpty
+			? matching.FirstOrDefault()
+			: matching.FirstOrDefault(conformance =>
+				  GetConformanceArguments(conformance, self).SequenceEqual(traitArguments)) ??
+			  matching.FirstOrDefault();
+	}
 	
 	public IReadOnlyList<FunctionInfo> GetConstructors(TypeSymbol type)
 	{

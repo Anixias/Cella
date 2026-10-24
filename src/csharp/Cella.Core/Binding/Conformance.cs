@@ -16,6 +16,9 @@ public sealed class Conformance
 	SourceLocation location
 )
 {
+	private readonly Dictionary<FunctionSymbol, Witness> _witnesses = [];
+	private readonly Dictionary<GlobalSymbol, GlobalSymbol> _constantWitnesses = [];
+	
 	public TraitSymbol Trait { get; } = trait;
 	public ImmutableArray<TypeSymbol> Arguments { get; } = arguments;
 	public TypeSymbol Target { get; } = target;
@@ -23,8 +26,14 @@ public sealed class Conformance
 	public ImplSymbol? Impl { get; } = impl;
 	public SourceLocation Location { get; } = location;
 	public bool IsImplied { get; init; }
-	public Dictionary<FunctionSymbol, Witness> Witnesses { get; } = [];
-	public Dictionary<GlobalSymbol, GlobalSymbol> ConstantWitnesses { get; } = [];
+	public Conformance? Template { get; init; }
+	public ImmutableArray<TypeSymbol> FreeArguments { get; init; } = [];
+	public bool IsTemplate => Template is null && Impl is { FreeParameters.IsEmpty: false };
+	public Dictionary<FunctionSymbol, Witness> Witnesses => Template?._witnesses ?? _witnesses;
+	
+	public Dictionary<GlobalSymbol, GlobalSymbol> ConstantWitnesses =>
+		Template?._constantWitnesses ?? _constantWitnesses;
+	
 	public ErrorContainment.Owner Owner { get; set; }
 }
 

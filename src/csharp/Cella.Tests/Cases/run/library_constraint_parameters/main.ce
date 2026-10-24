@@ -23,5 +23,7 @@ main: fun -> i32
 	val numbers = lib.Pair(4, 5)
 	printf("%d %d %d %d %d\n", cells.contains(imm 3), cells.contains(imm 4), numbers.contains(imm 5),
 		numbers.contains(imm 6), lib.hasSeven())
+	val held = lib.Pair(lib.Holder(lib.Holder(Cell(6))), lib.Holder(lib.Holder(Cell(7))))
+	printf("%d %d\n", held.contains(imm 7), held.contains(imm 8))
 	ret 0
 }

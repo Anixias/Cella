@@ -35,4 +35,14 @@ Pair[T: Shows[Q: Match]]: impl
 	}
 }
 
+Holder[T]: pub rec
+{
+	value: T
+}
+
+Holder[T: Shows[Q]]: impl Shows[Q]
+{
+	show: fun(imm self, imm check: fun[imm Q -> bool]) -> bool => self.value.show(imm check)
+}
+
 hasSeven: pub fun -> bool => Pair(7, 8).contains(imm 7)
