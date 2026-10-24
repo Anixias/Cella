@@ -165,7 +165,9 @@ internal fun parseStructure(source: StructureSource) {
 	while (blocks.isNotEmpty()) {
 		val block = blocks.removeLast()
 		block.statement?.marker?.drop()
-		block.owner?.let { finish(it) }
+		val owner = block.owner ?: continue
+		finish(owner)
+		blocks.lastOrNull()?.takeIf { it.statement === owner }?.statement = null
 	}
 }
 

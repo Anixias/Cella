@@ -41,7 +41,8 @@ class CellaStructureTest {
 				}
 				
 				override fun drop() {
-					open.remove(start)
+					assertTrue(open.any { it === start }, "the marker was already closed")
+					open.removeIf { it === start }
 				}
 			}
 		}
@@ -60,9 +61,7 @@ class CellaStructureTest {
 		return source.declarations.sortedBy { it.first }.map { text.substring(it.first).lineSequence().first().trim() }
 	}
 	
-	@Test
-	fun findsNestedDeclarations() {
-		val text = """
+	private val sample = """
 			mod test
 
 			Point: rec
@@ -110,8 +109,10 @@ class CellaStructureTest {
 				{
 				}
 			}
-		""".trimIndent()
-
+	""".trimIndent()
+	
+	@Test
+	fun findsNestedDeclarations() {
 		assertEquals(listOf(
 			"Point: rec",
 			"Point: impl Show",
@@ -123,7 +124,16 @@ class CellaStructureTest {
 			"Pair[T]: impl Show { describe: fun -> str { ret \"\" } }",
 			"describe: fun -> str { ret \"\" } }",
 			"main: fun"
-		), headers(text))
+		), headers(sample))
+	}
+	
+	@Test
+	fun survivesEveryPrefixAndDeletion() {
+		for (end in 0..sample.length)
+			headers(sample.substring(0, end))
+		
+		for (index in sample.indices)
+			headers(sample.removeRange(index, index + 1))
 	}
 
 	@Test
@@ -131,5 +141,24 @@ class CellaStructureTest {
 		assertEquals(listOf("main: fun", "inner: fun"), headers("main: fun\n{\n\tinner: fun\n\t{\n\t\tret\n"))
 		assertEquals(listOf("main: fun"), headers("main: fun\n{\n}\n}\n}\n"))
 		assertEquals(emptyList(), headers("{ ( } ] )"))
+		assertEquals(listOf("pvt ext", "File: own rec", "drop: op"), headers("""
+			mod std.fs
+			
+			when windows
+			{
+			pvt ext
+			{
+				CloseHandle: fun(handle: ptr) -> i32
+			}
+			
+			File: own rec
+			{
+				new: pvt op = default
+				
+				drop: op
+				{
+				}
+			}
+		""".trimIndent()))
 	}
 }
