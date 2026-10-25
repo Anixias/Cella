@@ -187,6 +187,11 @@ public sealed partial class Resolver
 		}
 	}
 	
+	private IResolvedExpressionNode PreferSymbol(IResolvedExpressionNode operand) =>
+		operand is ResolvedCaseNameExpressionNode { Symbol: not null } caseName
+			? Decay(GetFallback(caseName))
+			: operand;
+	
 	private IResolvedExpressionNode VisitRightOperand(IExpressionNode syntax, Token op, IResolvedExpressionNode left)
 	{
 		var leftType = left.Type;
@@ -219,6 +224,14 @@ public sealed partial class Resolver
 		
 		if (FoldLiterals(node, op.Type, left, right) is { } folded)
 			return folded;
+		
+		if (left is ResolvedCaseNameExpressionNode && right is ResolvedCaseNameExpressionNode)
+		{
+			left = PreferSymbol(left);
+			right = PreferSymbol(right);
+			if (AnyInvalid(left, right))
+				return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		}
 		
 		if (survey is { } activeSurvey && left.Type is UntypedType && right.Type is UntypedType)
 		{

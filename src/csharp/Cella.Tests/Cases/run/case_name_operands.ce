@@ -1,0 +1,32 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Small: ext enum(u8)
+{
+	a = 1
+	b = 2
+}
+
+Team: enum
+{
+	red
+	blue
+}
+
+same: fun(a: i32, b: i32) -> bool => a == b
+
+different: fun(a: i32, b: i32) -> bool => a != b
+
+teams: fun(red: Team, blue: Team) -> bool => red == blue
+
+partial: fun(a: Small) -> bool => a == b
+
+main: fun
+{
+	printf("%d %d %d\n", i32(same(1, 1)), i32(same(1, 2)), i32(different(3, 4)))
+	printf("%d %d %d\n", i32(teams(Team.red, Team.red)), i32(teams(Team.red, Team.blue)), i32(partial(Small.b)))
+}
