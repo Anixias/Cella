@@ -1,0 +1,53 @@
+Error at derived_type_parameters.ce:34:1
+33 │ 
+34 │ Wrapper[H]: impl
+     ╘═════╛ 'Wrapper' requires 'H: Holds[T]'
+           | 'H' doesn't implement 'Holds[T]'
+
+Error at derived_type_parameters.ce:39:19
+38 │ 
+39 │ repeated[A: Holds[T: copy], B: Holds[T: copy]]: fun(left: A, right: B) -> i32 => 0
+                       ^ Type parameter 'T' is declared more than once
+
+Error at derived_type_parameters.ce:39:38
+38 │ 
+39 │ repeated[A: Holds[T: copy], B: Holds[T: copy]]: fun(left: A, right: B) -> i32 => 0
+                                          ^ Type parameter 'T' is declared more than once
+
+Error at derived_type_parameters.ce:41:8
+40 │ 
+41 │ nested[Wrapper[H]]: fun(value: i32) -> i32 => 0
+            ╘═════╛ Cannot declare nested type parameters outside impl blocks
+
+Error at derived_type_parameters.ce:45:10
+44 │ {
+45 │     val _ = first(Both(1))
+                 ╘═══╛ Cannot infer 'T' for 'first'
+
+Error at derived_type_parameters.ce:46:9
+45 │ val _ = first(Both(1))
+46 │ val _: Wrapper[Both] = Wrapper(Both(1))
+            ╘═══════════╛ Cannot infer 'T' for 'Wrapper'
+
+Error at derived_type_parameters.ce:46:25
+45 │ val _ = first(Both(1))
+46 │ val _: Wrapper[Both] = Wrapper(Both(1))
+                            ╘═════╛ Cannot infer 'T' for 'Wrapper'
+
+Error at derived_type_parameters.ce:47:17
+46 │ val _: Wrapper[Both] = Wrapper(Both(1))
+47 │ val _: Wrapper[Box, i64] = Wrapper(Box(1))
+                    ╘═╛ 'Wrapper' requires 'H: Holds[i64]'
+                      | 'Box' doesn't implement 'Holds[i64]'
+
+Error at derived_type_parameters.ce:48:9
+47 │ val _: Wrapper[Box, i64] = Wrapper(Box(1))
+48 │ val _: Wrapper[Box, i32, u8] = Wrapper(Box(1))
+            ╘═══════════════════╛ 'Wrapper' takes 1 or 2 generic arguments
+
+Error at derived_type_parameters.ce:49:15
+48 │ val _: Wrapper[Box, i32, u8] = Wrapper(Box(1))
+49 │ val _: i32 = Wrapper(Box(1))
+                  ╘═════════════╛ Cannot convert type 'Wrapper[Box]' to 'i32'
+
+[compilation failed]

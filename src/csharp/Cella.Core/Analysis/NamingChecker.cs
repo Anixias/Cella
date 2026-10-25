@@ -40,6 +40,28 @@ public sealed class NamingChecker(IReadOnlyDictionary<NamingCategory, NamingPatt
 		return [.._diagnostics];
 	}
 	
+	public IReadOnlyList<Diagnostic> CheckDerivedTypeParameters(IEnumerable<FileNode> files,
+		Func<IDeclarationNode, IEnumerable<Token>> derivedNames)
+	{
+		_diagnostics.Clear();
+		foreach (var declaration in files.SelectMany(static file => file.Declarations).SelectMany(WithMembers))
+		{
+			foreach (var name in derivedNames(declaration))
+				CheckName(name, NamingCategory.TypeParameters);
+		}
+		
+		return [.._diagnostics];
+	}
+	
+	private static IEnumerable<IDeclarationNode> WithMembers(IDeclarationNode declaration) => declaration switch
+	{
+		RecordNode record => record.Members.Prepend(declaration),
+		EnumNode enumNode => enumNode.Members.Prepend(declaration),
+		TraitNode trait => trait.Members.Prepend(declaration),
+		ImplNode impl => impl.Members,
+		_ => [declaration]
+	};
+	
 	private void CheckDeclarations(IEnumerable<IDeclarationNode> declarations, bool isTraitImpl)
 	{
 		foreach (var declaration in declarations)

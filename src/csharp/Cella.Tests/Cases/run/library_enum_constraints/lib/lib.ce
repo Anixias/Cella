@@ -1,0 +1,31 @@
+mod lib
+
+Integral: pub trait req copy
+{
+	|: op(a: Self, b: Self) -> Self
+}
+
+u32: impl const Integral
+
+BitSet[T: const Integral]: pub trait req ext + enum(T)
+{
+	|: const op(a: Self, b: Self) -> Self => Self(T(a) | T(b))
+}
+
+Holds[T]: pub trait
+{
+	get: fun(self) -> T
+}
+
+Wrapper[H: Holds[T]]: pub rec
+{
+	inner: H
+	
+	read: fun(self) -> T => self.inner.get()
+}
+
+combine[E: BitSet[T], T: const Integral]: pub fun(left: E, right: E) -> E => left | right
+
+tagOf[E: enum(T), T]: pub fun(value: E) -> T => T(value)
+
+first[H: Holds[T]]: pub fun(holder: H) -> T => holder.get()

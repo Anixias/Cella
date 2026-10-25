@@ -569,6 +569,10 @@ public sealed class SemanticModel
 			if (symbols.FirstOrDefault(symbol => symbol.Definition == node.Identifier) is { } symbol)
 				Add(node.Identifier, symbol, DescribeType(symbol));
 		}
+		
+		foreach (var derived in symbols.Where(static symbol => symbol.IsDerived))
+			if (derived.Definition is { } definition)
+				Add(definition, derived, DescribeType(derived));
 	}
 	
 	private void AddFunction(FunctionInfo info)

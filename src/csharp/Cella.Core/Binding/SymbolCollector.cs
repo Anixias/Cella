@@ -21,15 +21,45 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	public SymbolTable Build() => _builder.Build();
 	
 	public static ImmutableArray<TypeParameterSymbol> CreateTypeParameters(
-		ImmutableArray<TypeParameterNode> parameters, string owner) => parameters
+		ImmutableArray<TypeParameterNode> parameters, string owner, bool isDerived = false) => parameters
 		.Select(parameter => new TypeParameterSymbol(parameter.Identifier.Text, GetConstraintKeywords(parameter))
 		{
 			IsValue = parameter.ValueType is not null,
 			DeclaresDefault = parameter.DefaultType is not null || parameter.DefaultValue is not null,
+			IsDerived = isDerived,
 			Owner = owner,
 			Definition = parameter.Identifier
 		})
 		.ToImmutableArray();
+	
+	private static ImmutableArray<TypeParameterSymbol> CreateDerivedParameters(
+		ImmutableArray<TypeParameterNode> nodes, string owner, IEnumerable<string> outer)
+	{
+		ImmutableArray<TypeParameterNode> declared = [..TypeParameterNode.CollectDeclared(nodes)];
+		var known = nodes.Concat(declared)
+			.Select(static node => node.Identifier.Text)
+			.Concat(outer)
+			.ToHashSet();
+		
+		return
+		[
+			..CreateTypeParameters(declared, owner, true),
+			..TypeParameterNode.CollectBareNames(nodes)
+				.Where(name => !known.Contains(name.Text))
+				.DistinctBy(static name => name.Text)
+				.Select(name => new TypeParameterSymbol(name.Text, [])
+				{
+					IsDerived = true,
+					IsImplicit = true,
+					Owner = owner,
+					Definition = name
+				})
+		];
+	}
+	
+	private static ImmutableArray<TypeParameterSymbol> CreateAllTypeParameters(ImmutableArray<TypeParameterNode> nodes,
+		string owner, IEnumerable<string> outer) =>
+		CreateTypeParameters(nodes, owner).AddRange(CreateDerivedParameters(nodes, owner, outer));
 	
 	private static IEnumerable<Token> GetConstraintKeywords(TypeParameterNode parameter) => parameter.Keywords.Concat(
 		parameter.Constructors.Where(static constructor => constructor.Types.IsEmpty)
@@ -136,7 +166,8 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 			? GetMemberVisibility(node.Visibility ?? property?.Visibility)
 			: Visibility.FromKeyword(node.Visibility);
 		
-		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text)
+		var typeParameters = CreateAllTypeParameters(node.TypeParameters, node.Identifier.Text,
+				CurrentTypeParameters.Select(static parameter => parameter.Name))
 			.AddRange(_freeParameters.TryPeek(out var free) ? free : []);
 		
 		var function = new FunctionSymbol(name, node, visibility, null, parameters, kind)
@@ -228,7 +259,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 	{
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
+		var typeParameters = CreateAllTypeParameters(node.TypeParameters, node.Identifier.Text, []);
 		_typeParameters.Push(typeParameters);
 		var members = new List<MemberSymbol>(node.Members.Length);
 		var statics = new List<GlobalSymbol>();
@@ -294,7 +325,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
-		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
+		var typeParameters = CreateAllTypeParameters(node.TypeParameters, node.Identifier.Text, []);
 		_typeParameters.Push(typeParameters);
 		var functions = new List<MethodSymbol>();
 		var statics = new List<GlobalSymbol>();
@@ -342,7 +373,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		var self = new TypeParameterSymbol("Self", GetConstraintKeywords(node.Requirements)
 			.Where(static keyword => keyword.Type != TokenType.KeywordTrait)) { IsSelf = true };
 		
-		var typeParameters = CreateTypeParameters(node.TypeParameters, node.Identifier.Text);
+		var typeParameters = CreateAllTypeParameters(node.TypeParameters, node.Identifier.Text, [self.Name]);
 		_typeStack.Push(node.Identifier.Text);
 		_typeVisibilities.Push(Visibility.FromKeyword(node.Visibility));
 		_typeParameters.Push([self, ..typeParameters]);

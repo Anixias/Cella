@@ -52,6 +52,7 @@ public sealed partial class FileParser
 			var constantTraits = new List<ITypeNode>();
 			var constructors = new List<ConstructorConstraintNode>();
 			var declared = new List<TypeParameterNode>();
+			var enumTags = new List<ITypeNode>();
 			ITypeNode? valueType = null;
 			var hasConstraints = Match(ref index, TokenType.OpColon);
 			if (isValue && !hasConstraints)
@@ -66,8 +67,8 @@ public sealed partial class FileParser
 			
 			if (isValue
 				    ? (valueType = ParseConstraintType(ref index)) is null
-				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false, declared,
-					    constantTraits))
+				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, enumTags, false,
+					    declared, constantTraits))
 			{
 				if (IsOnSameLine(index))
 					return null;
@@ -75,7 +76,8 @@ public sealed partial class FileParser
 				parameters.Add(new(name, keywords, traits, constructors)
 				{
 					Declared = [..declared],
-					ConstantTraits = [..constantTraits]
+					ConstantTraits = [..constantTraits],
+					EnumTag = enumTags.FirstOrDefault()
 				});
 				
 				isPartial = true;
@@ -102,7 +104,8 @@ public sealed partial class FileParser
 				{
 					ValueType = valueType,
 					Declared = [..declared],
-					ConstantTraits = [..constantTraits]
+					ConstantTraits = [..constantTraits],
+					EnumTag = enumTags.FirstOrDefault()
 				});
 				
 				isPartial = true;
@@ -115,7 +118,8 @@ public sealed partial class FileParser
 				DefaultType = defaultType,
 				DefaultValue = defaultValue,
 				Declared = [..declared],
-				ConstantTraits = [..constantTraits]
+				ConstantTraits = [..constantTraits],
+				EnumTag = enumTags.FirstOrDefault()
 			});
 		} while (MatchSeparator(ref index, TokenType.OpCloseBracket));
 		
@@ -128,8 +132,8 @@ public sealed partial class FileParser
 	}
 	
 	private bool ParseConstraints(ref int index, List<Token> keywords, List<ITypeNode> traits,
-		List<ConstructorConstraintNode> constructors, bool isOnOneLine, List<TypeParameterNode>? declared = null,
-		List<ITypeNode>? constantTraits = null)
+		List<ConstructorConstraintNode> constructors, List<ITypeNode> enumTags, bool isOnOneLine,
+		List<TypeParameterNode>? declared = null, List<ITypeNode>? constantTraits = null)
 	{
 		do
 		{
@@ -147,6 +151,12 @@ public sealed partial class FileParser
 					return false;
 				
 				constructors.Add(constructor);
+			}
+			else if (Match(ref index, out var enumKeyword, _constraintKeywords, TokenType.KeywordEnum))
+			{
+				keywords.Add(enumKeyword);
+				if (Peek(index, TokenType.OpOpenParen) && !ParseEnumTag(ref index, enumTags))
+					return false;
 			}
 			else if (!StartsExternalFunctionType(index) &&
 			         (Match(ref index, out var keyword, _constraintKeywords, _constraintTypes) ||
@@ -179,6 +189,32 @@ public sealed partial class FileParser
 		} while (isOnOneLine ? MatchOnLine(ref index, TokenType.OpPlus) : Match(ref index, TokenType.OpPlus));
 		
 		return true;
+	}
+	
+	private bool ParseEnumTag(ref int index, List<ITypeNode> enumTags)
+	{
+		var openParen = Tokens[index++];
+		if (Match(ref index, TokenType.OpCloseParen))
+		{
+			ReportEmptyParentheses(index - 2, index);
+			return true;
+		}
+		
+		if (!StartsType(index))
+		{
+			ReportExpected(index, "a type");
+			return false;
+		}
+		
+		if (ParseConstraintType(ref index) is not { } tag)
+			return false;
+		
+		enumTags.Add(tag);
+		if (Match(ref index, TokenType.OpCloseParen))
+			return true;
+		
+		ReportExpected(index, "')'", openParen);
+		return false;
 	}
 	
 	private ConstructorConstraintNode? ParseConstructorConstraint(ref int index, Token keyword)
@@ -252,9 +288,14 @@ public sealed partial class FileParser
 		var traits = new List<ITypeNode>();
 		var constructors = new List<ConstructorConstraintNode>();
 		var declared = new List<TypeParameterNode>();
+		var enumTags = new List<ITypeNode>();
 		var reported = Diagnostics.Count;
-		if (ParseConstraints(ref index, keywords, traits, constructors, false, declared))
-			return new(name, keywords, traits, constructors) { Declared = [..declared] };
+		if (ParseConstraints(ref index, keywords, traits, constructors, enumTags, false, declared))
+			return new(name, keywords, traits, constructors)
+			{
+				Declared = [..declared],
+				EnumTag = enumTags.FirstOrDefault()
+			};
 		
 		if (Diagnostics.Count == reported)
 			ReportExpected(index, "a constraint");

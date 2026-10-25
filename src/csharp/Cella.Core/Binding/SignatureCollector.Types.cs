@@ -393,6 +393,7 @@ public sealed partial class SignatureCollector
 	private static IEnumerable<Diagnostic>
 		ReportDuplicateTypeParameters(ImmutableArray<TypeParameterNode> parameters) =>
 		parameters
+			.Concat(TypeParameterNode.CollectDeclared(parameters))
 			.GroupBy(static parameter => parameter.Identifier.Text)
 			.Where(static sameName => sameName.Count() > 1)
 			.SelectMany(static sameName => sameName.Select(ReportDuplicateTypeParameter));

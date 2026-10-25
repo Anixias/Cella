@@ -172,6 +172,8 @@ public sealed partial class Builder
 		diagnostics.Add(new(naming.CheckImplTypeParameters(files, signatureCollector.DeclaresTypeParameter,
 			signatureCollector.GetFreeParameterNames)));
 		
+		diagnostics.Add(new(naming.CheckDerivedTypeParameters(files, signatureCollector.GetDerivedParameterNames)));
+		
 		var assemblySymbol = signatureCollector.FinishAssembly(GetIdentity(project));
 		var plainNames = GetPlainNames(assemblySymbol);
 		ImmutableArray<string> containedNames = [..contained.Select(static library => library.Name)];

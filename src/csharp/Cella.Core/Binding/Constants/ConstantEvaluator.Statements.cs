@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Numerics;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
@@ -492,8 +491,8 @@ public sealed partial class ConstantEvaluator
 			value = step switch
 			{
 				FieldStep { Field: var field } => GetField(value, field),
-				ElementStep { Index: var index } => Index(value, new IntegerConstant(NativeSymbols.UIntSize, index)),
-				PayloadStep { Case: var enumCase, Index: var index } => GetPayload(value, enumCase, index),
+				ElementStep { Position: var index } => Index(value, new IntegerConstant(NativeSymbols.UIntSize, index)),
+				PayloadStep { Case: var enumCase, Position: var index } => GetPayload(value, enumCase, index),
 				_ => null
 			} ?? throw new AbortedEvaluation();
 		}
@@ -534,7 +533,7 @@ public sealed partial class ConstantEvaluator
 				fields[fieldIndex] = Replace(fields[fieldIndex], path, depth + 1, value);
 				return new RecordConstant(record.Type, fields);
 			
-			case ElementStep { Index: var index }:
+			case ElementStep { Position: var index }:
 				var array = current switch
 				{
 					ArrayConstant constant => constant,
@@ -547,7 +546,7 @@ public sealed partial class ConstantEvaluator
 				elements[index] = Replace(elements[index], path, depth + 1, value);
 				return new ArrayConstant(array.ArrayType, elements);
 			
-			case PayloadStep { Case: var enumCase, Index: var index }:
+			case PayloadStep { Case: var enumCase, Position: var index }:
 				var payload = current is EnumConstant { Case: var stored } enumValue && stored == enumCase
 					? enumValue.Payload.ToArray()
 					: typePool.GetPayloadTypes((EnumSymbol)current.Type, enumCase).Select(Zero).ToArray();

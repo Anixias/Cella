@@ -55,6 +55,9 @@ public sealed partial class TypePool
 		if (parameter.Declares(TokenType.KeywordExt) && !IsExtCompatible(argument))
 			return ("ext", $"'{name}' can't be used in 'ext' signatures");
 		
+		if (FindUnmetEnum(parameter, argument, map) is { } unmetEnum)
+			return unmetEnum;
+		
 		if (parameter.Declares(TokenType.KeywordNoref) && HoldsBorrows(argument))
 			return ("noref", HoldsBorrows(argument, false) ? $"'{name}' holds borrows" : $"'{name}' may hold borrows");
 		

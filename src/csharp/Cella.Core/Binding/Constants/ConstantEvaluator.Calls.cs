@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using System.Numerics;
 using System.Text;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
@@ -410,7 +409,7 @@ public sealed partial class ConstantEvaluator
 			_ => $"Panic in '{name}': {fault.Message}"
 		};
 		
-		if (fault.IsStatic || !_reportedFaults.Add((callSite, message)))
+		if (fault.IsChecked || !_reportedFaults.Add((callSite, message)))
 			return;
 		
 		var hints = fault.Kind is FaultKind.Steps or FaultKind.Depth || fault.Location == SourceLocation.None
@@ -433,7 +432,7 @@ public sealed partial class ConstantEvaluator
 			node.Syntax.SourceLocation)
 		{
 			Function = _frames.TryPeek(out var frame) ? frame.Function.Symbol.Name : null,
-			IsStatic = IsStatic(node)
+			IsChecked = IsStatic(node)
 		};
 	}
 	
@@ -454,10 +453,8 @@ public sealed partial class ConstantEvaluator
 	{
 		ResolvedTrapExpressionNode => "",
 		ResolvedIndexerExpressionNode => "index out of bounds",
-		ResolvedConversionExpressionNode
-			{
-				Conversion: EnumConversion { To: EnumSymbol { IsExternal: false } target }
-			} =>
+		ResolvedConversionExpressionNode { Conversion: EnumConversion conversion }
+			when SubstituteType(conversion.To) is EnumSymbol { IsExternal: false } target =>
 			$"'{target.Name}' has no case with this value",
 		ResolvedBinaryOpExpressionNode or ResolvedUnaryOpExpressionNode { Operation: NativeImpl } or
 			ResolvedConversionExpressionNode => DescribeFault(node),
@@ -544,9 +541,9 @@ public sealed partial class ConstantEvaluator
 	
 	private sealed record FieldStep(FieldSymbol Field) : PlaceStep;
 	
-	private sealed record ElementStep(int Index) : PlaceStep;
+	private sealed record ElementStep(int Position) : PlaceStep;
 	
-	private sealed record PayloadStep(EnumCaseSymbol Case, int Index) : PlaceStep;
+	private sealed record PayloadStep(EnumCaseSymbol Case, int Position) : PlaceStep;
 	
 	private sealed class ReferenceConstant(TypeSymbol type, Place place) : Constant(type)
 	{
@@ -566,7 +563,7 @@ public sealed partial class ConstantEvaluator
 		public FaultKind Kind { get; } = kind;
 		public SourceLocation Location { get; } = location;
 		public string? Function { get; init; }
-		public bool IsStatic { get; init; }
+		public bool IsChecked { get; init; }
 	}
 	
 	private sealed class AbortedEvaluation : Exception;

@@ -141,27 +141,65 @@ public sealed partial class TypePool
 	{
 		var map = CreateMap(parameters, arguments);
 		var shown = arguments.Length;
-		while (shown > 0 && shown <= parameters.Length && GetDefaultArgument(parameters[shown - 1]) is { } fallback &&
-		       Substitute(fallback, map) == arguments[shown - 1])
+		while (shown > 0 && shown <= parameters.Length && IsHiddenArgument(parameters, arguments, shown - 1, map))
 			shown--;
 		
 		return shown;
 	}
 	
+	private bool IsHiddenArgument(ImmutableArray<TypeParameterSymbol> parameters, ImmutableArray<TypeSymbol> arguments,
+		int index, Dictionary<TypeParameterSymbol, TypeSymbol> map) =>
+		GetDefaultArgument(parameters[index]) is { } fallback
+			? Substitute(fallback, map) == arguments[index]
+			: InferDerived(parameters, [..arguments.Take(index)]) == arguments[index];
+	
+	private TypeSymbol? InferDerived(ImmutableArray<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> known)
+	{
+		if (!parameters[known.Count].IsDerived)
+			return null;
+		
+		var inferred = new TypeSymbol?[parameters.Length];
+		for (var i = 0; i < known.Count; i++)
+			inferred[i] = known[i];
+		
+		new TypeInference(this).InferFromBounds(parameters, inferred);
+		return inferred[known.Count];
+	}
+	
 	public static int CountRequiredArguments(ImmutableArray<TypeParameterSymbol> parameters) =>
-		parameters.Count(static parameter => !parameter.DeclaresDefault);
+		parameters.Count(static parameter => parameter is { DeclaresDefault: false, IsDerived: false });
 	
 	public ImmutableArray<TypeSymbol>? CompleteArguments(ImmutableArray<TypeParameterSymbol> parameters,
-		IReadOnlyList<TypeSymbol> arguments, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? outer = null)
+		IReadOnlyList<TypeSymbol> arguments, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? outer = null) =>
+		CompleteArguments(parameters, arguments, outer, out _);
+	
+	public ImmutableArray<TypeSymbol>? CompleteArguments(ImmutableArray<TypeParameterSymbol> parameters,
+		IReadOnlyList<TypeSymbol> arguments, IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? outer,
+		out TypeParameterSymbol? uninferred)
 	{
+		uninferred = null;
 		if (arguments.Count > parameters.Length)
 			return null;
 		
 		var completed = arguments.ToList();
 		while (completed.Count < parameters.Length)
 		{
+			if ((FindPinnedArgument(parameters[completed.Count], outer) ?? InferDerived(parameters, completed)) is
+			    { } inferred)
+			{
+				completed.Add(inferred);
+				continue;
+			}
+			
 			if (GetDefaultArgument(parameters[completed.Count]) is not { } fallback)
+			{
+				uninferred = parameters[completed.Count] is { IsDerived: true } derived &&
+				             arguments.Count >= CountRequiredArguments(parameters)
+					? derived
+					: null;
+				
 				return null;
+			}
 			
 			var map = CreateMap(parameters, completed);
 			foreach (var (parameter, argument) in outer ?? new Dictionary<TypeParameterSymbol, TypeSymbol>())

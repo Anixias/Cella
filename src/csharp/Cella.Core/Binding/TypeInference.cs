@@ -156,7 +156,7 @@ public sealed class TypeInference(TypePool typePool)
 		}
 	}
 	
-	private void InferFromBounds(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred)
+	internal void InferFromBounds(ImmutableArray<TypeParameterSymbol> parameters, TypeSymbol?[] inferred)
 	{
 		var progress = true;
 		while (progress && inferred.Any(static type => type is null))
@@ -166,6 +166,10 @@ public sealed class TypeInference(TypePool typePool)
 			{
 				if (inferred[i] is not { } type || type is InvalidType)
 					continue;
+				
+				if (typePool.GetEnumTag(parameters[i]) is { } tag && typePool.FindTag(type) is { } found)
+					progress |= Settle(parameters, inferred, [typePool.Substitute(tag, GetKnown(parameters, inferred))],
+						[[found]]);
 				
 				foreach (var bound in typePool.GetBounds(parameters[i]))
 				{

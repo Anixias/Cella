@@ -114,15 +114,16 @@ public sealed partial class CodeGenerator
 	private LLVMValueRef EmitEnumConversion(EnumConversion c, ConversionValue v, LLVMBuilderRef builder)
 	{
 		var source = EmitValue(v.Source, builder);
-		if (c.From is EnumSymbol from)
+		var target = Substitute(c.To);
+		if (Substitute(c.From) is EnumSymbol from)
 		{
 			var tag = ExtractField(builder, from, source, 0, _typePool.GetTagType(from), "tag");
-			return ConvertInteger(tag, MapTypeSymbol(c.To), _typePool.GetTagType(from).IsSigned,
-				((IntegerStorageType)c.To).IsSigned, v.SourceLocation, builder);
+			return ConvertInteger(tag, MapTypeSymbol(target), _typePool.GetTagType(from).IsSigned,
+				((IntegerStorageType)target).IsSigned, v.SourceLocation, builder);
 		}
 		
-		var to = (EnumSymbol)c.To;
-		var sourceType = (IntegerStorageType)c.From;
+		var to = (EnumSymbol)target;
+		var sourceType = (IntegerStorageType)Substitute(c.From);
 		if (!to.IsExternal)
 			PanicIf(builder.BuildNot(IsCaseValue(to, source, sourceType, builder)),
 				$"'{to.Name}' has no case with this value", v.SourceLocation, builder);
@@ -173,12 +174,13 @@ public sealed partial class CodeGenerator
 		if (Substitute(v.Target.Type) is EnumSymbol { IsMatch: true } matchEnum)
 			return EmitMatchTag(matchEnum, EmitValue(v.Target, builder), builder);
 		
+		var tagType = Substitute(v.Target.Type) is EnumSymbol target ? _typePool.GetTagType(target) : v.Type;
 		if (!IsAddressable(v.Target))
-			return ExtractField(builder, v.Target.Type, EmitValue(v.Target, builder), 0, v.Type, "tag");
+			return ExtractField(builder, v.Target.Type, EmitValue(v.Target, builder), 0, tagType, "tag");
 		
 		var enumType = MapTypeSymbol(v.Target.Type);
 		var address = builder.BuildStructGEP2(enumType, EmitAddress(v.Target, builder), 0, "tag.addr");
-		return builder.BuildLoad2(MapTypeSymbol(v.Type), address, "tag");
+		return builder.BuildLoad2(MapTypeSymbol(tagType), address, "tag");
 	}
 	
 	private LLVMValueRef EmitEnumPayload(EnumPayloadValue v, LLVMBuilderRef builder)

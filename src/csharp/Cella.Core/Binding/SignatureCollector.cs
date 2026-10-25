@@ -148,8 +148,13 @@ public sealed partial class SignatureCollector
 		foreach (var file in files)
 			Register(file);
 		
+		DeclareDerivedParameters();
+		
 		foreach (var file in files)
 			RegisterDefaults(file);
+		
+		foreach (var file in files)
+			RegisterTraitTags(file);
 		
 		foreach (var file in files)
 			RegisterConstraints(file);

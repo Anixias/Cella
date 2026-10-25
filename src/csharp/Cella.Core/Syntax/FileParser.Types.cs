@@ -124,9 +124,10 @@ public sealed partial class FileParser
 		var keywords = new List<Token>();
 		var traits = new List<ITypeNode>();
 		var constructors = new List<ConstructorConstraintNode>();
+		var enumTags = new List<ITypeNode>();
 		if (IsOnSameLine(index) && Match(ref index, _traitListKeywords, TokenType.KeywordReq))
 		{
-			if (!ParseConstraints(ref index, keywords, traits, constructors, true) &&
+			if (!ParseConstraints(ref index, keywords, traits, constructors, enumTags, true) &&
 			    !Peek(index, TokenType.OpOpenBrace))
 				return null;
 			
@@ -159,7 +160,7 @@ public sealed partial class FileParser
 			Extent = Span(identifier, Tokens[index - 1]),
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
-			Requirements = new(identifier, keywords, traits, constructors)
+			Requirements = new(identifier, keywords, traits, constructors) { EnumTag = enumTags.FirstOrDefault() }
 		};
 	}
 	

@@ -55,6 +55,21 @@ public sealed partial class SignatureCollector
 		}
 	}
 	
+	private void RegisterTraitTags(FileNode node)
+	{
+		foreach (var traitNode in node.Declarations.OfType<TraitNode>())
+		{
+			if (traitNode.Requirements.EnumTag is not { } tagNode)
+				continue;
+			
+			using var frame = Own(traitNode);
+			var trait = (TraitSymbol)_symbolTable.DeclarationSymbols[traitNode];
+			var context = _declarations[trait].Context with { ContainingType = trait.Self, Trait = trait };
+			if (ResolveEnumTag(tagNode, context) is { } tag)
+				_typePool.SetEnumTag(trait.Self, tag);
+		}
+	}
+	
 	private void RegisterMemberBounds(IEnumerable<IDeclarationNode> members)
 	{
 		foreach (var member in members.OfType<FunctionNode>())
@@ -79,6 +94,9 @@ public sealed partial class SignatureCollector
 			if (!traits.IsEmpty)
 				_typePool.SetBounds(parameters[i], traits);
 		}
+		
+		if (parameters.Length > nodes.Length)
+			RegisterDerivedBounds(nodes, parameters, context, owner);
 	}
 	
 	private ImmutableArray<TraitType> RegisterConstraintList(TypeParameterNode node, TypeParameterSymbol parameter,
@@ -95,6 +113,9 @@ public sealed partial class SignatureCollector
 		
 		var bounds = node.Traits.Select(deferring.ResolveTraitReference).ToList();
 		ReportRepeatedTraits(node.Traits, bounds);
+		if (node.EnumTag is { } tagNode && !parameter.IsSelf && ResolveEnumTag(tagNode, context) is { } tag)
+			_typePool.SetEnumTag(parameter, tag);
+		
 		if (owner is not null)
 			for (var j = 0; j < bounds.Count; j++)
 				if (bounds[j] is { } bound)
@@ -156,6 +177,24 @@ public sealed partial class SignatureCollector
 				if (parameter.DefaultType is { } defaultType)
 					context.ResolveType(defaultType);
 			}
+		}
+	}
+	
+	private TypeSymbol? ResolveEnumTag(ITypeNode node, ResolutionContext context)
+	{
+		switch (context.ResolveType(node))
+		{
+			case var tag when tag is IntegerType or TypeParameterSymbol { IsValue: false, IsTrait: false }:
+				return tag;
+			
+			case InvalidType:
+				return null;
+			
+			case var other:
+				Diagnostics.Add(new(DiagnosticSeverity.Error, node.SourceLocation,
+					$"'{other.Name}' isn't an integer type"));
+				
+				return null;
 		}
 	}
 	
@@ -248,6 +287,12 @@ public sealed partial class SignatureCollector
 	{
 		foreach (var constrained in _constrainedParameters)
 			_typePool.InheritSelfConstraints(constrained.Parameter);
+		
+		foreach (var constrained in _constrainedParameters)
+		{
+			_typePool.InheritEnumTag(constrained.Parameter);
+			_typePool.RegisterEnumOperations(constrained.Parameter);
+		}
 		
 		_typePool.ResetFacts();
 	}
@@ -461,7 +506,8 @@ public sealed partial class SignatureCollector
 	
 	private static readonly TokenType[] _copyingConstraints =
 	[
-		TokenType.KeywordCopy, TokenType.KeywordAtomic, TokenType.KeywordExt, TokenType.KeywordNull
+		TokenType.KeywordCopy, TokenType.KeywordAtomic, TokenType.KeywordExt, TokenType.KeywordNull,
+		TokenType.KeywordEnum
 	];
 	
 	private void ReportKeywordConflicts(ImmutableArray<Token> keywords)
@@ -477,8 +523,7 @@ public sealed partial class SignatureCollector
 		if (keywords.All(static keyword => keyword.Type != TokenType.KeywordDrop))
 			return;
 		
-		foreach (var copying in keywords.Where(static k => k.Type is TokenType.KeywordCopy or TokenType.KeywordAtomic or
-			         TokenType.KeywordExt or TokenType.KeywordNull))
+		foreach (var copying in keywords.Where(static k => _copyingConstraints.Contains(k.Type)))
 		{
 			var message = $"Cannot combine '{copying.Text}' and 'drop'";
 			foreach (var keyword in keywords.Where(k => k == copying || k.Type == TokenType.KeywordDrop))

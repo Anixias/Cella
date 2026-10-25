@@ -1,0 +1,50 @@
+mod test
+
+Holds[T]: trait
+{
+	get: fun(self) -> T
+}
+
+Box: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+Both: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+Both: impl Holds[u8]
+{
+	get: fun(self) -> u8 => 1
+}
+
+first[H: Holds[T]]: fun(holder: H) -> T => holder.get()
+
+Wrapper[H: Holds[T]]: rec
+{
+	inner: H
+}
+
+Wrapper[H]: impl
+{
+	size: fun(self) -> i32 => 1
+}
+
+repeated[A: Holds[T: copy], B: Holds[T: copy]]: fun(left: A, right: B) -> i32 => 0
+
+nested[Wrapper[H]]: fun(value: i32) -> i32 => 0
+
+main: fun
+{
+	val _ = first(Both(1))
+	val _: Wrapper[Both] = Wrapper(Both(1))
+	val _: Wrapper[Box, i64] = Wrapper(Box(1))
+	val _: Wrapper[Box, i32, u8] = Wrapper(Box(1))
+	val _: i32 = Wrapper(Box(1))
+}

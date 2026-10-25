@@ -527,6 +527,18 @@ public readonly struct ResolutionContext
 		var self = new Dictionary<TypeParameterSymbol, TypeSymbol>
 			{ [trait.Self] = TraitSelf ?? NativeSymbols.Invalid };
 		
+		if (arguments.Count < trait.TypeParameters.Length && trait.TypeParameters[arguments.Count] is var next &&
+		    TypePool.FindPinningSelf(next, self) is not null && TypePool.FindTag(TraitSelf!) is null)
+		{
+			var requirement = TypePool.DescribeEnumRequirement(next);
+			Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"'{trait.Name}' requires 'Self: {requirement}'")
+			{
+				Hints = [TypePool.FindEnumViolation(TraitSelf!, null)!]
+			});
+			
+			return null;
+		}
+		
 		if (TypePool.CompleteArguments(trait.TypeParameters, arguments, self) is { } filled && TraitSelf is null &&
 		    FindSelfDefault(trait, arguments.Count, filled) is { } parameter)
 		{
@@ -1305,9 +1317,12 @@ public readonly struct ResolutionContext
 		IReadOnlyList<SourceLocation> locations, SourceLocation location,
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol>? outer = null)
 	{
-		if (TypePool.CompleteArguments(parameters, arguments, outer) is not { } completed)
+		if (TypePool.CompleteArguments(parameters, arguments, outer, out var uninferred) is not { } completed)
 		{
-			Diagnostics.Add(ReportGenericArgumentCount(location, name, parameters));
+			Diagnostics.Add(uninferred is null
+				? ReportGenericArgumentCount(location, name, parameters)
+				: new(DiagnosticSeverity.Error, location, $"Cannot infer '{uninferred.Name}' for '{name}'"));
+			
 			return null;
 		}
 		
@@ -1449,7 +1464,7 @@ public readonly struct ResolutionContext
 	
 	private TypeSymbol ResolveDeclaredArgument(DeclaredArgumentNode node)
 	{
-		if (ImplBlock is null || Resolve(node.Identifier.Text) is not TypeSymbol type)
+		if (Resolve(node.Identifier.Text) is not TypeSymbol type)
 			return NativeSymbols.Invalid;
 		
 		Record(node.Identifier, type);

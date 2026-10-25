@@ -466,6 +466,34 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task LinksDerivedTypeParameters()
+	{
+		await File.WriteAllTextAsync(SourcePath, """
+		                                         mod test
+		                                         
+		                                         Holds[T]: trait
+		                                         {
+		                                         	get: fun(self) -> T
+		                                         }
+		                                         
+		                                         first[H: Holds[Item]]: fun(holder: H) -> Item => holder.get()
+		                                         
+		                                         Wrapper[H: Holds[Value: copy]]: rec { inner: H }
+		                                         
+		                                         main: fun -> i32 => 0
+		                                         
+		                                         """, Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("Item"), await HoverAsync(7, 42));
+		var definition = await DefinitionAsync(7, 42);
+		Assert.Equal(7, (int)definition!["range"]!["start"]!["line"]!);
+		Assert.Equal(15, (int)definition["range"]!["start"]!["character"]!);
+		Assert.Equal(Code("Value"), await HoverAsync(9, 18));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task NamesValuesInPatterns()
 	{
 		await File.WriteAllTextAsync(SourcePath, """

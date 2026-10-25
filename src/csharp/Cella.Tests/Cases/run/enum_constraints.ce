@@ -1,0 +1,97 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Access: ext enum(u32) impl BitSet
+{
+	none = 0
+	read = 1
+	write = 2
+	exec = 4
+}
+
+Small: ext enum(u8) impl BitSet[u8]
+{
+	a = 1
+	b = 2
+}
+
+Code: enum
+{
+	none
+	first = 100
+	second
+}
+
+Signed: enum(i16)
+{
+	zero
+	low = -5
+}
+
+readWrite: const Access = Access.read | Access.write
+
+Integral: trait req copy
+{
+	|: op(a: Self, b: Self) -> Self
+	&: op(a: Self, b: Self) -> Self
+	~: op(self) -> Self
+	==: op(a: Self, b: Self) -> bool
+}
+
+u8: impl const Integral
+u32: impl const Integral
+
+BitSet[T: const Integral]: trait req ext + enum(T)
+{
+	|: const op(a: Self, b: Self) -> Self => Self(T(a) | T(b))
+	&: const op(a: Self, b: Self) -> Self => Self(T(a) & T(b))
+	~: const op(self) -> Self => Self(~T(self))
+	
+	|=: op(mut self, other: Self)
+	{
+		self = self | other
+	}
+	
+	has: const fun(self, flags: Self) -> bool => (T(self) & T(flags)) == T(flags)
+}
+
+tagOf[E: enum(T), T]: fun(value: E) -> T => T(value)
+
+wide[E: enum]: fun(value: E) -> i64 => i64(value)
+
+back[E: enum]: fun(raw: i32) -> E => E(raw)
+
+same[E: enum]: fun(left: E, right: E) -> bool => left == right
+
+differ[E: enum]: fun(left: E, right: E) -> bool => left != right
+
+pack[E: enum(u8)]: fun(value: E) -> u8 => u8(value)
+
+copied[E: enum]: fun(value: E) -> E
+{
+	var zero: E
+	val first = value
+	val second = value
+	ret match same(first, second) { true => second, else => zero }
+}
+
+combine[E: BitSet[T], T: const Integral]: fun(left: E, right: E) -> E => left | right
+
+raw[E: BitSet[T], T: const Integral]: fun(value: E) -> T => T(value)
+
+main: fun
+{
+	var flags = Access.read
+	flags |= Access.exec
+	printf("%u %d %d\n", u32(readWrite), i32(flags.has(Access.exec)), i32(flags.has(Access.write)))
+	printf("%u %u %u\n", u32(combine(Access.read, Access.write)), u32(~Small.a), raw(Access.exec))
+	printf("%u %u %d\n", tagOf(Access.write), u32(tagOf(Small.b)), i32(tagOf(Signed.low)))
+	printf("%lld %lld\n", wide(Code.second), wide(Signed.low))
+	val code: Code = back(100)
+	printf("%d %d %d\n", i32(same(code, Code.first)), i32(differ(Access.read, Access.write)), i32(pack(Code.second)))
+	printf("%d\n", i32(copied(Code.second)))
+}

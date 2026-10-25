@@ -17,6 +17,10 @@ public sealed partial class Lowerer
 			new EnumTagValue(typePool.GetTagType(enumType), left, left.SourceLocation),
 			new EnumTagValue(typePool.GetTagType(enumType), right, right.SourceLocation),
 			ToBinaryOperation(i.Op), location),
+		NativeImpl { ParameterTypes: [TypeParameterSymbol { IsEnum: true } parameter, _] } i => new BinOpValue(
+			i.ReturnType, new EnumTagValue(GetPlaceholderTag(typePool, parameter), left, left.SourceLocation),
+			new EnumTagValue(GetPlaceholderTag(typePool, parameter), right, right.SourceLocation),
+			ToBinaryOperation(i.Op), location),
 		NativeImpl i => new BinOpValue(i.ReturnType, left, right, ToBinaryOperation(i.Op), location),
 		PointerOffsetImpl { IsReversed: true } i => new PointerOffsetValue(i.PointerType, right, left,
 			ToBinaryOperation(i.Op), location),
@@ -25,6 +29,9 @@ public sealed partial class Lowerer
 		PointerDifferenceImpl i => new PointerDifferenceValue(left, right, i.PointerType, location),
 		_ => throw new InvalidOperationException()
 	};
+	
+	private static IntegerType GetPlaceholderTag(TypePool typePool, TypeParameterSymbol parameter) =>
+		typePool.GetEnumTag(parameter) as IntegerType ?? NativeSymbols.UInt8;
 	
 	private sealed partial class FunctionLowerer
 	{

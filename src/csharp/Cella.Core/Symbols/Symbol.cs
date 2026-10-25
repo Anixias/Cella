@@ -156,7 +156,9 @@ public abstract class TypeSymbol(string name, TypeSymbol? containingType = null,
 	: Symbol(name)
 {
 	public TypeSymbol? ContainingType { get; } = containingType;
-	public ImmutableDictionary<string, Symbol> Children { get; } = children.ToImmutableDictionary(static s => s.Name);
+	
+	public ImmutableDictionary<string, Symbol> Children { get; private protected set; } =
+		children.ToImmutableDictionary(static s => s.Name);
 	
 	public virtual ImmutableArray<TypeSymbol> TypeArguments => [];
 	public virtual TypeSymbol OriginalDefinition => this;
@@ -170,17 +172,20 @@ public sealed class TypeParameterSymbol(string name, IEnumerable<Token> keywords
 {
 	private readonly ImmutableArray<Token> _keywords = keywords.ToImmutableArray();
 	
-	public bool IsNoref => Has(TokenType.KeywordNoref) || IsAtomic || IsExt;
+	public bool IsNoref => Has(TokenType.KeywordNoref) || IsAtomic || IsExt || IsEnum;
 	public bool HasNull => Has(TokenType.KeywordNull);
-	public bool IsCopy => Has(TokenType.KeywordCopy) || IsAtomic || IsExt;
+	public bool IsCopy => Has(TokenType.KeywordCopy) || IsAtomic || IsExt || IsEnum;
 	public bool IsAtomic => Has(TokenType.KeywordAtomic);
 	public bool IsExt => Has(TokenType.KeywordExt);
 	public bool HasDrop => Has(TokenType.KeywordDrop);
 	public bool HasNew => Has(TokenType.KeywordNew);
-	public bool HasDefault => Has(TokenType.KeywordDefault);
+	public bool HasDefault => Has(TokenType.KeywordDefault) || IsEnum;
+	public bool IsEnum => Has(TokenType.KeywordEnum);
 	public bool IsTrait => Has(TokenType.KeywordTrait);
 	public bool IsValue { get; init; }
 	public bool IsSelf { get; init; }
+	public bool IsDerived { get; init; }
+	public bool IsImplicit { get; init; }
 	public bool DeclaresDefault { get; init; }
 	public TypeSymbol? DefaultArgument { get; internal set; }
 	public Token? Definition { get; init; }
@@ -750,9 +755,11 @@ public sealed class LabelSymbol(Token identifier) : Symbol(identifier.Text);
 
 public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 {
-	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; }
+	private ImmutableArray<TypeSymbol> typeArguments;
+	
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; private set; }
 	public NamedTypeSymbol Definition { get; }
-	public override ImmutableArray<TypeSymbol> TypeArguments { get; }
+	public override ImmutableArray<TypeSymbol> TypeArguments => typeArguments;
 	public override TypeSymbol OriginalDefinition => Definition;
 	public bool IsGenericDefinition => !TypeParameters.IsEmpty;
 	public bool IsGenericInstance => Definition != this;
@@ -770,8 +777,17 @@ public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 	{
 		TypeParameters = typeParameters;
 		Definition = this;
-		TypeArguments = [..typeParameters];
+		typeArguments = [..typeParameters];
 		Visibility = Visibility.FromKeyword(visibility);
+	}
+	
+	internal void RemoveTypeParameters(IReadOnlySet<TypeParameterSymbol> removed)
+	{
+		TypeParameters = [..TypeParameters.Where(parameter => !removed.Contains(parameter))];
+		typeArguments = [..TypeParameters];
+		Children = Children.RemoveRange(removed.Where(parameter => Children.GetValueOrDefault(parameter.Name) ==
+		                                                           parameter)
+			.Select(static parameter => parameter.Name));
 	}
 	
 	protected NamedTypeSymbol(NamedTypeSymbol definition, ImmutableArray<TypeSymbol> typeArguments, int shownArguments)
@@ -779,7 +795,7 @@ public abstract class NamedTypeSymbol : TypeSymbol, IExportable
 	{
 		TypeParameters = [];
 		Definition = definition;
-		TypeArguments = typeArguments;
+		this.typeArguments = typeArguments;
 		Visibility = definition.Visibility;
 		Properties = definition.Properties;
 	}
@@ -897,7 +913,7 @@ public sealed class TraitSymbol
 {
 	public TraitNode Node { get; } = node;
 	public TypeParameterSymbol Self { get; } = self;
-	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; init; } = [];
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; internal set; } = [];
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();
 	public ImmutableArray<FunctionSymbol> Constructors { get; } = constructors.ToImmutableArray();
@@ -920,7 +936,7 @@ public sealed class ImplSymbol
 {
 	public ImplNode Node { get; } = node;
 	public ImmutableArray<TraitType> Traits { get; set; } = [];
-	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; } = typeParameters;
+	public ImmutableArray<TypeParameterSymbol> TypeParameters { get; set; } = typeParameters;
 	public ImmutableArray<TypeSymbol> TargetArguments { get; set; } = [..typeParameters];
 	public ImmutableArray<MethodSymbol> Functions { get; } = functions.ToImmutableArray();
 	public ImmutableArray<PropertySymbol> Properties { get; } = properties.ToImmutableArray();

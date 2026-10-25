@@ -1,0 +1,31 @@
+mod test
+
+use lib.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Access: ext enum(u32) impl BitSet
+{
+	none = 0
+	read = 1
+	write = 2
+}
+
+Box: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+both: const Access = Access.read | Access.write
+
+main: fun
+{
+	val wrapped: Wrapper[Box] = Wrapper(Box(5))
+	printf("%u %u %u\n", u32(both), u32(combine(Access.read, Access.write)), tagOf(Access.write))
+	printf("%d %d\n", wrapped.read(), first(Box(6)))
+}

@@ -1,0 +1,107 @@
+Error at enum_constraints.ce:17:27
+16 │ 
+17 │ Format: ext enum(u8) impl BitSet[u32]
+                               ╘═════════╛ 'BitSet[u32]' requires 'Self: enum(u32)'
+                                         | 'Format' has the tag type 'u8'
+
+Error at enum_constraints.ce:22:23
+21 │ 
+22 │ Plain: enum(i32) impl BitSet
+                           ╘════╛ 'BitSet[i32]' requires 'Self: ext'
+                                | 'Plain' can't be used in 'ext' signatures
+
+Error at enum_constraints.ce:27:27
+26 │ 
+27 │ Shape: ext enum(i32) impl BitSet
+                               ╘════╛ 'BitSet' requires 'Self: enum(T)'
+                                    | 'Shape' has payloads
+
+Error at enum_constraints.ce:33:17
+32 │ 
+33 │ Point: rec impl BitSet
+                     ╘════╛ 'BitSet' requires 'Self: enum(T)'
+                          | 'Point' isn't an enum
+
+Error at enum_constraints.ce:54:40
+53 │ 
+54 │ relay[E: enum]: fun(value: E) -> u8 => pack(value)
+                                            ╘══╛ 'pack' requires 'E: enum(u8)'
+                                               | 'E' may have another tag type
+
+Error at enum_constraints.ce:56:18
+55 │ 
+56 │ floating[E: enum(f32)]: fun(value: E) -> i32 => 0
+                      ╘═╛ 'f32' isn't an integer type
+
+Error at enum_constraints.ce:58:12
+57 │ 
+58 │ dropped[E: enum + drop]: fun(value: E) -> i32 => 0
+                ╘══╛ Cannot combine 'enum' and 'drop'
+
+Error at enum_constraints.ce:58:19
+57 │ 
+58 │ dropped[E: enum + drop]: fun(value: E) -> i32 => 0
+                       ╘══╛ Cannot combine 'enum' and 'drop'
+
+Error at enum_constraints.ce:60:10
+59 │ 
+60 │ twice[E: enum + enum(u8)]: fun(value: E) -> i32 => 0
+              ╘══╛ 'enum' is required more than once
+
+Error at enum_constraints.ce:60:17
+59 │ 
+60 │ twice[E: enum + enum(u8)]: fun(value: E) -> i32 => 0
+                     ╘══╛ 'enum' is required more than once
+
+Error at enum_constraints.ce:62:12
+61 │ 
+62 │ combine[E: BitSet]: fun(left: E, right: E) -> E => left | right
+                ╘════╛ 'BitSet' takes one generic argument
+
+Error at enum_constraints.ce:64:21
+63 │ 
+64 │ boxed: fun(set: dyn[BitSet]) -> i32 => 0
+                         ╘════╛ 'BitSet' takes one generic argument
+
+Error at enum_constraints.ce:66:53
+65 │ 
+66 │ ordered[E: enum]: fun(left: E, right: E) -> bool => left < right
+                                                         ╘══════════╛ No operation defined for '<' between 'E' and 'E'
+
+Error at enum_constraints.ce:70:10
+69 │ {
+70 │     val _ = pack(Wide.big)
+                 ╘══╛ 'pack' requires 'E: enum(u8)'
+                    | 'Wide' has the tag type 'u16'
+
+Error at enum_constraints.ce:71:10
+70 │ val _ = pack(Wide.big)
+71 │ val _ = plain(Shape.none)
+             ╘═══╛ 'plain' requires 'E: enum'
+                 | 'Shape' has payloads
+
+Error at enum_constraints.ce:72:10
+71 │ val _ = plain(Shape.none)
+72 │ val _ = plain(Point(1))
+             ╘═══╛ 'plain' requires 'E: enum'
+                 | 'Point' isn't an enum
+
+Error at enum_constraints.ce:73:10
+72 │ val _ = plain(Point(1))
+73 │ val _ = plain(Tagless.zero)
+             ╘═══╛ 'plain' requires 'E: enum'
+                 | 'Tagless' has no tag type
+
+Error at enum_constraints.ce:76:10
+75 │ val _ = floating(Wide.zero)
+76 │ val _ = dropped(Wide.zero)
+             ╘═════╛ 'dropped' requires 'E: drop'
+                   | 'Wide' has no destructor
+
+Error at enum_constraints.ce:77:10
+76 │ val _ = dropped(Wide.zero)
+77 │ val _ = twice(Wide.zero)
+             ╘═══╛ 'twice' requires 'E: enum(u8)'
+                 | 'Wide' has the tag type 'u16'
+
+[compilation failed]

@@ -809,7 +809,7 @@ public sealed partial class ConstantEvaluator
 		_ => null
 	};
 	
-	public Constant? Convert(Constant value, Conversion conversion) => (conversion, value) switch
+	public Constant? Convert(Constant value, Conversion conversion) => (Specialize(conversion), value) switch
 	{
 		(IdentityConversion, _) => value,
 		(IntegerConversion c, IntegerConstant integer) => Checked(c.To, integer.Value),
@@ -841,6 +841,12 @@ public sealed partial class ConstantEvaluator
 		(MatchConversion { From: EnumSymbol enumType } c, _) => FromMatchEnum(enumType, c.To, value),
 		_ => null
 	};
+	
+	private Conversion Specialize(Conversion conversion) =>
+		conversion is EnumConversion { From: var from, To: var to } &&
+		(from is TypeParameterSymbol || to is TypeParameterSymbol)
+			? new EnumConversion(SubstituteType(from), SubstituteType(to))
+			: conversion;
 	
 	private Constant? ToMatchEnum(EnumSymbol enumType, Constant value)
 	{

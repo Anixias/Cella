@@ -85,6 +85,8 @@ public sealed partial class TypePool
 		snapshot.Save(_constantBodies);
 		snapshot.Save(_foldedFunctions);
 		snapshot.SaveNested(_constantBounds);
+		snapshot.Save(_enumTags);
+		snapshot.Save(_enumOperations);
 		return snapshot;
 	}
 }

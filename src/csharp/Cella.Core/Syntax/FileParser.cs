@@ -30,7 +30,7 @@ public sealed partial class FileParser
 	private static readonly HashSet<TokenType> _constraintTypes =
 	[
 		TokenType.KeywordNoref, TokenType.KeywordCopy, TokenType.KeywordDrop, TokenType.KeywordTrait,
-		TokenType.KeywordExt, TokenType.KeywordDefault
+		TokenType.KeywordExt, TokenType.KeywordDefault, TokenType.KeywordEnum
 	];
 	
 	private static readonly Dictionary<string, TokenType> _constraintKeywords =

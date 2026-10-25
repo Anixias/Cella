@@ -332,6 +332,11 @@ public sealed partial class SignatureCollector
 			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TargetArguments.Length:
 				return named;
 			
+			case NamedTypeSymbol named when impl.TargetArguments.Length < named.TypeParameters.Length &&
+			                                named.TypeParameters.Skip(impl.TargetArguments.Length)
+				                                .All(static parameter => parameter.IsDerived):
+				return CompleteDerivedTarget(impl, named, location) ? named : null;
+			
 			case NamedTypeSymbol named:
 				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, named.Name,
 					named.TypeParameters.Length));

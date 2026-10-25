@@ -1,0 +1,103 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	get: fun(self) -> T
+}
+
+Box: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+Wide: rec impl Holds[i64]
+{
+	value: i64
+	
+	get: fun(self) -> i64 => self.value
+}
+
+first[H: Holds[T]]: fun(holder: H) -> T => holder.get()
+
+copied[H: Holds[T: copy]]: fun(holder: H) -> T
+{
+	val value = holder.get()
+	val again = value
+	ret again
+}
+
+Crate: rec impl Holds[Box]
+{
+	box: Box
+	
+	get: fun(self) -> Box => self.box
+}
+
+unboxed[H: Holds[Box]]: fun(holder: H) -> i32 => holder.get().value
+
+Wrapper[H: Holds[T]]: rec
+{
+	inner: H
+	
+	read: fun(self) -> T => self.inner.get()
+}
+
+Wrapper[H: Holds[T] + copy]: impl Holds[T]
+{
+	get: fun(self) -> T => self.inner.get()
+}
+
+Wrapper[Box]: impl
+{
+	doubled: fun(self) -> i32 => self.inner.get() * 2
+}
+
+Choice[H: Holds[T]]: enum
+{
+	none
+	some(holder: H)
+	
+	read: fun(self, fallback: T) -> T => match self
+	{
+		some(val holder) => holder.get()
+		none => fallback
+	}
+}
+
+Getter[H: Holds[T]]: trait
+{
+	fetch: fun(self) -> T
+}
+
+Box: impl Getter[Box]
+{
+	fetch: fun(self) -> i32 => self.value * 10
+}
+
+fetched[G: Getter[Box]]: fun(getter: G) -> i32 => getter.fetch()
+
+Shelf: rec
+{
+	count: i32
+	
+	take[H: Holds[T]]: fun(self, holder: H) -> T => holder.get()
+}
+
+main: fun
+{
+	val wrapped = Wrapper(Wide(7))
+	val boxed: Wrapper[Box] = Wrapper(Box(4))
+	printf("%d %d %lld\n", first(Box(4)), copied(Box(5)), wrapped.read())
+	printf("%d %d %d\n", first[Box](Box(6)), unboxed(Crate(Box(1))), fetched(Box(2)))
+	printf("%d %d %d\n", boxed.get(), first(boxed), boxed.doubled())
+	val some: Choice[Box] = Choice.some(Box(8))
+	val none: Choice[Wide] = Choice.none
+	printf("%d %lld %d\n", some.read(0), none.read(9), Shelf(1).take(Box(11)))
+}

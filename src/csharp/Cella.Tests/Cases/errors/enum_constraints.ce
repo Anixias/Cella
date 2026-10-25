@@ -1,0 +1,79 @@
+mod test
+
+Integral: trait req copy
+{
+	|: op(a: Self, b: Self) -> Self
+}
+
+i32: impl Integral
+u8: impl Integral
+u32: impl Integral
+
+BitSet[T: Integral]: trait req ext + enum(T)
+{
+	|: op(a: Self, b: Self) -> Self => Self(T(a) | T(b))
+}
+
+Format: ext enum(u8) impl BitSet[u32]
+{
+	rgba = 1
+}
+
+Plain: enum(i32) impl BitSet
+{
+	a
+}
+
+Shape: ext enum(i32) impl BitSet
+{
+	none
+	circle(r: f64)
+}
+
+Point: rec impl BitSet
+{
+	x: i32
+}
+
+Tagless: enum match i32
+{
+	zero = 0
+	rest(value) = else
+}
+
+Wide: enum
+{
+	zero
+	big = 300
+}
+
+pack[E: enum(u8)]: fun(value: E) -> u8 => u8(value)
+
+plain[E: enum]: fun(value: E) -> i32 => i32(value)
+
+relay[E: enum]: fun(value: E) -> u8 => pack(value)
+
+floating[E: enum(f32)]: fun(value: E) -> i32 => 0
+
+dropped[E: enum + drop]: fun(value: E) -> i32 => 0
+
+twice[E: enum + enum(u8)]: fun(value: E) -> i32 => 0
+
+combine[E: BitSet]: fun(left: E, right: E) -> E => left | right
+
+boxed: fun(set: dyn[BitSet]) -> i32 => 0
+
+ordered[E: enum]: fun(left: E, right: E) -> bool => left < right
+
+main: fun
+{
+	val _ = pack(Wide.big)
+	val _ = plain(Shape.none)
+	val _ = plain(Point(1))
+	val _ = plain(Tagless.zero)
+	val _ = relay(Wide.zero)
+	val _ = floating(Wide.zero)
+	val _ = dropped(Wide.zero)
+	val _ = twice(Wide.zero)
+	val _ = ordered(Wide.zero, Wide.big)
+}

@@ -18,20 +18,10 @@ Error at constraint_parameters.ce:57:32
 57 │ Pair[T: Shows[R: Match]]: impl Describe
                                     ╘══════╛ 'Describe' has no argument using 'R'
 
-Error at constraint_parameters.ce:62:15
+Hint at constraint_parameters.ce:62:1
 61 │ 
 62 │ pick[T: Shows[S: Match]]: fun(imm value: T) -> i32 => 0
-                   ^ Cannot declare nested type parameters outside impl blocks
-
-Error at constraint_parameters.ce:64:18
-63 │ 
-64 │ Wrapper[T: Shows[U: Match]]: rec
-                      ^ Cannot declare nested type parameters outside impl blocks
-
-Error at constraint_parameters.ce:71:16
-70 │ {
-71 │     find[W: Shows[X: Match]]: fun(imm self, imm value: V, imm other: W) -> bool => false
-                       ^ Cannot declare nested type parameters outside impl blocks
+     ╘══╛ 'pick' is never used
 
 Error at constraint_parameters.ce:74:18
 73 │ 
@@ -78,10 +68,10 @@ Error at constraint_parameters.ce:109:16
 109 │ Cover[T]: impl Shows[T]
                      ╘══════╛ 'Cover[T]' implements 'Shows[T]' more than once
 
-Error at constraint_parameters.ce:114:17
+Hint at constraint_parameters.ce:114:1
 113 │ 
 114 │ choose[T: Shows[B]]: fun(imm value: T) -> i32 => 0
-                      ^ Type 'B' not found in this scope
+      ╘════╛ 'choose' is never used
 
 Error at constraint_parameters.ce:125:16
 124 │ val numbers = Pair(1, 2)
