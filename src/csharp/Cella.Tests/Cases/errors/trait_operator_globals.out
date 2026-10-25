@@ -1,0 +1,16 @@
+Error at trait_operator_globals.ce:20:21
+19 │ {
+20 │     both: val Access = Access.read | Access.write
+                            ╘════════════════════════╛ The initial value of 'both' must be a constant
+
+Error at trait_operator_globals.ce:23:20
+22 │ 
+23 │ both: val Access = Access.read | Access.write
+                        ╘════════════════════════╛ The initial value of 'both' must be a constant
+
+Error at trait_operator_globals.ce:24:19
+23 │ both: val Access = Access.read | Access.write
+24 │ known: val bool = Access.read.has(Access.write)
+                       ╘═══════════════════════════╛ The initial value of 'known' must be a constant
+
+[compilation failed]

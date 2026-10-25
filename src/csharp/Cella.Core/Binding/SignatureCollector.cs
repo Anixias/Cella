@@ -95,6 +95,7 @@ public sealed partial class SignatureCollector
 	private readonly List<(TypeSymbol Type, ITypeNode Node, ErrorContainment.Owner Owner)> _variadicTypes = [];
 	private readonly HashSet<FunctionSymbol> _lambdas = [];
 	private IConstantResolver? constants;
+	private List<GlobalSymbol>? deferredGlobals;
 	
 	public DiagnosticList Diagnostics { get; } = new();
 	public ConstantEvaluator Evaluator { get; }
@@ -171,6 +172,7 @@ public sealed partial class SignatureCollector
 		foreach (var constrained in _constrainedParameters)
 			_typePool.InheritSelfConstructors(constrained.Parameter);
 		
+		deferredGlobals = [];
 		foreach (var file in files)
 		{
 			foreach (var declaration in file.Declarations)
@@ -185,6 +187,7 @@ public sealed partial class SignatureCollector
 		ReportBorrowingVariables();
 		LinkRefinedDefaults(files);
 		CheckConformances();
+		CompleteDeferredGlobals();
 		RecordBorrowForwarding();
 		CheckImplBlocks();
 		ReportVariadicTypes();
@@ -495,6 +498,17 @@ public sealed partial class SignatureCollector
 	{
 		using var frame = Own(subject);
 		Diagnostics.Add(diagnostic);
+	}
+	
+	private void CompleteDeferredGlobals()
+	{
+		var globals = deferredGlobals ?? [];
+		deferredGlobals = null;
+		foreach (var global in globals)
+		{
+			using var frame = Own(global);
+			GetGlobalInfo(global);
+		}
 	}
 	
 	public IDeclarationNode? GetDeclaration(Symbol symbol) =>

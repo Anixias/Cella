@@ -1,0 +1,33 @@
+mod test
+
+Flags: trait req copy + noref
+{
+	new: op(bits: u32)
+	new: op(self) -> u32
+
+	|: op(a: Self, b: Self) -> Self => Self(u32(a) | u32(b))
+	has: fun(self, other: Self) -> bool => (u32(self) & u32(other)) == u32(other)
+}
+
+Access: ext enum(u32) impl Flags
+{
+	read = 1
+	write = 2
+}
+
+Holder: rec
+{
+	both: val Access = Access.read | Access.write
+}
+
+both: val Access = Access.read | Access.write
+known: val bool = Access.read.has(Access.write)
+
+main: fun -> i32
+{
+	val local = Access.read | Access.write
+	if known
+		ret i32(u32(Holder.both))
+
+	ret i32(u32(local | both))
+}

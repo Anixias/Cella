@@ -24,6 +24,11 @@ public sealed partial class SignatureCollector
 				CompleteEnum(enumType);
 				break;
 			
+			case GlobalSymbol global when deferredGlobals is { } deferred:
+				GetGlobalType(global);
+				deferred.Add(global);
+				break;
+			
 			case GlobalSymbol global:
 				GetGlobalInfo(global);
 				break;

@@ -1,0 +1,11 @@
+Error at missing_new_requirements.ce:9:24
+8 │ 
+9 │ Payload: ext enum impl Bits
+                           ╘══╛ 'Payload' needs 'Bits.new'
+
+Error at missing_new_requirements.ce:15:17
+14 │ 
+15 │ Plain: rec impl Bits
+                     ╘══╛ 'Plain' needs 'Bits.new'
+
+[compilation failed]

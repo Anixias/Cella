@@ -599,7 +599,7 @@ public sealed partial class SignatureCollector
 				Fixes = fix is null ? [] : [fix]
 			});
 		
-		MatchConstructors(conformance, trait, traitMap, self);
+		MatchConstructors(conformance, trait, traitMap, self, missing.Any(static entry => entry.Name == "new"));
 		return fix is null ? null : new(conformance, self, missingRequirements, missingConstants, fix);
 	}
 	
@@ -911,7 +911,7 @@ public sealed partial class SignatureCollector
 		conformance.Impl?.Properties.Any(property => property.Name == name) == true;
 	
 	private void MatchConstructors(Conformance conformance, string trait,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self)
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, TypeSymbol self, bool isNewMissing)
 	{
 		var declared = _typePool.GetConstructors(self);
 		var unmatched = new List<FunctionSymbol>();
@@ -933,7 +933,8 @@ public sealed partial class SignatureCollector
 		var unused = declared.Where(constructor => !witnesses.Contains(constructor.Symbol)).ToList();
 		var reported = false;
 		foreach (var requirement in unmatched)
-			MatchConstructor(conformance, trait, self, requirement, declared, unused, traitMap, ref reported);
+			MatchConstructor(conformance, trait, self, requirement, declared, unused, traitMap, isNewMissing,
+				ref reported);
 	}
 	
 	private FunctionInfo? FindConstructorWitness(FunctionSymbol requirement, IReadOnlyList<FunctionInfo> declared,
@@ -956,7 +957,7 @@ public sealed partial class SignatureCollector
 	
 	private void MatchConstructor(Conformance conformance, string trait, TypeSymbol self, FunctionSymbol requirement,
 		IReadOnlyList<FunctionInfo> declared, List<FunctionInfo> unused,
-		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, ref bool reported)
+		Dictionary<TypeParameterSymbol, TypeSymbol> traitMap, bool isNewMissing, ref bool reported)
 	{
 		var expected = _typePool.SubstituteSignature(GetFunctionInfo(requirement).Signature, traitMap);
 		var hidesConstruction = declared.Count > 0 && self is RecordSymbol;
@@ -978,7 +979,10 @@ public sealed partial class SignatureCollector
 		reported = true;
 		if (!hidesConstruction || unused.Count == 0)
 		{
-			ReportConformance(conformance.Location, $"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.new'");
+			if (!isNewMissing)
+				ReportConformance(conformance.Location,
+					$"'{DiagnosticReporter.DescribeType(self)}' needs '{trait}.new'");
+			
 			return;
 		}
 		

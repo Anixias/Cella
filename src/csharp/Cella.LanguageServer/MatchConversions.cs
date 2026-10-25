@@ -107,7 +107,10 @@ public static class MatchConversions
 			case MatchStatementNode match when TouchesKeyword(match.SourceLocation, MatchKeyword, requested):
 				return ToIf(match, index == statements.Count - 1, search.Scope);
 			
-			case ExpressionStatementNode { ExpressionNode: ReturnExpressionNode { Value: MatchExpressionNode match } }
+			case ExpressionStatementNode
+				{
+					ExpressionNode: ReturnExpressionNode { Value: MatchExpressionNode match }
+				}
 				returned when TouchesKeyword(match.Keyword.SourceLocation, MatchKeyword, requested):
 				return ToIf(returned, match, search.Scope);
 			
@@ -502,7 +505,8 @@ public static class MatchConversions
 	private static int CountName(string text, string name)
 	{
 		var count = 0;
-		for (var at = text.IndexOf(name, StringComparison.Ordinal); at >= 0;
+		for (var at = text.IndexOf(name, StringComparison.Ordinal);
+		     at >= 0;
 		     at = text.IndexOf(name, at + name.Length, StringComparison.Ordinal))
 		{
 			var end = at + name.Length;

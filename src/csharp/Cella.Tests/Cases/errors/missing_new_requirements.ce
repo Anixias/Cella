@@ -1,0 +1,23 @@
+mod test
+
+Bits: trait
+{
+	new: op(bits: i32)
+	new: op(self) -> i32
+}
+
+Payload: ext enum impl Bits
+{
+	empty
+	held(value: i32)
+}
+
+Plain: rec impl Bits
+{
+	value: i32
+}
+
+main: fun -> i32
+{
+	ret 0
+}
