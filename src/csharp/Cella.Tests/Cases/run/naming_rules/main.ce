@@ -8,6 +8,16 @@ point_shape: rec
 	XValue: i32
 }
 
+CString: rec
+{
+	value: i32
+}
+
+IOStream: rec
+{
+	value: i32
+}
+
 testAddition: fun -> i32 => 0
 
 testaddition: fun -> i32 => 0

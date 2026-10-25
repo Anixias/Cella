@@ -123,7 +123,18 @@ UnsignedInteger: pub trait req Integer
 	abs: fun(x: Self) -> Self => x
 }
 
-Float: pub trait req SignedNumber
+Transcendental: pub trait
+{
+	sqrt: fun(x: Self) -> Self
+	sin: fun(x: Self) -> Self
+	cos: fun(x: Self) -> Self
+	exp: fun(x: Self) -> Self
+	log: fun(x: Self) -> Self
+	pow: fun(x: Self, e: Self) -> Self
+	fma: fun(x: Self, y: Self, z: Self) -> Self
+}
+
+Float: pub trait req SignedNumber + Transcendental
 {
 	posInf: const Self
 	negInf: const Self
@@ -151,11 +162,4 @@ Float: pub trait req SignedNumber
 	isFinite: fun(x: Self) -> bool
 	isSubnormal: fun(x: Self) -> bool
 	isNormal: fun(x: Self) -> bool
-	sqrt: fun(x: Self) -> Self
-	sin: fun(x: Self) -> Self
-	cos: fun(x: Self) -> Self
-	exp: fun(x: Self) -> Self
-	log: fun(x: Self) -> Self
-	pow: fun(x: Self, e: Self) -> Self
-	fma: fun(x: Self, y: Self, z: Self) -> Self
 }

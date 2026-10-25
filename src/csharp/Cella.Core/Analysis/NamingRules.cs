@@ -123,12 +123,15 @@ public sealed class NamingPattern
 		for (var i = 0; i < runes.Count; i++)
 		{
 			if (!Rune.IsLetter(runes[i]) && !IsDigit(runes[i]) ||
-			    i > 0 && Rune.IsUpper(runes[i]) && Rune.IsUpper(runes[i - 1]))
+			    i > 0 && Rune.IsUpper(runes[i]) && Rune.IsUpper(runes[i - 1]) && !FollowsOneLetterWord(runes, i))
 				return false;
 		}
 		
 		return true;
 	}
+	
+	private static bool FollowsOneLetterWord(List<Rune> runes, int index) =>
+		(index < 2 || !Rune.IsUpper(runes[index - 2])) && index + 1 < runes.Count && IsLowerLetter(runes[index + 1]);
 	
 	private static bool IsSeparated(string text, Func<Rune, bool> isLetter) =>
 		text.Split('_').All(word => word.Length > 0 && word.EnumerateRunes().ToList() is var runes &&

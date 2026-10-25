@@ -13,24 +13,29 @@ Warning at main.ce:8:2
 8 │     XValue: i32
         ╘════╛ 'XValue' doesn't match {camelCase}
 
-Warning at main.ce:15:1
-14 │ 
-15 │ Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
+Warning at main.ce:16:1
+15 │ 
+16 │ IOStream: rec
+     ╘══════╛ 'IOStream' doesn't match {PascalCase}Kind|{PascalCase}
+
+Warning at main.ce:25:1
+24 │ 
+25 │ Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
      ╘════════╛ 'Make_Point' doesn't match {camelCase}|test{PascalCase}
 
-Warning at main.ce:15:17
-14 │ 
-15 │ Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
+Warning at main.ce:25:17
+24 │ 
+25 │ Make_Point: fun(Start_X: i32) -> point_shape => point_shape(Start_X)
                      ╘═════╛ 'Start_X' doesn't match {camelCase}
 
-Warning at main.ce:19:6
-18 │ {
-19 │     val Total = Make_Point(MAX_COUNT).XValue
+Warning at main.ce:29:6
+28 │ {
+29 │     val Total = Make_Point(MAX_COUNT).XValue
              ╘═══╛ 'Total' doesn't match {camelCase}
 
-Warning at main.ce:20:6
-19 │ val Total = Make_Point(MAX_COUNT).XValue
-20 │ for Item in 0..Total
+Warning at main.ce:30:6
+29 │ val Total = Make_Point(MAX_COUNT).XValue
+30 │ for Item in 0..Total
          ╘══╛ 'Item' doesn't match {camelCase}
 
 [exit code 1]
