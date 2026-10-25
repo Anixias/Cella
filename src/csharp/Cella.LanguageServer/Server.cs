@@ -24,6 +24,7 @@ public sealed class Server
 	private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new();
 	private bool hoversPlainText;
 	private bool resolvesActions;
+	private bool startsRenames;
 	
 	public Server(Stream input, Stream output, TimeSpan debounce)
 	{
@@ -107,6 +108,7 @@ public sealed class Server
 					parameters?["capabilities"]?["textDocument"]?["codeAction"]?["resolveSupport"]?["properties"] is
 						JsonArray properties && properties.Any(static property => (string?)property == "edit");
 				
+				startsRenames = (bool?)parameters?["capabilities"]?["experimental"]?["renameCommand"] == true;
 				_workspace.Initialize(parameters);
 				return (true, Capabilities());
 			
@@ -332,7 +334,7 @@ public sealed class Server
 			..file is null
 				? []
 				: Refactorings.Find(file, requested).Select(fix =>
-					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf)),
+					CodeActions.ToAction(fix, CodeActions.Rewrite, _workspace.UriOf, startsRenames)),
 			..moveAction is null ? [] : new[] { moveAction }
 		]);
 	}

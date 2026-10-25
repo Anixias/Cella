@@ -9,10 +9,17 @@ public static class MatchConversions
 {
 	private const string IfKeyword = "if";
 	private const string MatchKeyword = "match";
+	private const string ElseKeyword = "else";
+	private const string ValueName = "value";
+	private const string DeclarationStart = "val ";
 	
 	private sealed record Arm(string Head, IStatementNode Body, IReadOnlyList<string> Comments);
 	
 	private sealed record Branch(string? Condition, IStatementNode Body, IReadOnlyList<string> Comments);
+	
+	private sealed record ValueBranch(string? Condition, IExpressionNode Value, IReadOnlyList<string> Comments);
+	
+	private sealed record Search(TextRange Requested, SourceLocation Scope, List<DiagnosticFix> Fixes);
 	
 	public static IEnumerable<DiagnosticFix> Find(IEnumerable<FunctionNode> functions, TextRange requested)
 	{
@@ -20,85 +27,89 @@ public static class MatchConversions
 		foreach (var function in functions)
 		{
 			if (function.Body is { } body)
-				VisitBody(body, requested, fixes);
+				VisitBody(body, new(requested, function.Extent, fixes));
 		}
 		
 		return fixes;
 	}
 	
-	private static void VisitBody(IStatementNode body, TextRange requested, List<DiagnosticFix> fixes)
+	private static void VisitBody(IStatementNode body, Search search)
 	{
 		if (body is BlockStatementNode block)
-			VisitList(block.StatementNodes, requested, fixes);
+			VisitList(block.StatementNodes, search);
 		else
-			VisitList([body], requested, fixes);
+			VisitList([body], search);
 	}
 	
-	private static void VisitList(IReadOnlyList<IStatementNode> statements, TextRange requested,
-		List<DiagnosticFix> fixes)
+	private static void VisitList(IReadOnlyList<IStatementNode> statements, Search search)
 	{
 		for (var i = 0; i < statements.Count; i++)
 		{
-			if (Consider(statements, i, requested) is { } fix)
-				fixes.Add(fix);
+			if (Consider(statements, i, search) is { } fix)
+				search.Fixes.Add(fix);
 			
-			VisitChildren(statements[i], requested, fixes);
+			VisitChildren(statements[i], search);
 		}
 	}
 	
-	private static void VisitChildren(IStatementNode statement, TextRange requested, List<DiagnosticFix> fixes)
+	private static void VisitChildren(IStatementNode statement, Search search)
 	{
 		switch (statement)
 		{
 			case BlockStatementNode block:
-				VisitList(block.StatementNodes, requested, fixes);
+				VisitList(block.StatementNodes, search);
 				break;
 			
 			case IfStatementNode branch:
-				VisitBody(branch.Then, requested, fixes);
+				VisitBody(branch.Then, search);
 				if (branch.Else is IfStatementNode next)
-					VisitChildren(next, requested, fixes);
+					VisitChildren(next, search);
 				else if (branch.Else is { } otherwise)
-					VisitBody(otherwise, requested, fixes);
+					VisitBody(otherwise, search);
 				
 				break;
 			
 			case WhileStatementNode loop:
-				VisitBody(loop.Body, requested, fixes);
+				VisitBody(loop.Body, search);
 				break;
 			
 			case ForStatementNode loop:
-				VisitBody(loop.Body, requested, fixes);
+				VisitBody(loop.Body, search);
 				break;
 			
 			case LoopStatementNode loop:
-				VisitBody(loop.Body, requested, fixes);
+				VisitBody(loop.Body, search);
 				break;
 			
 			case DoWhileStatementNode loop:
-				VisitBody(loop.Body, requested, fixes);
+				VisitBody(loop.Body, search);
 				break;
 			
 			case MatchStatementNode match:
 				foreach (var arm in match.Arms)
-					VisitBody(arm.Body, requested, fixes);
+					VisitBody(arm.Body, search);
 				
 				break;
 		}
 	}
 	
-	private static DiagnosticFix? Consider(IReadOnlyList<IStatementNode> statements, int index, TextRange requested)
+	private static DiagnosticFix? Consider(IReadOnlyList<IStatementNode> statements, int index, Search search)
 	{
+		var requested = search.Requested;
 		switch (statements[index])
 		{
 			case IfStatementNode { Else: not null } chain when TouchesChain(chain, requested):
-				return ToMatch(chain);
+				return ToMatch(chain, statements, index);
 			
 			case IfStatementNode { Else: null } single when TouchesKeyword(single.SourceLocation, IfKeyword, requested):
 				return ToMatch(statements, index);
 			
 			case MatchStatementNode match when TouchesKeyword(match.SourceLocation, MatchKeyword, requested):
-				return ToIf(match, index == statements.Count - 1);
+				return ToIf(match, index == statements.Count - 1, search.Scope);
+			
+			case ExpressionStatementNode { ExpressionNode: ReturnExpressionNode { Value: MatchExpressionNode match } }
+				returned when TouchesKeyword(match.Keyword.SourceLocation, MatchKeyword, requested):
+				return ToIf(returned, match, search.Scope);
 			
 			default:
 				return null;
@@ -124,7 +135,7 @@ public static class MatchConversions
 		       start <= requested.End && requested.Start <= start + keyword.Length;
 	}
 	
-	private static DiagnosticFix? ToMatch(IfStatementNode chain)
+	private static DiagnosticFix? ToMatch(IfStatementNode chain, IReadOnlyList<IStatementNode> statements, int index)
 	{
 		var source = chain.SourceLocation.Source;
 		var branches = new List<(IExpressionNode Condition, IStatementNode Body)>();
@@ -156,10 +167,11 @@ public static class MatchConversions
 			.ToList();
 		
 		if (otherwise is not null)
-			arms.Add(new("else", otherwise, []));
+			arms.Add(new(ElseKeyword, otherwise, []));
 		
 		var end = (otherwise ?? branches[^1].Body).SourceLocation.Range.End;
-		return CreateMatch(source, chain.SourceLocation.Range.Start, end, subject.Node, arms);
+		return CreateMatch(statements, index, end, subject.Node,
+			[..branches.Select(static branch => branch.Condition)], arms);
 	}
 	
 	private static DiagnosticFix? ToMatch(IReadOnlyList<IStatementNode> statements, int index)
@@ -195,6 +207,7 @@ public static class MatchConversions
 		
 		var subject = Normalize(best);
 		var arms = new List<Arm>();
+		var conditions = new List<IExpressionNode>();
 		for (var i = first; i <= last; i++)
 		{
 			var comments = i == first
@@ -204,6 +217,7 @@ public static class MatchConversions
 			
 			var branch = (IfStatementNode)statements[i];
 			arms.Add(new(ToArmHead(branch.Condition, subject)!, branch.Then, comments));
+			conditions.Add(branch.Condition);
 		}
 		
 		var replaced = statements[last].SourceLocation.Range.End;
@@ -211,11 +225,11 @@ public static class MatchConversions
 		    statements[last + 1] is not VarStatementNode &&
 		    FindComments(source, replaced, statements[last + 1].SourceLocation.Range.Start) is { } restComments)
 		{
-			arms.Add(new("else", statements[last + 1], restComments));
+			arms.Add(new(ElseKeyword, statements[last + 1], restComments));
 			replaced = statements[last + 1].SourceLocation.Range.End;
 		}
 		
-		return CreateMatch(source, statements[first].SourceLocation.Range.Start, replaced, best, arms);
+		return CreateMatch(statements, first, replaced, best, conditions, arms);
 	}
 	
 	private static bool ExitsBranch(IStatementNode statement) =>
@@ -431,24 +445,82 @@ public static class MatchConversions
 		return comments;
 	}
 	
-	private static DiagnosticFix CreateMatch(ISource source, int start, int end, IExpressionNode subject,
-		List<Arm> arms)
+	private static DiagnosticFix CreateMatch(IReadOnlyList<IStatementNode> statements, int first, int end,
+		IExpressionNode subject, IReadOnlyList<IExpressionNode> conditions, List<Arm> arms)
 	{
+		var source = subject.SourceLocation.Source;
+		var start = statements[first].SourceLocation.Range.Start;
+		var subjectText = Text(subject.SourceLocation);
+		if (FindInlinedValue(statements, first, subject, conditions, arms) is { } inlined)
+		{
+			start = inlined.SourceLocation.Range.Start;
+			subjectText = Text(inlined.ExpressionNode!.SourceLocation);
+		}
+		
 		var newline = source.FindNewline();
 		var indent = source.FindIndent(start);
 		var armIndent = indent + "\t";
-		var text = new StringBuilder($"match {Text(subject.SourceLocation)}{newline}{indent}{{");
-		foreach (var arm in arms)
+		var values = arms.Select(arm => FindReturnedValue(source, arm.Body)).ToList();
+		var returns = arms[^1].Head == ElseKeyword && values.All(static value => value is not null);
+		var text = new StringBuilder($"{(returns ? "ret " : "")}match {subjectText}{newline}{indent}{{");
+		for (var i = 0; i < arms.Count; i++)
 		{
-			foreach (var comment in arm.Comments)
+			foreach (var comment in arms[i].Comments)
 				text.Append(newline).Append(armIndent).Append(comment);
 			
-			text.Append(newline).Append(armIndent).Append(RenderArm(source, arm, armIndent, newline));
+			text.Append(newline).Append(armIndent).Append(returns
+				? $"{arms[i].Head} => {Reindent(source, values[i]!.SourceLocation, armIndent)}"
+				: RenderArm(source, arms[i], armIndent, newline));
 		}
 		
 		text.Append(newline).Append(indent).Append('}');
 		return DiagnosticFix.Replace("Convert to 'match'", new(source, new(start, end)), text.ToString());
 	}
+	
+	private static VarStatementNode? FindInlinedValue(IReadOnlyList<IStatementNode> statements, int first,
+		IExpressionNode subject, IReadOnlyList<IExpressionNode> conditions, List<Arm> arms)
+	{
+		if (first == 0 || subject is not VarExpressionNode { Identifier.Text: var name } ||
+		    statements[first - 1] is not VarStatementNode
+		    {
+			    IsMutable: false, IsConstant: false, Type: null, ExpressionNode: not null
+		    } declaration || declaration.Identifier.Text != name)
+			return null;
+		
+		var source = subject.SourceLocation.Source;
+		var declared = declaration.SourceLocation.Range.End;
+		if (source.GetText(new(declared, statements[first].SourceLocation.Range.Start)).ToString().Trim().Length > 0 ||
+		    arms.Any(arm => CountName(arm.Head, name) > 0))
+			return null;
+		
+		var used = CountName(source.GetText(new(declared, statements[^1].SourceLocation.Range.End)).ToString(), name);
+		return used == conditions.Sum(condition => CountName(Text(condition.SourceLocation), name))
+			? declaration
+			: null;
+	}
+	
+	private static int CountName(string text, string name)
+	{
+		var count = 0;
+		for (var at = text.IndexOf(name, StringComparison.Ordinal); at >= 0;
+		     at = text.IndexOf(name, at + name.Length, StringComparison.Ordinal))
+		{
+			var end = at + name.Length;
+			if ((at == 0 || !Completion.IsNameCharacter(text[at - 1])) &&
+			    (end == text.Length || !Completion.IsNameCharacter(text[end])))
+				count++;
+		}
+		
+		return count;
+	}
+	
+	private static IExpressionNode? FindReturnedValue(ISource source, IStatementNode body) => body switch
+	{
+		ExpressionStatementNode { ExpressionNode: ReturnExpressionNode { Value: { } value } } => value,
+		BlockStatementNode { StatementNodes: [var only] } block when IsBare(source, block, only) =>
+			FindReturnedValue(source, only),
+		_ => null
+	};
 	
 	private static string RenderArm(ISource source, Arm arm, string armIndent, string newline)
 	{
@@ -473,13 +545,15 @@ public static class MatchConversions
 	private static string Reindent(ISource source, SourceLocation location, string indent) =>
 		Refactorings.Reindent(Text(location), source.FindIndent(location.Range.Start), indent);
 	
-	private static DiagnosticFix? ToIf(MatchStatementNode match, bool endsBlock)
+	private static DiagnosticFix? ToIf(MatchStatementNode match, bool endsBlock, SourceLocation scope)
 	{
-		if (match.Mode is not null || !IsStable(match.Value) || match.Arms.IsEmpty)
+		if (match.Mode is not null || match.Arms.IsEmpty)
 			return null;
 		
 		var source = match.SourceLocation.Source;
-		var subject = Text(match.Value.SourceLocation);
+		var newline = source.FindNewline();
+		var indent = source.FindIndent(match.SourceLocation.Range.Start);
+		var (subject, declaration) = DeclareSubject(match.Value, scope, newline, indent);
 		var branches = new List<Branch>();
 		var position = match.Value.SourceLocation.Range.End;
 		foreach (var arm in match.Arms)
@@ -487,7 +561,8 @@ public static class MatchConversions
 			if (FindComments(source, position, arm.SourceLocation.Range.Start) is not { } comments)
 				return null;
 			
-			branches.Add(new(arm.Patterns.IsEmpty ? null : ToCondition(arm, subject), arm.Body, comments));
+			branches.Add(new(arm.Patterns.IsEmpty ? null : ToCondition(arm.Patterns, arm.Guard, subject), arm.Body,
+				comments));
 			
 			position = arm.Body.SourceLocation.Range.End;
 		}
@@ -500,10 +575,8 @@ public static class MatchConversions
 		    branches.All(static branch => branch.Condition is null))
 			return null;
 		
-		var newline = source.FindNewline();
-		var indent = source.FindIndent(match.SourceLocation.Range.Start);
 		var conditional = branches.Where(static branch => branch.Condition is not null).ToList();
-		var text = new StringBuilder();
+		var text = new StringBuilder(declaration);
 		if (conditional.All(static branch => Diverges(branch.Body)))
 		{
 			var separator = newline + indent + newline + indent;
@@ -541,7 +614,70 @@ public static class MatchConversions
 			}
 		}
 		
-		return DiagnosticFix.Replace("Convert to 'if'", match.SourceLocation, text.ToString());
+		return RenamesDeclaration(DiagnosticFix.Replace("Convert to 'if'", match.SourceLocation, text.ToString()),
+			declaration, subject);
+	}
+	
+	private static DiagnosticFix? ToIf(ExpressionStatementNode returned, MatchExpressionNode match,
+		SourceLocation scope)
+	{
+		if (match.Mode is not null || match.Arms.IsEmpty)
+			return null;
+		
+		var source = match.SourceLocation.Source;
+		var newline = source.FindNewline();
+		var indent = source.FindIndent(returned.SourceLocation.Range.Start);
+		var (subject, declaration) = DeclareSubject(match.Value, scope, newline, indent);
+		var branches = new List<ValueBranch>();
+		var position = match.Value.SourceLocation.Range.End;
+		foreach (var arm in match.Arms)
+		{
+			if (FindComments(source, position, arm.SourceLocation.Range.Start) is not { } comments ||
+			    arm.Value is not { } value)
+				return null;
+			
+			branches.Add(new(arm.Patterns.IsEmpty ? null : ToCondition(arm.Patterns, arm.Guard, subject), value,
+				comments));
+			
+			position = value.SourceLocation.Range.End;
+		}
+		
+		if (FindComments(source, position, match.SourceLocation.Range.End) is not { Count: 0 } ||
+		    branches is not [_, .., { Condition: null } otherwise] ||
+		    branches.Count(static branch => branch.Condition is null) > 1)
+			return null;
+		
+		var separator = newline + indent + newline + indent;
+		var text = new StringBuilder(declaration);
+		foreach (var branch in branches.SkipLast(1))
+		{
+			AppendComments(text, branch.Comments, indent, newline);
+			text.Append($"if {branch.Condition}{newline}{indent}\tret ")
+				.Append(Reindent(source, branch.Value.SourceLocation, indent + "\t"))
+				.Append(separator);
+		}
+		
+		AppendComments(text, otherwise.Comments, indent, newline);
+		text.Append("ret ").Append(Reindent(source, otherwise.Value.SourceLocation, indent));
+		return RenamesDeclaration(DiagnosticFix.Replace("Convert to 'if'", returned.SourceLocation, text.ToString()),
+			declaration, subject);
+	}
+	
+	private static DiagnosticFix RenamesDeclaration(DiagnosticFix fix, string declaration, string name) =>
+		declaration.Length == 0 ? fix : fix with { NewNameEnd = DeclarationStart.Length + name.Length };
+	
+	private static (string Subject, string Declaration) DeclareSubject(IExpressionNode value, SourceLocation scope,
+		string newline, string indent)
+	{
+		if (IsStable(value))
+			return (Text(value.SourceLocation), "");
+		
+		var scopeText = Text(scope);
+		var name = ValueName;
+		for (var i = 2; CountName(scopeText, name) > 0; i++)
+			name = $"{ValueName}{i}";
+		
+		return (name, $"{DeclarationStart}{name} = {Text(value.SourceLocation)}{newline}{indent}");
 	}
 	
 	private static void AppendComments(StringBuilder text, IReadOnlyList<string> comments, string indent,
@@ -570,11 +706,11 @@ public static class MatchConversions
 			indent);
 	}
 	
-	private static string ToCondition(MatchArmNode arm, string subject)
+	private static string ToCondition(IEnumerable<PatternNode> patterns, IExpressionNode? guard, string subject)
 	{
-		var items = arm.Patterns.Select(pattern => ToTest(pattern, subject)).ToList();
+		var items = patterns.Select(pattern => ToTest(pattern, subject)).ToList();
 		var condition = string.Join(" || ", items);
-		if (arm.Guard is not { } guard)
+		if (guard is null)
 			return condition;
 		
 		return $"{(items.Count > 1 ? $"({condition})" : condition)} && {Wrap(guard, 1)}";

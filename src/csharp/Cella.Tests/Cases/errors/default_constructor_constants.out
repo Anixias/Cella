@@ -1,0 +1,26 @@
+Error at lib.ce:18:24
+17 │ 
+18 │ hidden: const Hidden = Hidden()
+                            ╘══════╛ 'new' is private to its type
+
+Error at main.ce:15:22
+14 │ 
+15 │ origin: const Vec2 = Vec2()
+                          ╘════╛ 'new' is private to its module
+
+Error at main.ce:16:16
+15 │ origin: const Vec2 = Vec2()
+16 │ guarded: const Guarded = Guarded()
+                    ╘═════╛ Cannot store values with destructors in constants
+
+Error at main.ce:18:23
+17 │ 
+18 │ place: fun(at: Vec2 = Vec2()) -> f32 => at.x
+                           ╘════╛ 'new' is private to its module
+
+Error at main.ce:22:16
+21 │ {
+22 │     const local = Hidden()
+                       ╘══════╛ 'new' is private to its type
+
+[compilation failed]

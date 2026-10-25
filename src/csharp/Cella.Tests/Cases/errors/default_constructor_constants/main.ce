@@ -1,0 +1,24 @@
+mod test
+use geo.*
+
+Guarded: own rec
+{
+	value: i32
+
+	new: op = default
+
+	drop: op
+	{
+	}
+}
+
+origin: const Vec2 = Vec2()
+guarded: const Guarded = Guarded()
+
+place: fun(at: Vec2 = Vec2()) -> f32 => at.x
+
+main: fun -> i32
+{
+	const local = Hidden()
+	ret 0
+}

@@ -1,6 +1,10 @@
 package com.anixias.cella.server
 
 import com.anixias.cella.CellaLanguage
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
+import com.intellij.ide.DataManager
+import com.intellij.openapi.application.ApplicationManager
 import com.anixias.cella.lexer.CellaScanner
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.IntentionMenuContributor
@@ -94,6 +98,8 @@ private fun createFile(uri: String) {
 	folder.createChildData(CellaCodeAction::class.java, path.fileName.toString())
 }
 
+private const val RenameCommand = "cella.rename"
+
 class CellaCodeAction(private val action: CodeAction) : IntentionAction {
 	override fun getText(): String = action.title
 	
@@ -109,6 +115,26 @@ class CellaCodeAction(private val action: CodeAction) : IntentionAction {
 	override fun invoke(project: Project, editor: Editor?, file: PsiFile?) {
 		val edit = action.edit ?: resolve(project) ?: return
 		applyWorkspaceEdit(project, action.title, edit)
+		if (editor != null && file != null)
+			startRename(project, editor, file)
+	}
+	
+	private fun startRename(project: Project, editor: Editor, file: PsiFile) {
+		val command = action.command?.takeIf { it.command == RenameCommand } ?: return
+		val uri = (command.arguments?.getOrNull(0) as? JsonPrimitive)?.asString ?: return
+		val target = command.arguments?.getOrNull(1) as? JsonObject ?: return
+		val virtualFile = file.virtualFile ?: return
+		if (CellaServer.keyOf(uri) != CellaServer.keyOf(CellaServer.uriOf(virtualFile)))
+			return
+		
+		val position = Position(target.get("line")?.asInt ?: return, target.get("character")?.asInt ?: return)
+		ApplicationManager.getApplication().invokeLater({
+			val document = editor.document
+			PsiDocumentManager.getInstance(project).commitDocument(document)
+			editor.caretModel.moveToOffset(offsetIn(document, position))
+			CellaRenameHandler().invoke(project, editor, file,
+				DataManager.getInstance().getDataContext(editor.contentComponent))
+		}, project.disposed)
 	}
 
 	private fun resolve(project: Project): WorkspaceEdit? {

@@ -1,0 +1,13 @@
+mod text
+
+Encoding: pub rec
+{
+	width: i32
+	strict: bool
+
+	new: mod op = default
+
+	instance: const Encoding = Encoding()
+
+	units: fun(self) -> i32 => self.width + i32(!self.strict)
+}

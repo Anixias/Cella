@@ -399,6 +399,8 @@ class CellaServer(private val project: Project) : Disposable {
 							resolveSupport = CodeActionResolveSupportCapabilities(listOf("edit"))
 						}
 					}
+					
+					experimental = JsonObject().apply { addProperty("renameCommand", true) }
 				}
 			}).get(30, TimeUnit.SECONDS)
 			server.initialized(InitializedParams())

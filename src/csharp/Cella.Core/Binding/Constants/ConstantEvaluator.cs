@@ -146,7 +146,8 @@ public sealed class ConstantEvaluator
 		Evaluate(node) is { } value && !BuildsDroppedValue(node) ? value : null;
 	
 	private bool BuildsDroppedValue(IResolvedExpressionNode node) =>
-		node is ResolvedRecordExpressionNode or ResolvedArrayExpressionNode or ResolvedEnumCaseExpressionNode &&
+		node is ResolvedRecordExpressionNode or ResolvedArrayExpressionNode or ResolvedEnumCaseExpressionNode
+			or ResolvedConstructorCallExpressionNode &&
 		typePool.NeedsDrop(node.Type) || GetOperands(node).Any(BuildsDroppedValue) ||
 		node is ResolvedMatchExpressionNode match && match.Arms.Any(arm => BuildsDroppedValue(arm.Value));
 	
@@ -293,6 +294,8 @@ public sealed class ConstantEvaluator
 			values => values.Length == 0 ? new ZeroConstant(n.Type) : new RecordConstant(n.Type, values)),
 		ResolvedArrayExpressionNode { Type: ArrayType type } n =>
 			FoldAll(n.Values, values => new ArrayConstant(type, values)),
+		ResolvedConstructorCallExpressionNode { Arguments.IsEmpty: true } n when
+			typePool.IsDefaultConstructor(n.Function) => Zero(n.Type),
 		ResolvedFunctionReferenceExpressionNode n => new FunctionConstant(n.Function, n.Type),
 		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
 		ResolvedIsExpressionNode n when foldsBindings || !n.Pattern.HasBindings => FoldIs(n),

@@ -8,6 +8,7 @@ public sealed record TextEdit(SourceLocation Location, string NewText);
 public sealed record DiagnosticFix(string Title, ImmutableArray<TextEdit> Edits)
 {
 	public string? Rename { get; init; }
+	public int? NewNameEnd { get; init; }
 	
 	public DiagnosticFix(string title, params TextEdit[] edits) : this(title, ImmutableArray.Create(edits))
 	{

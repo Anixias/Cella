@@ -362,6 +362,51 @@ public sealed partial class LanguageServerTests
 	}
 	
 	[Fact]
+	public async Task ConvertsReturningChainsToMatchExpressions()
+	{
+		const string ifs = "mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n\tval code = u32(codePoint)\n\tif code <= 0x7F\n\t\tret 1\n\t\n\tif code <= 0x7FF\n\t\tret 2\n\t\n\tif code <= 0xFFFF\n\t\tret 3\n\t\n\tret 4\n}\n";
+		const string returned = "mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n\tret match u32(codePoint)\n\t{\n\t\t<= 0x7F => 1\n\t\t<= 0x7FF => 2\n\t\t<= 0xFFFF => 3\n\t\telse => 4\n\t}\n}\n";
+		const string statement = "mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n\tmatch u32(codePoint)\n\t{\n\t\t<= 0x7F => ret 1\n\t\t<= 0x7FF => ret 2\n\t\t<= 0xFFFF => ret 3\n\t\telse => ret 4\n\t}\n}\n";
+		const string declared = "mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n\tval value = u32(codePoint)\n\tif value <= 0x7F\n\t\tret 1\n\t\n\tif value <= 0x7FF\n\t\tret 2\n\t\n\tif value <= 0xFFFF\n\t\tret 3\n\t\n\tret 4\n}\n";
+
+		Assert.Equal(returned, await FixAsync(ifs.Replace("if code <= 0x7FF", "‸if code <= 0x7FF"),
+			"Convert to 'match'"));
+
+		Assert.Equal(declared, await FixAsync(returned.Replace("ret match", "ret ma‸tch"), "Convert to 'if'"));
+		Assert.Null((await CodeActionsAtAsync(returned.Replace("ret match", "ret ma‸tch"))).Actions
+			.First(static action => (string)action!["title"]! == "Convert to 'if'")!["command"]);
+		Assert.Equal(declared, await FixAsync(statement.Replace("match u32", "‸match u32"), "Convert to 'if'"));
+		Assert.Equal(returned, await FixAsync(declared.Replace("if value <= 0x7F\n", "i‸f value <= 0x7F\n"),
+			"Convert to 'match'"));
+
+		const string kept = "mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n\tval code = u32(codePoint)\n\tif code <= 0x7F\n\t\tret 1\n\t\n\tif code <= 0x7FF\n\t\tret 2\n\t\n\tret usize(code)\n}\n";
+		const string keptMatch = "mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n\tval code = u32(codePoint)\n\tret match code\n\t{\n\t\t<= 0x7F => 1\n\t\t<= 0x7FF => 2\n\t\telse => usize(code)\n\t}\n}\n";
+
+		Assert.Equal(keptMatch, await FixAsync(kept.Replace("if code <= 0x7FF", "‸if code <= 0x7FF"),
+			"Convert to 'match'"));
+
+		Assert.Equal(0, await ShutDownAsync());
+	}
+
+	[Fact]
+	public async Task RenamesIntroducedValues()
+	{
+		await InitializeAsync(new JsonObject { ["experimental"] = new JsonObject { ["renameCommand"] = true } });
+		isInitialized = true;
+
+		var (_, actions) = await CodeActionsAtAsync("mod test\n\nlengthOf: fun(codePoint: char) -> usize\n{\n" +
+		                                            "\tret \u2038match u32(codePoint)\n\t{\n\t\t<= 0x7F => 1\n" +
+		                                            "\t\telse => 2\n\t}\n}\n");
+
+		var command = actions.First(static action => (string)action!["title"]! == "Convert to 'if'")!["command"]!;
+		Assert.Equal("cella.rename", (string)command["command"]!);
+		Assert.Equal(SourceUri, (string)command["arguments"]![0]!);
+		Assert.Equal(4, (int)command["arguments"]![1]!["line"]!);
+		Assert.Equal(10, (int)command["arguments"]![1]!["character"]!);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+
+	[Fact]
 	public async Task ImplementsMissingMembers()
 	{
 		const string start = "mod test\n\nShape: trait\n{\n\tarea: fun(imm self) -> f64\n" +

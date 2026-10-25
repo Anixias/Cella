@@ -1,0 +1,18 @@
+mod geo
+
+Vec2: rec
+{
+	x: f32
+	y: f32
+
+	new: mod op = default
+}
+
+Hidden: rec
+{
+	value: i32
+
+	new: pvt op = default
+}
+
+hidden: const Hidden = Hidden()

@@ -8,6 +8,7 @@ public static class CodeActions
 {
 	public const string QuickFix = "quickfix";
 	public const string Rewrite = "refactor.rewrite";
+	public const string RenameCommand = "cella.rename";
 	
 	public static IEnumerable<JsonObject> FromDiagnostics(IEnumerable<Diagnostic> diagnostics, TextRange requested,
 		Func<string, string> uriOf)
@@ -35,12 +36,38 @@ public static class CodeActions
 		}
 	}
 	
-	public static JsonObject ToAction(DiagnosticFix fix, string kind, Func<string, string> uriOf) => new()
+	public static JsonObject ToAction(DiagnosticFix fix, string kind, Func<string, string> uriOf,
+		bool startsRenames = false)
 	{
-		["title"] = fix.Title,
-		["kind"] = kind,
-		["edit"] = ToWorkspaceEdit(fix.Edits, uriOf)
-	};
+		var action = new JsonObject
+		{
+			["title"] = fix.Title,
+			["kind"] = kind,
+			["edit"] = ToWorkspaceEdit(fix.Edits, uriOf)
+		};
+		
+		if (startsRenames && fix.NewNameEnd is { } end && fix.Edits is [var edit, ..])
+			action["command"] = new JsonObject
+			{
+				["title"] = "Rename",
+				["command"] = RenameCommand,
+				["arguments"] = new JsonArray(uriOf(edit.Location.Source.FilePath), ToPositionAfter(edit, end))
+			};
+		
+		return action;
+	}
+	
+	private static JsonObject ToPositionAfter(TextEdit edit, int end)
+	{
+		var (line, character) = Protocol.ToLineCharacter(edit.Location.Source, edit.Location.Range.Start);
+		var inserted = edit.NewText[..end];
+		var lastBreak = inserted.LastIndexOf('\n');
+		return new JsonObject
+		{
+			["line"] = line + inserted.Count(static c => c == '\n'),
+			["character"] = lastBreak < 0 ? character + end : end - lastBreak - 1
+		};
+	}
 	
 	public static JsonObject ToWorkspaceEdit(IEnumerable<TextEdit> edits, Func<string, string> uriOf)
 	{

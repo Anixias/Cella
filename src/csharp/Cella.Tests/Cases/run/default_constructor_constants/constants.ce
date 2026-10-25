@@ -1,0 +1,3 @@
+mod text
+
+utf8: pub const Encoding = Encoding()

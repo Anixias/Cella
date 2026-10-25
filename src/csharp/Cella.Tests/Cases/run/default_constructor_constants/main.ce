@@ -1,0 +1,62 @@
+mod test
+use text.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Plain: rec
+{
+	value: i32
+
+	instance: const Plain = Plain()
+}
+
+Hidden: rec
+{
+	value: i32
+	ratio: f64
+
+	new: pvt op = default
+
+	instance: const Hidden = Hidden()
+	first: const i32 = Hidden().value + 2
+
+	tag: fun(self) -> i32 => self.value + 2
+}
+
+Shown: rec
+{
+	count: u8
+
+	new: op = default
+
+	new: op(count: u8)
+	{
+		self.count = count
+	}
+}
+
+Slot[T: default]: rec
+{
+	item: T
+
+	new: op = default
+}
+
+shown: const Shown = Shown()
+slot: const Slot[i64] = Slot[i64]()
+
+measure: fun(value: Shown = Shown()) -> u8 => value.count
+
+main: fun -> i32
+{
+	const local = Shown()
+	printf("%d %d %d\n", Plain.instance.value, Hidden.instance.tag(), Hidden.first)
+	printf("%.1f %d %d\n", Hidden.instance.ratio, i32(shown.count), i32(local.count))
+	printf("%d %d\n", i32(measure()), i32(measure(Shown(9u8))))
+	printf("%lld\n", slot.item)
+	printf("%d %d\n", utf8.units(), Encoding.instance.units())
+	ret 0
+}
