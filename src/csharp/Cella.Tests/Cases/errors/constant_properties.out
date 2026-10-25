@@ -1,0 +1,41 @@
+Error at constant_properties.ce:16:3
+15 │ {
+16 │     puts("loud")
+         ╘══════════╛ Cannot call 'puts' in constant functions
+
+Hint at constant_properties.ce:22:3
+21 │ {
+22 │     const get(self) => self.value
+         ╘═══╛ Redundant 'const'
+
+Error at constant_properties.ce:55:9
+54 │ 
+55 │ width: get(imm self) -> u32 => self.side
+            ╘═╛ 'width' must be 'const' to match 'Sized.width'
+
+Error at constant_properties.ce:60:3
+59 │ {
+60 │     get(imm self) => self.side
+         ╘═╛ 'depth.get' must be 'const' to match 'Sized.depth.get'
+
+Error at constant_properties.ce:73:10
+72 │ width: const get(imm self) -> u32 => self.side
+73 │ height: get(imm self) -> u32 => self.side
+             ╘═╛ 'height' must be 'const' in 'impl const Sized'
+
+Error at constant_properties.ce:78:3
+77 │ const get(imm self) => self.side
+78 │ set(mut self, value)
+     ╘═╛ 'depth.set' must be 'const' in 'impl const Sized'
+
+Error at constant_properties.ce:85:28
+84 │ 
+85 │ reads: const fun -> u32 => Bits(3).low
+                                ╘═════════╛ Cannot read 'Bits.low' in constant functions
+
+Error at constant_properties.ce:90:2
+89 │ var bits = Bits(1)
+90 │ bits.plain = 4
+     ╘════════════╛ Cannot set 'Bits.plain' in constant functions
+
+[compilation failed]

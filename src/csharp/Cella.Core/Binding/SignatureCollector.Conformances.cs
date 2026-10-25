@@ -59,8 +59,10 @@ public sealed partial class SignatureCollector
 			
 			var name = requirement.Kind == FunctionKind.Constructor
 				? "new"
-				: conformance.Trait.Functions.FirstOrDefault(method => method.Function == requirement)?.Name ??
-				  requirement.Name;
+				: requirement.Property is { } property
+					? DescribeAccessor(property, requirement)
+					: conformance.Trait.Functions.FirstOrDefault(method => method.Function == requirement)?.Name ??
+					  requirement.Name;
 			
 			if (function == requirement || function.Trait is not null)
 				ReportNonConstantDefault(conformance, function, $"{trait}.{name}");
@@ -81,6 +83,11 @@ public sealed partial class SignatureCollector
 					$"'{DiagnosticReporter.DescribeType(self)}' needs 'impl const {required.Name}'"));
 		}
 	}
+	
+	private static string DescribeAccessor(PropertySymbol property, FunctionSymbol accessor) =>
+		property is { Getter: not null, Setter: not null }
+			? $"{property.Name}.{((FunctionNode)accessor.Syntax).Identifier.Text}"
+			: property.Name;
 	
 	private void ReportNonConstantDefault(Conformance conformance, FunctionSymbol function, string name)
 	{
@@ -712,8 +719,12 @@ public sealed partial class SignatureCollector
 		var members = constantNodes
 			.Select(constant => (IsFunction: false, Describe: (Func<string, string>)(_ =>
 				DescribeConstant(constant, selfName))))
-			.Concat(functions.Select(function => (IsFunction: true, Describe: (Func<string, string>)(indent =>
-				DescribeMember(function, selfName, indent, conformance.IsConstant)))))
+			.Concat(GroupAccessors(functions).Select(member => (IsFunction: true, Describe: (Func<string, string>)(
+				indent => member switch
+				{
+					PropertyNode property => DescribeProperty(property, selfName, indent, conformance.IsConstant),
+					_ => DescribeMember((FunctionNode)member, selfName, indent, conformance.IsConstant)
+				}))))
 			.ToList();
 		
 		if (InsertMembers(conformance, members) is not { } insertion)
@@ -896,7 +907,61 @@ public sealed partial class SignatureCollector
 		return text.Append(source.GetText(new(position, range.End))).ToString();
 	}
 	
-	private static readonly Regex _memberKind = new(@"^([^:]*:\s*(?:(?:pub|pvt|mod|req)\s+)*)(?!const\b)(fun\b|op\b)");
+	private static readonly Regex _memberKind =
+		new(@"^([^:]*:\s*(?:(?:pub|pvt|mod|req)\s+)*)(?!const\b)(fun\b|op\b|get\b|set\b|prop\b)");
+	
+	private IEnumerable<IDeclarationNode> GroupAccessors(IEnumerable<FunctionNode> functions)
+	{
+		var properties = new HashSet<PropertyNode>();
+		foreach (var function in functions)
+		{
+			if (_symbolTable.DeclarationSymbols.GetValueOrDefault(function) is not FunctionSymbol
+			    {
+				    Property.Node: { } property
+			    })
+				yield return function;
+			else if (properties.Add(property))
+				yield return property;
+		}
+	}
+	
+	private static string DescribeProperty(PropertyNode property, string selfName, string indent, bool isConstant)
+	{
+		if (property.Keyword is null)
+		{
+			var accessor = property.Accessors[0];
+			var (source, range) = accessor.Extent;
+			var text = ReplaceSelf(new(source, new(property.Identifier.SourceLocation.Range.Start, range.End)),
+				accessor.Parameters.Select(static parameter => parameter.Type).Append(accessor.ReturnType)
+					.OfType<ITypeNode>(), selfName);
+			
+			return (isConstant ? _memberKind.Replace(text, "$1const $2", 1) : text) + " => panic";
+		}
+		
+		var (typeSource, typeRange) = property.Type!.SourceLocation;
+		var header = ReplaceSelf(new(typeSource, new(property.Identifier.SourceLocation.Range.Start, typeRange.End)),
+			[property.Type], selfName);
+		
+		if (isConstant)
+			header = _memberKind.Replace(header, "$1const $2", 1);
+		
+		var isConstantProperty = property.Modifiers.Any(static token => token.Type == TokenType.KeywordConst);
+		var lines = new List<string> { header, indent + "{" };
+		foreach (var accessor in property.Accessors)
+		{
+			var (source, range) = accessor.Extent;
+			var text = ReplaceSelf(new(source, new(accessor.Identifier.SourceLocation.Range.Start, range.End)),
+				accessor.Parameters.Select(static parameter => parameter.Type), selfName);
+			
+			var isConstantAccessor = !isConstant && !isConstantProperty &&
+			                         accessor.Modifiers.Any(static token => token.Type == TokenType.KeywordConst);
+			
+			lines.Add($"{indent}\t{(isConstantAccessor ? "const " : "")}{text} => panic");
+		}
+		
+		lines.Add(indent + "}");
+		return string.Join('\n', lines);
+	}
 	
 	private static string DescribeMember(FunctionNode function, string selfName, string indent, bool isConstant)
 	{

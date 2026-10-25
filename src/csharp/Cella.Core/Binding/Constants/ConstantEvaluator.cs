@@ -296,6 +296,7 @@ public sealed partial class ConstantEvaluator
 	{
 		ResolvedVarExpressionNode n when FindCell(n.Symbol) is { } cell => ReadVariable(cell, n.Type),
 		ResolvedAssignmentExpressionNode n => Assign(n),
+		ResolvedPropertyAssignmentExpressionNode n => AssignProperty(n),
 		ResolvedAccessExpressionNode { Member: FieldSymbol } n => Read(EvalPlace(n)),
 		ResolvedIndexerExpressionNode n when n.Target.Type is not StringType => Read(EvalPlace(n)),
 		ResolvedBorrowExpressionNode n => new ReferenceConstant(n.Type, EvalPlace(n.Place)),

@@ -134,7 +134,9 @@ public sealed class FunctionSymbol
 	
 	public bool IsConstant => Syntax switch
 	{
-		FunctionNode node => node.Modifiers.Any(static token => token.Type == TokenType.KeywordConst),
+		FunctionNode node => node.Modifiers.Any(static token => token.Type == TokenType.KeywordConst) ||
+		                     Property?.Node?.Modifiers.Any(static token => token.Type == TokenType.KeywordConst) ==
+		                     true,
 		ConstructorNode node => node.Default is not null ||
 		                        node.Modifiers.Any(static token => token.Type == TokenType.KeywordConst),
 		_ => false

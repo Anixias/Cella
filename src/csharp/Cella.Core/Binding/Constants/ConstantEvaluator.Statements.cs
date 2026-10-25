@@ -384,6 +384,54 @@ public sealed partial class ConstantEvaluator
 		return value;
 	}
 	
+	private Constant AssignProperty(ResolvedPropertyAssignmentExpressionNode node)
+	{
+		var location = node.Syntax.SourceLocation;
+		var receiver = node.Receiver is null ? null : EvalPlace(node.Receiver);
+		var current = CallAccessor(SubstituteFunction(node.Getter), receiver, [], location);
+		Constant value;
+		if (node.Compound is { } compound)
+		{
+			var function = SubstituteFunction(compound);
+			var target = Temporary(current);
+			var right = TypePool.PassesByPointer(function.DeclaredSignature.GetMode(1))
+				? Reference(node.Right) ?? throw Fault(node.Right)
+				: Value(node.Right);
+			
+			Expect(Invoke(function, [new ReferenceConstant(current.Type, target), right], location), node);
+			value = Read(target);
+		}
+		else
+			value = Apply(node.Operation!, current, Dereference(Value(node.Right)), current.Type) ?? throw Fault(node);
+		
+		CallAccessor(SubstituteFunction(node.Setter), receiver, [value], location);
+		return _void;
+	}
+	
+	private Constant CallAccessor(FunctionInfo accessor, Place? receiver, Constant[] values, SourceLocation location)
+	{
+		Constant[] arguments = receiver is null
+			? values
+			:
+			[
+				accessor.DeclaredSignature.GetMode(0) is var mode &&
+				(TypePool.PassesByPointer(mode) || mode == ParameterMode.Mut)
+					? new ReferenceConstant(accessor.DeclaredSignature.ParameterTypes[0], receiver)
+					: Read(receiver),
+				..values
+			];
+		
+		return Expect(Invoke(accessor, arguments, location), null);
+	}
+	
+	private Constant Expect(Constant? result, IResolvedExpressionNode? node) => result switch
+	{
+		InvalidConstant => throw new AbortedEvaluation(),
+		{ } value => value,
+		null when node is not null => throw Fault(node),
+		null => throw new AbortedEvaluation()
+	};
+	
 	private bool Condition(IResolvedExpressionNode condition) => Value(condition) switch
 	{
 		BoolConstant flag => flag.Value,

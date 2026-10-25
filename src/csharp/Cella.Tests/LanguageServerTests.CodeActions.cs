@@ -458,6 +458,21 @@ public sealed partial class LanguageServerTests
 		Assert.Equal(scored + "i32: impl const Score\n{\n\tscore: const fun(self) -> i32 => panic\n\t\n" +
 		             "\tlevel: const fun -> i32 => panic\n}\n",
 			await FixAsync(scored + "i32: impl const ‸Score\n{\n}\n", "Implement missing members"));
+		
+		const string sized = "mod test\n\nSized: trait\n{\n\twidth: get(imm self) -> u32\n}\n\n";
+		Assert.Equal(sized + "i32: impl const Sized\n{\n\twidth: const get(imm self) -> u32 => panic\n}\n",
+			await FixAsync(sized + "i32: impl const ‸Sized\n{\n}\n", "Implement missing members"));
+		
+		const string levels = "mod test\n\nLevels: trait\n{\n\tlevel: prop u32\n\t{\n\t\tconst get(imm self)\n" +
+		                      "\t\tset(mut self, value)\n\t}\n}\n\n";
+		
+		Assert.Equal(levels + "i32: impl Levels\n{\n\tlevel: prop u32\n\t{\n\t\tconst get(imm self) => panic\n" +
+		             "\t\tset(mut self, value) => panic\n\t}\n}\n",
+			await FixAsync(levels + "i32: impl ‸Levels\n{\n}\n", "Implement missing members"));
+		
+		Assert.Equal(levels + "i32: impl const Levels\n{\n\tlevel: const prop u32\n\t{\n\t\tget(imm self) => panic\n" +
+		             "\t\tset(mut self, value) => panic\n\t}\n}\n",
+			await FixAsync(levels + "i32: impl const ‸Levels\n{\n}\n", "Implement missing members"));
 	}
 	
 	[Fact]

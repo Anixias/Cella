@@ -2405,6 +2405,27 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task HoversConstantProperties()
+	{
+		await File.WriteAllTextAsync(SourcePath,
+			"mod test\n\n" +
+			"Bits: rec\n{\n" +
+			"\tvalue: u32\n\n" +
+			"\thigh: const get(self) -> u32 => self.value >> 16\n" +
+			"\tzero: const get -> u32 => 7\n" +
+			"\tlevel: prop u32\n\t{\n\t\tconst get(self) => self.value\n\t\tset(mut self, value) => self.value = value\n\t}\n" +
+			"}\n\n" +
+			"main: fun -> i32 => i32(Bits.zero + Bits(1).high + Bits(2).level)\n", Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("high: const prop u32"), await HoverAsync(6, 2));
+		Assert.Equal(Code("zero: const prop u32\n= 7"), await HoverAsync(7, 2));
+		Assert.Equal(Code("level: prop u32"), await HoverAsync(8, 2));
+		Assert.Equal(Code("zero: const prop u32\n= 7"), await HoverAsync(15, 30));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task KeepsImplicitSelfOutOfDeclarations()
 	{
 		await File.WriteAllTextAsync(SourcePath, """

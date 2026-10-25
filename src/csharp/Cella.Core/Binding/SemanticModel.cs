@@ -551,7 +551,20 @@ public sealed class SemanticModel
 			_ => null
 		};
 		
-		return type is null ? $"{property.Name}: prop" : $"{property.Name}: prop {TypeName(type)}";
+		var accessors = new[] { property.Getter, property.Setter }.OfType<FunctionAccessor>()
+			.Select(static accessor => accessor.Function)
+			.ToList();
+		
+		var keyword = accessors.Count > 0 && accessors.All(static accessor => accessor.IsConstant)
+			? "const prop"
+			: "prop";
+		
+		var head = type is null ? $"{property.Name}: {keyword}" : $"{property.Name}: {keyword} {TypeName(type)}";
+		return property.Getter is FunctionAccessor { Function: var read } && TypePool.FoldsAsConstant(read) &&
+		       _foldedFunctions?.Invoke(read) is { } value and not InvalidConstant &&
+		       ConstantText.Describe(value) is { } shown
+			? $"{head}\n= {shown}"
+			: head;
 	}
 	
 	private static Token? FindAccessorName(IExpressionNode syntax) =>

@@ -1,0 +1,96 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+Bits: rec
+{
+	value: u32
+	
+	low: get(self) -> u32 => self.value & 0xFFFF
+	
+	loud: const get(self) -> u32
+	{
+		puts("loud")
+		ret self.value
+	}
+	
+	level: const prop u32
+	{
+		const get(self) => self.value
+		set(mut self, value)
+		{
+			self.value = value
+		}
+	}
+	
+	plain: prop u32
+	{
+		get(self) => self.value
+		set(mut self, value)
+		{
+			self.value = value
+		}
+	}
+}
+
+Sized: trait
+{
+	width: const get(imm self) -> u32
+	height: get(imm self) -> u32
+	
+	depth: prop u32
+	{
+		const get(imm self)
+		set(mut self, value)
+	}
+}
+
+Loose: rec impl Sized
+{
+	side: u32
+	
+	width: get(imm self) -> u32 => self.side
+	height: get(imm self) -> u32 => self.side
+	
+	depth: prop u32
+	{
+		get(imm self) => self.side
+		set(mut self, value)
+		{
+			self.side = value
+		}
+	}
+}
+
+Strict: rec impl const Sized
+{
+	side: u32
+	
+	width: const get(imm self) -> u32 => self.side
+	height: get(imm self) -> u32 => self.side
+	
+	depth: prop u32
+	{
+		const get(imm self) => self.side
+		set(mut self, value)
+		{
+			self.side = value
+		}
+	}
+}
+
+reads: const fun -> u32 => Bits(3).low
+
+writes: const fun -> u32
+{
+	var bits = Bits(1)
+	bits.plain = 4
+	ret bits.value
+}
+
+main: fun
+{
+}

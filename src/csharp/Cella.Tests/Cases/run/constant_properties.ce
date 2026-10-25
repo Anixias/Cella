@@ -1,0 +1,81 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bits: rec
+{
+	value: u32
+	
+	high: const get(self) -> u32 => self.value >> 16
+	low: const get(self) -> u32 => self.value & 0xFFFF
+	zero: const get -> u32 => 0
+	
+	level: prop u32
+	{
+		const get(self) => self.value
+		set(mut self, value)
+		{
+			self.value = value
+		}
+	}
+	
+	count: const prop u32
+	{
+		get(self) => self.value
+		set(mut self, value)
+		{
+			self.value = value
+		}
+	}
+}
+
+Sized: trait
+{
+	width: const get(imm self) -> u32
+	height: get(imm self) -> u32
+	area: get(imm self) -> u32 => self.width * self.height
+	tag: fun(imm self) -> u32 => self.width + 1
+}
+
+Tile: rec impl const Sized
+{
+	side: u32
+	
+	width: const get(imm self) -> u32 => self.side
+	height: const get(imm self) -> u32 => self.side + 1
+}
+
+Loose: rec impl Sized
+{
+	side: u32
+	
+	width: const get(imm self) -> u32 => self.side
+	height: get(imm self) -> u32 => self.side * 3
+}
+
+built: const fun -> u32
+{
+	var bits = Bits(5)
+	bits.count = 9
+	bits.count += 1
+	bits.count *= 2
+	ret bits.count + bits.level
+}
+
+top: const u32 = Bits(0x10002).high
+bottom: const u32 = Bits(0x10002).low
+nothing: const u32 = Bits.zero
+total: const u32 = built()
+area: const u32 = Tile(3).area
+tagged: const u32 = Tile(3).tag()
+
+main: fun
+{
+	var runtime = Bits(4)
+	runtime.level += 3
+	printf("%u %u %u %u\n", top, bottom, nothing, total)
+	printf("%u %u %u %u\n", area, tagged, Loose(2).area, runtime.level)
+}

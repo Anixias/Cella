@@ -1,5 +1,6 @@
 ﻿using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Syntax;
 
@@ -74,6 +75,7 @@ public sealed partial class FileParser
 		}
 		
 		MatchConstant(ref index, modifiers, IsFunctionMember);
+		MatchConstant(ref index, modifiers, StartsProperty);
 		if (FindMisplacedFieldModifier(index) is var (location, message))
 		{
 			Report(location, message);
@@ -228,7 +230,7 @@ public sealed partial class FileParser
 				if (!SeparateMember(ref index, ref errorsBefore, "accessor"))
 					continue;
 				
-				if (ParsePropertyAccessor(ref index, type, modifiers.Visibility) is not { } accessor)
+				if (ParsePropertyAccessor(ref index, type, modifiers) is not { } accessor)
 					return null;
 				
 				accessors.Add(accessor);
@@ -245,19 +247,29 @@ public sealed partial class FileParser
 		return new(identifier, modifiers.Tokens, keyword, type, accessors) { Visibility = modifiers.Visibility };
 	}
 	
-	private FunctionNode? ParsePropertyAccessor(ref int index, ITypeNode type, Token? propertyVisibility)
+	private FunctionNode? ParsePropertyAccessor(ref int index, ITypeNode type, DeclarationModifiers property)
 	{
 		var keywords = new List<Token>();
 		while (Match(ref index, out var keyword, _memberContextualKeywords, _visibilityKeywords))
 			keywords.Add(keyword);
 		
 		var visibility = CheckVisibility(keywords, null, true);
-		if (keywords is [{ Type: not TokenType.KeywordPub } narrowed] && propertyVisibility is { } outer &&
+		if (keywords is [{ Type: not TokenType.KeywordPub } narrowed] && property.Visibility is { } outer &&
 		    !IsNarrower(narrowed, outer))
 			Report(narrowed, $"Cannot use '{narrowed.Text}' in '{outer.Text}' properties");
 		
+		if (StartsConstant(index, IsAccessorKeyword))
+		{
+			if (property.Tokens.Any(static token => token.Type == TokenType.KeywordConst))
+				Diagnostics.Add(DiagnosticFix.Redundant(Tokens[index].SourceLocation));
+			
+			keywords.Add(Tokens[index++]);
+		}
+		
 		return ParseAccessor(ref index, type, keywords, visibility);
 	}
+	
+	private bool IsAccessorKeyword(int index) => Match(ref index, _memberContextualKeywords, _accessorKeywords);
 	
 	private FunctionNode? ParseAccessor(ref int index, ITypeNode? propertyType, List<Token> modifiers,
 		Token? visibility)

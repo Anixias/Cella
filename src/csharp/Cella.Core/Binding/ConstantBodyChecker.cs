@@ -43,7 +43,8 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 		var parameters = function.Symbol.Parameters;
 		for (var i = 0; i < parameters.Length && i < function.Signature.ParameterTypes.Length; i++)
 		{
-			if (function.Symbol.Kind != FunctionKind.Constructor || i > 0)
+			if ((function.Symbol.Kind != FunctionKind.Constructor || i > 0) &&
+			    function.Signature.GetMode(i) != ParameterMode.Imm)
 				CheckStorable(function.Signature.GetDeclaredType(i), parameters[i].Definition);
 		}
 		
@@ -96,9 +97,14 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 			{ IsConversion: true } => $"Cannot convert to '{function.Signature.ReturnType.Name}' in constant functions",
 			{ Kind: FunctionKind.Constructor } =>
 				$"Cannot construct '{function.Signature.GetDeclaredType(0).Name}' in constant functions",
+			{ Property: not null, Syntax: FunctionNode accessor } symbol =>
+				$"Cannot {DescribeAccess(accessor)} '{symbol.Name[..symbol.Name.LastIndexOf('.')]}' in constant functions",
 			var symbol => $"Cannot call '{symbol.Name}' in constant functions"
 		});
 	}
+	
+	private static string DescribeAccess(FunctionNode accessor) =>
+		accessor.Identifier.Type == TokenType.KeywordGet ? "read" : "set";
 	
 	private bool IsConstantThroughBound(FunctionInfo function) => function switch
 	{
