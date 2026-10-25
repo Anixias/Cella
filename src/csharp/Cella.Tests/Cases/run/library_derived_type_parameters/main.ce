@@ -1,0 +1,20 @@
+mod test
+
+use lib.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Longs: rec impl Holds[u64]
+{
+	unit: fun -> u64 => 7
+}
+
+main: fun -> i32
+{
+	printf("%zu %zu %zu\n", Plain.width(), Plain[Longs].width(), Box[Words, i32](3).width)
+	printf("%zu %zu\n", Box[Longs, i32](1).width, Box[Words, i8](4, 1, 1).width)
+	ret 0
+}

@@ -169,6 +169,9 @@ public sealed partial class SignatureCollector
 				? parameter
 				: new TypeParameterSymbol(target.TypeParameters[written + i].Name, []) { IsDerived = true }));
 		
+		foreach (var constructor in impl.Constructors)
+			constructor.TypeParameters = impl.TypeParameters;
+		
 		if (bound.Count == 0)
 			return true;
 		

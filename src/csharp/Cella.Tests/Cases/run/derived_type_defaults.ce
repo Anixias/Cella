@@ -1,0 +1,71 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Longs: rec impl Holds[u64]
+{
+	unit: fun -> u64 => 7
+}
+
+Heap: rec
+{
+	tag: i32
+}
+
+Box[E: Holds[T] = Words]: rec
+{
+	width: fun -> usize => sizeOf(T)
+}
+
+Text[E: Holds[T: copy] = Words, A = Heap]: rec
+{
+	width: fun -> usize => sizeOf(T) + sizeOf(A)
+}
+
+Choice[E: Holds[T] = Words]: enum
+{
+	none
+	
+	width: fun -> usize => sizeOf(T)
+}
+
+measure[E: Holds[T] = Words]: fun -> usize => sizeOf(T)
+
+chosen[E: Holds[T]]: fun(choice: Choice[E]) -> usize => sizeOf(T)
+
+pick[E: Holds[T] = Words]: fun(value: T) -> T => E.unit()
+
+Sized[E: Holds[T] = Words]: trait
+{
+	size: fun -> usize
+}
+
+Words: impl Sized
+{
+	size: fun -> usize => 5
+}
+
+main: fun -> i32
+{
+	val small: u16 = 1
+	val large: u64 = 2
+	val choice: Choice = Choice.none
+	val other: Choice[Longs] = Choice.none
+	printf("%zu %zu %zu %zu\n", Box.width(), Box[Longs].width(), Text.width(), Text[Longs].width())
+	printf("%zu %zu %zu %zu\n", Choice.width(), Choice[Longs].width(), measure(), measure[Longs]())
+	printf("%u %llu %zu %zu %zu\n", pick(small), pick[Longs](large), Words.size(), chosen(choice), chosen(other))
+	ret 0
+}

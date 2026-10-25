@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Pair[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+Box[E: Holds[T], X]: rec
+{
+	width: usize
+	extra: X
+	
+	new: op(count: usize, extra: X)
+	{
+		self.width = sizeOf(T) * count
+		self.extra = extra
+	}
+}
+
+Box[E: Holds[T], X: default]: impl
+{
+	new: op
+	{
+		self = Box[E, X](1)
+	}
+	
+	new: op(count: usize)
+	{
+		self = Box[E, X](count, X())
+	}
+	
+	unit: get(imm self) -> usize => sizeOf(T)
+	
+	scaled: fun(imm self, by: usize) -> usize => self.width * by + sizeOf(T)
+	
+	unitOf: fun -> usize => sizeOf(T)
+}
+
+Box[E: Holds[T], Pair[A, B: default]]: impl
+{
+	new: op(count: usize, first: A)
+	{
+		self = Box[E, Pair[A, B]](count + sizeOf(T), Pair[A, B](first, B()))
+	}
+}
+
+built[M: new(usize)]: fun -> M => M(2)
+
+main: fun -> i32
+{
+	val one = Box[Words, i32]()
+	val three = Box[Words, i32](3)
+	printf("%zu %zu %zu %zu %zu\n", one.width, three.width, three.unit, three.scaled(2), Box[Words, i32].unitOf())
+	val paired = Box[Words, Pair[i8, i32]](1, 5)
+	printf("%zu %d %zu\n", paired.width, paired.extra.first, built[Box[Words, i64]]().width)
+	ret 0
+}

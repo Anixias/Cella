@@ -189,6 +189,7 @@ public sealed partial class SignatureCollector
 		}
 		
 		ReportRedundantRequirements();
+		CheckDefaults();
 		ReportDeferredChecks();
 		ReportBorrowingVariables();
 		LinkRefinedDefaults(files);

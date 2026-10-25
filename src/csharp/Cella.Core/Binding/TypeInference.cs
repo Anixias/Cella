@@ -61,8 +61,15 @@ public sealed class TypeInference(TypePool typePool)
 			inferred[i] = type;
 		}
 		
+		InferFromBounds(parameters, inferred);
 		for (var i = 0; i < parameters.Length; i++)
-			inferred[i] ??= typePool.FindDefaultArgument(parameters, inferred, i);
+		{
+			if (inferred[i] is not null || typePool.FindDefaultArgument(parameters, inferred, i) is not { } fallback)
+				continue;
+			
+			inferred[i] = fallback;
+			InferFromBounds(parameters, inferred);
+		}
 		
 		var missing = parameters.Where((_, i) => inferred[i] is null).ToImmutableArray();
 		return missing.IsEmpty

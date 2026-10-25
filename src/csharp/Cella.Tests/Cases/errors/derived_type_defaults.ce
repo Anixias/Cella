@@ -1,0 +1,67 @@
+mod test
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Plain: rec
+{
+	tag: i32
+}
+
+Owned: own rec
+{
+	tag: i32
+	
+	drop: op
+	{
+	}
+}
+
+Keeps: rec impl Holds[Owned]
+{
+	unit: fun -> Owned => Owned(1)
+}
+
+Missing[E: Holds[T] = Plain]: rec
+{
+	tag: i32
+}
+
+Copied[E: Holds[T: copy] = Keeps]: rec
+{
+	tag: i32
+}
+
+Paired[E: Holds[T], F: Holds[T] = Words]: rec
+{
+	tag: i32
+}
+
+missing[E: Holds[T] = Plain]: fun
+{
+}
+
+Sized[E: Holds[T] = Plain]: trait
+{
+	size: fun -> usize
+}
+
+Longs: rec impl Holds[u64]
+{
+	unit: fun -> u64 => 7
+}
+
+pick[E: Holds[T] = Words]: fun(value: T) -> T => E.unit()
+
+main: fun
+{
+	val large: u64 = 2
+	pick(large)
+}

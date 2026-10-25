@@ -1,0 +1,37 @@
+Error at derived_type_defaults.ce:32:23
+31 │ 
+32 │ Missing[E: Holds[T] = Plain]: rec
+                           ╘═══╛ 'Missing' requires 'E: Holds[T]'
+                               | 'Plain' doesn't implement 'Holds[T]'
+
+Error at derived_type_defaults.ce:37:28
+36 │ 
+37 │ Copied[E: Holds[T: copy] = Keeps]: rec
+                                ╘═══╛ 'Copied' requires 'T: copy'
+                                    | 'Owned' can't be copied
+
+Error at derived_type_defaults.ce:42:35
+41 │ 
+42 │ Paired[E: Holds[T], F: Holds[T] = Words]: rec
+                                       ╘═══╛ 'Paired' requires 'F: Holds[T]'
+                                           | 'Words' doesn't implement 'Holds[T]'
+
+Error at derived_type_defaults.ce:47:23
+46 │ 
+47 │ missing[E: Holds[T] = Plain]: fun
+                           ╘═══╛ 'missing' requires 'E: Holds[T]'
+                               | 'Plain' doesn't implement 'Holds[T]'
+
+Error at derived_type_defaults.ce:51:21
+50 │ 
+51 │ Sized[E: Holds[T] = Plain]: trait
+                         ╘═══╛ 'Sized' requires 'E: Holds[T]'
+                             | 'Plain' doesn't implement 'Holds[T]'
+
+Error at derived_type_defaults.ce:66:2
+65 │ val large: u64 = 2
+66 │ pick(large)
+     ╘══╛ 'pick' requires 'E: Holds[u64]'
+        | 'Words' doesn't implement 'Holds[u64]'
+
+[compilation failed]

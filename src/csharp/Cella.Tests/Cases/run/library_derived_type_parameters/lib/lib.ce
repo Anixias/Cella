@@ -1,0 +1,44 @@
+mod lib
+
+Holds[T]: pub trait
+{
+	unit: fun -> T
+}
+
+Words: pub rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Plain[E: Holds[T] = Words]: pub rec
+{
+	width: fun -> usize => sizeOf(T)
+}
+
+Box[E: Holds[T], X]: pub rec
+{
+	width: usize
+	extra: X
+	
+	new: op(count: usize, extra: X)
+	{
+		self.width = sizeOf(T) * count
+		self.extra = extra
+	}
+}
+
+Box[E: Holds[T], X: default]: impl
+{
+	new: op(count: usize)
+	{
+		self = Box[E, X](count, X())
+	}
+}
+
+Box[E: Holds[T], X: copy]: impl
+{
+	new: op(extra: X, count: usize, more: usize)
+	{
+		self = Box[E, X](count + more, extra)
+	}
+}

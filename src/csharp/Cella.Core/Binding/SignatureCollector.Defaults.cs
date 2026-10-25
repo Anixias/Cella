@@ -11,6 +11,9 @@ public sealed partial class SignatureCollector
 	private readonly Dictionary<TypeParameterSymbol, PendingDefault> _pendingDefaults = [];
 	private readonly HashSet<TypeParameterSymbol> _resolvingDefaults = [];
 	
+	private readonly List<(TypeParameterSymbol Parameter, PendingDefault Pending, SourceLocation Location)>
+		_defaultChecks = [];
+	
 	private sealed record PendingDefault
 	(
 		TypeParameterNode Node,
@@ -139,12 +142,59 @@ public sealed partial class SignatureCollector
 			fallback = NativeSymbols.Invalid;
 		}
 		else if (fallback is not InvalidType)
-			_deferredChecks.Add((new(parameter, fallback, TypePool.CreateMap(pending.Parameters, pending.Parameters),
-				location), pending.Owner));
+			_defaultChecks.Add((parameter, pending, location));
 		
 		parameter.DefaultArgument = fallback;
 		return fallback;
 	}
+	
+	private void CheckDefaults()
+	{
+		foreach (var (parameter, pending, location) in _defaultChecks)
+		{
+			var parameters = pending.Parameters;
+			var inferred = FixOtherParameters(parameters, pending.Index);
+			inferred[pending.Index] = parameter.DefaultArgument;
+			new TypeInference(_typePool).InferFromBounds(parameters, inferred);
+			var map = parameters.Select((other, i) => (other, inferred[i] ?? other))
+				.ToDictionary(static pair => pair.other, static pair => pair.Item2);
+			
+			for (var i = 0; i < parameters.Length; i++)
+			{
+				if (i == pending.Index || map[parameters[i]] != parameters[i])
+					_deferredChecks.Add((new(parameters[i], map[parameters[i]], map, location), pending.Owner));
+			}
+		}
+		
+		_defaultChecks.Clear();
+	}
+	
+	private TypeSymbol?[] FixOtherParameters(ImmutableArray<TypeParameterSymbol> parameters, int index)
+	{
+		var inferred = parameters.Select((parameter, i) => i == index || parameter.IsDerived ? null : parameter)
+			.ToArray<TypeSymbol?>();
+		
+		var open = new Queue<TypeParameterSymbol>(parameters.Where((_, i) => inferred[i] is not null));
+		while (open.TryDequeue(out var parameter))
+		{
+			foreach (var mentioned in GetBoundTypes(parameter).SelectMany(TypePool.FindTypeParameters))
+			{
+				var i = parameters.IndexOf(mentioned);
+				if (i < 0 || i == index || inferred[i] is not null)
+					continue;
+				
+				inferred[i] = mentioned;
+				open.Enqueue(mentioned);
+			}
+		}
+		
+		return inferred;
+	}
+	
+	private IEnumerable<TypeSymbol> GetBoundTypes(TypeParameterSymbol parameter) => _typePool.GetBounds(parameter)
+		.Concat<TypeSymbol>(_typePool.GetFunctionBounds(parameter))
+		.Append(_typePool.GetEnumTag(parameter))
+		.OfType<TypeSymbol>();
 	
 	private bool Mentions(TypeSymbol type, TypeParameterSymbol parameter) =>
 		!TypePool.ContainsInvalid(type) &&
