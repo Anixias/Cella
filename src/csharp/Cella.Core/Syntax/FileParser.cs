@@ -94,6 +94,7 @@ public sealed partial class FileParser
 	private readonly HashSet<IStatementNode> _brokenStatements = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _brokenDeclarations = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _declarationsWithErrors = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<IDeclarationNode> _missingBodies = new(ReferenceEqualityComparer.Instance);
 	private readonly List<IDeclarationNode> _parsedDeclarations = [];
 	private readonly bool[] _lexicalReported = new bool[tokens.Length];
 	

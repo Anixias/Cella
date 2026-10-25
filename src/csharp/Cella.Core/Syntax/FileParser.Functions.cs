@@ -53,7 +53,8 @@ public sealed partial class FileParser
 					return null;
 			}
 			
-			return new(identifier, modifiers.Tokens, receiver, parameters, returnType, null, isExternal)
+			var bodiless = new FunctionNode(identifier, modifiers.Tokens, receiver, parameters, returnType, null,
+				isExternal)
 			{
 				Extent = Span(identifier, Tokens[index - 1]),
 				Visibility = modifiers.Visibility,
@@ -61,6 +62,11 @@ public sealed partial class FileParser
 				When = when,
 				ExternalName = externalName
 			};
+			
+			if (!allowsMissingBodies && headerErrors == 0)
+				_missingBodies.Add(bodiless);
+			
+			return bodiless;
 		}
 		
 		if (ParseBlockStatement(ref index, openBraceToken) is not { } body)

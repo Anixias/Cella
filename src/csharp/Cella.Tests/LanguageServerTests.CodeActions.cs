@@ -421,11 +421,19 @@ public sealed partial class LanguageServerTests
 			await FixAsync(
 				"mod test\n\nuse test.util.helper\n\nmain: fun -> i32 => helper()\n\nmake: fun -> Sh‸ape => Shape(1)\n",
 				"Import 'test.util.Shape'"));
-
+		
 		Assert.Equal("mod test\n\nuse test.util.Span\n\nencode: fun(destination: Span[u16]) -> usize => 0\n",
 			await FixAsync("mod test\n\nencode: fun(destination: Sp‸an[u16]) -> usize => 0\n",
 				"Import 'test.util.Span'"));
-
+		
+		Assert.Equal(
+			"mod test\n\nuse test.util.Span\n\nReader: rec\n{\n\tx: i32\n\t\n\tdecode: fun(source: Span[u16])\n}\n",
+			await FixAsync("mod test\n\nReader: rec\n{\n\tx: i32\n\t\n\tdecode: fun(source: Sp‸an[u16])\n}\n",
+				"Import 'test.util.Span'"));
+		
+		Assert.Equal("mod test\n\nuse test.util.Span\n\ndecode: fun(source: Span[u16])\n",
+			await FixAsync("mod test\n\ndecode: fun(source: Sp‸an[u16])\n", "Import 'test.util.Span'"));
+		
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	

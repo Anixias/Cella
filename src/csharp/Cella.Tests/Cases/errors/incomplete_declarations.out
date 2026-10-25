@@ -14,6 +14,11 @@ Error at incomplete_declarations.ce:7:41
                                            ^ Expected ']'
                                            | To match the '[' on line 7
 
+Error at incomplete_declarations.ce:10:1
+ 9 │ 
+10 │ panic: pub op(location: str)
+     ╘═══╛ 'panic' operators must return 'never'
+
 Error at incomplete_declarations.ce:10:28
  9 │ 
 10 │ panic: pub op(location: str)

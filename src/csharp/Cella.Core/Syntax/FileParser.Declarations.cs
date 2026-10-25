@@ -443,19 +443,25 @@ public sealed partial class FileParser
 		return parsed;
 	}
 	
+	private int CountMissingBodies(IDeclarationNode node) => node is PropertyNode property
+		? property.Accessors.Count(_missingBodies.Contains)
+		: _missingBodies.Contains(node)
+			? 1
+			: 0;
+	
 	private void RecordSyntaxErrors(object? declaration, ErrorWindow window, int end)
 	{
 		ReportLexicalErrors(window.Start, end);
 		var errors = Diagnostics.ErrorCount - window.Errors;
-		var ownErrors = errors - (attributedErrors - window.Attributed);
-		attributedErrors = window.Attributed + errors;
-		
 		IDeclarationNode[] nodes = declaration switch
 		{
 			IDeclarationNode node => [node],
 			IEnumerable<IDeclarationNode> list => [..list],
 			_ => []
 		};
+		
+		var ownErrors = errors - (attributedErrors - window.Attributed) - nodes.Sum(CountMissingBodies);
+		attributedErrors = window.Attributed + errors;
 		
 		if (ownErrors > 0)
 		{

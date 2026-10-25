@@ -290,11 +290,16 @@ public sealed partial class FileParser
 					return null;
 			}
 			
-			return new(keyword, modifiers, receiver, parameters, resultType, null, false)
+			var bodiless = new FunctionNode(keyword, modifiers, receiver, parameters, resultType, null, false)
 			{
 				Extent = Span(keyword, Tokens[index - 1]),
 				Visibility = visibility
 			};
+			
+			if (!allowsMissingBodies)
+				_missingBodies.Add(bodiless);
+			
+			return bodiless;
 		}
 		
 		return body is null

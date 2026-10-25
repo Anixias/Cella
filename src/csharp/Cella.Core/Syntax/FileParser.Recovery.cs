@@ -500,6 +500,7 @@ public sealed partial class FileParser
 		_brokenStatements.RemoveWhere(statement => statement.SourceLocation.Range.Start >= offset);
 		_brokenDeclarations.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
 		_declarationsWithErrors.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
+		_missingBodies.RemoveWhere(declaration => declaration.SourceLocation.Range.Start >= offset);
 		_incompleteHeaders.RemoveAll(header => header.Identifier.SourceLocation.Range.Start >= offset);
 		var cleared = Math.Min(end + 1, _lexicalReported.Length) - state.Index;
 		if (cleared > 0)

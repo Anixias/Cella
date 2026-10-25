@@ -589,7 +589,8 @@ public sealed partial class Resolver
 				
 				Diagnostics.Add(context.ReportHidden(typeName.Text, typeName.SourceLocation) ??
 				                context.WithImportFixes(DiagnosticReporter.ReportUndefinedType(typeName.SourceLocation,
-					                typeName.Text, typeNames), typeName.Text, static symbol => symbol is NamedTypeSymbol));
+						                typeName.Text, typeNames), typeName.Text,
+					                static symbol => symbol is NamedTypeSymbol));
 				
 				return false;
 			
