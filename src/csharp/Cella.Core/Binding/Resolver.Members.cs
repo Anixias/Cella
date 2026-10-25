@@ -50,8 +50,11 @@ public sealed partial class Resolver
 		var functions = FindFunctions(owner, access.Member.Text);
 		var methods = functions.Where(static function => function.HasReceiver).ToArray();
 		if (methods.Length == 0)
+		{
+			RecordCallees(node.Target, functions.Select(static function => function.Function));
 			return Error(node, DescribeMissingMember(owner, access.Member.Text), CurrentTargetType,
 				access.Member.SourceLocation);
+		}
 		
 		var accessible = methods.Where(method => CanAccess(owner, method.Function)).ToArray();
 		if (accessible.Length == 0)
@@ -73,7 +76,7 @@ public sealed partial class Resolver
 		
 		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, access.Member.Text, candidates, target, typeArguments)
-			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			: RejectCall(node, candidates);
 	}
 	
 	private IResolvedExpressionNode Index(IndexerExpressionNode? indexer, IResolvedExpressionNode target) =>
@@ -164,7 +167,7 @@ public sealed partial class Resolver
 		
 		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, GetName(access), candidates, null, typeArguments)
-			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			: RejectCall(node, candidates);
 	}
 	
 	private IResolvedExpressionNode? VisitBuiltInPick(CallExpressionNode node, Token op, TypeSymbol type)

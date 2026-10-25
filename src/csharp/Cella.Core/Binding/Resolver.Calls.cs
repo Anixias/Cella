@@ -86,11 +86,13 @@ public sealed partial class Resolver
 	}
 	
 	private IResolvedExpressionNode ResolveExplicitCall(CallExpressionNode node, IndexerExpressionNode indexer,
-		string name, FunctionInfo[] functions, ICallable[]? hidden = null) =>
-		ResolveTypeArguments(indexer, functions) is { } typeArguments
-			? ResolveCall(node, name, [..functions.Select(static info => new FunctionCallable(info))], null,
-				typeArguments, hidden)
-			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+		string name, FunctionInfo[] functions, ICallable[]? hidden = null)
+	{
+		ICallable[] candidates = [..functions.Select(static info => new FunctionCallable(info))];
+		return ResolveTypeArguments(indexer, functions) is { } typeArguments
+			? ResolveCall(node, name, candidates, null, typeArguments, hidden)
+			: RejectCall(node, candidates);
+	}
 	
 	private static bool AgreesBeforeNever(ResolutionSet resolutionSet, IResolvedExpressionNode[] args)
 	{
@@ -119,16 +121,28 @@ public sealed partial class Resolver
 		IResolvedExpressionNode? receiver, TypeArgumentList? typeArguments = null, ICallable[]? hidden = null)
 	{
 		var result = ResolveCandidates(node, functionName, candidates, receiver, typeArguments, hidden);
-		if (result is ResolvedInvalidExpressionNode && RecordName is { } record &&
-		    FindCallName(node.Target) is { } name)
-		{
-			foreach (var function in candidates.Select(GetInfo).OfType<FunctionInfo>()
-				         .Select(static info => info.Symbol)
-				         .Distinct())
-				record(name, function);
-		}
+		if (result is ResolvedInvalidExpressionNode)
+			RecordCallees(node.Target, candidates);
 		
 		return result;
+	}
+	
+	private ResolvedInvalidExpressionNode RejectCall(CallExpressionNode node, ICallable[] candidates)
+	{
+		RecordCallees(node.Target, candidates);
+		return new(node, CurrentTargetType);
+	}
+	
+	private void RecordCallees(IExpressionNode target, IEnumerable<ICallable> candidates) => RecordCallees(target,
+		candidates.Select(GetInfo).OfType<FunctionInfo>().Select(static info => info.Symbol));
+	
+	private void RecordCallees(IExpressionNode target, IEnumerable<FunctionSymbol> functions)
+	{
+		if (RecordName is not { } record || FindCallName(target) is not { } name)
+			return;
+		
+		foreach (var function in functions.Distinct())
+			record(name, function);
 	}
 	
 	private static Token? FindCallName(IExpressionNode target) => target switch

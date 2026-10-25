@@ -700,7 +700,7 @@ public readonly struct ResolutionContext
 			ProbeType(probed);
 		
 		var type = ResolveTypeNode(node);
-		if (NameOf(node) is { } name)
+		if (NameOf(node) is { } name && type is not InvalidType)
 			Record(name, type);
 		
 		return type;

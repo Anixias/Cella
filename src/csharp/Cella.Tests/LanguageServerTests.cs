@@ -1914,6 +1914,72 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesTypesWithUnknownArguments()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 View[T]: rec
+		                                 {
+		                                 	length: i32
+		                                 }
+		                                 
+		                                 Reader: rec
+		                                 {
+		                                 	decode: fun(source: View[T]) -> i32 => panic
+		                                 	shift: fun(imm self, x: i32) -> i32 => x
+		                                 }
+		                                 
+		                                 Sized[T]: trait
+		                                 {
+		                                 }
+		                                 
+		                                 Reader: impl Sized[U]
+		                                 {
+		                                 }
+		                                 
+		                                 twice: fun(x: i32) -> i32 => x * 2
+		                                 
+		                                 make[T]: fun -> i32 => 0
+		                                 
+		                                 Shape: enum
+		                                 {
+		                                 	circle(radius: i32)
+		                                 	dot
+		                                 }
+		                                 
+		                                 main: fun -> i32
+		                                 {
+		                                 	val v: View[U] = undef
+		                                 	val w = View[U](1)
+		                                 	val n = twice(1, 2)
+		                                 	val r = Reader()
+		                                 	val ok = r.shift(r.shift(1, 2))
+		                                 	val a = Shape.circle(1, 2)
+		                                 	val b = View[i32](1, 2)
+		                                 	val c = make[U]()
+		                                 	val d = Reader.decode(1, 2)
+		                                 	val e = r.decode(1)
+		                                 	val f = Shape.dot(1)
+		                                 	ret ok
+		                                 }
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"9:21:4 struct", "17:13:5 interface", "33:8:4 struct", "34:9:4 struct", "35:9:5 function",
+			"37:20:5 method", "38:15:6 enumMember", "39:9:4 struct", "40:9:4 function", "41:16:6 function",
+			"42:11:6 function"
+		];
+		
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task CompletesConstraintKeywords()
 	{
 		await InitializeAsync();

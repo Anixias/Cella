@@ -212,7 +212,7 @@ public sealed partial class Resolver
 		
 		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, name, candidates, target, typeArguments)
-			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			: RejectCall(node, candidates);
 	}
 	
 	private IResolvedExpressionNode VisitTraitCall(CallExpressionNode node, AccessExpressionNode access,
@@ -274,7 +274,7 @@ public sealed partial class Resolver
 		
 		return ResolveTypeArguments(indexer, candidates) is { } typeArguments
 			? ResolveCall(node, name, candidates, receiver, typeArguments)
-			: new ResolvedInvalidExpressionNode(node, CurrentTargetType);
+			: RejectCall(node, candidates);
 	}
 	
 	private ResolvedInvalidExpressionNode RejectPickBorrow(IExpressionNode node, BorrowExpressionNode borrow)
