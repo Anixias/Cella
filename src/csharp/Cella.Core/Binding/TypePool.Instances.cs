@@ -163,7 +163,8 @@ public sealed partial class TypePool
 			inferred[i] = known[i];
 		
 		new TypeInference(this).InferFromBounds(parameters, inferred);
-		return inferred[known.Count];
+		var isOwnInstance = known.Select((argument, i) => argument == parameters[i]).All(static same => same);
+		return inferred[known.Count] ?? (isOwnInstance ? parameters[known.Count] : null);
 	}
 	
 	public static int CountRequiredArguments(ImmutableArray<TypeParameterSymbol> parameters) =>

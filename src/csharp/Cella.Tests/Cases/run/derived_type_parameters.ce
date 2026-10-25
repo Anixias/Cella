@@ -47,6 +47,10 @@ Wrapper[H: Holds[T]]: rec
 	inner: H
 	
 	read: fun(self) -> T => self.inner.get()
+	
+	same: fun(self) -> Wrapper[H] => self
+	
+	rewrap: fun(self) -> Wrapper[H] => Wrapper[H](self.inner)
 }
 
 Wrapper[H: Holds[T] + copy]: impl Holds[T]
@@ -96,7 +100,7 @@ main: fun
 	val boxed: Wrapper[Box] = Wrapper(Box(4))
 	printf("%d %d %lld\n", first(Box(4)), copied(Box(5)), wrapped.read())
 	printf("%d %d %d\n", first[Box](Box(6)), unboxed(Crate(Box(1))), fetched(Box(2)))
-	printf("%d %d %d\n", boxed.get(), first(boxed), boxed.doubled())
+	printf("%d %d %d %d\n", boxed.get(), first(boxed), boxed.doubled(), boxed.same().rewrap().read())
 	val some: Choice[Box] = Choice.some(Box(8))
 	val none: Choice[Wide] = Choice.none
 	printf("%d %lld %d\n", some.read(0), none.read(9), Shelf(1).take(Box(11)))
