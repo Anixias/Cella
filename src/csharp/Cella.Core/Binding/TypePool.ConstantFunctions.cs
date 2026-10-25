@@ -1,10 +1,14 @@
 ﻿using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
-public sealed record ConstantBody(ResolvedFunctionNode Node, bool IsValid);
+public sealed record ConstantBody(ResolvedFunctionNode Node, bool IsValid)
+{
+	public Diagnostic? Problem { get; init; }
+}
 
 public sealed partial class TypePool
 {

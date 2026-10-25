@@ -1,6 +1,7 @@
 ﻿using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
+using Cella.Diagnostics;
 
 namespace Cella.Core.Binding;
 
@@ -13,7 +14,8 @@ public sealed partial class Resolver
 		if (_typePool.GetConstantBody(function) is { } body)
 			return body;
 		
-		if (!function.IsConstant || _signatures.FindDeclarationContext(function) is not { } declaration ||
+		if (!function.IsConstant && !IsTraitDefault(function) ||
+		    _signatures.FindDeclarationContext(function) is not { } declaration ||
 		    !_resolvingBodies.Add(function))
 			return null;
 		
@@ -57,4 +59,17 @@ public sealed partial class Resolver
 		var isChecked = new ConstantBodyChecker(_typePool, Diagnostics).Check(node);
 		_typePool.RegisterConstantBody(new(node, isChecked && Diagnostics.CountErrorsSince(mark) == 0));
 	}
+	
+	private void RegisterDefaultBody(ResolvedFunctionNode node, TraitSymbol trait, int mark)
+	{
+		var checker = new ConstantBodyChecker(_typePool, new DiagnosticList());
+		var isChecked = checker.CheckDefault(node, trait);
+		_typePool.RegisterConstantBody(new(node, isChecked && Diagnostics.CountErrorsSince(mark) == 0)
+		{
+			Problem = checker.FirstError
+		});
+	}
+	
+	private static bool IsTraitDefault(FunctionSymbol function) =>
+		function is { Trait: not null, Syntax: FunctionNode { Body: not null } };
 }

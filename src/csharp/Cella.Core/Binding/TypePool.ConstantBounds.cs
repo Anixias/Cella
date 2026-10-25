@@ -9,13 +9,14 @@ public sealed partial class TypePool
 	public void AddConstantBound(TypeParameterSymbol parameter, TraitType trait) =>
 		_constantBounds.GetOrAdd(parameter).Add(trait);
 	
-	public bool HasConstantBound(TypeParameterSymbol parameter, TraitSymbol trait)
+	public bool HasConstantBound(TypeParameterSymbol parameter, TraitSymbol trait) =>
+		_constantBounds.TryGetValue(parameter, out var bounds) &&
+		bounds.Any(bound => Requires(bound, trait, parameter));
+	
+	public bool Requires(TraitType owner, TraitSymbol trait, TypeSymbol self)
 	{
-		if (!_constantBounds.TryGetValue(parameter, out var bounds))
-			return false;
-		
 		var visited = new HashSet<TraitType>();
-		var pending = new Queue<TraitType>(bounds);
+		var pending = new Queue<TraitType>([owner]);
 		while (pending.TryDequeue(out var current))
 		{
 			if (!visited.Add(current))
@@ -24,7 +25,7 @@ public sealed partial class TypePool
 			if (current.Trait == trait)
 				return true;
 			
-			foreach (var required in GetRequiredTraits(current, parameter))
+			foreach (var required in GetRequiredTraits(current, self))
 				pending.Enqueue(required);
 		}
 		

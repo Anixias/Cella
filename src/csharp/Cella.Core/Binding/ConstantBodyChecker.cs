@@ -13,6 +13,22 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 {
 	private int errors;
 	private string name = "";
+	private TraitType? constantSelf;
+	
+	public Diagnostic? FirstError { get; private set; }
+	
+	public bool CheckDefault(ResolvedFunctionNode node, TraitSymbol trait)
+	{
+		constantSelf = typePool.GetTraitType(trait, [..trait.TypeParameters]);
+		try
+		{
+			return Check(node);
+		}
+		finally
+		{
+			constantSelf = null;
+		}
+	}
 	
 	public bool Check(ResolvedFunctionNode node)
 	{
@@ -48,7 +64,9 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 	private void Report(SourceLocation location, string message)
 	{
 		errors++;
-		diagnostics.Add(new(DiagnosticSeverity.Error, location, message));
+		var diagnostic = new Diagnostic(DiagnosticSeverity.Error, location, message);
+		FirstError ??= diagnostic;
+		diagnostics.Add(diagnostic);
 	}
 	
 	private void CheckStorable(TypeSymbol type, SourceLocation location)
@@ -82,9 +100,17 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 		});
 	}
 	
-	private bool IsConstantThroughBound(FunctionInfo function) =>
-		function is { Symbol.Trait: { } trait, TypeArguments: [TypeParameterSymbol self, ..] } &&
-		typePool.HasConstantBound(self, trait);
+	private bool IsConstantThroughBound(FunctionInfo function) => function switch
+	{
+		{ Symbol.Trait: { } trait, TypeArguments.IsDefaultOrEmpty: true } =>
+			constantSelf is { } own && typePool.Requires(own, trait, own.Trait.Self),
+		{ Symbol.Trait: { } trait, TypeArguments: [TypeParameterSymbol self, ..] } =>
+			typePool.HasConstantBound(self, trait) || constantSelf is { } own && self == own.Trait.Self &&
+			typePool.Requires(own, trait, self),
+		{ Symbol.Trait: { } trait, TypeArguments: [var self, ..] } =>
+			typePool.IsConstantConformance(self, typePool.GetTraitType(trait, TypePool.GetTraitArguments(function))),
+		_ => false
+	};
 	
 	private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 	
@@ -279,6 +305,9 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 	
 	public void Visit(ResolvedFunctionCallExpressionNode node)
 	{
+		if (node.Syntax is PanicExpressionNode)
+			return;
+		
 		CheckCall(node.Function, node.Syntax);
 		VisitAll(node.Arguments);
 	}

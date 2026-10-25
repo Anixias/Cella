@@ -1,0 +1,28 @@
+Error at constant_defaults.ce:19:16
+18 │ 
+19 │ u8: impl const Loud
+                    ╘══╛ 'Loud.shout' has no 'const' default
+                       | Cannot call 'puts' in constant functions on line 12
+
+Hint at constant_defaults.ce:22:1
+21 │ 
+22 │ quieted: const i32 = i8.quiet(1)
+     ╘═════╛ 'quieted' is never used
+
+Error at constant_defaults.ce:22:22
+21 │ 
+22 │ quieted: const i32 = i8.quiet(1)
+                          ╘═════════╛ The initial value of 'quieted' must be a constant
+
+Hint at constant_defaults.ce:23:1
+22 │ quieted: const i32 = i8.quiet(1)
+23 │ fine: const i32 = u8.quiet(1)
+     ╘══╛ 'fine' is never used
+
+Error at constant_defaults.ce:40:21
+39 │ 
+40 │ broken: const u16 = u16.fit(1, 5, 1)
+                         ╘══════════════╛ Panic in 'Ranged.fit'
+                                        | On line 32
+
+[compilation failed]

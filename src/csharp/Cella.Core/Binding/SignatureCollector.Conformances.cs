@@ -63,8 +63,7 @@ public sealed partial class SignatureCollector
 				  requirement.Name;
 			
 			if (function == requirement || function.Trait is not null)
-				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
-					$"'{trait}.{name}' has no 'const' default"));
+				ReportNonConstantDefault(conformance, function, $"{trait}.{name}");
 			else
 				Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function), requirement.IsConstant
 					? $"'{name}' must be 'const' to match '{trait}.{name}'"
@@ -81,6 +80,18 @@ public sealed partial class SignatureCollector
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
 					$"'{DiagnosticReporter.DescribeType(self)}' needs 'impl const {required.Name}'"));
 		}
+	}
+	
+	private void ReportNonConstantDefault(Conformance conformance, FunctionSymbol function, string name)
+	{
+		var body = Evaluator.ResolveBody?.Invoke(function);
+		if (conformance.IsConstant && body is { IsValid: true })
+			return;
+		
+		Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location, $"'{name}' has no 'const' default")
+		{
+			Hints = body?.Problem is { } problem ? [$"{problem.Message} on line {problem.Line}"] : []
+		});
 	}
 	
 	private IEnumerable<TraitType> GetAllRequiredTraits(Conformance conformance, TypeSymbol self)

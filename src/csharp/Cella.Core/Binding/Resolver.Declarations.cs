@@ -90,8 +90,7 @@ public sealed partial class Resolver
 	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode? body)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
-		if (function.IsConstant && _typePool.GetConstantBody(function) is { Node: var resolved } &&
-		    resolved.Syntax == node)
+		if (_typePool.GetConstantBody(function) is { Node: var resolved } && resolved.Syntax == node)
 			return resolved;
 		
 		var info = _signatures.GetFunctionInfo(function);
@@ -113,6 +112,8 @@ public sealed partial class Resolver
 		var result = new ResolvedFunctionNode(info, resolvedBody, node);
 		if (function.IsConstant)
 			RegisterConstantBody(result, mark);
+		else if (IsTraitDefault(function))
+			RegisterDefaultBody(result, function.Trait!, mark);
 		
 		Containment?.Exit();
 		_resolutionContexts.Pop();

@@ -1,0 +1,42 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+Loud: trait req copy + noref
+{
+	shout: fun(x: Self) -> i32
+	{
+		puts("hi")
+		ret 1
+	}
+	
+	quiet: fun(x: Self) -> i32 => 0
+}
+
+u8: impl const Loud
+i8: impl Loud
+
+quieted: const i32 = i8.quiet(1)
+fine: const i32 = u8.quiet(1)
+
+Ranged: trait req copy + noref
+{
+	<: op(imm left: Self, imm right: Self) -> bool
+	
+	fit: fun(x: Self, low: Self, high: Self) -> Self
+	{
+		if high < low
+			panic
+		
+		ret x
+	}
+}
+
+u16: impl const Ranged
+
+broken: const u16 = u16.fit(1, 5, 1)
+
+main: fun -> i32 => 0

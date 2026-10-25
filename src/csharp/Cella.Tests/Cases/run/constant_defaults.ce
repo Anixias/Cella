@@ -1,0 +1,87 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Same: trait req copy + noref
+{
+	==: op(imm left: Self, imm right: Self) -> bool
+}
+
+Ranks: trait req Same
+{
+	compare: fun(imm left: Self, imm right: Self) -> i32
+	<: op(imm left: Self, imm right: Self) -> bool => compare(imm left, imm right) < 0
+}
+
+Whole: trait req Ranks
+{
+	zero: const Self
+	|: op(a: Self, b: Self) -> Self
+	
+	compare: fun(imm left: Self, imm right: Self) -> i32
+	{
+		if left == right
+			ret 0
+		
+		if left < right
+			ret -1
+		
+		ret 1
+	}
+	
+	isNone: fun(x: Self) -> bool => x == Self.zero
+	
+	fit: fun(x: Self, low: Self, high: Self) -> Self
+	{
+		if high < low
+			panic
+		
+		if x < low
+			ret low
+		
+		if high < x
+			ret high
+		
+		ret x
+	}
+}
+
+u32: impl const Whole
+{
+	zero: const u32 = 0
+}
+
+i32: impl Whole
+{
+	zero: const i32 = 0
+}
+
+BitSet[T: const Whole]: trait req copy + noref
+{
+	new: const op(bits: T)
+	new: const op(self) -> T
+	
+	|: const op(a: Self, b: Self) -> Self => Self(T(a) | T(b))
+	isEmpty: const fun(self) -> bool => T.isNone(T(self))
+}
+
+Access: ext enum(u32) impl BitSet[u32]
+{
+	none = 0
+	read = 1
+	write = 2
+}
+
+readWrite: const Access = Access.read | Access.write
+empty: const bool = Access.none.isEmpty()
+fitted: const u32 = u32.fit(7, 1, 5)
+none: const bool = u32.isNone(0)
+
+main: fun -> i32
+{
+	printf("%u %d %u %d %d\n", u32(readWrite), empty, fitted, none, i32.fit(5, 1, 3))
+	ret 0
+}

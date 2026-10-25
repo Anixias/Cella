@@ -2,6 +2,7 @@ Error at constant_bounds.ce:14:21
 13 │ 
 14 │ Gem: rec impl const Score
                          ╘═══╛ 'Score.bonus' has no 'const' default
+                             | 'Score.bonus' requires 'Self: copy' on line 6
 
 Error at constant_bounds.ce:18:2
 17 │ 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
+using System.Text;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
@@ -96,6 +97,13 @@ public sealed partial class ConstantEvaluator
 	
 	private Constant? FoldCall(ResolvedFunctionCallExpressionNode node)
 	{
+		if (node.Syntax is PanicExpressionNode && IsInterpreting)
+			throw new EvaluationFault(FaultKind.Panic,
+				node.Arguments is [var message, _] ? DescribeMessage(message) ?? "" : "", node.Syntax.SourceLocation)
+			{
+				Function = _frames.Peek().Function.Symbol.Name
+			};
+		
 		var function = SubstituteFunction(node.Function);
 		if (TypePool.FoldsAsConstant(function.Symbol))
 			return FoldFunction(function.Symbol);
@@ -136,6 +144,55 @@ public sealed partial class ConstantEvaluator
 			: null;
 	}
 	
+	private string? DescribeMessage(IResolvedExpressionNode message)
+	{
+		try
+		{
+			return message switch
+			{
+				ResolvedFStrExpressionNode { Text: { } text } => DescribeMessage(text),
+				ResolvedFStrExpressionNode template => DescribeTemplate(template),
+				ResolvedConversionExpressionNode conversion => DescribeMessage(conversion.Source),
+				_ => DescribePart(Evaluate(message))
+			};
+		}
+		catch (Exception exception) when (exception is EvaluationFault or AbortedEvaluation or JumpSignal)
+		{
+			return null;
+		}
+	}
+	
+	private string? DescribeTemplate(ResolvedFStrExpressionNode template)
+	{
+		var text = new StringBuilder(template.Texts[0]);
+		for (var i = 0; i < template.Values.Length; i++)
+		{
+			if (template.Texts[2 * i + 1].Length > 0)
+				return null;
+			
+			var value = template.Values[i] is ResolvedConversionExpressionNode { Conversion: DynConversion } dyn
+				? dyn.Source
+				: template.Values[i];
+			
+			if (DescribePart(Evaluate(value)) is not { } part)
+				return null;
+			
+			text.Append(part).Append(template.Texts[2 * i + 2]);
+		}
+		
+		return text.ToString();
+	}
+	
+	private static string? DescribePart(Constant? value) => value switch
+	{
+		StringConstant text => text.Text,
+		IntegerConstant { Type: CharType } character => char.ConvertFromUtf32((int)character.Value),
+		IntegerConstant integer => integer.Value.ToString(),
+		BoolConstant flag => flag.Value ? "true" : "false",
+		FloatConstant number => ConstantText.Describe(number),
+		_ => null
+	};
+	
 	private Constant[]? EvaluateArguments(ImmutableArray<IResolvedExpressionNode> arguments, FunctionInfo function,
 		int firstParameter)
 	{
@@ -173,7 +230,7 @@ public sealed partial class ConstantEvaluator
 		if (arguments.Any(static argument => argument is InvalidConstant))
 			return InvalidConstant.Instance;
 		
-		if (!function.Symbol.IsConstant || ResolveBody?.Invoke(function.Symbol) is not { } body)
+		if (ResolveBody?.Invoke(function.Symbol) is not { } body)
 			return null;
 		
 		if (!body.IsValid || body.Node.Body is not IResolvedStatementNode statement)
@@ -245,7 +302,10 @@ public sealed partial class ConstantEvaluator
 		switch (witness)
 		{
 			case FunctionWitness { Function: var target } when target == function.Symbol:
-				return InvokeBody(function, arguments, callSite, false);
+				return target.IsConstant ||
+				       typePool.IsConstantConformance(self, typePool.GetTraitType(target.Trait!, traitArguments))
+					? InvokeBody(function, arguments, callSite, false)
+					: null;
 			
 			case FunctionWitness target:
 				var declared = function.TypeArguments.TakeLast(function.Symbol.DeclaredTypeParameters.Length);
