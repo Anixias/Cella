@@ -66,7 +66,14 @@ public sealed partial class FileParser
 			
 			ITypeNode? defaultType = null;
 			IExpressionNode? defaultValue = null;
-			if (Match(ref index, TokenType.OpEqual) &&
+			var hasDefault = Match(ref index, TokenType.OpEqual);
+			if (hasDefault && EndsListItem(index, TokenType.OpCloseBracket))
+			{
+				ReportExpected(index - 1, valueType is null ? "a type" : "an expression");
+				hasDefault = false;
+			}
+			
+			if (hasDefault &&
 			    (valueType is null && (defaultType = ParseConstraintType(ref index)) is null ||
 			     valueType is not null && (defaultValue = ParseDefaultValue(ref index)) is null))
 			{

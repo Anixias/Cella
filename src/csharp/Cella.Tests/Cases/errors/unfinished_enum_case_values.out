@@ -1,0 +1,31 @@
+Error at unfinished_enum_case_values.ce:6:7
+5 │ light
+6 │ dark =
+         ^ Expected an expression
+
+Error at unfinished_enum_case_values.ce:12:9
+11 │ low = 1
+12 │ middle =
+            ^ Expected an expression
+
+Error at unfinished_enum_case_values.ce:19:8
+18 │ small = 1
+19 │ large = }
+           ^ Expected an expression
+
+Hint at unfinished_enum_case_values.ce:23:6
+22 │ {
+23 │     val s = Shade.dark
+             ^ 's' is never used
+
+Hint at unfinished_enum_case_values.ce:24:6
+23 │ val s = Shade.dark
+24 │ val l = Level.high
+         ^ 'l' is never used
+
+Hint at unfinished_enum_case_values.ce:25:6
+24 │ val l = Level.high
+25 │ val z = Size.small
+         ^ 'z' is never used
+
+[compilation failed]

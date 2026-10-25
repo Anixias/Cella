@@ -1,0 +1,27 @@
+mod test
+
+Shade: enum
+{
+	light
+	dark =
+}
+
+Level: enum
+{
+	low = 1
+	middle =
+	high = 3
+}
+
+Size: enum
+{
+	small = 1
+	large = }
+
+main: fun -> i32
+{
+	val s = Shade.dark
+	val l = Level.high
+	val z = Size.small
+	ret 0
+}

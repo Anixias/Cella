@@ -1,0 +1,39 @@
+mod test
+
+Access: enum
+{
+	read
+}
+
+open: fun(path: str, access: Access = ) -> i32 => 0
+
+close: fun(path: str, access: Access =, flag: bool) -> i32 => 0
+
+seek: fun(path: str, offset: i64 =
+) -> i32 => 0
+
+ext
+{
+	errno: val i32 =
+}
+
+Grid[size: const i32 = ]: rec
+{
+	x: i32
+}
+
+Holder[T = ]: rec
+{
+	x: i32
+}
+
+main: fun -> i32
+{
+	val a = open("x")
+	val b = close("x", Access.read, true)
+	val c = seek("x")
+	val e = errno
+	val g: Grid[2] = undef
+	val h: Holder[i32] = undef
+	ret 0
+}

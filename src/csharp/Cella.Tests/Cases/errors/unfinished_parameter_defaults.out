@@ -1,0 +1,41 @@
+Error at unfinished_parameter_defaults.ce:8:37
+7 │ 
+8 │ open: fun(path: str, access: Access = ) -> i32 => 0
+                                        ^ Expected an expression
+
+Error at unfinished_parameter_defaults.ce:10:38
+ 9 │ 
+10 │ close: fun(path: str, access: Access =, flag: bool) -> i32 => 0
+                                          ^ Expected an expression
+
+Error at unfinished_parameter_defaults.ce:12:34
+11 │ 
+12 │ seek: fun(path: str, offset: i64 =
+                                      ^ Expected an expression
+
+Error at unfinished_parameter_defaults.ce:17:17
+16 │ {
+17 │     errno: val i32 =
+                        ^ Cannot initialize values in 'ext' blocks
+
+Error at unfinished_parameter_defaults.ce:20:22
+19 │ 
+20 │ Grid[size: const i32 = ]: rec
+                          ^ Expected an expression
+
+Error at unfinished_parameter_defaults.ce:25:10
+24 │ 
+25 │ Holder[T = ]: rec
+              ^ Expected a type
+
+Error at unfinished_parameter_defaults.ce:32:10
+31 │ {
+32 │     val a = open("x")
+                 ╘══╛ 'open' takes 2 arguments
+
+Error at unfinished_parameter_defaults.ce:34:10
+33 │ val b = close("x", Access.read, true)
+34 │ val c = seek("x")
+             ╘══╛ 'seek' takes 2 arguments
+
+[compilation failed]

@@ -566,12 +566,18 @@ public sealed partial class FileParser
 		{
 			if (Match(ref index, out var keyword, TokenType.KeywordElse))
 				elseKeyword = keyword;
-			else
+			else if (StartsCaseValue(index))
 				values.AddRange(ParseCaseValues(ref index, matchedType is not null));
+			else
+				ReportExpected(index - 1, "an expression");
 		}
 		
 		return new(name, payload, values, elseKeyword);
 	}
+	
+	private bool StartsCaseValue(int index) => !AtEnd(index) && !Peek(index, TokenType.OpCloseBrace) &&
+	                                           !Peek(index, TokenType.OpComma) &&
+	                                           (IsOnSameLine(index) || !StartsEnumItem(index, true));
 	
 	private List<IExpressionNode> ParseCaseValues(ref int index, bool isMatched)
 	{

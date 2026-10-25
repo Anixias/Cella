@@ -209,7 +209,11 @@ public sealed partial class FileParser
 		}
 	}
 	
-	private bool StartsValue(int index) => IsOnSameLine(index) || !AtEnd(index) && !StartsDeclarationOnLine(index);
+	private bool StartsValue(int index) => !Peek(index, TokenType.OpCloseBrace) &&
+	                                       (IsOnSameLine(index) || !AtEnd(index) && !StartsDeclarationOnLine(index));
+	
+	private bool EndsListItem(int index, TokenType close) =>
+		AtEnd(index) || Peek(index, close) || Peek(index, TokenType.OpComma);
 	
 	private static bool IsExternalIdentifier(string name) =>
 		!char.IsAsciiDigit(name[0]) && name.All(static c => char.IsAsciiLetterOrDigit(c) || c == '_');
@@ -291,7 +295,8 @@ public sealed partial class FileParser
 			if (Match(ref index, out var equals, TokenType.OpEqual))
 			{
 				Report(equals, "Cannot initialize values in 'ext' blocks");
-				ParseExpression(ref index);
+				if (StartsValue(index))
+					ParseExpression(ref index);
 			}
 			
 			return new GlobalNode(identifier, keyword, type, null)
@@ -504,6 +509,12 @@ public sealed partial class FileParser
 		
 		if (!Match(ref index, TokenType.OpEqual))
 			return new(mode, identifier, type, null) { Ellipsis = ellipsis };
+		
+		if (EndsListItem(index, TokenType.OpCloseParen))
+		{
+			ReportExpected(index - 1, "an expression");
+			return new(mode, identifier, type, null) { Ellipsis = ellipsis };
+		}
 		
 		var defaultValue = ParseExpression(ref index);
 		return new(mode, identifier, type, defaultValue) { Ellipsis = ellipsis };
