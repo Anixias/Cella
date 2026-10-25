@@ -72,6 +72,9 @@ class CellaSemanticHighlighter(private val project: Project, private val server:
 		document.getUserData(pendingKey)?.cancel(true)
 		document.putUserData(pendingKey, pending)
 		pending.thenAccept { tokens ->
+			if (tokens != null)
+				server.markChecked(uri, version)
+
 			val data = tokens?.data ?: return@thenAccept
 			ApplicationManager.getApplication().invokeLater({ apply(document, uri, version, data) }, project.disposed)
 		}

@@ -82,6 +82,9 @@ private fun resolveName(file: PsiFile, document: Document, element: PsiElement):
 		?: ConcurrentHashMap<Int, NameResolution>().also { document.putUserData(resolutionsKey, stamp to it) }
 	
 	resolutions[start]?.let { return it }
+	if (!CellaServer.get(file.project).isChecked(virtualFile))
+		return null
+
 	val locations = definitionsAt(file.project, virtualFile, document, start).takeIf { it.isNotEmpty() } ?: return null
 	val resolution = if (locations.first().isAt(element)) NameResolution.Declared else NameResolution.Referenced(locations)
 	resolutions[start] = resolution
@@ -111,6 +114,9 @@ private fun projectTargetAt(file: PsiFile, document: Document, offset: Int): Pro
 	
 	targets[offset]?.let { return it }
 	val server = CellaServer.get(file.project)
+	if (!server.isChecked(virtualFile))
+		return null
+
 	val position = server.position(document, offset)
 	val range = server.await(server.request {
 		it.textDocumentService.hover(HoverParams(TextDocumentIdentifier(CellaServer.uriOf(virtualFile)), position))

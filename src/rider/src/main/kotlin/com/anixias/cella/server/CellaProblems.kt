@@ -15,6 +15,7 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.remoting.ActionRemoteBehaviorSpecification
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -60,8 +61,9 @@ data class CellaProblem(
 	override val icon: Icon get() = level.icon
 }
 
-class CellaProblemFilters : ActionGroup() {
-	private class Filter(private val level: CellaProblemLevel) : DumbAwareToggleAction(level.label) {
+class CellaProblemFilters : ActionGroup(), ActionRemoteBehaviorSpecification.Frontend {
+	private class Filter(private val level: CellaProblemLevel) : DumbAwareToggleAction(level.label),
+		ActionRemoteBehaviorSpecification.Frontend {
 		override fun getActionUpdateThread() = ActionUpdateThread.EDT
 
 		override fun isSelected(event: AnActionEvent) =

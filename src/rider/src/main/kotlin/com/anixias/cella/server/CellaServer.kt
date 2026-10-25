@@ -107,6 +107,7 @@ class CellaServer(private val project: Project) : Disposable {
 	
 	private val sender = AppExecutorUtil.createBoundedApplicationPoolExecutor("Cella language server", 1)
 	private val documents = ConcurrentHashMap<String, Pair<Document, Int>>()
+	private val checkedVersions = ConcurrentHashMap<String, Int>()
 	private var connection: Connection? = null
 	private var hasReportedProblem = false
 	private var configuration: JsonObject? = null
@@ -238,7 +239,8 @@ class CellaServer(private val project: Project) : Disposable {
 		val uri = uriOf(file)
 		if (documents.putIfAbsent(uri, document to 1) != null)
 			return
-		
+
+		checkedVersions.remove(uri)
 		val text = document.text
 		sender.execute {
 			connect()?.server?.textDocumentService?.didOpen(
@@ -267,13 +269,24 @@ class CellaServer(private val project: Project) : Disposable {
 		val uri = uriOf(file)
 		if (documents.remove(uri) == null)
 			return
-		
+
+		checkedVersions.remove(uri)
 		sender.execute {
 			connection?.server?.textDocumentService?.didClose(DidCloseTextDocumentParams(TextDocumentIdentifier(uri)))
 		}
 	}
 	
 	fun versionOf(uri: String) = documents[uri]?.second
+
+	fun markChecked(uri: String, version: Int) {
+		checkedVersions[uri] = version
+	}
+
+	fun isChecked(file: VirtualFile): Boolean {
+		val uri = uriOf(file)
+		val version = documents[uri]?.second ?: return true
+		return checkedVersions[uri] == version
+	}
 	
 	fun isLibraryFile(file: VirtualFile) =
 		connection?.libraryRoots?.any { FileUtil.isAncestor(it, file.path, false) } == true
@@ -329,11 +342,13 @@ class CellaServer(private val project: Project) : Disposable {
 				painter.paint(document, emptyList())
 		}, project.disposed)
 		
+		checkedVersions.clear()
 		for ((uri, entry) in documents) {
 			val (document, version) = entry
 			val text = ReadAction.compute<String, Throwable> { document.text }
 			server.textDocumentService.didOpen(DidOpenTextDocumentParams(TextDocumentItem(uri, languageOf(uri), version,
 				text)))
+			highlighter.request(document, uri, version)
 		}
 	}
 	

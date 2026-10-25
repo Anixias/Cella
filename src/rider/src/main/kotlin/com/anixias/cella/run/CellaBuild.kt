@@ -25,6 +25,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.remoting.ActionRemoteBehaviorSpecification
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.progress.ProgressIndicator
@@ -148,7 +149,7 @@ object CellaBuild {
 	}
 }
 
-class CellaBuildAction : AnAction() {
+class CellaBuildAction : AnAction(), ActionRemoteBehaviorSpecification.Frontend {
 	override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
 	override fun update(event: AnActionEvent) {

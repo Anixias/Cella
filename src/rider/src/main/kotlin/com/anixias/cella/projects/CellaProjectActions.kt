@@ -10,6 +10,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
+import com.intellij.openapi.actionSystem.remoting.ActionRemoteBehaviorSpecification
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
@@ -50,7 +51,7 @@ object CellaSelection {
 	}
 }
 
-abstract class CellaProjectAction : AnAction() {
+abstract class CellaProjectAction : AnAction(), ActionRemoteBehaviorSpecification.Frontend {
 	override fun getActionUpdateThread() = ActionUpdateThread.BGT
 }
 
