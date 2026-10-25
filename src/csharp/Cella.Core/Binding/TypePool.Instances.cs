@@ -202,7 +202,7 @@ public sealed partial class TypePool
 				return null;
 			}
 			
-			var map = CreateMap(parameters, completed);
+			var map = MapKnownArguments(parameters, completed);
 			foreach (var (parameter, argument) in outer ?? new Dictionary<TypeParameterSymbol, TypeSymbol>())
 				map[parameter] = argument;
 			
@@ -212,14 +212,38 @@ public sealed partial class TypePool
 		return [..completed];
 	}
 	
+	private Dictionary<TypeParameterSymbol, TypeSymbol> MapKnownArguments(
+		ImmutableArray<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> known)
+	{
+		var map = CreateMap(parameters, known);
+		if (!parameters.Skip(known.Count).Any(static parameter => parameter.IsDerived))
+			return map;
+		
+		var inferred = new TypeSymbol?[parameters.Length];
+		for (var i = 0; i < known.Count; i++)
+			inferred[i] = known[i];
+		
+		new TypeInference(this).InferFromBounds(parameters, inferred);
+		for (var i = known.Count; i < parameters.Length; i++)
+		{
+			if (parameters[i].IsDerived && inferred[i] is { } argument)
+				map[parameters[i]] = argument;
+		}
+		
+		return map;
+	}
+	
 	public TypeSymbol? FindDefaultArgument(ImmutableArray<TypeParameterSymbol> parameters,
 		IReadOnlyList<TypeSymbol?> arguments, int index)
 	{
 		if (GetDefaultArgument(parameters[index]) is not { } fallback)
 			return null;
 		
-		var map = parameters.Take(index).Select((parameter, i) => (parameter, arguments[i] ?? NativeSymbols.Invalid))
-			.ToDictionary(static pair => pair.parameter, static pair => pair.Item2);
+		var map = parameters
+			.Select((parameter, i) => (parameter, Argument: arguments[i] ?? NativeSymbols.Invalid, IsKnown: i < index ||
+				parameter.IsDerived))
+			.Where(static entry => entry.IsKnown)
+			.ToDictionary(static entry => entry.parameter, static entry => entry.Argument);
 		
 		var argument = Substitute(fallback, map);
 		return ContainsInvalid(argument) ? null : argument;

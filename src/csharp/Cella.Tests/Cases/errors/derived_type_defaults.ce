@@ -60,6 +60,30 @@ Longs: rec impl Holds[u64]
 
 pick[E: Holds[T] = Words]: fun(value: T) -> T => E.unit()
 
+Box[T]: rec
+{
+	value: T
+}
+
+Own[E: Holds[T] = Box[T]]: rec
+{
+	tag: i32
+}
+
+Before[X = T, E: Holds[T] = Words]: rec
+{
+	tag: i32
+}
+
+Copyable[E: Holds[T], X: copy = T]: rec
+{
+	tag: i32
+}
+
+wide[A]: fun(value: A, unit: u16) -> i32 => 1
+
+wide[A, E: Holds[T] = Words]: fun(value: A, unit: T) -> i32 => 2
+
 main: fun
 {
 	val large: u64 = 2

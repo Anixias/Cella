@@ -19,6 +19,7 @@ public sealed partial class SignatureCollector
 		TypeParameterNode Node,
 		ImmutableArray<TypeParameterSymbol> Parameters,
 		int Index,
+		ImmutableHashSet<TypeParameterSymbol> EarlierDerived,
 		Func<ResolutionContext> Context,
 		ErrorContainment.Owner Owner
 	);
@@ -105,8 +106,21 @@ public sealed partial class SignatureCollector
 			}
 			
 			hasDefaults = true;
-			_pendingDefaults[parameters[i]] = new(nodes[i], parameters, i, context, CurrentOwner);
+			_pendingDefaults[parameters[i]] =
+				new(nodes[i], parameters, i, FindIntroduced(nodes.Take(i), parameters), context, CurrentOwner);
 		}
+	}
+	
+	private static ImmutableHashSet<TypeParameterSymbol> FindIntroduced(IEnumerable<TypeParameterNode> nodes,
+		ImmutableArray<TypeParameterSymbol> parameters)
+	{
+		var earlier = nodes.ToList();
+		var names = TypeParameterNode.CollectBareNames(earlier)
+			.Concat(TypeParameterNode.CollectDeclared(earlier).Select(static node => node.Identifier))
+			.Select(static name => name.Text)
+			.ToHashSet();
+		
+		return [..parameters.Where(parameter => parameter.IsDerived && names.Contains(parameter.Name))];
 	}
 	
 	private static SourceLocation? GetDefaultLocation(TypeParameterNode node) =>
@@ -133,7 +147,9 @@ public sealed partial class SignatureCollector
 		var location = GetDefaultLocation(pending.Node)!.Value;
 		var context = pending.Context() with { DeferConstraintCheck = DeferAlways };
 		var fallback = context.ResolveDefaultArgument(pending.Node, parameter);
-		if (pending.Parameters.Skip(pending.Index).FirstOrDefault(later => Mentions(fallback, later)) is { } later)
+		if (pending.Parameters.Skip(pending.Index)
+			    .FirstOrDefault(later => !pending.EarlierDerived.Contains(later) && Mentions(fallback, later)) is
+		    { } later)
 		{
 			Diagnostics.Add(new(DiagnosticSeverity.Error, location, later == parameter
 				? $"Cannot use '{later.Name}' in its own default"

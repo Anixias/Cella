@@ -28,9 +28,35 @@ Error at derived_type_defaults.ce:51:21
                          ╘═══╛ 'Sized' requires 'E: Holds[T]'
                              | 'Plain' doesn't implement 'Holds[T]'
 
-Error at derived_type_defaults.ce:66:2
-65 │ val large: u64 = 2
-66 │ pick(large)
+Error at derived_type_defaults.ce:68:19
+67 │ 
+68 │ Own[E: Holds[T] = Box[T]]: rec
+                       ╘════╛ Cannot use 'T' in defaults of earlier parameters
+
+Error at derived_type_defaults.ce:73:12
+72 │ 
+73 │ Before[X = T, E: Holds[T] = Words]: rec
+                ^ Cannot use 'T' in defaults of earlier parameters
+
+Error at derived_type_defaults.ce:78:33
+77 │ 
+78 │ Copyable[E: Holds[T], X: copy = T]: rec
+                                     ^ 'Copyable' requires 'X: copy'
+                                     | 'T' can't be copied
+
+Error at derived_type_defaults.ce:83:1
+82 │ 
+83 │ wide[A]: fun(value: A, unit: u16) -> i32 => 1
+     ╘══╛ 'wide' overloads cannot accept the same arguments
+
+Error at derived_type_defaults.ce:85:1
+84 │ 
+85 │ wide[A, E: Holds[T] = Words]: fun(value: A, unit: T) -> i32 => 2
+     ╘══╛ 'wide' overloads cannot accept the same arguments
+
+Error at derived_type_defaults.ce:90:2
+89 │ val large: u64 = 2
+90 │ pick(large)
      ╘══╛ 'pick' requires 'E: Holds[u64]'
         | 'Words' doesn't implement 'Holds[u64]'
 

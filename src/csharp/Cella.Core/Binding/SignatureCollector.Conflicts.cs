@@ -167,12 +167,11 @@ public sealed partial class SignatureCollector
 			return null;
 		
 		var map = TypePool.CreateMap(extended, kept);
-		if (!kept.Zip(extended).All(pair => HaveSameConstraints(pair.First, pair.Second, map)))
+		if (!kept.Zip(extended).All(pair => HaveSameConstraints(pair.First, pair.Second, map)) ||
+		    _typePool.CompleteArguments(extended, [..kept]) is not { } completed)
 			return null;
 		
-		for (var i = kept.Length; i < extended.Length; i++)
-			map[extended[i]] = _typePool.Substitute(_typePool.GetDefaultArgument(extended[i])!, map);
-		
+		map = TypePool.CreateMap(extended, completed);
 		var aligned = _typePool.SubstituteSignature(_builder.Functions[longer].Signature, map);
 		var plain = _builder.Functions[shorter].Signature;
 		return longer == function ? (aligned, plain) : (plain, aligned);

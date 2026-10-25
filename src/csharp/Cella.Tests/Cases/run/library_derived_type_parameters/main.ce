@@ -16,5 +16,7 @@ main: fun -> i32
 {
 	printf("%zu %zu %zu\n", Plain.width(), Plain[Longs].width(), Box[Words, i32](3).width)
 	printf("%zu %zu\n", Box[Longs, i32](1).width, Box[Words, i8](4, 1, 1).width)
+	val plain: Later = Later(3)
+	printf("%zu %zu %zu %u\n", Later.width(), Later[Longs].width(), later[Longs](), plain.value)
 	ret 0
 }

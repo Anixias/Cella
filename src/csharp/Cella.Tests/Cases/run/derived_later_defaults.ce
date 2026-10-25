@@ -1,0 +1,78 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Longs: rec impl Holds[u64]
+{
+	unit: fun -> u64 => 7
+}
+
+Pair[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+Later[E: Holds[T] = Words, X = T]: rec
+{
+	value: X
+	
+	width: fun -> usize => sizeOf(X)
+}
+
+Nested[E: Holds[T: copy], X = Pair[T, E]]: rec
+{
+	width: fun -> usize => sizeOf(X)
+}
+
+Choice[E: Holds[T], X = T]: enum
+{
+	none
+	some(value: X)
+	
+	width: fun -> usize => sizeOf(X)
+}
+
+later[E: Holds[T] = Words, X = T]: fun -> usize => sizeOf(X)
+
+inferred[E: Holds[T], X = T]: fun(holder: E) -> usize => sizeOf(X)
+
+Sized[E: Holds[T], X = T]: trait
+{
+	size: fun -> usize
+}
+
+Words: impl Sized[Words]
+{
+	size: fun -> usize => sizeOf(u16) * 10
+}
+
+main: fun -> i32
+{
+	val plain: Later = Later(3)
+	val wide: Later[Longs] = Later[Longs](4)
+	val choice: Choice[Longs] = Choice.some(5)
+	printf("%zu %zu %zu %zu\n", Later.width(), Later[Longs].width(), Later[Longs, u8].width(), Nested[Words].width())
+	printf("%zu %zu %zu %zu\n", Choice[Words].width(), later(), later[Longs](), inferred(Longs()))
+	printf("%u %llu %zu %zu\n", plain.value, wide.value, Words.size(), sizeOf(Choice[Longs]))
+	match choice
+	{
+		some(val value) => printf("%llu\n", value)
+		none => printf("none\n")
+	}
+
+	ret 0
+}

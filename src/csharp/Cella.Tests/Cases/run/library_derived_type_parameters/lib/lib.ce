@@ -42,3 +42,12 @@ Box[E: Holds[T], X: copy]: impl
 		self = Box[E, X](count + more, extra)
 	}
 }
+
+Later[E: Holds[T] = Words, X = T]: pub rec
+{
+	value: X
+	
+	width: fun -> usize => sizeOf(X)
+}
+
+later[E: Holds[T] = Words, X = T]: pub fun -> usize => sizeOf(X)
