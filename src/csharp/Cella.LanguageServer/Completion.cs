@@ -101,10 +101,11 @@ public static class Completion
 		
 		if (probe is not null)
 		{
+			var insertsCall = !StartsOperand(text, probe.Offset);
 			foreach (var group in probe.Candidates.Where(static candidate => IsListed(NameOf(candidate)))
 				         .GroupBy(static candidate => (NameOf(candidate), IsFunction(candidate))))
 				items.Add(group.Key.Item2
-					? ToFunctionItem(probe, group.Key.Item1, [..group])
+					? ToFunctionItem(probe, group.Key.Item1, [..group], insertsCall)
 					: ToItem(probe, group.First()));
 			
 			foreach (var group in probe.Importable.Where(static candidate => IsListed(candidate.Import!.Name))
@@ -114,7 +115,7 @@ public static class Completion
 					continue;
 				
 				var item = group.Key.Item2
-					? ToFunctionItem(probe, group.Key.Import.Name, [..group])
+					? ToFunctionItem(probe, group.Key.Import.Name, [..group], insertsCall)
 					: ToItem(probe, group.First());
 				
 				item["labelDetails"]!["description"] = group.Key.Import.Module;
@@ -202,7 +203,11 @@ public static class Completion
 		};
 	}
 	
-	private static JsonObject ToFunctionItem(CompletionProbe probe, string name, List<CompletionCandidate> overloads)
+	private static bool StartsOperand(string text, int offset) =>
+		offset < text.Length && (IsNameCharacter(text[offset]) || text[offset] is '(' or '"' or '\'');
+	
+	private static JsonObject ToFunctionItem(CompletionProbe probe, string name, List<CompletionCandidate> overloads,
+		bool insertsCall)
 	{
 		var functions = overloads.Select(static overload => overload.Function!.Value).ToList();
 		var detail = SemanticModel.Describe(overloads[0]);
@@ -232,7 +237,7 @@ public static class Completion
 				["value"] = $"```cella\n{string.Join('\n', overloads.Select(SemanticModel.Describe))}\n```"
 			};
 		
-		if (probe.ExpectedType is FunctionType)
+		if (!insertsCall || probe.ExpectedType is FunctionType)
 		{
 			item["insertText"] = name;
 			item["insertTextFormat"] = PlainText;

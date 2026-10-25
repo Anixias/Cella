@@ -18,6 +18,9 @@ public sealed partial class SignatureCollector
 		
 		ReportRedundantConformances();
 		
+		var found = new List<Diagnostic>();
+		var memberFixes = new List<MemberFix>();
+		var previous = Diagnostics.Redirect(found);
 		foreach (var conformance in _localConformances)
 		{
 			using var frame = Own(conformance.Owner);
@@ -28,10 +31,16 @@ public sealed partial class SignatureCollector
 					continue;
 			}
 			
-			var fix = MatchRequirements(conformance);
-			MatchConstants(conformance, fix);
+			var memberFix = MatchRequirements(conformance);
+			if (memberFix is not null)
+				memberFixes.Add(memberFix);
+			
+			MatchConstants(conformance, memberFix?.Fix);
 			CheckSelfConstraints(conformance);
 		}
+		
+		Diagnostics.Redirect(previous);
+		AddWithMergedFixes(found, memberFixes);
 		
 		foreach (var impl in _impls)
 			ReportUnmatchedMembers(impl);
@@ -409,7 +418,50 @@ public sealed partial class SignatureCollector
 		return map;
 	}
 	
-	private DiagnosticFix? MatchRequirements(Conformance conformance)
+	private sealed record MemberFix
+	(
+		Conformance Conformance,
+		TypeSymbol Self,
+		ImmutableArray<FunctionSymbol> Requirements,
+		ImmutableArray<GlobalSymbol> Constants,
+		DiagnosticFix Fix
+	);
+	
+	private void AddWithMergedFixes(List<Diagnostic> diagnostics, List<MemberFix> memberFixes)
+	{
+		var merged = new Dictionary<DiagnosticFix, (DiagnosticFix Fix, ErrorContainment.Owner Owner)>(
+			ReferenceEqualityComparer.Instance);
+		
+		foreach (var block in memberFixes.GroupBy(static memberFix => (memberFix.Conformance.Impl,
+			         Target: memberFix.Conformance.Impl is null ? memberFix.Conformance.Target : null)))
+		{
+			var (conformance, self) = (block.First().Conformance, block.First().Self);
+			if (block.Count() < 2 || ImplementMembers(conformance, self,
+				    block.SelectMany(static memberFix => memberFix.Requirements).Distinct(),
+				    block.SelectMany(static memberFix => memberFix.Constants).Distinct()) is not { } combined)
+				continue;
+			
+			foreach (var memberFix in block)
+				merged[memberFix.Fix] = (combined, memberFix.Conformance.Owner);
+		}
+		
+		foreach (var diagnostic in diagnostics)
+		{
+			if (diagnostic.Fixes.FirstOrDefault(merged.ContainsKey) is not { } replaced)
+			{
+				Diagnostics.Add(diagnostic);
+				continue;
+			}
+			
+			using var frame = Own(merged[replaced].Owner);
+			Diagnostics.Add(diagnostic with
+			{
+				Fixes = [..diagnostic.Fixes.Select(fix => merged.TryGetValue(fix, out var entry) ? entry.Fix : fix)]
+			});
+		}
+	}
+	
+	private MemberFix? MatchRequirements(Conformance conformance)
 	{
 		var self = GetConformanceSelf(conformance);
 		if (self is InvalidType)
@@ -535,8 +587,9 @@ public sealed partial class SignatureCollector
 			}
 		}
 		
-		var fix = ImplementMembers(conformance, self, missing.Select(static entry => entry.Requirement),
-			FindMissingConstants(conformance));
+		var missingRequirements = missing.Select(static entry => entry.Requirement).ToImmutableArray();
+		var missingConstants = FindMissingConstants(conformance).ToImmutableArray();
+		var fix = ImplementMembers(conformance, self, missingRequirements, missingConstants);
 		
 		foreach (var (name, requirement, removedBy) in missing)
 			Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
@@ -547,7 +600,7 @@ public sealed partial class SignatureCollector
 			});
 		
 		MatchConstructors(conformance, trait, traitMap, self);
-		return fix;
+		return fix is null ? null : new(conformance, self, missingRequirements, missingConstants, fix);
 	}
 	
 	private IEnumerable<GlobalSymbol> FindMissingConstants(Conformance conformance) => conformance.Trait.Constants
@@ -576,8 +629,112 @@ public sealed partial class SignatureCollector
 		_ => function.Property?.Node?.Visibility
 	};
 	
-	private static DiagnosticFix? ImplementMembers(Conformance conformance, TypeSymbol self,
+	private DiagnosticFix? ImplementMembers(Conformance conformance, TypeSymbol self,
 		IEnumerable<FunctionSymbol> requirements, IEnumerable<GlobalSymbol> constants)
+	{
+		var selfName = DiagnosticReporter.DescribeType(self);
+		var constantNodes = constants
+			.Select(static constant => constant.Syntax)
+			.Where(static constant => constant.SourceLocation.Source.FilePath.Length > 0)
+			.ToList();
+		
+		var functions = requirements
+			.Select(static requirement => requirement.Syntax)
+			.OfType<FunctionNode>()
+			.Where(static function => function is { Body: null } && function.SourceLocation.Source.FilePath.Length > 0)
+			.ToList();
+		
+		var members = constantNodes
+			.Select(constant => (IsFunction: false, Describe: (Func<string, string>)(_ =>
+				DescribeConstant(constant, selfName))))
+			.Concat(functions.Select(function => (IsFunction: true, Describe: (Func<string, string>)(indent =>
+				DescribeMember(function, selfName, indent)))))
+			.ToList();
+		
+		if (InsertMembers(conformance, members) is not { } insertion)
+			return null;
+		
+		return new("Implement missing members", ImmutableArray.CreateRange(
+			ImportMemberTypes(conformance.Trait, insertion.Location.Source, functions, constantNodes)
+				.Append(insertion)));
+	}
+	
+	private IEnumerable<TextEdit> ImportMemberTypes(TraitSymbol trait, ISource source, List<FunctionNode> functions,
+		List<GlobalNode> constants)
+	{
+		if (_fileContexts.Values.Where(context => context.File.Syntax.SourceLocation.Source == source).ToList() is not
+		    [var context])
+			return [];
+		
+		var parameters = functions
+			.SelectMany(static function => function.TypeParameters)
+			.SelectMany(FlattenTypeParameters)
+			.Select(static parameter => parameter.Identifier.Text)
+			.Concat(trait.TypeParameters.Select(static parameter => parameter.Name))
+			.Append("Self")
+			.ToHashSet();
+		
+		var visible = context.GetAllSymbols().Select(static symbol => symbol.Name).ToHashSet();
+		var names = functions
+			.SelectMany(static function => function.Parameters
+				.Select(static parameter => parameter.Type)
+				.Append(function.ReturnType)
+				.OfType<ITypeNode>()
+				.Concat(function.TypeParameters.SelectMany(FlattenTypeParameters).SelectMany(GetConstraintTypes)))
+			.Concat(constants.Select(static constant => constant.Type))
+			.SelectMany(FindTypeNames)
+			.Select(static name => name.Text)
+			.Where(name => !parameters.Contains(name) && !visible.Contains(name) &&
+			               !NativeSymbols.IsBuiltInTypeName(name))
+			.ToHashSet();
+		
+		if (names.Count == 0)
+			return [];
+		
+		var traitModule = Modules.FindModule(trait)?.ModuleName.Text;
+		var modules = context.GetImportableSymbols()
+			.Where(entry => entry.Symbol is NamedTypeSymbol or TraitSymbol && names.Contains(entry.Import.Name))
+			.GroupBy(static entry => entry.Import.Name, static entry => entry.Import.Module)
+			.Select(group => (Name: group.Key, Module: ChooseImportModule(group, traitModule)))
+			.Where(static import => import.Module is not null)
+			.GroupBy(static import => import.Module!, static import => import.Name);
+		
+		return modules.SelectMany(module =>
+			ImportEdits.Create(context.File.Syntax, module.Key, [..module.Order(ImportEdits.Comparer)]));
+	}
+	
+	private static string? ChooseImportModule(IGrouping<string, string> modules, string? traitModule) =>
+		traitModule is not null && modules.Contains(traitModule)
+			? traitModule
+			: modules.Distinct().ToList() is [var only]
+				? only
+				: null;
+	
+	private static IEnumerable<TypeParameterNode> FlattenTypeParameters(TypeParameterNode parameter) =>
+		parameter.Nested.Concat(parameter.Declared).SelectMany(FlattenTypeParameters).Prepend(parameter);
+	
+	private static IEnumerable<ITypeNode> GetConstraintTypes(TypeParameterNode parameter) => parameter.Traits
+		.Concat(parameter.Constructors.SelectMany(static constructor => constructor.Types))
+		.Concat(new[] { parameter.ValueType, parameter.DefaultType }.OfType<ITypeNode>());
+	
+	private static IEnumerable<Token> FindTypeNames(ITypeNode type) => type switch
+	{
+		IdentifierTypeNode identifier => [identifier.Token],
+		GenericTypeNode generic => generic.Arguments.SelectMany(static argument => argument switch
+		{
+			IdentifierArgumentNode identifier => [identifier.Identifier],
+			TypeArgumentNode typeArgument => FindTypeNames(typeArgument.Type),
+			_ => []
+		}).Prepend(generic.Identifier),
+		BorrowTypeNode borrow => FindTypeNames(borrow.Target),
+		DynTypeNode dyn => FindTypeNames(dyn.Trait),
+		FunctionTypeNode function => function.ParameterTypes.Append(function.ReturnType).OfType<ITypeNode>()
+			.SelectMany(FindTypeNames),
+		_ => []
+	};
+	
+	private static TextEdit? InsertMembers(Conformance conformance,
+		List<(bool IsFunction, Func<string, string> Describe)> members)
 	{
 		var (body, lastHeaderToken, existing) = conformance switch
 		{
@@ -586,21 +743,6 @@ public sealed partial class SignatureCollector
 				(record.Node.Body, record.Node.LastHeaderToken, record.Node.Members),
 			_ => default((SourceLocation?, Token?, ImmutableArray<IDeclarationNode>))
 		};
-		
-		var selfName = DiagnosticReporter.DescribeType(self);
-		var members = constants
-			.Select(static constant => constant.Syntax)
-			.Where(static constant => constant.SourceLocation.Source.FilePath.Length > 0)
-			.Select(constant => (IsFunction: false, Describe: (Func<string, string>)(_ =>
-				DescribeConstant(constant, selfName))))
-			.Concat(requirements
-				.Select(static requirement => requirement.Syntax)
-				.OfType<FunctionNode>()
-				.Where(static function =>
-					function is { Body: null } && function.SourceLocation.Source.FilePath.Length > 0)
-				.Select(function => (IsFunction: true, Describe: (Func<string, string>)(indent =>
-					DescribeMember(function, selfName, indent)))))
-			.ToList();
 		
 		if (members.Count == 0 || lastHeaderToken is not { } header)
 			return null;
@@ -612,8 +754,7 @@ public sealed partial class SignatureCollector
 			var indent = source.FindIndent(header.SourceLocation.Range.Start);
 			var text = JoinMembers(members, indent + "\t", newline);
 			var at = header.SourceLocation.Range.End;
-			return DiagnosticFix.Replace("Implement missing members", new(source, new(at, at)),
-				$"{newline}{indent}{{{newline}{text}{newline}{indent}}}");
+			return new(new(source, new(at, at)), $"{newline}{indent}{{{newline}{text}{newline}{indent}}}");
 		}
 		
 		var close = braces.Range.End - 1;
@@ -626,19 +767,16 @@ public sealed partial class SignatureCollector
 		var isEmpty = source.GetText(new(braces.Range.Start + 1, close)).ToString().Trim().Length == 0;
 		var added = JoinMembers(members, memberIndent, newline);
 		if (isEmpty)
-			return DiagnosticFix.Replace("Implement missing members", new(source, new(braces.Range.Start + 1, close)),
-				newline + added + newline + closeIndent);
+			return new(new(source, new(braces.Range.Start + 1, close)), newline + added + newline + closeIndent);
 		
 		var separates = members[0].IsFunction || existing.IsDefaultOrEmpty ||
 		                existing[^1] is not (GlobalNode or FieldNode);
 		
 		if (lineStart > 0 && source[lineStart - 1] == '\n')
-			return DiagnosticFix.Replace("Implement missing members",
-				new(source, new(SkipBlankLinesBackward(source, lineStart, braces.Range.Start), lineStart)),
+			return new(new(source, new(SkipBlankLinesBackward(source, lineStart, braces.Range.Start), lineStart)),
 				(separates ? memberIndent + newline : "") + added + newline);
 		
-		return DiagnosticFix.Replace("Implement missing members", new(source, new(close, close)),
-			newline + added + newline + closeIndent);
+		return new(new(source, new(close, close)), newline + added + newline + closeIndent);
 	}
 	
 	private static int SkipBlankLinesBackward(ISource source, int lineStart, int limit)

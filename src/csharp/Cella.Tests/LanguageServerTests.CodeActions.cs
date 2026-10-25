@@ -376,6 +376,37 @@ public sealed partial class LanguageServerTests
 	}
 	
 	[Fact]
+	public async Task ImplementsMembersOfRequiredTraitsTogether()
+	{
+		const string traits = "mod test\n\nSame: trait\n{\n\tsame: fun(imm self, imm other: Self) -> bool\n}\n\n" +
+		                      "Ranked: trait req Same\n{\n\trank: fun(imm self) -> i32\n}\n\n" +
+		                      "Square: rec\n{\n\tside: i32\n}\n\n";
+		
+		Assert.Equal(traits + "Square: impl Ranked\n{\n\trank: fun(imm self) -> i32 => panic\n\t\n" +
+		             "\tsame: fun(imm self, imm other: Square) -> bool => panic\n}\n",
+			await FixAsync(traits + "Square: impl ‸Ranked\n{\n}\n", "Implement missing members"));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ImportsTypesOfImplementedMembers()
+	{
+		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),
+			"mod test.util\n\nSizer: pub rec\n{\n\tunit: i32\n}\n\nHolder: pub trait\n{\n}\n\n" +
+			"Measure: pub trait\n{\n\tmeasure: fun(imm self, imm sizer: Sizer) -> i32\n" +
+			"\tfit[H: Holder]: fun(imm self, mut holder: H)\n}\n", Token);
+		
+		Assert.Equal("mod test\n\nuse test.util.[Holder, Measure, Sizer]\n\nSquare: rec\n{\n\tside: i32\n}\n\n" +
+		             "Square: impl Measure\n{\n\tmeasure: fun(imm self, imm sizer: Sizer) -> i32 => panic\n\t\n" +
+		             "\tfit[H: Holder]: fun(imm self, mut holder: H) => panic\n}\n",
+			await FixAsync("mod test\n\nuse test.util.Measure\n\nSquare: rec\n{\n\tside: i32\n}\n\n" +
+			               "Square: impl ‸Measure\n{\n}\n", "Implement missing members"));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ImportsNamesThatAreNotFound()
 	{
 		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),

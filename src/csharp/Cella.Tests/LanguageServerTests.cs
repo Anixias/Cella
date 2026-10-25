@@ -1343,6 +1343,12 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		var values = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val r = apply(tw|, 1)"));
 		Assert.Equal("twice", (string)values["twice"]["insertText"]!);
 		
+		var called = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val r = tw|(1)"));
+		Assert.Equal("twice", (string)called["twice"]["insertText"]!);
+		
+		var inside = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val r = tw|ice(1)"));
+		Assert.Equal("twice", (string)inside["twice"]["insertText"]!);
+		
 		var types = ItemsOf(await AskAtCursorAsync("textDocument/completion", "val v: |"));
 		Assert.Contains("Point", types.Keys);
 		Assert.Contains("i32", types.Keys);

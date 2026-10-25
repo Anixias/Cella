@@ -28,6 +28,7 @@
 		<lang.commenter language="Cella" implementationClass="com.anixias.cella.editor.CellaCommenter"/>
 		<lang.commenter language="CellaProject" implementationClass="com.anixias.cella.editor.CelpCommenter"/>
 		<lang.braceMatcher language="Cella" implementationClass="com.anixias.cella.editor.CellaBraceMatcher"/>
+		<lang.foldingBuilder language="Cella" implementationClass="com.anixias.cella.editor.CellaFoldingBuilder"/>
 		<lang.braceMatcher language="CellaProject" implementationClass="com.anixias.cella.editor.CelpBraceMatcher"/>
 		<lang.quoteHandler language="Cella" implementationClass="com.anixias.cella.editor.CellaQuoteHandler"/>
 		<lang.quoteHandler language="CellaProject" implementationClass="com.anixias.cella.editor.CelpQuoteHandler"/>
