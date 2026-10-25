@@ -487,12 +487,7 @@ public static class MatchConversions
 			if (FindComments(source, position, arm.SourceLocation.Range.Start) is not { } comments)
 				return null;
 			
-			if (arm.Patterns.IsEmpty)
-				branches.Add(new(null, arm.Body, comments));
-			else if (ToCondition(arm, subject) is { } condition)
-				branches.Add(new(condition, arm.Body, comments));
-			else
-				return null;
+			branches.Add(new(arm.Patterns.IsEmpty ? null : ToCondition(arm, subject), arm.Body, comments));
 			
 			position = arm.Body.SourceLocation.Range.End;
 		}
@@ -575,12 +570,9 @@ public static class MatchConversions
 			indent);
 	}
 	
-	private static string? ToCondition(MatchArmNode arm, string subject)
+	private static string ToCondition(MatchArmNode arm, string subject)
 	{
 		var items = arm.Patterns.Select(pattern => ToTest(pattern, subject)).ToList();
-		if (items.Any(static item => item is null))
-			return null;
-		
 		var condition = string.Join(" || ", items);
 		if (arm.Guard is not { } guard)
 			return condition;
@@ -588,7 +580,7 @@ public static class MatchConversions
 		return $"{(items.Count > 1 ? $"({condition})" : condition)} && {Wrap(guard, 1)}";
 	}
 	
-	private static string? ToTest(PatternNode pattern, string subject)
+	private static string ToTest(PatternNode pattern, string subject)
 	{
 		switch (pattern.Kind)
 		{
