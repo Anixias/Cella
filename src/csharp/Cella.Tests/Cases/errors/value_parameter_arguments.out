@@ -1,69 +1,69 @@
-Hint at value_parameter_arguments.ce:10:3
+Hint at value_parameter_arguments.ce:10:9
  9 │ 
-10 │ a[N: const usize]: fun(values: array[i32, N + 1]) => ret
-       ^ 'N' doesn't match {camelCase}
+10 │ a[const N: usize]: fun(values: array[i32, N + 1]) => ret
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_arguments.ce:10:43
  9 │ 
-10 │ a[N: const usize]: fun(values: array[i32, N + 1]) => ret
+10 │ a[const N: usize]: fun(values: array[i32, N + 1]) => ret
                                                ╘═══╛ Cannot use arithmetic on value parameters in generic arguments
 
-Hint at value_parameter_arguments.ce:11:3
-10 │ a[N: const usize]: fun(values: array[i32, N + 1]) => ret
-11 │ e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
-       ^ 'N' doesn't match {camelCase}
+Hint at value_parameter_arguments.ce:11:9
+10 │ a[const N: usize]: fun(values: array[i32, N + 1]) => ret
+11 │ e[const N: usize]: fun(values: array[i32, usize(N)]) => ret
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_arguments.ce:11:43
-10 │ a[N: const usize]: fun(values: array[i32, N + 1]) => ret
-11 │ e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
+10 │ a[const N: usize]: fun(values: array[i32, N + 1]) => ret
+11 │ e[const N: usize]: fun(values: array[i32, usize(N)]) => ret
                                                ╘══════╛ Cannot use arithmetic on value parameters in generic arguments
 
-Hint at value_parameter_arguments.ce:12:3
-11 │ e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
-12 │ c[N: const usize]: fun(values: array[i32, table[N]]) => ret
-       ^ 'N' doesn't match {camelCase}
+Hint at value_parameter_arguments.ce:12:9
+11 │ e[const N: usize]: fun(values: array[i32, usize(N)]) => ret
+12 │ c[const N: usize]: fun(values: array[i32, table[N]]) => ret
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_arguments.ce:12:43
-11 │ e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
-12 │ c[N: const usize]: fun(values: array[i32, table[N]]) => ret
+11 │ e[const N: usize]: fun(values: array[i32, usize(N)]) => ret
+12 │ c[const N: usize]: fun(values: array[i32, table[N]]) => ret
                                                ╘══════╛ 'table[N]' is not a constant
                                                       | 'N' is a value parameter
 
-Hint at value_parameter_arguments.ce:13:3
-12 │ c[N: const usize]: fun(values: array[i32, table[N]]) => ret
-13 │ f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
-       ^ 'N' doesn't match {camelCase}
+Hint at value_parameter_arguments.ce:13:9
+12 │ c[const N: usize]: fun(values: array[i32, table[N]]) => ret
+13 │ f[const N: usize]: fun(values: array[i32, [N, 1][0]]) => ret
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_arguments.ce:13:43
-12 │ c[N: const usize]: fun(values: array[i32, table[N]]) => ret
-13 │ f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
+12 │ c[const N: usize]: fun(values: array[i32, table[N]]) => ret
+13 │ f[const N: usize]: fun(values: array[i32, [N, 1][0]]) => ret
                                                ╘═══════╛ '[N, 1][0]' is not a constant
                                                        | 'N' is a value parameter
 
-Hint at value_parameter_arguments.ce:14:3
-13 │ f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
-14 │ b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
-       ^ 'N' doesn't match {camelCase}
+Hint at value_parameter_arguments.ce:14:9
+13 │ f[const N: usize]: fun(values: array[i32, [N, 1][0]]) => ret
+14 │ b[const N: usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_arguments.ce:14:43
-13 │ f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
-14 │ b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
+13 │ f[const N: usize]: fun(values: array[i32, [N, 1][0]]) => ret
+14 │ b[const N: usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
                                                ╘═══════════════════════════╛ 'match N { 0 => 1, else => 2 }' is not a constant
                                                                            | 'N' is a value parameter
 
 Error at value_parameter_arguments.ce:15:35
-14 │ b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
+14 │ b[const N: usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
 15 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
                                        ╘════════╛ Cannot use arithmetic on value parameters in generic arguments
 
-Hint at value_parameter_arguments.ce:16:3
+Hint at value_parameter_arguments.ce:16:9
 15 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
-16 │ k[N: const usize]: fun(values: array[i32, table[1]]) => ret
-       ^ 'N' doesn't match {camelCase}
+16 │ k[const N: usize]: fun(values: array[i32, table[1]]) => ret
+             ^ 'N' doesn't match {camelCase}
 
 Error at value_parameter_arguments.ce:16:43
 15 │ t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
-16 │ k[N: const usize]: fun(values: array[i32, table[1]]) => ret
+16 │ k[const N: usize]: fun(values: array[i32, table[1]]) => ret
                                                ╘══════╛ 'table[1]' is not a constant
 
 [compilation failed]

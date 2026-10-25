@@ -2,7 +2,7 @@
 
 use std.mem.swap
 
-array[T: noref, length: const usize]: pub impl
+array[T: noref, const length: usize]: pub impl
 {
 	reverse: fun(mut self)
 	{

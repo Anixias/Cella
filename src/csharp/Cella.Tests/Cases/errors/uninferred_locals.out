@@ -1,7 +1,7 @@
-Hint at uninferred_locals.ce:8:16
+Hint at uninferred_locals.ce:8:22
 7 │ 
-8 │ first[T: copy, N: const usize]: fun(values: array[T, N]) -> Box[T] => Box(values[0])
-                   ^ 'N' doesn't match {camelCase}
+8 │ first[T: copy, const N: usize]: fun(values: array[T, N]) -> Box[T] => Box(values[0])
+                         ^ 'N' doesn't match {camelCase}
 
 Error at uninferred_locals.ce:12:6
 11 │ {

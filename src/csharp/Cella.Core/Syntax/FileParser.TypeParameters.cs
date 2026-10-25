@@ -20,6 +20,7 @@ public sealed partial class FileParser
 		
 		do
 		{
+			var isValue = Match(ref index, TokenType.KeywordConst);
 			if (!Match(ref index, out var name, TokenType.Identifier))
 			{
 				if (IsReservedWord(index))
@@ -48,18 +49,35 @@ public sealed partial class FileParser
 			
 			var keywords = new List<Token>();
 			var traits = new List<ITypeNode>();
+			var constantTraits = new List<ITypeNode>();
 			var constructors = new List<ConstructorConstraintNode>();
 			var declared = new List<TypeParameterNode>();
 			ITypeNode? valueType = null;
 			var hasConstraints = Match(ref index, TokenType.OpColon);
-			if (hasConstraints && Match(ref index, TokenType.KeywordConst)
+			if (isValue && !hasConstraints)
+			{
+				ReportExpected(index, "':'");
+				if (IsOnSameLine(index))
+					return null;
+				
+				isPartial = true;
+				return parameters;
+			}
+			
+			if (isValue
 				    ? (valueType = ParseConstraintType(ref index)) is null
-				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false, declared))
+				    : hasConstraints && !ParseConstraints(ref index, keywords, traits, constructors, false, declared,
+					    constantTraits))
 			{
 				if (IsOnSameLine(index))
 					return null;
 				
-				parameters.Add(new(name, keywords, traits, constructors) { Declared = [..declared] });
+				parameters.Add(new(name, keywords, traits, constructors)
+				{
+					Declared = [..declared],
+					ConstantTraits = [..constantTraits]
+				});
+				
 				isPartial = true;
 				return parameters;
 			}
@@ -83,7 +101,8 @@ public sealed partial class FileParser
 				parameters.Add(new(name, keywords, traits, constructors)
 				{
 					ValueType = valueType,
-					Declared = [..declared]
+					Declared = [..declared],
+					ConstantTraits = [..constantTraits]
 				});
 				
 				isPartial = true;
@@ -95,7 +114,8 @@ public sealed partial class FileParser
 				ValueType = valueType,
 				DefaultType = defaultType,
 				DefaultValue = defaultValue,
-				Declared = [..declared]
+				Declared = [..declared],
+				ConstantTraits = [..constantTraits]
 			});
 		} while (MatchSeparator(ref index, TokenType.OpCloseBracket));
 		
@@ -108,11 +128,20 @@ public sealed partial class FileParser
 	}
 	
 	private bool ParseConstraints(ref int index, List<Token> keywords, List<ITypeNode> traits,
-		List<ConstructorConstraintNode> constructors, bool isOnOneLine, List<TypeParameterNode>? declared = null)
+		List<ConstructorConstraintNode> constructors, bool isOnOneLine, List<TypeParameterNode>? declared = null,
+		List<ITypeNode>? constantTraits = null)
 	{
 		do
 		{
-			if (Match(ref index, out var newKeyword, TokenType.KeywordNew))
+			if (constantTraits is not null && Match(ref index, TokenType.KeywordConst))
+			{
+				if (ParseConstraintType(ref index, declared) is not { } constant)
+					return false;
+				
+				traits.Add(constant);
+				constantTraits.Add(constant);
+			}
+			else if (Match(ref index, out var newKeyword, TokenType.KeywordNew))
 			{
 				if (ParseConstructorConstraint(ref index, newKeyword) is not { } constructor)
 					return false;

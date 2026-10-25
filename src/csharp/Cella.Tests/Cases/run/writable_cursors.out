@@ -1,7 +1,7 @@
-Hint at writable_cursors.ce:25:5
+Hint at writable_cursors.ce:25:11
 24 │ 
-25 │ as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
-        ^ 'N' doesn't match {camelCase}
+25 │ as[const N: usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
+              ^ 'N' doesn't match {camelCase}
 
 3 5 7
 3 -1 7 3

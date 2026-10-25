@@ -40,6 +40,7 @@ public sealed class TypeParameterNode
 	public IExpressionNode? DefaultValue { get; init; }
 	public ImmutableArray<TypeParameterNode> Nested { get; init; } = [];
 	public ImmutableArray<TypeParameterNode> Declared { get; init; } = [];
+	public ImmutableArray<ITypeNode> ConstantTraits { get; init; } = [];
 	
 	public static IEnumerable<TypeParameterNode> CollectNestedLeaves(IEnumerable<TypeParameterNode> nodes) => nodes
 		.SelectMany(static node => node.Nested.IsEmpty

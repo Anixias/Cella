@@ -22,7 +22,7 @@ View[T]: pub ref rec
 		ret View[T](self.data + start, end - start)
 	}
 	
-	as[count: const usize]: op(imm values: array[T, count]) -> View[T] => View[T](@values, count)
+	as[const count: usize]: op(imm values: array[T, count]) -> View[T] => View[T](@values, count)
 	
 	[]: op(self, index: usize) -> imm[T]
 	{

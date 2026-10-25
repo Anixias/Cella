@@ -1,21 +1,21 @@
-Hint at parameter_name_clashes.ce:3:3
+Hint at parameter_name_clashes.ce:3:9
 2 │ 
-3 │ f[N: const usize]: fun(N: usize) -> usize => N
-      ^ 'N' doesn't match {camelCase}
+3 │ f[const N: usize]: fun(N: usize) -> usize => N
+            ^ 'N' doesn't match {camelCase}
 
-Error at parameter_name_clashes.ce:3:3
+Error at parameter_name_clashes.ce:3:9
 2 │ 
-3 │ f[N: const usize]: fun(N: usize) -> usize => N
-      ^ 'N' is declared more than once
+3 │ f[const N: usize]: fun(N: usize) -> usize => N
+            ^ 'N' is declared more than once
 
 Hint at parameter_name_clashes.ce:3:24
 2 │ 
-3 │ f[N: const usize]: fun(N: usize) -> usize => N
+3 │ f[const N: usize]: fun(N: usize) -> usize => N
                            ^ 'N' doesn't match {camelCase}
 
 Error at parameter_name_clashes.ce:3:24
 2 │ 
-3 │ f[N: const usize]: fun(N: usize) -> usize => N
+3 │ f[const N: usize]: fun(N: usize) -> usize => N
                            ^ 'N' is declared more than once
 
 Error at parameter_name_clashes.ce:5:3

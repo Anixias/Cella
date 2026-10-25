@@ -1,0 +1,45 @@
+mod test
+
+Score: trait
+{
+	score: fun(self) -> i32
+	bonus: fun(self) -> i32 => 1
+}
+
+Ranked: trait req Score
+{
+	rank: fun(self) -> i32
+}
+
+Gem: rec impl const Score
+{
+	value: i32
+	
+	score: fun(self) -> i32 => self.value
+}
+
+Ore: rec impl Score + const Ranked
+{
+	value: i32
+	
+	score: fun(self) -> i32 => self.value
+	bonus: fun(self) -> i32 => 0
+	rank: const fun(self) -> i32 => 0
+}
+
+Rock: rec impl Ranked
+{
+	value: i32
+	
+	score: fun(self) -> i32 => self.value
+	rank: fun(self) -> i32 => 0
+}
+
+total[T: copy + const Ranked]: const fun(x: T) -> i32 => x.rank()
+plain[T: copy + Ranked]: const fun(x: T) -> i32 => x.rank()
+old[N: const usize]: fun -> i32 => 0
+unnamed[const N]: fun -> i32 => 0
+
+rock: const i32 = total(Rock(1))
+
+main: fun -> i32 => 0

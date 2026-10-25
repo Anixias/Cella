@@ -10,8 +10,8 @@ Apply: trait
 	keep[U]: fun(imm self, imm value: U) -> U
 	tagged[U]: fun(imm self, imm value: U) -> i32
 	plain[U]: fun(imm self, imm value: U) -> i32
-	cap[N: const usize]: fun(imm self) -> usize
-	other[N: const usize]: fun(imm self) -> usize
+	cap[const N: usize]: fun(imm self) -> usize
+	other[const N: usize]: fun(imm self) -> usize
 }
 
 Point: rec impl Apply
@@ -21,7 +21,7 @@ Point: rec impl Apply
 	keep[V: copy]: fun(self, value: V) -> V => value
 	tagged[V: Hash]: fun(self, imm value: V) -> i32 => 1
 	plain[V: noref]: fun(self, imm value: V) -> i32 => 2
-	cap[M: const u8]: fun(self) -> usize => 3
+	cap[const M: u8]: fun(self) -> usize => 3
 	other[M]: fun(self) -> usize => 4
 }
 

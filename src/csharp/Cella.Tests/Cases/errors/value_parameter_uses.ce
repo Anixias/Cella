@@ -1,11 +1,11 @@
 mod test
 
-Ring[T, N: const usize]: rec
+Ring[T, const N: usize]: rec
 {
 	items: array[T, N]
 }
 
-Ring[T, N: const u8]: impl
+Ring[T, const N: u8]: impl
 {
 	slots: fun(imm self) -> u8 => N
 }
@@ -15,17 +15,17 @@ Short: trait
 	doubled: fun(imm self) -> u8
 }
 
-array[T, N: const u8]: impl Short
+array[T, const N: u8]: impl Short
 {
 	doubled: fun(imm self) -> u8 => N * 2
 }
 
-Small[N: const u8]: rec
+Small[const N: u8]: rec
 {
 	items: array[i32, N]
 }
 
-misuse[N: const usize]: fun -> usize
+misuse[const N: usize]: fun -> usize
 {
 	val x: N = 1
 	val y = N()
@@ -35,7 +35,7 @@ misuse[N: const usize]: fun -> usize
 
 typed[T]: fun(imm value: T) {}
 
-tiny[N: const u8]: fun(values: array[i32, N]) -> i32 => 0
+tiny[const N: u8]: fun(values: array[i32, N]) -> i32 => 0
 
 count: const i32 = 3
 

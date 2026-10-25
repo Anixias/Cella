@@ -1,6 +1,6 @@
 mod test
 
-Sized[N: const i32]: enum { zero, big = N }
+Sized[const N: i32]: enum { zero, big = N }
 
 Measured[T]: enum { zero, big = i32(sizeOf(T)) }
 

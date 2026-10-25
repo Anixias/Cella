@@ -1,27 +1,27 @@
-Hint at parameter_length_elements.ce:22:9
+Hint at parameter_length_elements.ce:22:15
 21 │ 
-22 │ firstOf[N: const usize]: fun(values: array[Token, N]) -> Token => values[0]
-             ^ 'N' doesn't match {camelCase}
+22 │ firstOf[const N: usize]: fun(values: array[Token, N]) -> Token => values[0]
+                   ^ 'N' doesn't match {camelCase}
 
-Hint at parameter_length_elements.ce:24:10
+Hint at parameter_length_elements.ce:24:16
 23 │ 
-24 │ middleOf[N: const usize]: fun(values: array[Token, N]) -> Token => values[1]
-              ^ 'N' doesn't match {camelCase}
+24 │ middleOf[const N: usize]: fun(values: array[Token, N]) -> Token => values[1]
+                    ^ 'N' doesn't match {camelCase}
 
-Hint at parameter_length_elements.ce:26:6
+Hint at parameter_length_elements.ce:26:12
 25 │ 
-26 │ make[N: const usize]: fun
-          ^ 'N' doesn't match {camelCase}
+26 │ make[const N: usize]: fun
+                ^ 'N' doesn't match {camelCase}
 
-Hint at parameter_length_elements.ce:34:7
+Hint at parameter_length_elements.ce:34:13
 33 │ 
-34 │ maybe[N: const usize]: fun(values: array[Token, N], deep: bool)
-           ^ 'N' doesn't match {camelCase}
+34 │ maybe[const N: usize]: fun(values: array[Token, N], deep: bool)
+                 ^ 'N' doesn't match {camelCase}
 
-Hint at parameter_length_elements.ce:42:11
+Hint at parameter_length_elements.ce:42:17
 41 │ 
-42 │ swapFirst[N: const usize]: fun(mut values: array[Token, N])
-               ^ 'N' doesn't match {camelCase}
+42 │ swapFirst[const N: usize]: fun(mut values: array[Token, N])
+                     ^ 'N' doesn't match {camelCase}
 
 drop 3
 drop 2

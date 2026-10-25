@@ -92,6 +92,7 @@ public sealed partial class FileParser
 	private static readonly HashSet<string> _declarationBlockWords = ["ext", "pub", "pvt", "mod", "when"];
 	
 	private readonly HashSet<IStatementNode> _brokenStatements = new(ReferenceEqualityComparer.Instance);
+	private readonly HashSet<ITypeNode> _constantTraits = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _brokenDeclarations = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _declarationsWithErrors = new(ReferenceEqualityComparer.Instance);
 	private readonly HashSet<IDeclarationNode> _missingBodies = new(ReferenceEqualityComparer.Instance);

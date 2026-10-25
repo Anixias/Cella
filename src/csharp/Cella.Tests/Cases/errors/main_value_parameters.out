@@ -1,11 +1,11 @@
-Hint at main_value_parameters.ce:3:6
+Hint at main_value_parameters.ce:3:12
 2 │ 
-3 │ main[N: const usize]: fun -> i32 => 0
-         ^ 'N' doesn't match {camelCase}
+3 │ main[const N: usize]: fun -> i32 => 0
+               ^ 'N' doesn't match {camelCase}
 
-Error at main_value_parameters.ce:3:6
+Error at main_value_parameters.ce:3:12
 2 │ 
-3 │ main[N: const usize]: fun -> i32 => 0
-         ^ Cannot declare value parameters on 'main'
+3 │ main[const N: usize]: fun -> i32 => 0
+               ^ Cannot declare value parameters on 'main'
 
 [compilation failed]

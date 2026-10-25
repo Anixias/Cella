@@ -834,8 +834,12 @@ public sealed class SemanticModel
 	
 	private static string RefPrefix(NamedTypeSymbol type) => type.IsRef ? "ref " : "";
 	
-	private static string DescribeType(TypeSymbol type) =>
-		(type is TraitType or TypeParameterSymbol ? type.Name : TypeName(type)) + DescribeTypeTail(type);
+	private static string DescribeType(TypeSymbol type) => type switch
+	{
+		TypeParameterSymbol { ValueType: not null } => $"const {type.Name}{DescribeTypeTail(type)}",
+		TraitType or TypeParameterSymbol => type.Name + DescribeTypeTail(type),
+		_ => TypeName(type) + DescribeTypeTail(type)
+	};
 	
 	private static string DescribeTypeTail(TypeSymbol type) => type switch
 	{
@@ -843,7 +847,7 @@ public sealed class SemanticModel
 		RecordSymbol record => $": {RefPrefix(record)}rec",
 		EnumSymbol enumType => $": {RefPrefix(enumType)}enum",
 		TraitType => ": trait",
-		TypeParameterSymbol { ValueType: { } valueType } => $": const {TypeName(valueType)}",
+		TypeParameterSymbol { ValueType: { } valueType } => $": {TypeName(valueType)}",
 		_ => ""
 	};
 }

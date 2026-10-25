@@ -26,6 +26,7 @@ public sealed class Conformance
 	public ImplSymbol? Impl { get; } = impl;
 	public SourceLocation Location { get; } = location;
 	public bool IsImplied { get; init; }
+	public bool IsConstant { get; init; }
 	public bool IsForwarded { get; init; }
 	public Conformance? Template { get; init; }
 	public ImmutableArray<TypeSymbol> FreeArguments { get; init; } = [];

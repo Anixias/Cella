@@ -16,7 +16,7 @@ Option[T]: enum
 	some(value: T)
 }
 
-sum[N: const usize]: fun(values: array[u8, N]) -> i32
+sum[const N: usize]: fun(values: array[u8, N]) -> i32
 {
 	var t = 0
 	for v in values
@@ -24,7 +24,7 @@ sum[N: const usize]: fun(values: array[u8, N]) -> i32
 	ret t
 }
 
-total[N: const usize]: fun(values: array[f32, N]) -> f32
+total[const N: usize]: fun(values: array[f32, N]) -> f32
 {
 	var t: f32 = 0
 	for v in values
@@ -32,7 +32,7 @@ total[N: const usize]: fun(values: array[f32, N]) -> f32
 	ret t
 }
 
-boxes[N: const usize]: fun(values: array[Box[i64], N]) -> i64
+boxes[const N: usize]: fun(values: array[Box[i64], N]) -> i64
 {
 	var t: i64 = 0
 	for v in values

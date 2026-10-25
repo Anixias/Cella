@@ -1,12 +1,12 @@
-Hint at witness_constraints.ce:18:6
+Hint at witness_constraints.ce:18:12
 17 │ loose[U: noref]: fun(imm self, imm value: U) -> i32
-18 │ cap[N: const usize]: fun(imm self) -> usize
-         ^ 'N' doesn't match {camelCase}
+18 │ cap[const N: usize]: fun(imm self) -> usize
+               ^ 'N' doesn't match {camelCase}
 
-Hint at witness_constraints.ce:28:6
+Hint at witness_constraints.ce:28:12
 27 │ loose[V]: fun(self, imm value: V) -> i32 => 2
-28 │ cap[M: const usize]: fun(self) -> usize => M
-         ^ 'M' doesn't match {camelCase}
+28 │ cap[const M: usize]: fun(self) -> usize => M
+               ^ 'M' doesn't match {camelCase}
 
 10
 [exit code 0]

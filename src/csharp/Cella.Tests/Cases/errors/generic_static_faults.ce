@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Slots[N: const usize]: rec
+Slots[const N: usize]: rec
 {
 	per: const usize = 10 / N
 }

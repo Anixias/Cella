@@ -37,7 +37,7 @@ pick[T: Number]: fun -> T
 	ret copied
 }
 
-count[N: const usize]: fun -> usize
+count[const N: usize]: fun -> usize
 {
 	const n = N
 	const doubled = n * 2
@@ -50,9 +50,9 @@ bytes[T]: fun -> usize
 	ret size + 1
 }
 
-inner[M: const usize]: fun -> usize => M
+inner[const M: usize]: fun -> usize => M
 
-alias[N: const usize]: fun -> usize
+alias[const N: usize]: fun -> usize
 {
 	const n = N
 	const again = n

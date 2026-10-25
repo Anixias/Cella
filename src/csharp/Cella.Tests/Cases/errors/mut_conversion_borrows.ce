@@ -11,7 +11,7 @@ Span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
+	as[const N: usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
 }
 
 fill: fun(values: Span[i32], value: i32) {}

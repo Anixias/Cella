@@ -23,6 +23,7 @@ public sealed class RecordNode
 	public SourceLocation? Body { get; init; }
 	public Token? LastHeaderToken { get; init; }
 	public ImmutableArray<ITypeNode> Traits { get; init; } = [];
+	public ImmutableArray<ITypeNode> ConstantTraits { get; init; } = [];
 	public bool IsUnion { get; init; }
 }
 

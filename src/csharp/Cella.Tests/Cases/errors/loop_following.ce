@@ -74,7 +74,7 @@ take: fun(d: D)
 {
 }
 
-generic[N: const usize]: fun -> i32
+generic[const N: usize]: fun -> i32
 {
 	var buf: array[i32, N] = undef
 	for i in 0..N

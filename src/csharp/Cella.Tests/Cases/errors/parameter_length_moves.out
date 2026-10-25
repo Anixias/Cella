@@ -1,17 +1,17 @@
-Hint at parameter_length_moves.ce:16:9
+Hint at parameter_length_moves.ce:16:15
 15 │ 
-16 │ takeAll[N: const usize]: fun(values: array[Token, N])
-             ^ 'N' doesn't match {camelCase}
+16 │ takeAll[const N: usize]: fun(values: array[Token, N])
+                   ^ 'N' doesn't match {camelCase}
 
 Hint at parameter_length_moves.ce:20:1
 19 │ 
-20 │ twice[N: const usize]: fun(values: array[Token, N])
+20 │ twice[const N: usize]: fun(values: array[Token, N])
      ╘═══╛ 'twice' is never used
 
-Hint at parameter_length_moves.ce:20:7
+Hint at parameter_length_moves.ce:20:13
 19 │ 
-20 │ twice[N: const usize]: fun(values: array[Token, N])
-           ^ 'N' doesn't match {camelCase}
+20 │ twice[const N: usize]: fun(values: array[Token, N])
+                 ^ 'N' doesn't match {camelCase}
 
 Error at parameter_length_moves.ce:23:7
 22 │ take(values[0])
@@ -21,13 +21,13 @@ Error at parameter_length_moves.ce:23:7
 
 Hint at parameter_length_moves.ce:26:1
 25 │ 
-26 │ peek[N: const usize]: fun(values: array[Token, N]) -> i32
+26 │ peek[const N: usize]: fun(values: array[Token, N]) -> i32
      ╘══╛ 'peek' is never used
 
-Hint at parameter_length_moves.ce:26:6
+Hint at parameter_length_moves.ce:26:12
 25 │ 
-26 │ peek[N: const usize]: fun(values: array[Token, N]) -> i32
-          ^ 'N' doesn't match {camelCase}
+26 │ peek[const N: usize]: fun(values: array[Token, N]) -> i32
+                ^ 'N' doesn't match {camelCase}
 
 Error at parameter_length_moves.ce:29:6
 28 │ take(values[0])
@@ -37,13 +37,13 @@ Error at parameter_length_moves.ce:29:6
 
 Hint at parameter_length_moves.ce:32:1
 31 │ 
-32 │ both[N: const usize]: fun(values: array[Token, N])
+32 │ both[const N: usize]: fun(values: array[Token, N])
      ╘══╛ 'both' is never used
 
-Hint at parameter_length_moves.ce:32:6
+Hint at parameter_length_moves.ce:32:12
 31 │ 
-32 │ both[N: const usize]: fun(values: array[Token, N])
-          ^ 'N' doesn't match {camelCase}
+32 │ both[const N: usize]: fun(values: array[Token, N])
+                ^ 'N' doesn't match {camelCase}
 
 Error at parameter_length_moves.ce:35:10
 34 │ take(values[0])
@@ -53,13 +53,13 @@ Error at parameter_length_moves.ce:35:10
 
 Hint at parameter_length_moves.ce:38:1
 37 │ 
-38 │ steal[N: const usize]: fun(mut values: array[Token, N])
+38 │ steal[const N: usize]: fun(mut values: array[Token, N])
      ╘═══╛ 'steal' is never used
 
-Hint at parameter_length_moves.ce:38:7
+Hint at parameter_length_moves.ce:38:13
 37 │ 
-38 │ steal[N: const usize]: fun(mut values: array[Token, N])
-           ^ 'N' doesn't match {camelCase}
+38 │ steal[const N: usize]: fun(mut values: array[Token, N])
+                 ^ 'N' doesn't match {camelCase}
 
 Error at parameter_length_moves.ce:40:7
 39 │ {

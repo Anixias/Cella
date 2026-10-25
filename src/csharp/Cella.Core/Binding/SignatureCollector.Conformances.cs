@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Text;
+using System.Text.RegularExpressions;
 using Cella.Core.Collections;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -49,9 +50,11 @@ public sealed partial class SignatureCollector
 	
 	private void ReportNonConstantWitnesses(Conformance conformance)
 	{
+		var trait = DescribeTrait(conformance);
 		foreach (var (requirement, witness) in conformance.Witnesses)
 		{
-			if (!requirement.IsConstant || witness is not FunctionWitness { Function: { IsConstant: false } function })
+			if (!requirement.IsConstant && !conformance.IsConstant ||
+			    witness is not FunctionWitness { Function: { IsConstant: false } function })
 				continue;
 			
 			var name = requirement.Kind == FunctionKind.Constructor
@@ -59,8 +62,41 @@ public sealed partial class SignatureCollector
 				: conformance.Trait.Functions.FirstOrDefault(method => method.Function == requirement)?.Name ??
 				  requirement.Name;
 			
-			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function),
-				$"'{name}' must be 'const' to match '{DescribeTrait(conformance)}.{name}'"));
+			if (function == requirement || function.Trait is not null)
+				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+					$"'{trait}.{name}' has no 'const' default"));
+			else
+				Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function), requirement.IsConstant
+					? $"'{name}' must be 'const' to match '{trait}.{name}'"
+					: $"'{name}' must be 'const' in 'impl const {trait}'"));
+		}
+		
+		if (!conformance.IsConstant || conformance.IsImplied || GetConformanceSelf(conformance) is not
+			    (not InvalidType and var self))
+			return;
+		
+		foreach (var required in GetAllRequiredTraits(conformance, self))
+		{
+			if (_typePool.FindConformance(self, required) is { IsConstant: false })
+				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
+					$"'{DiagnosticReporter.DescribeType(self)}' needs 'impl const {required.Name}'"));
+		}
+	}
+	
+	private IEnumerable<TraitType> GetAllRequiredTraits(Conformance conformance, TypeSymbol self)
+	{
+		var visited = new HashSet<TraitType>();
+		var pending = new Queue<TraitType>(_typePool.GetRequiredTraits(
+			_typePool.GetTraitType(conformance.Trait, conformance.Arguments), self));
+		
+		while (pending.TryDequeue(out var current))
+		{
+			if (!visited.Add(current))
+				continue;
+			
+			yield return current;
+			foreach (var next in _typePool.GetRequiredTraits(current, self))
+				pending.Enqueue(next);
 		}
 	}
 	
@@ -666,7 +702,7 @@ public sealed partial class SignatureCollector
 			.Select(constant => (IsFunction: false, Describe: (Func<string, string>)(_ =>
 				DescribeConstant(constant, selfName))))
 			.Concat(functions.Select(function => (IsFunction: true, Describe: (Func<string, string>)(indent =>
-				DescribeMember(function, selfName, indent)))))
+				DescribeMember(function, selfName, indent, conformance.IsConstant)))))
 			.ToList();
 		
 		if (InsertMembers(conformance, members) is not { } insertion)
@@ -849,7 +885,9 @@ public sealed partial class SignatureCollector
 		return text.Append(source.GetText(new(position, range.End))).ToString();
 	}
 	
-	private static string DescribeMember(FunctionNode function, string selfName, string indent)
+	private static readonly Regex _memberKind = new(@"^([^:]*:\s*(?:(?:pub|pvt|mod|req)\s+)*)(?!const\b)(fun\b|op\b)");
+	
+	private static string DescribeMember(FunctionNode function, string selfName, string indent, bool isConstant)
 	{
 		var (source, range) = function.Extent;
 		var start = function.Identifier.SourceLocation.Range.Start;
@@ -857,6 +895,9 @@ public sealed partial class SignatureCollector
 			.Select(static parameter => parameter.Type)
 			.Append(function.ReturnType)
 			.OfType<ITypeNode>(), selfName);
+		
+		if (isConstant)
+			text = _memberKind.Replace(text, "$1const $2", 1);
 		
 		var oldIndent = source.FindIndent(start);
 		var lines = text.TrimEnd().Split('\n');

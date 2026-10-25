@@ -1,7 +1,7 @@
-Hint at conversion_temporaries.ce:14:5
+Hint at conversion_temporaries.ce:14:11
 13 │ 
-14 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
-        ^ 'N' doesn't match {camelCase}
+14 │ as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+              ^ 'N' doesn't match {camelCase}
 
 Hint at conversion_temporaries.ce:19:1
 18 │ 

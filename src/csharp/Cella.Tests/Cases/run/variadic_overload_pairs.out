@@ -1,7 +1,7 @@
-Hint at variadic_overload_pairs.ce:13:5
+Hint at variadic_overload_pairs.ce:13:11
 12 │ 
-13 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View(@values[0], N)
-        ^ 'N' doesn't match {camelCase}
+13 │ as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View(@values[0], N)
+              ^ 'N' doesn't match {camelCase}
 
 view
 pack

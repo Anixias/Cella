@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Ring[T, N: const usize]: rec
+Ring[T, const N: usize]: rec
 {
 	items: array[T, N]
 

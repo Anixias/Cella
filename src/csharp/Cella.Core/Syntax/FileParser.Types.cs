@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding;
+﻿using System.Collections.Immutable;
+using Cella.Core.Binding;
 using Cella.Core.Syntax.Nodes;
 using Cella.Core.Text;
 
@@ -38,6 +39,7 @@ public sealed partial class FileParser
 			Visibility = modifiers.Visibility,
 			TypeParameters = [..typeParameters],
 			Traits = [..traits],
+			ConstantTraits = ConstantsOf(traits),
 			IsUnion = isUnion,
 			IsOwn = isOwn
 		};
@@ -73,6 +75,9 @@ public sealed partial class FileParser
 		return new QualifiedTypeNode(new(source, range.Join(parts[^1].SourceLocation.Range)), parts);
 	}
 	
+	private ImmutableArray<ITypeNode> ConstantsOf(IEnumerable<ITypeNode> traits) =>
+		[..traits.Where(_constantTraits.Contains)];
+	
 	private List<ITypeNode>? ParseTraitList(ref int index)
 	{
 		var traits = new List<ITypeNode>();
@@ -86,13 +91,17 @@ public sealed partial class FileParser
 	{
 		do
 		{
+			var isConstant = Match(ref index, TokenType.KeywordConst);
 			if (!Peek(index, TokenType.Identifier))
 			{
 				ReportExpected(index, "a trait");
 				return false;
 			}
 			
-			traits.Add(ParseType(ref index));
+			var trait = ParseType(ref index);
+			traits.Add(trait);
+			if (isConstant)
+				_constantTraits.Add(trait);
 		} while (MatchOnLine(ref index, TokenType.OpPlus));
 		
 		if (!IsOnSameLine(index) || !Peek(index, TokenType.OpComma) && !Peek(index, TokenType.Identifier))
@@ -160,7 +169,7 @@ public sealed partial class FileParser
 		var traits = new List<ITypeNode>();
 		if (!Peek(index, TokenType.OpOpenBrace))
 		{
-			if (!Peek(index, TokenType.Identifier))
+			if (!Peek(index, TokenType.Identifier) && !Peek(index, TokenType.KeywordConst))
 			{
 				ReportExpected(index, "a trait or '{'");
 				return null;
@@ -188,6 +197,7 @@ public sealed partial class FileParser
 		
 		return new(target, keyword, traits, members)
 		{
+			ConstantTraits = ConstantsOf(traits),
 			TypeParameters = [..typeParameters],
 			Body = hasBody ? Span(openBrace, Tokens[index - 1]) : null,
 			LastHeaderToken = lastHeaderToken
@@ -366,6 +376,7 @@ public sealed partial class FileParser
 				TypeParameters = [..typeParameters],
 				MatchedType = matchedType,
 				Traits = [..traits],
+				ConstantTraits = ConstantsOf(traits),
 				IsOwn = isOwn
 			};
 		
@@ -381,6 +392,7 @@ public sealed partial class FileParser
 			TypeParameters = [..typeParameters],
 			MatchedType = matchedType,
 			Traits = [..traits],
+			ConstantTraits = ConstantsOf(traits),
 			IsOwn = isOwn
 		};
 	}

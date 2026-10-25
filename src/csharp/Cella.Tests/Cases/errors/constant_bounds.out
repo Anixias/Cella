@@ -1,0 +1,43 @@
+Error at constant_bounds.ce:14:21
+13 │ 
+14 │ Gem: rec impl const Score
+                         ╘═══╛ 'Score.bonus' has no 'const' default
+
+Error at constant_bounds.ce:18:2
+17 │ 
+18 │ score: fun(self) -> i32 => self.value
+     ╘═══╛ 'score' must be 'const' in 'impl const Score'
+
+Hint at constant_bounds.ce:21:15
+20 │ 
+21 │ Ore: rec impl Score + const Ranked
+                   ╘═══╛ Redundant 'Score'
+                       | Required by 'Ranked'
+
+Error at constant_bounds.ce:21:29
+20 │ 
+21 │ Ore: rec impl Score + const Ranked
+                                 ╘════╛ 'Ore' needs 'impl const Score'
+
+Error at constant_bounds.ce:39:52
+38 │ total[T: copy + const Ranked]: const fun(x: T) -> i32 => x.rank()
+39 │ plain[T: copy + Ranked]: const fun(x: T) -> i32 => x.rank()
+                                                        ╘══════╛ Cannot call 'Ranked.rank' in constant functions
+
+Error at constant_bounds.ce:40:14
+39 │ plain[T: copy + Ranked]: const fun(x: T) -> i32 => x.rank()
+40 │ old[N: const usize]: fun -> i32 => 0
+                  ╘═══╛ 'usize' is not a trait
+
+Error at constant_bounds.ce:41:16
+40 │ old[N: const usize]: fun -> i32 => 0
+41 │ unnamed[const N]: fun -> i32 => 0
+                    ^ Expected ':'
+
+Error at constant_bounds.ce:43:19
+42 │ 
+43 │ rock: const i32 = total(Rock(1))
+                       ╘═══╛ 'total' requires 'T: const Ranked'
+                           | 'Rock' doesn't implement 'const Ranked'
+
+[compilation failed]

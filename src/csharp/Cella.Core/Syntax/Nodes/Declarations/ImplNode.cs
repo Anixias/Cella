@@ -15,6 +15,7 @@ public sealed class ImplNode
 	public ITypeNode Target { get; } = target;
 	public Token Keyword { get; } = keyword;
 	public ImmutableArray<ITypeNode> Traits { get; } = traits.ToImmutableArray();
+	public ImmutableArray<ITypeNode> ConstantTraits { get; init; } = [];
 	public ImmutableArray<IDeclarationNode> Members { get; } = members.ToImmutableArray();
 	public ImmutableArray<TypeParameterNode> TypeParameters { get; init; } = [];
 	public SourceLocation? Body { get; init; }

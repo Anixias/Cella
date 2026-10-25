@@ -70,7 +70,7 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 	
 	private void CheckCall(FunctionInfo function, IExpressionNode syntax)
 	{
-		if (function.Symbol.IsConstant)
+		if (function.Symbol.IsConstant || IsConstantThroughBound(function))
 			return;
 		
 		Report(syntax.SourceLocation, function.Symbol switch
@@ -81,6 +81,10 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 			var symbol => $"Cannot call '{symbol.Name}' in constant functions"
 		});
 	}
+	
+	private bool IsConstantThroughBound(FunctionInfo function) =>
+		function is { Symbol.Trait: { } trait, TypeArguments: [TypeParameterSymbol self, ..] } &&
+		typePool.HasConstantBound(self, trait);
 	
 	private void VisitNode(IResolvedStatementNode node) => ((IResolvedStatementNodeVisitor)this).Visit(node);
 	

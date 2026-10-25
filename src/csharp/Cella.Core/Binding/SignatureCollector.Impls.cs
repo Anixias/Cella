@@ -10,16 +10,23 @@ namespace Cella.Core.Binding;
 
 public sealed partial class SignatureCollector
 {
-	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits, ResolutionContext context)
+	private void RegisterConformances(NamedTypeSymbol type, ImmutableArray<ITypeNode> traits,
+		ImmutableArray<ITypeNode> constantTraits, ResolutionContext context)
 	{
 		var deferring = context with { ContainingType = type, DeferConstraintCheck = DeferAlways, TraitSelf = type };
 		foreach (var traitNode in traits)
 		{
 			if (deferring.ResolveTrait(traitNode) is { } trait)
 				AddConformance(new(trait.Trait, trait.Arguments, type, type.TypeParameters, null,
-					traitNode.SourceLocation));
+					traitNode.SourceLocation)
+				{
+					IsConstant = IsConstantTrait(constantTraits, traitNode)
+				});
 		}
 	}
+	
+	private static bool IsConstantTrait(ImmutableArray<ITypeNode> constantTraits, ITypeNode trait) =>
+		constantTraits.Any(constant => ReferenceEquals(constant, trait));
 	
 	private void AddConformance(Conformance conformance)
 	{
@@ -59,6 +66,7 @@ public sealed partial class SignatureCollector
 						conformance.Impl, conformance.Location)
 					{
 						IsImplied = true,
+						IsConstant = conformance.IsConstant,
 						Owner = conformance.Owner
 					});
 				
@@ -155,7 +163,10 @@ public sealed partial class SignatureCollector
 			}
 			
 			AddConformance(new(trait.Trait, trait.Arguments, target, impl.TypeParameters, impl,
-				traitNode.SourceLocation));
+				traitNode.SourceLocation)
+			{
+				IsConstant = IsConstantTrait(node.ConstantTraits, traitNode)
+			});
 		}
 		
 		impl.Traits = [..traits];

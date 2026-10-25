@@ -46,13 +46,13 @@ Error at loop_following.ce:68:8
 
 Hint at loop_following.ce:77:1
 76 │ 
-77 │ generic[N: const usize]: fun -> i32
+77 │ generic[const N: usize]: fun -> i32
      ╘═════╛ 'generic' is never used
 
-Hint at loop_following.ce:77:9
+Hint at loop_following.ce:77:15
 76 │ 
-77 │ generic[N: const usize]: fun -> i32
-             ^ 'N' doesn't match {camelCase}
+77 │ generic[const N: usize]: fun -> i32
+                   ^ 'N' doesn't match {camelCase}
 
 Error at loop_following.ce:81:3
 80 │ for i in 0..N

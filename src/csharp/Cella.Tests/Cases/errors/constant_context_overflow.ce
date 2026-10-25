@@ -7,7 +7,7 @@ Buffer: rec
 	data: array[u8, kb * 64]
 }
 
-Ring[N: const u8]: rec
+Ring[const N: u8]: rec
 {
 	x: i32
 }

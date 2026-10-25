@@ -19,7 +19,7 @@ take: fun(t: Token)
 {
 }
 
-maybe[N: const usize]: fun(values: array[array[Token, 3], N], deep: bool)
+maybe[const N: usize]: fun(values: array[array[Token, 3], N], deep: bool)
 {
 	if deep
 		take(values[5][0])

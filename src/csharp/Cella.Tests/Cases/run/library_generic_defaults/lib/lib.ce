@@ -32,7 +32,7 @@ Box[T, A: Allocator + default]: impl
 	}
 }
 
-Fixed[T, capacity: const usize = 4]: pub rec
+Fixed[T, const capacity: usize = 4]: pub rec
 {
 	items: array[T, capacity]
 }

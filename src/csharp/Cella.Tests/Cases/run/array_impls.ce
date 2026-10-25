@@ -17,7 +17,7 @@ Counted: trait
 
 i32: impl Eq
 
-array[T: Eq, N: const usize]: impl Eq
+array[T: Eq, const N: usize]: impl Eq
 {
 	==: op(imm a: array[T, N], imm b: array[T, N]) -> bool
 	{
@@ -31,7 +31,7 @@ array[T: Eq, N: const usize]: impl Eq
 	}
 }
 
-array[T, N: const usize]: impl Counted
+array[T, const N: usize]: impl Counted
 {
 	count: fun(imm self) -> usize => N
 }
@@ -41,7 +41,7 @@ Short: trait
 	doubled: fun(imm self) -> u8
 }
 
-array[T, N: const u8]: impl Short
+array[T, const N: u8]: impl Short
 {
 	doubled: fun(imm self) -> u8 => N * 2
 }

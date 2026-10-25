@@ -15,7 +15,7 @@ Item: own rec
 	}
 }
 
-swap[N: const usize]: fun(mut items: array[Item, N], item: Item) -> i32
+swap[const N: usize]: fun(mut items: array[Item, N], item: Item) -> i32
 {
 	val old = own items[0]
 	items[0] = item

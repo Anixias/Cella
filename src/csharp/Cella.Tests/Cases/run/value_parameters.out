@@ -1,62 +1,62 @@
-Hint at value_parameters.ce:10:16
+Hint at value_parameters.ce:10:22
  9 │ 
-10 │ Ring[T: noref, N: const usize]: rec
-                    ^ 'N' doesn't match {camelCase}
+10 │ Ring[T: noref, const N: usize]: rec
+                          ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:24:16
+Hint at value_parameters.ce:24:22
 23 │ 
-24 │ Ring[T: noref, N: const u8]: impl
-                    ^ 'N' doesn't match {camelCase}
+24 │ Ring[T: noref, const N: u8]: impl
+                          ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:29:8
+Hint at value_parameters.ce:29:14
 28 │ 
-29 │ Holder[N: const usize]: rec
-            ^ 'N' doesn't match {camelCase}
+29 │ Holder[const N: usize]: rec
+                  ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:34:6
+Hint at value_parameters.ce:34:12
 33 │ 
-34 │ Slot[N: const u8]: enum
-          ^ 'N' doesn't match {camelCase}
+34 │ Slot[const N: u8]: enum
+                ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:40:7
+Hint at value_parameters.ce:40:13
 39 │ 
-40 │ Sized[N: const usize]: trait
-           ^ 'N' doesn't match {camelCase}
+40 │ Sized[const N: usize]: trait
+                 ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:52:5
+Hint at value_parameters.ce:52:11
 51 │ 
-52 │ sum[N: const usize]: fun(values: array[i32, N]) -> i32
-         ^ 'N' doesn't match {camelCase}
+52 │ sum[const N: usize]: fun(values: array[i32, N]) -> i32
+               ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:61:6
+Hint at value_parameters.ce:61:12
 60 │ 
-61 │ echo[N: const usize]: fun(values: array[i32, N]) -> array[i32, N] => values
-          ^ 'N' doesn't match {camelCase}
+61 │ echo[const N: usize]: fun(values: array[i32, N]) -> array[i32, N] => values
+                ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:63:7
+Hint at value_parameters.ce:63:13
 62 │ 
-63 │ zeros[N: const usize]: fun -> array[i32, N] => Holder[N]().items
-           ^ 'N' doesn't match {camelCase}
+63 │ zeros[const N: usize]: fun -> array[i32, N] => Holder[N]().items
+                 ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:65:8
+Hint at value_parameters.ce:65:14
 64 │ 
-65 │ scaled[N: const usize]: fun(values: array[i32, N]) -> usize => N * 10
-            ^ 'N' doesn't match {camelCase}
+65 │ scaled[const N: usize]: fun(values: array[i32, N]) -> usize => N * 10
+                  ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:67:16
+Hint at value_parameters.ce:67:22
 66 │ 
-67 │ first[T: copy, N: const usize]: fun(values: array[T, N]) -> T => values[0]
-                    ^ 'N' doesn't match {camelCase}
+67 │ first[T: copy, const N: usize]: fun(values: array[T, N]) -> T => values[0]
+                          ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:69:6
+Hint at value_parameters.ce:69:12
 68 │ 
-69 │ make[N: const usize]: fun -> Ring[i32, N] => Ring[i32, N]()
-          ^ 'N' doesn't match {camelCase}
+69 │ make[const N: usize]: fun -> Ring[i32, N] => Ring[i32, N]()
+                ^ 'N' doesn't match {camelCase}
 
-Hint at value_parameters.ce:71:6
+Hint at value_parameters.ce:71:12
 70 │ 
-71 │ wrap[N: const usize]: fun(values: array[i32, N]) -> Ring[i32, N]
-          ^ 'N' doesn't match {camelCase}
+71 │ wrap[const N: usize]: fun(values: array[i32, N]) -> Ring[i32, N]
+                ^ 'N' doesn't match {camelCase}
 
 ring 4 7 4 32 4
 functions 9 20 4 2 1 30 3

@@ -16,7 +16,7 @@ View[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+	as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
@@ -25,7 +25,7 @@ Total: rec
 {
 	value: i32
 
-	+[N: const usize]: op(a: Total, values: array[i32, N]) -> Total
+	+[const N: usize]: op(a: Total, values: array[i32, N]) -> Total
 	{
 		var sum = a.value
 		for value in values
@@ -34,7 +34,7 @@ Total: rec
 		ret Total(sum)
 	}
 
-	+=[N: const usize]: op(mut self, values: array[i32, N])
+	+=[const N: usize]: op(mut self, values: array[i32, N])
 	{
 		for value in values
 			self.value += value
@@ -45,8 +45,8 @@ Grid: own rec
 {
 	cells: array[i32, 9]
 
-	[][N: const usize]: op(imm self, at: array[usize, N]) -> imm[i32] => imm self.cells[at[0] * 3 + at[N - 1]]
-	[][N: const usize]: op(mut self, at: array[usize, N]) -> mut[i32] => mut self.cells[at[0] * 3 + at[N - 1]]
+	[][const N: usize]: op(imm self, at: array[usize, N]) -> imm[i32] => imm self.cells[at[0] * 3 + at[N - 1]]
+	[][const N: usize]: op(mut self, at: array[usize, N]) -> mut[i32] => mut self.cells[at[0] * 3 + at[N - 1]]
 
 	drop: op
 	{

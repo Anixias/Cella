@@ -10,7 +10,7 @@ View[T]: ref rec
 	data: ptr[T]
 	length: usize
 
-	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View(@values[0], N)
+	as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View(@values[0], N)
 }
 
 same: fun(xs: View[i32]) -> usize

@@ -1,17 +1,17 @@
-Hint at lib\lib.ce:3:9
+Hint at lib\lib.ce:3:15
 2 │ 
-3 │ Ring[T, N: const usize]: pub rec
-            ^ 'N' doesn't match {camelCase}
+3 │ Ring[T, const N: usize]: pub rec
+                  ^ 'N' doesn't match {camelCase}
 
-Hint at lib\lib.ce:11:7
+Hint at lib\lib.ce:11:13
 10 │ 
-11 │ total[N: const usize]: pub fun(values: array[i32, N]) -> i32
-           ^ 'N' doesn't match {camelCase}
+11 │ total[const N: usize]: pub fun(values: array[i32, N]) -> i32
+                 ^ 'N' doesn't match {camelCase}
 
-Hint at lib\lib.ce:25:10
+Hint at lib\lib.ce:25:16
 24 │ 
-25 │ array[T, N: const usize]: impl Measured
-              ^ 'N' doesn't match {camelCase}
+25 │ array[T, const N: usize]: impl Measured
+                    ^ 'N' doesn't match {camelCase}
 
 5 10 400
 [exit code 0]

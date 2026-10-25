@@ -33,10 +33,10 @@ Hint at const_values.ce:24:2
 24 │ Origin: val i32 = 7
      ╘════╛ 'Origin' doesn't match {camelCase}
 
-Hint at const_values.ce:29:7
+Hint at const_values.ce:29:13
 28 │ 
-29 │ count[N: const usize]: fun -> usize => N
-           ^ 'N' doesn't match {camelCase}
+29 │ count[const N: usize]: fun -> usize => N
+                 ^ 'N' doesn't match {camelCase}
 
 3 4 4 30
 7 grid ready

@@ -1,11 +1,11 @@
-Hint at excluded_type_parameters.ce:3:7
+Hint at excluded_type_parameters.ce:3:13
 2 │ 
-3 │ Sized[N: const i32]: enum { zero, big = N }
-          ^ 'N' doesn't match {camelCase}
+3 │ Sized[const N: i32]: enum { zero, big = N }
+                ^ 'N' doesn't match {camelCase}
 
 Error at excluded_type_parameters.ce:3:41
 2 │ 
-3 │ Sized[N: const i32]: enum { zero, big = N }
+3 │ Sized[const N: i32]: enum { zero, big = N }
                                             ^ Cannot use value parameters in case values
 
 Error at excluded_type_parameters.ce:5:44

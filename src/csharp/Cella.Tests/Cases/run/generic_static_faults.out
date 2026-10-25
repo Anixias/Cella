@@ -1,7 +1,7 @@
-Hint at generic_static_faults.ce:8:7
+Hint at generic_static_faults.ce:8:13
 7 │ 
-8 │ Slots[N: const usize]: rec
-          ^ 'N' doesn't match {camelCase}
+8 │ Slots[const N: usize]: rec
+                ^ 'N' doesn't match {camelCase}
 
 [stderr]
 Panic at generic_static_faults.ce:11:21: division by zero

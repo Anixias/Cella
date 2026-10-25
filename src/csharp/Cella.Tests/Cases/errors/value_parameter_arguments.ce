@@ -7,12 +7,12 @@ Has: trait
 	bits: const usize
 }
 
-a[N: const usize]: fun(values: array[i32, N + 1]) => ret
-e[N: const usize]: fun(values: array[i32, usize(N)]) => ret
-c[N: const usize]: fun(values: array[i32, table[N]]) => ret
-f[N: const usize]: fun(values: array[i32, [N, 1][0]]) => ret
-b[N: const usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
+a[const N: usize]: fun(values: array[i32, N + 1]) => ret
+e[const N: usize]: fun(values: array[i32, usize(N)]) => ret
+c[const N: usize]: fun(values: array[i32, table[N]]) => ret
+f[const N: usize]: fun(values: array[i32, [N, 1][0]]) => ret
+b[const N: usize]: fun(values: array[i32, match N { 0 => 1, else => 2 }]) => ret
 t[T: Has]: fun(values: array[i32, T.bits * 2]) => ret
-k[N: const usize]: fun(values: array[i32, table[1]]) => ret
+k[const N: usize]: fun(values: array[i32, table[1]]) => ret
 
 main: fun -> i32 => 0

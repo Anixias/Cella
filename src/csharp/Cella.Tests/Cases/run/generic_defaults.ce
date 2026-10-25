@@ -49,12 +49,12 @@ Text[A: Allocator = Heap]: rec
 	length: i32
 }
 
-Fixed[T, capacity: const usize = 4]: rec
+Fixed[T, const capacity: usize = 4]: rec
 {
 	items: array[T, capacity]
 }
 
-Grid[rows: const usize, columns: const usize = rows]: rec
+Grid[const rows: usize, const columns: usize = rows]: rec
 {
 	side: array[u8, rows]
 	top: array[u8, columns]

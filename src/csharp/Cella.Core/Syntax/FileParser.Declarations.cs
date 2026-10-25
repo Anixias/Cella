@@ -49,6 +49,7 @@ public sealed partial class FileParser
 		else
 			declarations.Add(new ImplNode(impl.Target, impl.Keyword, impl.Traits, impl.Members)
 			{
+				ConstantTraits = impl.ConstantTraits,
 				TypeParameters = impl.TypeParameters,
 				IsBlanket = true,
 				Body = impl.Body,

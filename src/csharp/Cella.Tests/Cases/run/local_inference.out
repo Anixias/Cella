@@ -1,7 +1,7 @@
-Hint at local_inference.ce:15:9
+Hint at local_inference.ce:15:15
 14 │ 
-15 │ Ring[T, N: const usize]: rec
-             ^ 'N' doesn't match {camelCase}
+15 │ Ring[T, const N: usize]: rec
+                   ^ 'N' doesn't match {camelCase}
 
 Hint at local_inference.ce:41:6
 40 │ {

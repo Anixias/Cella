@@ -1,10 +1,10 @@
 mod test
 
-Ring[N: const usize]: rec
+Ring[const N: usize]: rec
 {
 	value: i32
 
-	f[N: const usize]: fun(imm self) -> usize => N
+	f[const N: usize]: fun(imm self) -> usize => N
 }
 
 main: fun -> i32 => 0

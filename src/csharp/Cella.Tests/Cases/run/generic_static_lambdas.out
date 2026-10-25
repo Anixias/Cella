@@ -1,7 +1,7 @@
-Hint at generic_static_lambdas.ce:32:6
+Hint at generic_static_lambdas.ce:32:12
 31 │ 
-32 │ Ring[N: const usize]: rec
-          ^ 'N' doesn't match {camelCase}
+32 │ Ring[const N: usize]: rec
+                ^ 'N' doesn't match {camelCase}
 
 4 8 8 1
 2 1 2

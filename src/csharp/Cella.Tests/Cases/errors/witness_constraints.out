@@ -1,12 +1,12 @@
-Hint at witness_constraints.ce:13:6
+Hint at witness_constraints.ce:13:12
 12 │ plain[U]: fun(imm self, imm value: U) -> i32
-13 │ cap[N: const usize]: fun(imm self) -> usize
-         ^ 'N' doesn't match {camelCase}
+13 │ cap[const N: usize]: fun(imm self) -> usize
+               ^ 'N' doesn't match {camelCase}
 
-Hint at witness_constraints.ce:14:8
-13 │ cap[N: const usize]: fun(imm self) -> usize
-14 │ other[N: const usize]: fun(imm self) -> usize
-           ^ 'N' doesn't match {camelCase}
+Hint at witness_constraints.ce:14:14
+13 │ cap[const N: usize]: fun(imm self) -> usize
+14 │ other[const N: usize]: fun(imm self) -> usize
+                 ^ 'N' doesn't match {camelCase}
 
 Error at witness_constraints.ce:21:2
 20 │ 
@@ -25,16 +25,16 @@ Error at witness_constraints.ce:23:2
 
 Error at witness_constraints.ce:24:2
 23 │ plain[V: noref]: fun(self, imm value: V) -> i32 => 2
-24 │ cap[M: const u8]: fun(self) -> usize => 3
+24 │ cap[const M: u8]: fun(self) -> usize => 3
      ╘═╛ 'cap' doesn't match 'Apply.cap'
 
-Hint at witness_constraints.ce:24:6
+Hint at witness_constraints.ce:24:12
 23 │ plain[V: noref]: fun(self, imm value: V) -> i32 => 2
-24 │ cap[M: const u8]: fun(self) -> usize => 3
-         ^ 'M' doesn't match {camelCase}
+24 │ cap[const M: u8]: fun(self) -> usize => 3
+               ^ 'M' doesn't match {camelCase}
 
 Error at witness_constraints.ce:25:2
-24 │ cap[M: const u8]: fun(self) -> usize => 3
+24 │ cap[const M: u8]: fun(self) -> usize => 3
 25 │ other[M]: fun(self) -> usize => 4
      ╘═══╛ 'other' doesn't match 'Apply.other'
 

@@ -1,7 +1,7 @@
-Hint at mut_conversion_places.ce:14:5
+Hint at mut_conversion_places.ce:14:11
 13 │ 
-14 │ as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
-        ^ 'N' doesn't match {camelCase}
+14 │ as[const N: usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
+              ^ 'N' doesn't match {camelCase}
 
 Hint at mut_conversion_places.ce:19:1
 18 │ 

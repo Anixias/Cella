@@ -1,12 +1,12 @@
-Hint at conversion_temporaries.ce:19:5
+Hint at conversion_temporaries.ce:19:11
 18 │ 
-19 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
-        ^ 'N' doesn't match {camelCase}
+19 │ as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+              ^ 'N' doesn't match {camelCase}
 
-Hint at conversion_temporaries.ce:35:5
+Hint at conversion_temporaries.ce:35:11
 34 │ 
-35 │ as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
-        ^ 'N' doesn't match {camelCase}
+35 │ as[const N: usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
+              ^ 'N' doesn't match {camelCase}
 
 Hint at conversion_temporaries.ce:63:6
 62 │ val c: View[i32] = Span[i32](mut four)

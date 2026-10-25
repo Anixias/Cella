@@ -16,7 +16,7 @@ View[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+	as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
 
 	[]: op(self, i: usize) -> imm[T] => imm self.data[i]
 }
@@ -32,7 +32,7 @@ Span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
+	as[const N: usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](@values, N)
 
 	as: op(self) -> View[T] => View[T](self.data, self.length)
 

@@ -1,0 +1,64 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Score: trait
+{
+	score: fun(self) -> i32
+}
+
+Ranked: trait req Score
+{
+	rank: fun(self) -> i32
+	weight: fun(self) -> i32 => 1
+}
+
+Gem: rec impl const Ranked
+{
+	value: i32
+	
+	score: const fun(self) -> i32 => self.value * 10
+	rank: const fun(self) -> i32 => self.value
+	weight: const fun(self) -> i32 => 2
+}
+
+Rock: rec impl Ranked
+{
+	value: i32
+	
+	score: fun(self) -> i32 => self.value
+	rank: fun(self) -> i32 => 0
+}
+
+Pair[T]: rec
+{
+	first: T
+	second: T
+}
+
+total[T: copy + const Ranked]: const fun(x: T) -> i32 => x.score() + x.rank() * x.weight()
+doubled[U: copy + const Ranked]: const fun(x: U) -> i32 => total(x) * 2
+scored[T: copy + const Score]: const fun(x: T) -> i32 => x.score()
+
+gem: const i32 = doubled(Gem(3))
+small: const i32 = scored(Gem(1))
+
+sum[T: copy + const Ranked, const count: usize]: const fun(values: array[T, count]) -> i32
+{
+	var result = 0
+	for value in values
+		result += total(value)
+	
+	ret result
+}
+
+gems: const i32 = sum([Gem(1), Gem(2)])
+
+main: fun -> i32
+{
+	printf("%d %d %d %d %d\n", gem, small, gems, total(Gem(1)), Rock(5).score())
+	ret 0
+}

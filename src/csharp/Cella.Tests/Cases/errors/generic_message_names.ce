@@ -6,9 +6,9 @@ Box[T]: rec
 	deep: get(imm self) -> i32 => Box[ptr[T]](null).deep
 }
 
-count[N: const i32]: fun -> i32 => N
+count[const N: i32]: fun -> i32 => N
 
-twice[N: const i32]: fun -> i32 => count[N - 1]()
+twice[const N: i32]: fun -> i32 => count[N - 1]()
 
 Option[T]: enum { none, some(value: T) }
 

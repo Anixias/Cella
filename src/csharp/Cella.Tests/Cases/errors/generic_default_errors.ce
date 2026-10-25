@@ -33,7 +33,7 @@ Bad[T: Eq = Plain]: rec
 	a: T
 }
 
-Small[limit: const u8 = 300]: rec
+Small[const limit: u8 = 300]: rec
 {
 	a: i32
 }

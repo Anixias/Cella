@@ -1,8 +1,8 @@
 mod test
 
-inner[M: const usize]: fun -> usize => M
+inner[const M: usize]: fun -> usize => M
 
-shifted[N: const usize]: fun -> usize
+shifted[const N: usize]: fun -> usize
 {
 	const n = N + 1
 	ret inner[n]()

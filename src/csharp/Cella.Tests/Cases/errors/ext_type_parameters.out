@@ -25,13 +25,13 @@ Error at ext_type_parameters.ce:20:31
 
 Hint at ext_type_parameters.ce:22:1
 21 │ 
-22 │ sized[N: const usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 => 0
+22 │ sized[const N: usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 => 0
      ╘═══╛ 'sized' is never used
 
-Hint at ext_type_parameters.ce:22:7
+Hint at ext_type_parameters.ce:22:13
 21 │ 
-22 │ sized[N: const usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 => 0
-           ^ 'N' doesn't match {camelCase}
+22 │ sized[const N: usize]: fun(f: ext fun[ptr[array[i32, N]] -> i32]) -> i32 => 0
+                 ^ 'N' doesn't match {camelCase}
 
 Error at ext_type_parameters.ce:24:9
 23 │ 

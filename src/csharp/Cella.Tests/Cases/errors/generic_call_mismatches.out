@@ -1,7 +1,7 @@
-Hint at generic_call_mismatches.ce:5:5
+Hint at generic_call_mismatches.ce:5:11
 4 │ pick[T]: fun(a: T, b: T) -> T => a
-5 │ sum[N: const usize]: fun(values: array[i32, N]) -> i32 => 0
-        ^ 'N' doesn't match {camelCase}
+5 │ sum[const N: usize]: fun(values: array[i32, N]) -> i32 => 0
+              ^ 'N' doesn't match {camelCase}
 
 Error at generic_call_mismatches.ce:10:17
  9 │ val small: u8 = 1

@@ -21,7 +21,7 @@ Span[T]: ref rec
 		self.length = length
 	}
 
-	as[N: const usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
+	as[const N: usize]: op(mut values: array[T, N]) -> Span[T] => Span[T](ptr[T](ptr(@values)), N)
 
 	as[C: Spannable[T]]: op(mut values: C) -> Span[T] => values.spanned()
 }

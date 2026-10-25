@@ -1,12 +1,12 @@
-Hint at array_build_generics.ce:8:23
+Hint at array_build_generics.ce:8:29
 7 │ 
-8 │ fill[T: copy + noref, N: const usize]: fun(value: T) -> array[T, N] => array[T, N](fun(i) => value)
-                          ^ 'N' doesn't match {camelCase}
+8 │ fill[T: copy + noref, const N: usize]: fun(value: T) -> array[T, N] => array[T, N](fun(i) => value)
+                                ^ 'N' doesn't match {camelCase}
 
-Hint at array_build_generics.ce:10:9
+Hint at array_build_generics.ce:10:15
  9 │ 
-10 │ indices[N: const usize]: fun -> array[usize, N] => array[usize, N](fun(i) => i)
-             ^ 'N' doesn't match {camelCase}
+10 │ indices[const N: usize]: fun -> array[usize, N] => array[usize, N](fun(i) => i)
+                   ^ 'N' doesn't match {camelCase}
 
 7 7 4
 [exit code 0]

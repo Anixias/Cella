@@ -1,17 +1,17 @@
-Hint at parametric_defaults.ce:14:7
+Hint at parametric_defaults.ce:14:13
 13 │ 
-14 │ count[N: const usize]: fun(extra: usize = N) -> usize => extra
-           ^ 'N' doesn't match {camelCase}
+14 │ count[const N: usize]: fun(extra: usize = N) -> usize => extra
+                 ^ 'N' doesn't match {camelCase}
 
-Hint at parametric_defaults.ce:16:11
+Hint at parametric_defaults.ce:16:17
 15 │ 
-16 │ layout[T, N: const usize]: fun(imm x: T, extra: usize = N * sizeOf(T) + alignOf(T)) -> usize => extra
-               ^ 'N' doesn't match {camelCase}
+16 │ layout[T, const N: usize]: fun(imm x: T, extra: usize = N * sizeOf(T) + alignOf(T)) -> usize => extra
+                     ^ 'N' doesn't match {camelCase}
 
-Hint at parametric_defaults.ce:20:7
+Hint at parametric_defaults.ce:20:13
 19 │ 
-20 │ relay[M: const usize]: fun -> usize => count[M]()
-           ^ 'M' doesn't match {camelCase}
+20 │ relay[const M: usize]: fun -> usize => count[M]()
+                 ^ 'M' doesn't match {camelCase}
 
 4 8 3 10
 108 7 2 3

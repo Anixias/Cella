@@ -18,15 +18,15 @@ Error at blanket_impl_declarations.ce:35:2
 35 │ [i32]: impl Describe
       ╘═╛ Expected a type parameter
 
-Hint at blanket_impl_declarations.ce:40:2
+Hint at blanket_impl_declarations.ce:40:8
 39 │ 
-40 │ [N: const usize]: impl Describe
-      ^ 'N' doesn't match {camelCase}
+40 │ [const N: usize]: impl Describe
+            ^ 'N' doesn't match {camelCase}
 
-Error at blanket_impl_declarations.ce:40:2
+Error at blanket_impl_declarations.ce:40:8
 39 │ 
-40 │ [N: const usize]: impl Describe
-      ^ Expected a type parameter
+40 │ [const N: usize]: impl Describe
+            ^ Expected a type parameter
 
 Error at blanket_impl_declarations.ce:50:51
 49 │ 

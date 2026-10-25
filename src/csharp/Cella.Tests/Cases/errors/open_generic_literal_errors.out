@@ -1,7 +1,7 @@
-Hint at open_generic_literal_errors.ce:3:5
+Hint at open_generic_literal_errors.ce:3:11
 2 │ 
-3 │ sum[N: const usize]: fun(values: array[u8, N]) -> i32 => 0
-        ^ 'N' doesn't match {camelCase}
+3 │ sum[const N: usize]: fun(values: array[u8, N]) -> i32 => 0
+              ^ 'N' doesn't match {camelCase}
 
 Error at open_generic_literal_errors.ce:8:16
 7 │ val values = [100, 200, 250]

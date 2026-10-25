@@ -172,7 +172,8 @@ public sealed partial class TypePool
 			{
 				Template = template,
 				FreeArguments = values,
-				IsImplied = template.IsImplied
+				IsImplied = template.IsImplied,
+				IsConstant = template.IsConstant
 			});
 	}
 	

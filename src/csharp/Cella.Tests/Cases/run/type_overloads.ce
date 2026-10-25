@@ -37,7 +37,7 @@ Grid[T]: rec
 	cell: T
 }
 
-Grid[size: const usize]: rec
+Grid[const size: usize]: rec
 {
 	cells: array[i32, size]
 }

@@ -13,29 +13,29 @@ take: fun(t: Token)
 {
 }
 
-takeAll[N: const usize]: fun(values: array[Token, N])
+takeAll[const N: usize]: fun(values: array[Token, N])
 {
 }
 
-twice[N: const usize]: fun(values: array[Token, N])
+twice[const N: usize]: fun(values: array[Token, N])
 {
 	take(values[0])
 	take(values[0])
 }
 
-peek[N: const usize]: fun(values: array[Token, N]) -> i32
+peek[const N: usize]: fun(values: array[Token, N]) -> i32
 {
 	take(values[0])
 	ret values[0].id
 }
 
-both[N: const usize]: fun(values: array[Token, N])
+both[const N: usize]: fun(values: array[Token, N])
 {
 	take(values[0])
 	takeAll(values)
 }
 
-steal[N: const usize]: fun(mut values: array[Token, N])
+steal[const N: usize]: fun(mut values: array[Token, N])
 {
 	take(values[0])
 }

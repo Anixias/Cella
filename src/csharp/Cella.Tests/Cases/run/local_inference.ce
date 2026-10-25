@@ -12,7 +12,7 @@ Option[T]: enum
 	some(value: T)
 }
 
-Ring[T, N: const usize]: rec
+Ring[T, const N: usize]: rec
 {
 	items: array[T, N]
 }

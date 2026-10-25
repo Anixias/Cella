@@ -5,9 +5,9 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-fill[T: copy + noref, N: const usize]: fun(value: T) -> array[T, N] => array[T, N](fun(i) => value)
+fill[T: copy + noref, const N: usize]: fun(value: T) -> array[T, N] => array[T, N](fun(i) => value)
 
-indices[N: const usize]: fun -> array[usize, N] => array[usize, N](fun(i) => i)
+indices[const N: usize]: fun -> array[usize, N] => array[usize, N](fun(i) => i)
 
 main: fun -> i32
 {

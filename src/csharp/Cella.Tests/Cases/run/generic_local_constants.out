@@ -1,17 +1,17 @@
-Hint at generic_local_constants.ce:40:7
+Hint at generic_local_constants.ce:40:13
 39 │ 
-40 │ count[N: const usize]: fun -> usize
-           ^ 'N' doesn't match {camelCase}
+40 │ count[const N: usize]: fun -> usize
+                 ^ 'N' doesn't match {camelCase}
 
-Hint at generic_local_constants.ce:53:7
+Hint at generic_local_constants.ce:53:13
 52 │ 
-53 │ inner[M: const usize]: fun -> usize => M
-           ^ 'M' doesn't match {camelCase}
+53 │ inner[const M: usize]: fun -> usize => M
+                 ^ 'M' doesn't match {camelCase}
 
-Hint at generic_local_constants.ce:55:7
+Hint at generic_local_constants.ce:55:13
 54 │ 
-55 │ alias[N: const usize]: fun -> usize
-           ^ 'N' doesn't match {camelCase}
+55 │ alias[const N: usize]: fun -> usize
+                 ^ 'N' doesn't match {camelCase}
 
 7 250
 6 9 3

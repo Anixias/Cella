@@ -34,6 +34,9 @@ public sealed partial class TypePool
 		if (FindUnmetTrait(parameter, argument, map) is { } trait)
 			return (trait.Name, $"'{name}' doesn't implement '{trait.Name}'");
 		
+		if (FindUnmetConstantTrait(parameter, argument, map) is { } constant)
+			return ($"const {constant.Name}", $"'{name}' doesn't implement 'const {constant.Name}'");
+		
 		if (FindUnmetBound(parameter, argument, map) is { } bound)
 			return (bound, $"'{name}' doesn't implement '{bound}'");
 		

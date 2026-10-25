@@ -5,7 +5,7 @@ ext
 	printf: fun(format: cstr, ...) -> i32
 }
 
-Slots[N: const u8]: rec
+Slots[const N: u8]: rec
 {
 	count: i32
 	per: const u8 = 250u8 + N

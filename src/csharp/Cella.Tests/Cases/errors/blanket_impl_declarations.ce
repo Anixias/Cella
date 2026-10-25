@@ -37,7 +37,7 @@ Size: trait
 	name: fun(imm self) -> cstr => "number"
 }
 
-[N: const usize]: impl Describe
+[const N: usize]: impl Describe
 {
 	name: fun(imm self) -> cstr => "value"
 }

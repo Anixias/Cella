@@ -22,7 +22,7 @@ public sealed partial class SignatureCollector
 						context with { ContainingType = (RecordSymbol)symbol }, symbol);
 					
 					RegisterMemberBounds(record.Members);
-					RegisterConformances((NamedTypeSymbol)symbol, record.Traits, context);
+					RegisterConformances((NamedTypeSymbol)symbol, record.Traits, record.ConstantTraits, context);
 					break;
 				
 				case EnumNode enumNode:
@@ -30,7 +30,7 @@ public sealed partial class SignatureCollector
 						context with { ContainingType = (EnumSymbol)symbol }, symbol);
 					
 					RegisterMemberBounds(enumNode.Members);
-					RegisterConformances((NamedTypeSymbol)symbol, enumNode.Traits, context);
+					RegisterConformances((NamedTypeSymbol)symbol, enumNode.Traits, enumNode.ConstantTraits, context);
 					break;
 				
 				case FunctionNode function:
@@ -99,6 +99,12 @@ public sealed partial class SignatureCollector
 			for (var j = 0; j < bounds.Count; j++)
 				if (bounds[j] is { } bound)
 					ReportHiddenType(node.Traits[j], bound, GetOwnerVisibility(owner, context), owner.Name);
+		
+		for (var j = 0; j < bounds.Count; j++)
+		{
+			if (bounds[j] is TraitType constant && IsConstantTrait(node.ConstantTraits, node.Traits[j]))
+				_typePool.AddConstantBound(parameter, constant);
+		}
 		
 		_boundLists.Add((node.Traits, bounds, parameter, CurrentOwner));
 		_constrainedParameters.Add((node, parameter, bounds, CurrentOwner));

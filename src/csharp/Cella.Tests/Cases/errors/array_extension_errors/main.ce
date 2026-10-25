@@ -9,7 +9,7 @@ Name: own rec
 	}
 }
 
-array[T: copy, length: const usize]: impl
+array[T: copy, const length: usize]: impl
 {
 	first: fun(imm self) -> T => self[0]
 }

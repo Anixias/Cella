@@ -450,6 +450,17 @@ public sealed partial class LanguageServerTests
 	}
 	
 	[Fact]
+	public async Task ImplementsConstantMembers()
+	{
+		const string scored = "mod test\n\nScore: trait req copy\n{\n\tscore: fun(self) -> i32\n" +
+		                      "\tlevel: fun -> Self\n}\n\n";
+		
+		Assert.Equal(scored + "i32: impl const Score\n{\n\tscore: const fun(self) -> i32 => panic\n\t\n" +
+		             "\tlevel: const fun -> i32 => panic\n}\n",
+			await FixAsync(scored + "i32: impl const ‸Score\n{\n}\n", "Implement missing members"));
+	}
+	
+	[Fact]
 	public async Task ImplementsMissingConstantsAndImpliedMembers()
 	{
 		const string bounded =

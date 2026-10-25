@@ -44,7 +44,7 @@ Grid[T]: rec
 	cell: T
 }
 
-Grid[size: const usize]: rec
+Grid[const size: usize]: rec
 
 Marker: trait
 

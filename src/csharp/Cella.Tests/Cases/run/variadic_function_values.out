@@ -1,7 +1,7 @@
-Hint at variadic_function_values.ce:19:5
+Hint at variadic_function_values.ce:19:11
 18 │ 
-19 │ as[N: const usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
-        ^ 'N' doesn't match {camelCase}
+19 │ as[const N: usize]: op(imm values: array[T, N]) -> View[T] => View[T](@values, N)
+              ^ 'N' doesn't match {camelCase}
 
 Hint at variadic_function_values.ce:85:6
 84 │ 

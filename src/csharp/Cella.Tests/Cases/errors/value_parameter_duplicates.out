@@ -1,26 +1,26 @@
-Hint at value_parameter_duplicates.ce:3:6
+Hint at value_parameter_duplicates.ce:3:12
 2 │ 
-3 │ Ring[N: const usize]: rec
-         ^ 'N' doesn't match {camelCase}
+3 │ Ring[const N: usize]: rec
+               ^ 'N' doesn't match {camelCase}
 
-Error at value_parameter_duplicates.ce:3:6
+Error at value_parameter_duplicates.ce:3:12
 2 │ 
-3 │ Ring[N: const usize]: rec
-         ^ Value parameter 'N' is declared more than once
+3 │ Ring[const N: usize]: rec
+               ^ Value parameter 'N' is declared more than once
 
 Hint at value_parameter_duplicates.ce:7:2
 6 │ 
-7 │ f[N: const usize]: fun(imm self) -> usize => N
+7 │ f[const N: usize]: fun(imm self) -> usize => N
     ^ 'f' is never used
 
-Hint at value_parameter_duplicates.ce:7:4
+Hint at value_parameter_duplicates.ce:7:10
 6 │ 
-7 │ f[N: const usize]: fun(imm self) -> usize => N
-      ^ 'N' doesn't match {camelCase}
+7 │ f[const N: usize]: fun(imm self) -> usize => N
+            ^ 'N' doesn't match {camelCase}
 
-Error at value_parameter_duplicates.ce:7:4
+Error at value_parameter_duplicates.ce:7:10
 6 │ 
-7 │ f[N: const usize]: fun(imm self) -> usize => N
-      ^ Value parameter 'N' is declared more than once
+7 │ f[const N: usize]: fun(imm self) -> usize => N
+            ^ Value parameter 'N' is declared more than once
 
 [compilation failed]

@@ -20,7 +20,7 @@ Error at unfinished_parameter_defaults.ce:17:17
 
 Error at unfinished_parameter_defaults.ce:20:22
 19 │ 
-20 │ Grid[size: const i32 = ]: rec
+20 │ Grid[const size: i32 = ]: rec
                           ^ Expected an expression
 
 Error at unfinished_parameter_defaults.ce:25:10

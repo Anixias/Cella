@@ -1,17 +1,17 @@
-Hint at array_impls.ce:20:14
+Hint at array_impls.ce:20:20
 19 │ 
-20 │ array[T: Eq, N: const usize]: impl Eq
-                  ^ 'N' doesn't match {camelCase}
+20 │ array[T: Eq, const N: usize]: impl Eq
+                        ^ 'N' doesn't match {camelCase}
 
-Hint at array_impls.ce:34:10
+Hint at array_impls.ce:34:16
 33 │ 
-34 │ array[T, N: const usize]: impl Counted
-              ^ 'N' doesn't match {camelCase}
+34 │ array[T, const N: usize]: impl Counted
+                    ^ 'N' doesn't match {camelCase}
 
-Hint at array_impls.ce:44:10
+Hint at array_impls.ce:44:16
 43 │ 
-44 │ array[T, N: const u8]: impl Short
-              ^ 'N' doesn't match {camelCase}
+44 │ array[T, const N: u8]: impl Short
+                    ^ 'N' doesn't match {camelCase}
 
 1 0 1
 3 4 4
