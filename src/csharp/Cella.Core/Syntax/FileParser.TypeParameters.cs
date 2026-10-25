@@ -289,12 +289,14 @@ public sealed partial class FileParser
 		var constructors = new List<ConstructorConstraintNode>();
 		var declared = new List<TypeParameterNode>();
 		var enumTags = new List<ITypeNode>();
+		var constantTraits = new List<ITypeNode>();
 		var reported = Diagnostics.Count;
-		if (ParseConstraints(ref index, keywords, traits, constructors, enumTags, false, declared))
+		if (ParseConstraints(ref index, keywords, traits, constructors, enumTags, false, declared, constantTraits))
 			return new(name, keywords, traits, constructors)
 			{
 				Declared = [..declared],
-				EnumTag = enumTags.FirstOrDefault()
+				EnumTag = enumTags.FirstOrDefault(),
+				ConstantTraits = [..constantTraits]
 			};
 		
 		if (Diagnostics.Count == reported)

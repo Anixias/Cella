@@ -83,6 +83,8 @@ combine[E: BitSet[T], T: const Integral]: fun(left: E, right: E) -> E => left | 
 
 raw[E: BitSet[T], T: const Integral]: fun(value: E) -> T => T(value)
 
+merged[E: BitSet[T: const Integral]]: fun(left: E, right: E) -> E => left | right
+
 main: fun
 {
 	var flags = Access.read
@@ -93,5 +95,5 @@ main: fun
 	printf("%lld %lld\n", wide(Code.second), wide(Signed.low))
 	val code: Code = back(100)
 	printf("%d %d %d\n", i32(same(code, Code.first)), i32(differ(Access.read, Access.write)), i32(pack(Code.second)))
-	printf("%d\n", i32(copied(Code.second)))
+	printf("%d %u\n", i32(copied(Code.second)), u32(merged(Access.write, Access.exec)))
 }
