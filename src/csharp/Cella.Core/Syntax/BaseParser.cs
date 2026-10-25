@@ -130,7 +130,7 @@ public abstract class BaseParser<T>(ImmutableArray<Token> tokens, List<Token>? c
 					break;
 			}
 			
-			if (braces <= 0 && (Peek(i, TokenType.OpCloseBrace) || StartsLine(i)))
+			if (braces <= 0 && (Peek(i, TokenType.OpCloseBrace) || StartsLine(i) && !Peek(i, TokenType.OpOpenBrace)))
 				return i;
 		}
 		

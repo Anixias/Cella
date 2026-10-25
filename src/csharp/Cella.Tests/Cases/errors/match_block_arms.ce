@@ -1,0 +1,32 @@
+mod test
+
+Role: enum
+{
+	fighter
+	healer
+}
+
+main: fun -> i32
+{
+	val r = Role.fighter
+	val a = match r
+	{
+		fighter =>
+		{
+			val z = 5
+			z
+		}
+		healer => 1
+	}
+
+	match r
+	{
+		fighter 1 =>
+		{
+			val z = 5
+		}
+		healer => {}
+	}
+
+	ret 0
+}

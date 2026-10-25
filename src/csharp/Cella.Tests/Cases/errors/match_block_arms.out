@@ -1,0 +1,11 @@
+Error at match_block_arms.ce:15:3
+14 │ fighter =>
+15 │ {
+     ^ Expected an expression
+
+Error at match_block_arms.ce:24:11
+23 │ {
+24 │     fighter 1 =>
+                 ^ Expected '=>'
+
+[compilation failed]
