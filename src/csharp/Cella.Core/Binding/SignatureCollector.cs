@@ -84,8 +84,7 @@ public sealed partial class SignatureCollector
 	private readonly List<(TypeParameterNode, TypeParameterSymbol, ResolutionContext, Symbol?, ErrorContainment.Owner)>
 		_pendingConstructorBounds = [];
 	
-	private readonly List<(ImmutableArray<ITypeNode>, List<TypeSymbol?>, TypeSymbol, ErrorContainment.Owner)>
-		_boundLists = [];
+	private readonly List<(TypeParameterNode, List<TypeSymbol?>, TypeSymbol, ErrorContainment.Owner)> _boundLists = [];
 	
 	private readonly List<(TypeParameterNode Node, TypeParameterSymbol Parameter, List<TypeSymbol?> Bounds,
 		ErrorContainment.Owner Owner)> _constrainedParameters = [];

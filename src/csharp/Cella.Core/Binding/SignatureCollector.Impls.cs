@@ -38,6 +38,13 @@ public sealed partial class SignatureCollector
 			_typePool.AddConformance(conformance);
 	}
 	
+	private void EnqueueRequired(Queue<(TraitType Trait, bool IsConstant)> pending, TraitType trait, TypeSymbol self,
+		bool isConstant)
+	{
+		foreach (var required in _typePool.GetRequiredTraits(trait, self))
+			pending.Enqueue((required, isConstant || _typePool.HasConstantBound(trait.Trait.Self, required.Trait)));
+	}
+	
 	private void AddImpliedConformances()
 	{
 		var implied = new List<Conformance>();
@@ -48,11 +55,13 @@ public sealed partial class SignatureCollector
 				continue;
 			
 			var visited = new HashSet<TraitType>();
-			var pending = new Queue<TraitType>(_typePool.GetRequiredTraits(
-				_typePool.GetTraitType(conformance.Trait, conformance.Arguments), self));
+			var pending = new Queue<(TraitType Trait, bool IsConstant)>();
+			EnqueueRequired(pending, _typePool.GetTraitType(conformance.Trait, conformance.Arguments), self,
+				conformance.IsConstant);
 			
-			while (pending.TryDequeue(out var required))
+			while (pending.TryDequeue(out var entry))
 			{
+				var required = entry.Trait;
 				if (!visited.Add(required) || _typePool.HasConformance(self, required) ||
 				    _foreignErrors.Keys.Any(written => written.Target == conformance.Target &&
 				                                       written.Trait == required.Trait))
@@ -66,12 +75,11 @@ public sealed partial class SignatureCollector
 						conformance.Impl, conformance.Location)
 					{
 						IsImplied = true,
-						IsConstant = conformance.IsConstant,
+						IsConstant = entry.IsConstant,
 						Owner = conformance.Owner
 					});
 				
-				foreach (var next in _typePool.GetRequiredTraits(required, self))
-					pending.Enqueue(next);
+				EnqueueRequired(pending, required, self, entry.IsConstant);
 			}
 		}
 		

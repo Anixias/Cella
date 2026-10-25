@@ -1,0 +1,75 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Float: trait req copy
+{
+	floor: fun(x: Self) -> Self
+}
+
+Transcendental: trait req Float
+{
+	root: fun(x: Self) -> Self
+}
+
+f32: impl const Float + Transcendental
+{
+	floor: const fun(x: f32) -> f32 => x - 0.5f32
+	root: fun(x: f32) -> f32 => x / 3
+}
+
+f64: impl Transcendental
+{
+	root: fun(x: f64) -> f64 => x / 2
+}
+
+f64: impl const Float
+{
+	floor: const fun(x: f64) -> f64 => x - 1
+}
+
+mixed[T: const Float + Transcendental]: fun(x: T) -> T => T.root(T.floor(x))
+
+lowered[T: const Float + Transcendental]: const fun(x: T) -> T => T.floor(x)
+
+Measure: trait req copy
+{
+	unit: fun(x: Self) -> Self
+}
+
+Scaled: trait req const Measure
+{
+	scale: fun(x: Self) -> Self
+}
+
+i32: impl Scaled
+{
+	unit: const fun(x: i32) -> i32 => x * 10
+	scale: fun(x: i32) -> i32 => x + 1
+}
+
+u8: impl Scaled
+{
+	scale: fun(x: u8) -> u8 => x
+}
+
+u8: impl const Measure
+{
+	unit: const fun(x: u8) -> u8 => x * 2
+}
+
+units[T: Scaled]: const fun(x: T) -> T => T.unit(x)
+
+low: const f32 = lowered(2.5f32)
+lower: const f64 = lowered(4.0)
+tens: const i32 = units(3)
+twos: const u8 = units(4u8)
+
+main: fun
+{
+	printf("%.1f %.1f %.1f %.1f\n", f64(mixed(6.5f32)), mixed(5.0), f64(low), lower)
+	printf("%d %d %d\n", tens, i32(twos), i32.scale(tens))
+}

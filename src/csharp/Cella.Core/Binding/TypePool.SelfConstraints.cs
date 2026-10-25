@@ -44,6 +44,17 @@ public sealed partial class TypePool
 		
 		if (parameters.Count > 0)
 			SetParameterBounds(parameter, [..declaredParameters, ..parameters.Distinct()]);
+		
+		foreach (var trait in traits)
+		{
+			if (!_constantBounds.TryGetValue(trait.Trait.Self, out var constants))
+				continue;
+			
+			var map = CreateTraitMap(trait, parameter);
+			foreach (var constant in constants.Select(bound => SubstituteTrait(bound, map)).ToList())
+				if (!HasConstantBound(parameter, constant.Trait))
+					AddConstantBound(parameter, constant);
+		}
 	}
 	
 	public void InheritSelfConstructors(TypeParameterSymbol parameter)

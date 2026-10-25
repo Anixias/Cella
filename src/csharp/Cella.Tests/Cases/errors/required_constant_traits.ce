@@ -1,0 +1,39 @@
+mod test
+
+Measure: trait req copy
+{
+	unit: fun(x: Self) -> Self
+}
+
+Scaled: trait req const Measure
+{
+	scale: fun(x: Self) -> Self
+}
+
+i32: impl Scaled
+{
+	unit: fun(x: i32) -> i32 => x * 10
+	scale: fun(x: i32) -> i32 => x + 1
+}
+
+u8: impl Scaled
+{
+	scale: fun(x: u8) -> u8 => x
+}
+
+u8: impl Measure
+{
+	unit: fun(x: u8) -> u8 => x * 2
+}
+
+scales[T: Measure]: const fun(x: T) -> T => T.unit(x)
+
+repeated[T: const Measure + Scaled]: fun(x: T) -> T => x
+
+plain[T: Measure + Scaled]: fun(x: T) -> T => x
+
+main: fun
+{
+	val _ = repeated(1)
+	val _ = plain(1)
+}

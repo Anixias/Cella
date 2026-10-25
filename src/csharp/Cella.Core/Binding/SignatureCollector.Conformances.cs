@@ -69,20 +69,34 @@ public sealed partial class SignatureCollector
 			else
 				Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function), requirement.IsConstant
 					? $"'{name}' must be 'const' to match '{trait}.{name}'"
-					: $"'{name}' must be 'const' in 'impl const {trait}'"));
+					: $"'{name}' must be 'const' in 'impl const {trait}'")
+				{
+					Hints = !requirement.IsConstant && FindConstantRequirer(conformance) is { } requirer
+						? [$"'{requirer}' requires 'const {trait}'"]
+						: []
+				});
 		}
 		
-		if (!conformance.IsConstant || conformance.IsImplied || GetConformanceSelf(conformance) is not
-			    (not InvalidType and var self))
+		if (conformance.IsImplied || GetConformanceSelf(conformance) is not (not InvalidType and var self))
 			return;
 		
 		foreach (var required in GetAllRequiredTraits(conformance, self))
 		{
-			if (_typePool.FindConformance(self, required) is { IsConstant: false })
+			if ((conformance.IsConstant || _typePool.HasConstantBound(conformance.Trait.Self, required.Trait)) &&
+			    _typePool.FindConformance(self, required) is { IsConstant: false })
 				Diagnostics.Add(new(DiagnosticSeverity.Error, conformance.Location,
 					$"'{DiagnosticReporter.DescribeType(self)}' needs 'impl const {required.Name}'"));
 		}
 	}
+	
+	private string? FindConstantRequirer(Conformance conformance) => conformance.IsImplied
+		? _localConformances
+			.Where(other => other is { IsImplied: false, IsConstant: false } && other.Impl == conformance.Impl &&
+			                other.Target == conformance.Target &&
+			                _typePool.HasConstantBound(other.Trait.Self, conformance.Trait))
+			.Select(DescribeTrait)
+			.FirstOrDefault()
+		: null;
 	
 	private static string DescribeAccessor(PropertySymbol property, FunctionSymbol accessor) =>
 		property is { Getter: not null, Setter: not null }
@@ -334,7 +348,9 @@ public sealed partial class SignatureCollector
 			var trait = _typePool.GetTraitType(conformance.Trait, conformance.Arguments);
 			var requirer = written
 				.Where(other => other != conformance && other.Impl == conformance.Impl &&
-				                other.Target == conformance.Target)
+				                other.Target == conformance.Target &&
+				                (!conformance.IsConstant || other.IsConstant ||
+				                 RequiresConstant(_typePool.GetTraitType(other.Trait, other.Arguments), trait)))
 				.Select(other => _typePool.GetTraitType(other.Trait, other.Arguments))
 				.FirstOrDefault(other => other != trait && Requires(other, trait, self));
 			

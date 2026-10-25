@@ -127,7 +127,7 @@ public sealed partial class SignatureCollector
 				_typePool.AddConstantBound(parameter, constant);
 		}
 		
-		_boundLists.Add((node.Traits, bounds, parameter, CurrentOwner));
+		_boundLists.Add((node, bounds, parameter, CurrentOwner));
 		_constrainedParameters.Add((node, parameter, bounds, CurrentOwner));
 		ImmutableArray<TypeParameterSymbol> traitParameters = [..bounds.OfType<TypeParameterSymbol>().Distinct()];
 		ImmutableArray<FunctionType> functions = [..bounds.OfType<FunctionType>().Distinct()];
@@ -230,17 +230,24 @@ public sealed partial class SignatureCollector
 	
 	private void ReportRedundantBounds()
 	{
-		foreach (var (nodes, bounds, self, errorOwner) in _boundLists)
+		foreach (var (node, bounds, self, errorOwner) in _boundLists)
 		{
 			using var frame = Own(errorOwner);
+			var nodes = node.Traits;
 			for (var i = 0; i < nodes.Length; i++)
 			{
 				if (bounds[i] is not TraitType bound || bounds.Count(other => other == bound) > 1)
 					continue;
 				
+				var isConstant = IsConstantTrait(node.ConstantTraits, nodes[i]);
 				var requirer = bounds
-					.OfType<TraitType>()
-					.FirstOrDefault(other => other != bound && Requires(other, bound, self));
+					.Select((other, j) => (Trait: other as TraitType, IsConstant: IsConstantTrait(node.ConstantTraits,
+						nodes[j])))
+					.Where(other => other.Trait is not null && other.Trait != bound &&
+					                Requires(other.Trait, bound, self) &&
+					                (!isConstant || other.IsConstant || RequiresConstant(other.Trait, bound)))
+					.Select(static other => other.Trait)
+					.FirstOrDefault();
 				
 				if (requirer is not null)
 					Diagnostics.Add(new(DiagnosticSeverity.Hint, nodes[i].SourceLocation, $"Redundant '{bound.Name}'")
@@ -252,6 +259,9 @@ public sealed partial class SignatureCollector
 			}
 		}
 	}
+	
+	private bool RequiresConstant(TraitType trait, TraitType required) =>
+		_typePool.HasConstantBound(trait.Trait.Self, required.Trait);
 	
 	private bool Requires(TraitType trait, TraitType required, TypeSymbol self)
 	{
