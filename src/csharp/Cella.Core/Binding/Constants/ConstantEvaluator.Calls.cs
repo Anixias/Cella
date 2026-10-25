@@ -311,7 +311,15 @@ public sealed partial class ConstantEvaluator
 				var typeArguments = typePool.GetWitnessArguments(self, target.Function, traitArguments, declared,
 					function.Symbol.Trait);
 				
-				return Invoke(typePool.InstantiateFunction(target.Info, typeArguments), arguments, callSite);
+				var instance = typePool.InstantiateFunction(target.Info, typeArguments);
+				if (target.Function.Trait is not { } owner)
+					return Invoke(instance, arguments, callSite);
+				
+				var ownerArguments = typeArguments.Skip(1).Take(owner.TypeParameters.Length);
+				return target.Function.IsConstant ||
+				       typePool.IsConstantConformance(self, typePool.GetTraitType(owner, [..ownerArguments]))
+					? InvokeBody(instance, arguments, callSite, false)
+					: null;
 			
 			case NativeWitness nativeWitness:
 				return ApplyNative(nativeWitness, function.Signature.ReturnType, arguments);
