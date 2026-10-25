@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
 using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Syntax.Nodes;
@@ -74,6 +75,12 @@ public sealed class ValueParameterValue(TypeParameterSymbol parameter, TypeSymbo
 	: Value(type, false, sourceLocation)
 {
 	public TypeParameterSymbol Parameter { get; } = parameter;
+}
+
+public sealed class FoldedValue(Constant constant, SourceLocation sourceLocation)
+	: Value(constant.Type, false, sourceLocation)
+{
+	public Constant Constant { get; } = constant;
 }
 
 public sealed class TypeConstantValue(TypeConstantUse use, TypeSymbol type, SourceLocation sourceLocation)

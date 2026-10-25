@@ -67,12 +67,13 @@ public sealed partial class FileParser
 		
 		var required = index;
 		if (Match(ref required, out var requiredKeyword, _memberContextualKeywords, TokenType.KeywordReq) &&
-		    IsOnSameLine(required) && IsFunctionMember(required))
+		    IsOnSameLine(required) && (IsFunctionMember(required) || StartsConstant(required, IsFunctionMember)))
 		{
 			modifiers.Tokens.Add(requiredKeyword);
 			index = required;
 		}
 		
+		MatchConstant(ref index, modifiers, IsFunctionMember);
 		if (FindMisplacedFieldModifier(index) is var (location, message))
 		{
 			Report(location, message);
@@ -161,12 +162,13 @@ public sealed partial class FileParser
 		RejectWriteRestriction(modifiers, "operators");
 		var required = index;
 		if (Match(ref required, out var requiredKeyword, _memberContextualKeywords, TokenType.KeywordReq) &&
-		    IsOnSameLine(required) && IsOperatorKeyword(required))
+		    IsOnSameLine(required) && (IsOperatorKeyword(required) || StartsConstant(required, IsOperatorKeyword)))
 		{
 			modifiers.Tokens.Add(requiredKeyword);
 			index = required;
 		}
 		
+		MatchConstant(ref index, modifiers, IsOperatorKeyword);
 		if (Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 			return ParseFunction(ref index, symbol, modifiers, false, typeParameters);
 		
@@ -178,6 +180,18 @@ public sealed partial class FileParser
 		Match(ref index, TokenType.KeywordFun) && !Peek(index, TokenType.OpOpenBracket);
 	
 	private bool IsOperatorKeyword(int index) => Match(ref index, _memberContextualKeywords, TokenType.KeywordOp);
+	
+	private bool StartsConstant(int index, Func<int, bool> startsKind) =>
+		Peek(index, TokenType.KeywordConst) && IsOnSameLine(index + 1) && startsKind(index + 1);
+	
+	private void MatchConstant(ref int index, DeclarationModifiers modifiers, Func<int, bool> startsKind)
+	{
+		if (!StartsConstant(index, startsKind))
+			return;
+		
+		modifiers.Tokens.Add(Tokens[index]);
+		index++;
+	}
 	
 	private bool StartsProperty(int index)
 	{
@@ -450,6 +464,7 @@ public sealed partial class FileParser
 		
 		var modifiers = ParseMemberModifiers(ref index, block);
 		RejectWriteRestriction(modifiers, isConversion ? "operators" : "constructors");
+		MatchConstant(ref index, modifiers, IsOperatorKeyword);
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 		{
 			ReportExpected(index, "'op'");
@@ -581,6 +596,7 @@ public sealed partial class FileParser
 		{
 		}
 		
+		Match(ref index, TokenType.KeywordConst);
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp) ||
 		    !Match(ref index, TokenType.OpOpenParen))
 			return false;
@@ -602,6 +618,9 @@ public sealed partial class FileParser
 		if (modifiers.Visibility is { Type: not TokenType.KeywordPub } visibility)
 			Report(modifiers.Tokens.Contains(visibility) ? visibility : dropKeyword,
 				$"Cannot declare '{visibility.Text}' destructors");
+		
+		if (StartsConstant(index, IsOperatorKeyword))
+			Report(Tokens[index++], "Cannot declare 'const' destructors");
 		
 		if (!Match(ref index, _memberContextualKeywords, TokenType.KeywordOp))
 		{

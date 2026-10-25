@@ -21,7 +21,9 @@ public sealed class TypeChecker
 	: IResolvedStatementNodeVisitor, IResolvedDeclarationNodeVisitor, IResolvedExpressionNodeVisitor
 {
 	public DiagnosticList Diagnostics { get; } = new();
+	public IReadOnlySet<FunctionSymbol> FunctionValues => _functionValues;
 	
+	private readonly HashSet<FunctionSymbol> _functionValues = [];
 	private readonly Stack<(TypeSymbol? Type, FunctionSymbol Function)> _returns = [];
 	private readonly List<(IResolvedDeclarationNode Node, List<Diagnostic> Diagnostics, bool IsInvalid)> _checked = [];
 	private readonly Dictionary<FunctionSymbol, ResolvedFunctionNode> _inlineDeclarations = [];
@@ -222,6 +224,8 @@ public sealed class TypeChecker
 			_returns.Push((node.FunctionInfo.Signature.ReturnType, node.FunctionInfo.Symbol));
 			VisitNode(statement);
 			_returns.Pop();
+			if (TypePool.FoldsAsConstant(node.FunctionInfo.Symbol))
+				evaluator.FoldFunction(node.FunctionInfo.Symbol);
 		});
 	}
 	
@@ -609,7 +613,7 @@ public sealed class TypeChecker
 	
 	private IResolvedExpressionNode? FindNonConstant(IResolvedExpressionNode node)
 	{
-		if (evaluator.Evaluate(node) is not null)
+		if (evaluator.EvaluateRequired(node) is not null)
 			return null;
 		
 		if (!CanFold(node))
@@ -896,9 +900,7 @@ public sealed class TypeChecker
 		_ => false
 	};
 	
-	public void Visit(ResolvedFunctionReferenceExpressionNode node)
-	{
-	}
+	public void Visit(ResolvedFunctionReferenceExpressionNode node) => _functionValues.Add(node.Function.Symbol);
 	
 	public void Visit(ResolvedClosureExpressionNode node)
 	{

@@ -90,7 +90,12 @@ public sealed partial class Resolver
 	private ResolvedFunctionNode ResolveFunction(IDeclarationNode node, IStatementNode? body)
 	{
 		var function = (FunctionSymbol)_symbolTable.DeclarationSymbols[node];
+		if (function.IsConstant && _typePool.GetConstantBody(function) is { Node: var resolved } &&
+		    resolved.Syntax == node)
+			return resolved;
+		
 		var info = _signatures.GetFunctionInfo(function);
+		var mark = Diagnostics.Mark;
 		
 		var resolutionContext = CurrentResolutionContext with
 		{
@@ -105,10 +110,13 @@ public sealed partial class Resolver
 			ReportPanicDeclaration(panic, info);
 		
 		var resolvedBody = body is null ? null : InferLocals(() => VisitNode(body));
+		var result = new ResolvedFunctionNode(info, resolvedBody, node);
+		if (function.IsConstant)
+			RegisterConstantBody(result, mark);
+		
 		Containment?.Exit();
 		_resolutionContexts.Pop();
-		
-		return new ResolvedFunctionNode(info, resolvedBody, node);
+		return result;
 	}
 	
 	public IResolvedDeclarationNode Visit(ExternalFunctionNode node)
@@ -188,6 +196,14 @@ public sealed partial class Resolver
 	{
 		var impl = (ImplSymbol)_symbolTable.DeclarationSymbols[node];
 		var target = _signatures.GetImplTarget(impl);
+		_resolutionContexts.Push(WithImplBlock(CurrentResolutionContext, impl, target));
+		var members = node.Members.SelectMany(VisitImplMember).ToList();
+		_resolutionContexts.Pop();
+		return new ResolvedImplNode(impl, target, members, node);
+	}
+	
+	private ResolutionContext WithImplBlock(ResolutionContext context, ImplSymbol impl, TypeSymbol target)
+	{
 		var siblings = GetActiveMemberBlocks(target)
 			.Where(block => block != impl && block.TypeParameters.IsEmpty)
 			.ToList();
@@ -201,17 +217,13 @@ public sealed partial class Resolver
 		var constants = siblings.SelectMany(block => block.Constants
 			.Where(constant => IsVisibleExtensionMember(block, constant.Visibility))).ToList();
 		
-		_resolutionContexts.Push(CurrentResolutionContext with
+		return context with
 		{
 			ContainingType = target,
 			ImplBlock = impl,
 			ResolveSiblingMember = name => ResolutionContext.ResolveStatic(functions, properties, name) ??
 			                               constants.FirstOrDefault(constant => constant.Name == name)
-		});
-		
-		var members = node.Members.SelectMany(VisitImplMember).ToList();
-		_resolutionContexts.Pop();
-		return new ResolvedImplNode(impl, target, members, node);
+		};
 	}
 	
 	private IEnumerable<IResolvedDeclarationNode> VisitTraitMember(IDeclarationNode member) => member switch

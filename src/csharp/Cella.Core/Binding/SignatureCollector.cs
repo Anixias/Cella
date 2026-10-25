@@ -127,7 +127,7 @@ public sealed partial class SignatureCollector
 		_dependencyTable = SignatureTable.Combine(dependencyList.Concat(indirectList)
 			.Select(static a => a.SignatureTable));
 		
-		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue);
+		Evaluator = new ConstantEvaluator(typePool, pointerBitSize, GetGlobalValue) { ReportFault = Diagnostics.Add };
 		typePool.FoldParametric = Evaluator.EvaluateInstance;
 		typePool.TypeConstantValue = EvaluateTypeConstant;
 		typePool.GlobalTypeOf = GetGlobalType;
@@ -275,6 +275,9 @@ public sealed partial class SignatureCollector
 		_dependencyTable.PanicTargets.Concat(_builder.PanicTargets);
 	
 	public void AddPanicTarget(string path, FunctionSymbol target) => _builder.PanicTargets[path] = target;
+	
+	public ResolutionContext? FindDeclarationContext(Symbol symbol) =>
+		_declarations.TryGetValue(symbol, out var declaration) ? declaration.Context : null;
 	
 	public ResolutionContext? FindInlineContext(FunctionSymbol function) =>
 		_builder.InlineContexts.TryGetValue(function, out var declaration) ? declaration.Context

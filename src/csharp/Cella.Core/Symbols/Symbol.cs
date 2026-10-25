@@ -132,6 +132,14 @@ public sealed class FunctionSymbol
 	public bool IsConversion =>
 		Syntax is FunctionNode { Identifier.Type: TokenType.KeywordAs or TokenType.KeywordNew };
 	
+	public bool IsConstant => Syntax switch
+	{
+		FunctionNode node => node.Modifiers.Any(static token => token.Type == TokenType.KeywordConst),
+		ConstructorNode node => node.Default is not null ||
+		                        node.Modifiers.Any(static token => token.Type == TokenType.KeywordConst),
+		_ => false
+	};
+	
 	public PropertySymbol? Property { get; internal set; }
 	public TraitSymbol? Trait { get; internal set; }
 	public FunctionSymbol? Refines { get; internal set; }

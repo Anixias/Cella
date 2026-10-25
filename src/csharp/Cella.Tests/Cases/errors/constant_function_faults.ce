@@ -1,0 +1,67 @@
+mod test
+
+counter: var i32 = 0
+
+Level: enum
+{
+	low
+	high
+}
+
+square: const fun(x: i32) -> i32 => x * x
+
+halve: const fun(x: i32, by: i32) -> i32 => x / by
+
+pick: const fun(values: array[i32, 3], at: usize) -> i32 => values[at]
+
+level: const fun(tag: u8) -> Level => Level(tag)
+
+outer: const fun(x: i32) -> i32 => square(x) + 1
+
+check: const fun(x: i32) -> i32
+{
+	if x > 3
+		panic
+
+	ret x
+}
+
+spin: const fun -> i32
+{
+	var i = 0
+	while true
+		i += 1
+
+	ret i
+}
+
+deep: const fun(n: i32) -> i32 => deep(n + 1) + 1
+
+broken: const fun -> i32
+{
+	var values = [1, 2, 3]
+	var i: usize = 0
+	while i < 4
+	{
+		values[i] = 0
+		i += 1
+	}
+
+	ret values[0]
+}
+
+big: const i32 = square(100000)
+divided: const i32 = halve(1, 0)
+picked: const i32 = pick([1, 2, 3], 5)
+leveled: const Level = level(9)
+nested: const i32 = outer(50000)
+checked: const i32 = check(5)
+spun: const i32 = spin()
+deepest: const i32 = deep(0)
+sized: const i32 = square(counter)
+first: const i32 = square(100000) + square(100000)
+
+main: fun -> i32
+{
+	ret big + divided + picked + nested + checked + spun + deepest + sized + first + i32(leveled)
+}

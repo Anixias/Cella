@@ -1,0 +1,37 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Zero: trait
+{
+	zero: fun -> Self
+}
+
+Point: rec impl Zero
+{
+	x: i32
+	
+	zero: const fun -> Point => Point(9)
+}
+
+answer: const fun -> i32 => 42
+seven: const fun -> i32 => 7
+nine: const fun -> i32 => 9
+hidden: const fun -> i32 => 1
+shown: pub const fun -> i32 => 2
+
+handler: const fun[-> i32] = seven
+
+callWith: fun(f: fun[-> i32] = nine) -> i32 => f()
+
+first[T: Zero]: fun -> T => T.zero()
+
+main: fun -> i32
+{
+	val f = answer
+	printf("%d %d %d %d %d %d %d\n", f(), answer(), handler(), callWith(), first[Point]().x, hidden(), shown())
+	ret 0
+}

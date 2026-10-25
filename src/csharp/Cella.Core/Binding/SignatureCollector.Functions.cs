@@ -399,13 +399,17 @@ public sealed partial class SignatureCollector
 		ResolvedBinaryOpExpressionNode { Operation: NativeImpl } n => IsParametricOperand(n.Left) &&
 		                                                              IsParametricOperand(n.Right),
 		ResolvedConversionExpressionNode n => IsParametric(n.Source),
+		ResolvedFunctionCallExpressionNode { Function.Symbol.IsConstant: true } n =>
+			n.Arguments.All(IsParametricOperand),
+		ResolvedConstructorCallExpressionNode { Function.Symbol.IsConstant: true } n =>
+			n.Arguments.All(IsParametricOperand),
 		ResolvedGlobalExpressionNode { Symbol: { IsConstant: true } global } =>
 			GetGlobalInfo(global)?.Value is ParametricConstant,
 		_ => false
 	};
 	
 	private bool IsParametricOperand(IResolvedExpressionNode node) =>
-		Evaluator.Evaluate(node) is not null || IsParametric(node);
+		Evaluator.EvaluateRequired(node) is not null || IsParametric(node);
 	
 	private bool TakesVariadicParameter(ImmutableArray<ParameterNode> parameters, List<TypeSymbol> types)
 	{

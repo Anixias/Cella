@@ -1,0 +1,19 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+squared: const i32 = lib.square(12)
+cubed: const array[u8, 3] = lib.cube(7u8)
+area: const i32 = lib.grid().area()
+table: val array[i32, usize(lib.square(2))] = [1, 2, 3, 4]
+
+main: fun -> i32
+{
+	val size = lib.grid()
+	printf("%d %d %d %d %d\n", squared, i32(cubed[2]), area, lib.limit(), i32(table.length))
+	printf("%d %d %d\n", size.width, lib.runtimeSquare(5), lib.square(6))
+	ret 0
+}

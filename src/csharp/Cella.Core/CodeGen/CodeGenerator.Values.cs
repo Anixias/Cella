@@ -84,6 +84,17 @@ public sealed unsafe partial class CodeGenerator
 			? EmitStaticConstant(constant)
 			: throw new InvalidOperationException($"Trait constant '{v.Use.Constant.Name}' has no value");
 	
+	private LLVMValueRef EmitFolded(FoldedValue v, LLVMBuilderRef builder)
+	{
+		var value = EmitStaticConstant(v.Constant);
+		if (!IsLarge(v.Type))
+			return value;
+		
+		var slot = BuildEntryAlloca(builder, MapTypeSymbol(v.Type), "folded");
+		builder.BuildStore(value, slot);
+		return slot;
+	}
+	
 	private LLVMValueRef EmitAlignOf(AlignOfValue v)
 	{
 		var bits = _typePool.SizeTable.GetSize(Substitute(v.Target)).CountAlignmentBits(_pointerSize * 8);

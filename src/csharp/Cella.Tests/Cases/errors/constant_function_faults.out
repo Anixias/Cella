@@ -1,0 +1,79 @@
+Error at constant_function_faults.ce:29:1
+28 │ 
+29 │ spin: const fun -> i32
+     ╘══╛ Evaluating 'spin' takes too many steps
+
+Warning at constant_function_faults.ce:35:2
+34 │ 
+35 │ ret i
+     ^ Unreachable code
+
+Warning at constant_function_faults.ce:38:1
+37 │ 
+38 │ deep: const fun(n: i32) -> i32 => deep(n + 1) + 1
+     ╘══╛ 'deep' recurses forever
+
+Error at constant_function_faults.ce:40:1
+39 │ 
+40 │ broken: const fun -> i32
+     ╘════╛ Panic in 'broken': index out of bounds
+          | On line 46
+
+Hint at constant_function_faults.ce:40:1
+39 │ 
+40 │ broken: const fun -> i32
+     ╘════╛ 'broken' is never used
+
+Error at constant_function_faults.ce:53:18
+52 │ 
+53 │ big: const i32 = square(100000)
+                      ╘════════════╛ Panic in 'square': multiplication overflow
+                                   | On line 11
+
+Error at constant_function_faults.ce:54:22
+53 │ big: const i32 = square(100000)
+54 │ divided: const i32 = halve(1, 0)
+                          ╘═════════╛ Panic in 'halve': division by zero
+                                    | On line 13
+
+Error at constant_function_faults.ce:55:21
+54 │ divided: const i32 = halve(1, 0)
+55 │ picked: const i32 = pick([1, 2, 3], 5)
+                         ╘════════════════╛ Panic in 'pick': index out of bounds
+                                          | On line 15
+
+Error at constant_function_faults.ce:56:24
+55 │ picked: const i32 = pick([1, 2, 3], 5)
+56 │ leveled: const Level = level(9)
+                            ╘══════╛ Panic in 'level': 'Level' has no case with this value
+                                   | On line 17
+
+Error at constant_function_faults.ce:57:21
+56 │ leveled: const Level = level(9)
+57 │ nested: const i32 = outer(50000)
+                         ╘══════════╛ Panic in 'square': multiplication overflow
+                                    | On line 11
+
+Error at constant_function_faults.ce:58:22
+57 │ nested: const i32 = outer(50000)
+58 │ checked: const i32 = check(5)
+                          ╘══════╛ Panic in 'check'
+                                 | On line 24
+
+Error at constant_function_faults.ce:60:22
+59 │ spun: const i32 = spin()
+60 │ deepest: const i32 = deep(0)
+                          ╘═════╛ Evaluating 'deep' recurses too deeply
+
+Error at constant_function_faults.ce:61:20
+60 │ deepest: const i32 = deep(0)
+61 │ sized: const i32 = square(counter)
+                        ╘═════════════╛ The initial value of 'sized' must be a constant
+
+Error at constant_function_faults.ce:62:20
+61 │ sized: const i32 = square(counter)
+62 │ first: const i32 = square(100000) + square(100000)
+                        ╘════════════╛ Panic in 'square': multiplication overflow
+                                     | On line 11
+
+[compilation failed]

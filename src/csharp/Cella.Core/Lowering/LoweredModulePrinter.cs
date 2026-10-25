@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Operations;
 using Cella.Core.Symbols;
 
@@ -261,6 +262,10 @@ public static class LoweredModulePrinter
 				
 				case TypeConstantValue v:
 					sb.Append(v.Use.Owner.Name).Append('.').Append(v.Use.Constant.Name);
+					break;
+				
+				case FoldedValue v:
+					sb.Append(ConstantText.Describe(v.Constant) ?? v.Type.Name);
 					break;
 				
 				case AlignOfValue v:

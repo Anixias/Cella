@@ -37,6 +37,7 @@ public sealed partial class SignatureCollector
 			
 			MatchConstants(conformance, memberFix?.Fix);
 			CheckSelfConstraints(conformance);
+			ReportNonConstantWitnesses(conformance);
 		}
 		
 		Diagnostics.Redirect(previous);
@@ -44,6 +45,23 @@ public sealed partial class SignatureCollector
 		
 		foreach (var impl in _impls)
 			ReportUnmatchedMembers(impl);
+	}
+	
+	private void ReportNonConstantWitnesses(Conformance conformance)
+	{
+		foreach (var (requirement, witness) in conformance.Witnesses)
+		{
+			if (!requirement.IsConstant || witness is not FunctionWitness { Function: { IsConstant: false } function })
+				continue;
+			
+			var name = requirement.Kind == FunctionKind.Constructor
+				? "new"
+				: conformance.Trait.Functions.FirstOrDefault(method => method.Function == requirement)?.Name ??
+				  requirement.Name;
+			
+			Diagnostics.Add(new(DiagnosticSeverity.Error, GetFunctionLocation(function),
+				$"'{name}' must be 'const' to match '{DescribeTrait(conformance)}.{name}'"));
+		}
 	}
 	
 	private void LinkRefinedDefaults(IEnumerable<FileNode> files)

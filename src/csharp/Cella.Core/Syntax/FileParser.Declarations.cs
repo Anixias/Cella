@@ -180,6 +180,10 @@ public sealed partial class FileParser
 			? ParseExternalName(ref index)
 			: null;
 		
+		if (StartsConstant(index, IsFunctionMember) && isExternal)
+			Report(Tokens[index], "Cannot combine 'const' and 'ext'");
+		
+		MatchConstant(ref index, modifiers, IsFunctionMember);
 		if (typeParameters is [var first, ..] && DescribeTypeParameterError(index, isExternal) is { } error)
 			Report(first.SourceLocation, error);
 		

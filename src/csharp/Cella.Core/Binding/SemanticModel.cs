@@ -33,6 +33,7 @@ public sealed class SemanticModel
 	private readonly Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? _typeConstants;
 	private readonly Func<EnumSymbol, EnumCaseSymbol, BigInteger>? _caseValues;
 	private readonly Func<FileSymbol, ImportEnvironment?>? _imports;
+	private readonly Func<FunctionSymbol, Constant?>? _foldedFunctions;
 	private readonly List<SourceLocation> _inactiveCalls = [];
 	private readonly Lazy<Dictionary<string, Dictionary<TextRange, List<SymbolReference>>>> _usages;
 	private readonly Lazy<Dictionary<string, SymbolReference>> _types;
@@ -45,9 +46,11 @@ public sealed class SemanticModel
 		Func<GlobalSymbol, GlobalInfo?>? globals = null,
 		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null,
 		Func<EnumSymbol, EnumCaseSymbol, BigInteger>? caseValues = null,
-		Func<FileSymbol, ImportEnvironment?>? imports = null)
+		Func<FileSymbol, ImportEnvironment?>? imports = null,
+		Func<FunctionSymbol, Constant?>? foldedFunctions = null)
 	{
 		_imports = imports;
+		_foldedFunctions = foldedFunctions;
 		_functions = functions;
 		_globals = globals;
 		_typeConstants = typeConstants;
@@ -626,7 +629,7 @@ public sealed class SemanticModel
 	
 	public static string Describe(CompletionCandidate candidate) => candidate switch
 	{
-		{ Function: { } function } => DescribeFunction(function),
+		{ Function: { } function } => DescribeSignature(function, false).Label,
 		{ Symbol: LocalVariableSymbol local } => DescribeVariable(local, local.Type),
 		{ Symbol: EnumCaseSymbol enumCase, Type: { } owner } => DescribeCaseName(owner, enumCase),
 		{ Symbol: TypeSymbol type } => DescribeType(type),
@@ -738,7 +741,15 @@ public sealed class SemanticModel
 			.Select(static line => line.Trim())
 			.Where(static line => line.Length > 0));
 	
-	private static string DescribeFunction(FunctionInfo info) => DescribeSignature(info, false).Label;
+	private string DescribeFunction(FunctionInfo info)
+	{
+		var label = DescribeSignature(info, false).Label;
+		return TypePool.FoldsAsConstant(info.Symbol) &&
+		       _foldedFunctions?.Invoke(info.Symbol) is { } value and not InvalidConstant &&
+		       ConstantText.Describe(value) is { } shown
+			? $"{label}\n= {shown}"
+			: label;
+	}
 	
 	private string DescribeNamed(Symbol symbol, Func<FunctionSymbol, FunctionInfo?>? functions) => symbol switch
 	{
@@ -777,7 +788,7 @@ public sealed class SemanticModel
 			}
 			: "fun";
 		
-		var label = new StringBuilder($": {keyword}");
+		var label = new StringBuilder(info.Symbol.IsConstant ? $": const {keyword}" : $": {keyword}");
 		var ranges = ImmutableArray.CreateBuilder<(int Start, int End)>();
 		var indices = isCall
 			? GetCallParameters(info).ToArray()

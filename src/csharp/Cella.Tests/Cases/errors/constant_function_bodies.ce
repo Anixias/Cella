@@ -1,0 +1,132 @@
+mod test
+
+ext
+{
+	puts: fun(text: cstr) -> i32
+}
+
+counter: var i32 = 0
+limit: const i32 = 10
+
+Token: own rec
+{
+	id: i32
+
+	drop: op
+	{
+	}
+}
+
+Holder: rec
+{
+	shared: var i32 = 0
+
+	read: const fun -> i32 => Holder.shared
+}
+
+Gauge: rec
+{
+	level: i32
+
+	new: op(level: i32)
+	{
+		self.level = level
+	}
+
+	+: op(a: Gauge, b: Gauge) -> Gauge => Gauge(a.level + b.level)
+	as: op(self) -> i64 => i64(self.level)
+}
+
+Ticket: own rec
+{
+	id: i32
+	
+	drop: const op
+	{
+	}
+}
+
+plain: fun(x: i32) -> i32 => x
+
+globals: const fun -> i32
+{
+	counter += 1
+	ret counter + limit
+}
+
+calls: const fun(x: i32) -> i32
+{
+	puts("hi")
+	val g = Gauge(x) + Gauge(1)
+	val wide: i64 = g
+	ret plain(x) + i32(wide)
+}
+
+stop: const fun -> never
+{
+	loop
+	{
+	}
+}
+
+pointers: const fun(p: ptr[i32]) -> i32
+{
+	var x = 1
+	val address = @x
+	ret *p + *address
+}
+
+functions: const fun(f: fun[i32 -> i32]) -> i32
+{
+	val g = fun(x: i32) -> i32 => x + 1
+	ret f(1) + g(2)
+}
+
+tokens: const fun(token: Token) -> i32
+{
+	var other: Token
+	ret token.id
+}
+
+release: const fun(p: ptr[Token])
+{
+	drop *p
+}
+
+unset: const fun -> i32
+{
+	var x: i32 = undef
+	ret x
+}
+
+pinned: const fun(p: ptr[i32]) -> i32 => atomic *p
+
+made[T: new]: const fun -> T => T()
+
+same[T]: const fun(x: T) -> T => x
+
+answer: const fun -> i32 => 42
+
+pick: fun -> fun[-> i32] => answer
+
+say: ext const fun(text: cstr) -> i32 => 0
+
+Score: trait
+{
+	value: const fun(self) -> i32
+	+: const op(a: Self, b: Self) -> Self
+}
+
+Points: rec impl Score
+{
+	amount: i32
+
+	value: fun(self) -> i32 => self.amount
+	+: const op(a: Points, b: Points) -> Points => Points(a.amount + b.amount)
+}
+
+main: fun -> i32
+{
+	val ticket = Ticket(1)
+	ret ticket.id
+}

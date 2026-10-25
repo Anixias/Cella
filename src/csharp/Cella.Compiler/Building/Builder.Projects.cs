@@ -19,7 +19,8 @@ public sealed partial class Builder
 		List<(Token Name, Symbol Symbol)> names, TypePool typePool, SignatureCollector signatures)
 	{
 		var model = new SemanticModel(files, names, signatures.FindFunctionInfo,
-			signatures.GetGlobalInfo, signatures.DescribeTypeConstant, typePool.GetCaseValue, signatures.FindImports);
+			signatures.GetGlobalInfo, signatures.DescribeTypeConstant, typePool.GetCaseValue, signatures.FindImports,
+			typePool.FindFoldedFunction);
 		
 		return new(() => model);
 	}
@@ -222,6 +223,7 @@ public sealed partial class Builder
 		diagnostics.Add(new(resolver.FindUnusedImports(resolvedFiles)));
 		
 		// Phase 4: Type checking
+		IReadOnlySet<FunctionSymbol> functionValues;
 		{
 			var typeChecker = new TypeChecker(signatureCollector.Evaluator, typePool, signatureCollector.Modules,
 				containment, resolver.UsedLocals);
@@ -231,11 +233,12 @@ public sealed partial class Builder
 				typeChecker.Check(resolvedAst);
 			
 			typeChecker.Complete();
+			functionValues = typeChecker.FunctionValues;
 		}
 		
 		// Phase 5: Lowering
 		var lowerer = new Lowerer(signatureCollector.Evaluator, typePool,
-			g => signatureCollector.GetGlobalInfo(g)!.Value, containment);
+			g => signatureCollector.GetGlobalInfo(g)!.Value, containment, functionValues);
 		
 		{
 			foreach (var resolvedAst in resolvedFiles)

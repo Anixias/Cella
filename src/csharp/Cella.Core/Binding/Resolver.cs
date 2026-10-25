@@ -97,6 +97,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		_symbolTable = symbolTable;
 		_signatures = signatures;
 		_evaluator = signatures.Evaluator;
+		_evaluator.ResolveBody = ResolveConstantBody;
 		_coverage = new PatternCoverage(typePool, _evaluator);
 		
 		var ptrBits = (int)pointerBitSize;
@@ -123,7 +124,7 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 		var result = VisitNode(expression, targetType);
 		_resolutionContexts.Pop();
 		if (targetType is null || _evaluator.FindConstantError(result) is not { } error)
-			return _evaluator.Evaluate(result);
+			return _evaluator.EvaluateRequired(result);
 		
 		Diagnostics.Add(error);
 		return InvalidConstant.Instance;

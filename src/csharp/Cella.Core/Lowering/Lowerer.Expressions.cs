@@ -1,4 +1,6 @@
 ﻿using System.Numerics;
+using Cella.Core.Binding;
+using Cella.Core.Binding.Constants;
 using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Binding.Operations;
@@ -134,7 +136,14 @@ public sealed partial class Lowerer
 				callable.Syntax.SourceLocation);
 		}
 		
-		public Value Visit(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
+		public Value Visit(ResolvedFunctionCallExpressionNode node) =>
+			TypePool.FoldsAsConstant(node.Function.Symbol) &&
+			_evaluator.FoldFunction(node.Function.Symbol) is { } folded and not InvalidConstant
+				? LowerConstant(folded, node.Syntax.SourceLocation) ??
+				  new FoldedValue(folded, node.Syntax.SourceLocation)
+				: LowerCall(node);
+		
+		private Value LowerCall(ResolvedFunctionCallExpressionNode node) => Diverge(new CallValue(node.Function,
 			node.IsConversion
 				? LowerOperands(node.Arguments, GetArgumentPassing(node.Function, 0))
 				: LowerArguments(node.Arguments, node.Function, 0, node.PlaceOperator is not null),

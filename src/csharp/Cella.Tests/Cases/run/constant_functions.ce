@@ -1,0 +1,191 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Point: rec
+{
+	x: i32
+	y: i32
+
+	new: const op(x: i32, y: i32)
+	{
+		self.x = x
+		self.y = y
+	}
+
+	sum: const fun(self) -> i32 => self.x + self.y
+
+	shift: const fun(mut self, by: i32)
+	{
+		self.x += by
+		self.y += by
+	}
+
+	+: const op(a: Point, b: Point) -> Point => Point(a.x + b.x, a.y + b.y)
+}
+
+Shape: enum
+{
+	none
+	square(side: i32)
+	rect(w: i32, h: i32)
+}
+
+square: const fun(x: i32) -> i32 => x * x
+
+sumTo: const fun(n: i32) -> i32
+{
+	var total = 0
+	for i in 0..=n
+		total += i
+
+	ret total
+}
+
+area: const fun(shape: Shape) -> i32 => match shape
+{
+	square(val side) => side * side
+	rect(val w, val h) => w * h
+	none => 0
+}
+
+grow: const fun(mut shape: Shape)
+{
+	match mut shape
+	{
+		square(mut side) => side += 1
+		rect(mut w, _) => w *= 2
+		none => {}
+	}
+}
+
+bump: const fun(mut value: i32, by: i32 = 1)
+{
+	value += by
+}
+
+fib: const fun(n: i32) -> i32
+{
+	if n < 2
+		ret n
+
+	ret fib(n - 1) + fib(n - 2)
+}
+
+firstOver: const fun(values: array[i32, 5], limit: i32) -> i32
+{
+	var found = -1
+	outer: for value, i in values
+	{
+		if value <= limit
+			cont
+
+		found = i32(i)
+		break outer
+	}
+
+	ret found
+}
+
+table: const fun -> array[u32, 8]
+{
+	var result = array[u32, 8]()
+	for i in 0..8
+	{
+		var c = u32(i)
+		var round = 0
+		while round < 8
+		{
+			if c & 1 == 1
+				c = 0xEDB88320 ^ (c >> 1)
+			else
+				c = c >> 1
+
+			round += 1
+		}
+
+		result[i] = c
+	}
+
+	ret result
+}
+
+letters: const fun -> i32
+{
+	var count = 0
+	for c in 'a'..='z'
+	{
+		match c
+		{
+			'a', 'e', 'i', 'o', 'u' => count += 1
+			else => {}
+		}
+	}
+
+	ret count
+}
+
+countDown: const fun(from: i32) -> i32
+{
+	var steps = 0
+	var n = from
+	loop
+	{
+		if n == 0
+			break
+
+		n -= 1
+		steps += 1
+	}
+
+	do
+	{
+		steps += 10
+	}
+	while steps < 0
+
+	ret steps
+}
+
+total: const fun -> i32
+{
+	var p = Point(1, 2)
+	p.shift(10)
+	var n = 5
+	bump(mut n, 3)
+	bump(mut n)
+	var shape = Shape.square(4)
+	grow(mut shape)
+	ret p.sum() + n + area(shape) + area(Shape.rect(2, 3))
+}
+
+twice[T: copy]: const fun(x: T) -> array[T, 2] => [x, x]
+
+origin: const fun -> Point => Point(3, 4)
+
+answer: const fun -> i32 => square(6) + 6
+
+moved: const Point = Point(1, 2) + Point(3, 4)
+summed: const i32 = sumTo(10)
+fibbed: const i32 = fib(15)
+found: const i32 = firstOver([1, 5, 9, 2, 11], 6)
+crc: const array[u32, 8] = table()
+vowels: const i32 = letters()
+counted: const i32 = countDown(4)
+everything: const i32 = total()
+pair: const array[i64, 2] = twice(7i64)
+buffer: val array[u8, usize(square(2))] = [1, 2, 3, 4]
+
+main: fun -> i32
+{
+	const local = sumTo(4)
+	val p = origin()
+	printf("%d %d %d %d %d\n", moved.x, moved.y, summed, fibbed, found)
+	printf("%u %u %d %d %d\n", crc[1], crc[7], vowels, counted, everything)
+	printf("%d %d %d %d %d %d\n", i32(pair[1]), i32(buffer.length), local, answer(), p.x, p.y)
+	printf("%d %d %d\n", square(9), fib(10), total())
+	ret 0
+}

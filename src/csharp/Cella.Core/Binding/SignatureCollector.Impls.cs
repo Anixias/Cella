@@ -457,7 +457,7 @@ public sealed partial class SignatureCollector
 	private Constant? EvaluateChecked(IResolvedExpressionNode value)
 	{
 		if (Evaluator.FindConstantError(value) is not { } error)
-			return Evaluator.Evaluate(value);
+			return Evaluator.EvaluateRequired(value);
 		
 		Diagnostics.Add(error);
 		return InvalidConstant.Instance;

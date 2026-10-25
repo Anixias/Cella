@@ -1,0 +1,19 @@
+mod lib
+
+Size: pub rec
+{
+	width: i32
+	height: i32
+	
+	area: const fun(self) -> i32 => self.width * self.height
+}
+
+square: pub const fun(x: i32) -> i32 => x * x
+
+cube[T: copy]: pub const fun(x: T) -> array[T, 3] => [x, x, x]
+
+grid: pub const fun -> Size => Size(square(3), 4)
+
+limit: pub const fun -> i32 => 100
+
+runtimeSquare: pub fun(x: i32) -> i32 => square(x)

@@ -12,7 +12,7 @@ using Cella.Diagnostics;
 
 namespace Cella.Core.Binding.Constants;
 
-public sealed class ConstantEvaluator
+public sealed partial class ConstantEvaluator
 (
 	TypePool typePool,
 	uint pointerBitSize,
@@ -29,7 +29,10 @@ public sealed class ConstantEvaluator
 	
 	public Constant? Evaluate(IResolvedExpressionNode node)
 	{
-		if (_bindings.Count > 0 || foldsBindings || substitution is not null)
+		if (IsInterpreting)
+			return Fold(node) ?? throw Fault(node);
+		
+		if (_bindings.Count > 0 || foldsBindings || foldsCalls || substitution is not null)
 			return Fold(node);
 		
 		if (_cache.TryGetValue(node, out var cached))
@@ -50,14 +53,17 @@ public sealed class ConstantEvaluator
 		IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> map)
 	{
 		var outer = substitution;
+		var outerCalls = foldsCalls;
 		substitution = map;
+		foldsCalls = true;
 		try
 		{
-			return Fold(node);
+			return Settle(Fold(node));
 		}
 		finally
 		{
 			substitution = outer;
+			foldsCalls = outerCalls;
 		}
 	}
 	
@@ -128,13 +134,16 @@ public sealed class ConstantEvaluator
 	public Constant? EvaluateStandalone(IResolvedExpressionNode node)
 	{
 		foldsBindings = true;
+		var outerCalls = foldsCalls;
+		foldsCalls = true;
 		try
 		{
-			return Fold(node);
+			return Settle(Fold(node));
 		}
 		finally
 		{
 			foldsBindings = false;
+			foldsCalls = outerCalls;
 			foreach (var binding in _patternBindings)
 				_bindings.Remove(binding);
 			
@@ -179,9 +188,23 @@ public sealed class ConstantEvaluator
 	
 	public Diagnostic? FindConstantError(IResolvedExpressionNode node)
 	{
+		var outer = foldsCalls;
+		foldsCalls = true;
+		try
+		{
+			return FindError(node);
+		}
+		finally
+		{
+			foldsCalls = outer;
+		}
+	}
+	
+	private Diagnostic? FindError(IResolvedExpressionNode node)
+	{
 		foreach (var operand in GetOperands(node))
 		{
-			if (FindConstantError(operand) is { } error)
+			if (FindError(operand) is { } error)
 				return error;
 		}
 		
@@ -267,12 +290,40 @@ public sealed class ConstantEvaluator
 	private bool FitsInteger(double value, IntegerStorageType type) =>
 		double.IsFinite(value) && Fits(new BigInteger(Math.Truncate(value)), type);
 	
-	private Constant? Fold(IResolvedExpressionNode node) => node switch
+	private Constant? Fold(IResolvedExpressionNode node) => IsInterpreting ? FoldInFrame(node) : FoldNode(node);
+	
+	private Constant? FoldInFrame(IResolvedExpressionNode node) => node switch
+	{
+		ResolvedVarExpressionNode n when FindCell(n.Symbol) is { } cell => ReadVariable(cell, n.Type),
+		ResolvedAssignmentExpressionNode n => Assign(n),
+		ResolvedAccessExpressionNode { Member: FieldSymbol } n => Read(EvalPlace(n)),
+		ResolvedIndexerExpressionNode n when n.Target.Type is not StringType => Read(EvalPlace(n)),
+		ResolvedBorrowExpressionNode n => new ReferenceConstant(n.Type, EvalPlace(n.Place)),
+		ResolvedMutArgumentExpressionNode n => new ReferenceConstant(n.Type, EvalPlace(n.Place)),
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpStar } n => Read(EvalPlace(n)),
+		ResolvedUnaryOpExpressionNode { Operation.Op: TokenType.OpAt } n =>
+			new ReferenceConstant(n.Type, EvalPlace(n.Operand)),
+		ResolvedReturnExpressionNode { HasUnknownTarget: false } n => throw new JumpSignal(
+			new Flow(FlowKind.Return, null, n.Value is { } value ? Value(value) : null)),
+		ResolvedBreakExpressionNode n => throw new JumpSignal(new Flow(FlowKind.Break, n.Label)),
+		ResolvedContinueExpressionNode n => throw new JumpSignal(new Flow(FlowKind.Continue, n.Label)),
+		ResolvedTrapExpressionNode => throw Fault(node),
+		ResolvedBinaryOpExpressionNode n when IsShortCircuit(n) => FoldShortCircuit(n),
+		ResolvedMatchExpressionNode n => FoldMatchInFrame(n),
+		ResolvedIsExpressionNode { IsMut: true } n => FoldMutIs(n),
+		ResolvedQuestionExpressionNode n => FoldQuestion(n),
+		ResolvedChainedExpressionNode n => FoldDeclaredChain(n),
+		_ => FoldNode(node)
+	};
+	
+	private Constant? FoldNode(IResolvedExpressionNode node) => node switch
 	{
 		ResolvedInvalidExpressionNode => InvalidConstant.Instance,
 		ResolvedLiteralExpressionNode n => FoldLiteral(n),
 		ResolvedUnaryOpExpressionNode n => FoldUnary(n),
 		ResolvedBinaryOpExpressionNode n => FoldBinary(n),
+		ResolvedChainedExpressionNode n when foldsCalls && n.Links.Any(static link => link.Function is not null) =>
+			FoldDeclaredChain(n),
 		ResolvedChainedExpressionNode n => FoldChain(n),
 		ResolvedConversionExpressionNode n => FoldAll([n.Source], values => Convert(values[0], n.Conversion)),
 		ResolvedVarExpressionNode { Symbol: LocalVariableSymbol symbol } when
@@ -289,15 +340,22 @@ public sealed class ConstantEvaluator
 		ResolvedAccessExpressionNode n => FoldAccess(n),
 		ResolvedIndexerExpressionNode n => FoldAll([n.Target, n.Index], values => Index(values[0], values[1])),
 		ResolvedRecordExpressionNode { Type: RecordSymbol { IsUnion: true }, Fields: [var (_, value)] } n =>
-			FoldAll([value], values => BuildUnion(n.Type, values[0])),
+			FoldAll([value], values => BuildUnion(SubstituteType(n.Type), values[0])),
 		ResolvedRecordExpressionNode n => FoldAll(n.Fields.Select(static f => f.Value),
-			values => values.Length == 0 ? new ZeroConstant(n.Type) : new RecordConstant(n.Type, values)),
-		ResolvedArrayExpressionNode { Type: ArrayType type } n =>
-			FoldAll(n.Values, values => new ArrayConstant(type, values)),
+			values => values.Length == 0
+				? new ZeroConstant(SubstituteType(n.Type))
+				: new RecordConstant(SubstituteType(n.Type), values)),
+		ResolvedArrayExpressionNode { Type: ArrayType } n =>
+			FoldAll(n.Values, values => new ArrayConstant((ArrayType)SubstituteType(n.Type), values)),
 		ResolvedConstructorCallExpressionNode { Arguments.IsEmpty: true } n when
-			typePool.IsDefaultConstructor(n.Function) => Zero(n.Type),
-		ResolvedFunctionReferenceExpressionNode n => new FunctionConstant(n.Function, n.Type),
-		ResolvedEnumCaseExpressionNode n => FoldAll(n.Payload, values => new EnumConstant(n.Type, n.Case, values)),
+			typePool.IsDefaultConstructor(n.Function) => Zero(SubstituteType(n.Type)),
+		ResolvedConstructorCallExpressionNode n => FoldConstruction(n),
+		ResolvedFunctionCallExpressionNode n => FoldCall(n),
+		ResolvedOwnExpressionNode n => Evaluate(n.Value),
+		ResolvedNewExpressionNode n => FoldNew(n),
+		ResolvedFunctionReferenceExpressionNode n => ReferenceFunction(n),
+		ResolvedEnumCaseExpressionNode n =>
+			FoldAll(n.Payload, values => new EnumConstant(SubstituteType(n.Type), n.Case, values)),
 		ResolvedIsExpressionNode n when foldsBindings || !n.Pattern.HasBindings => FoldIs(n),
 		ResolvedMatchExpressionNode n => FoldMatch(n),
 		_ => null
@@ -580,9 +638,10 @@ public sealed class ConstantEvaluator
 				return new IntegerConstant(node.Type, array.Length);
 			
 			case PropertySymbol { Getter: NativeAccessor { Intrinsic: NativeMemberIntrinsic.StrByteLength } }:
-				return FoldAll([node.Target], values => values[0] is StringConstant { Value: StrValue text }
-					? new IntegerConstant(node.Type, text.Length)
-					: null);
+				return FoldAll([node.Target], values =>
+					Dereference(values[0]) is StringConstant { Value: StrValue text }
+						? new IntegerConstant(node.Type, text.Length)
+						: null);
 			
 			case FieldSymbol field:
 				return FoldAll([node.Target], values => values[0] switch

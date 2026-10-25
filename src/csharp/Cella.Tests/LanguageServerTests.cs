@@ -2360,6 +2360,23 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task HoversConstantFunctions()
+	{
+		await File.WriteAllTextAsync(SourcePath,
+			"mod test\n\n" +
+			"square: const fun(x: i32) -> i32 => x * x\n" +
+			"answer: const fun -> i32 => square(6) + 6\n\n" +
+			"main: fun -> i32 => answer() + square(2)\n", Token);
+		
+		await InitializeAsync();
+		Assert.Equal(Code("square: const fun(x: i32) -> i32"), await HoverAsync(2, 1));
+		Assert.Equal(Code("answer: const fun -> i32\n= 42"), await HoverAsync(3, 1));
+		Assert.Equal(Code("answer: const fun -> i32\n= 42"), await HoverAsync(5, 21));
+		Assert.Equal(Code("square: const fun(x: i32) -> i32"), await HoverAsync(5, 32));
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task KeepsImplicitSelfOutOfDeclarations()
 	{
 		await File.WriteAllTextAsync(SourcePath, """

@@ -1,0 +1,59 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Bits: trait req copy + noref
+{
+	|: const op(a: Self, b: Self) -> Self
+	&: const op(a: Self, b: Self) -> Self
+	~: const op(self) -> Self
+}
+
+u32: impl Bits
+
+BitSet[T: Bits]: trait req copy + noref
+{
+	new: const op(bits: T)
+	new: const op(self) -> T
+
+	|: const op(a: Self, b: Self) -> Self => Self(T(a) | T(b))
+	&: const op(a: Self, b: Self) -> Self => Self(T(a) & T(b))
+	~: const op(self) -> Self => Self(~T(self))
+}
+
+Access: ext enum(u32) impl BitSet[u32]
+{
+	none = 0
+	read = 1
+	write = 2
+	exec = 4
+}
+
+Mask: rec impl Bits
+{
+	value: u8
+
+	|: const op(a: Mask, b: Mask) -> Mask => Mask(a.value | b.value)
+	&: const op(a: Mask, b: Mask) -> Mask => Mask(a.value & b.value)
+	~: const op(self) -> Mask => Mask(~self.value)
+}
+
+combine[T: Bits]: const fun(a: T, b: T) -> T => a | b
+
+readWrite: const Access = Access.read | Access.write
+all: const Access = readWrite | Access.exec
+notRead: const Access = ~Access.read & all
+combined: const u32 = combine(0x10u32, 0x01u32)
+masked: const Mask = combine(Mask(3), Mask(12)) & ~Mask(1)
+
+main: fun -> i32
+{
+	var flags = Access.read
+	flags = flags | Access.exec
+	printf("%u %u %u %u %u %u\n", u32(readWrite), u32(all), u32(notRead), combined, u32(masked.value),
+		u32(flags))
+	ret 0
+}

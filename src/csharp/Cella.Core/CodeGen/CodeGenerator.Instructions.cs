@@ -237,6 +237,7 @@ public sealed partial class CodeGenerator
 		AlignOfValue v => EmitAlignOf(v),
 		ValueParameterValue v => EmitValueParameter(v),
 		TypeConstantValue v => EmitTypeConstant(v),
+		FoldedValue v => EmitFolded(v, builder),
 		NewValue v => EmitNew(v, builder),
 		FStrValue v => EmitFStr(v, builder),
 		FStrPartValue v => EmitFStrPart(v, builder),

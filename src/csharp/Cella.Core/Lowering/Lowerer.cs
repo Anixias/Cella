@@ -13,12 +13,19 @@ public sealed partial class Lowerer
 	ConstantEvaluator evaluator,
 	TypePool typePool,
 	Func<GlobalSymbol, GlobalInfo> getGlobalInfo,
-	ErrorContainment containment
+	ErrorContainment containment,
+	IReadOnlySet<FunctionSymbol> functionValues
 ) : IResolvedDeclarationNodeVisitor
 {
 	public IReadOnlyCollection<LoweredModule> Modules => _modules.Values;
 	
 	private readonly Dictionary<ModuleSymbol, LoweredModule> _modules = [];
+	
+	private readonly Lazy<HashSet<FunctionSymbol>> _witnesses = new(() => typePool.Conformances
+		.SelectMany(static conformance => conformance.Witnesses.Values.OfType<FunctionWitness>())
+		.Select(static witness => witness.Function)
+		.ToHashSet());
+	
 	private LoweredFile? currentFile;
 	
 	public void Lower(IResolvedDeclarationNode root) => VisitNode(root);
@@ -47,8 +54,14 @@ public sealed partial class Lowerer
 	public void Visit(ResolvedFunctionNode node)
 	{
 		if (!containment.IsBroken(node))
-			currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo));
+			currentFile?.Functions.Add(FunctionLowerer.Lower(node, evaluator, typePool, getGlobalInfo,
+				node.IsInline || IsFoldedOnly(node.FunctionInfo.Symbol)));
 	}
+	
+	private bool IsFoldedOnly(FunctionSymbol function) =>
+		TypePool.FoldsAsConstant(function) && function.Visibility != Visibility.Public &&
+		!functionValues.Contains(function) && !evaluator.FunctionValues.Contains(function) &&
+		!_witnesses.Value.Contains(function);
 	
 	public void Visit(ResolvedRecordNode node)
 	{
@@ -147,9 +160,9 @@ public sealed partial class Lowerer
 			: _loopsByLabel[label];
 		
 		public static LoweredFunction Lower(ResolvedFunctionNode node, ConstantEvaluator evaluator, TypePool typePool,
-			Func<GlobalSymbol, GlobalInfo> getGlobalInfo)
+			Func<GlobalSymbol, GlobalInfo> getGlobalInfo, bool isCheckOnly)
 		{
-			var function = new LoweredFunction(node.FunctionInfo) { IsCheckOnly = node.IsInline };
+			var function = new LoweredFunction(node.FunctionInfo) { IsCheckOnly = isCheckOnly };
 			var lower = new FunctionLowerer(function, evaluator, typePool, getGlobalInfo);
 			
 			if (node.Body is IResolvedStatementNode statement)
