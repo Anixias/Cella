@@ -14,6 +14,9 @@ public static class Refactorings
 		if (file.Syntax is not FileNode syntax)
 			yield break;
 		
+		foreach (var fix in MatchConversions.Find(FindFunctions(syntax.Declarations), requested))
+			yield return fix;
+		
 		foreach (var function in FindFunctions(syntax.Declarations))
 		{
 			if (function.Body is null)
@@ -124,7 +127,7 @@ public static class Refactorings
 			$" => {text}");
 	}
 	
-	private static string Reindent(string text, string oldIndent, string newIndent)
+	internal static string Reindent(string text, string oldIndent, string newIndent)
 	{
 		var lines = text.Split('\n');
 		for (var i = 1; i < lines.Length; i++)

@@ -315,6 +315,53 @@ public sealed partial class LanguageServerTests
 	}
 	
 	[Fact]
+	public async Task ConvertsBetweenIfChainsAndMatches()
+	{
+		const string guards =
+			"mod test\n\nencode: fun(code: u32, mut out: u32) -> usize\n{\n\tif code <= 0x7F\n\t{\n\t\tout = code\n\t\tret 1\n\t}\n\t\n\tif code <= 0x7FF\n\t\tret 2\n\t\n\t// three bytes\n\tif 0x800 <= code && code < 0x10000\n\t\tret 3\n\t\n\tpanic \"invalid\"\n}\n";
+		
+		const string guardMatch =
+			"mod test\n\nencode: fun(code: u32, mut out: u32) -> usize\n{\n\tmatch code\n\t{\n\t\t<= 0x7F =>\n\t\t{\n\t\t\tout = code\n\t\t\tret 1\n\t\t}\n\t\t<= 0x7FF => ret 2\n\t\t// three bytes\n\t\t0x800..0x10000 => ret 3\n\t\telse => panic \"invalid\"\n\t}\n}\n";
+		
+		Assert.Equal(guardMatch, await FixAsync(guards.Replace("\tif code <= 0x7FF", "\ti‸f code <= 0x7FF"),
+			"Convert to 'match'"));
+		
+		Assert.Equal(guards, await FixAsync(guardMatch.Replace("match code", "mat‸ch code"), "Convert to 'if'"));
+		
+		const string encode =
+			"mod test\n\nencode: fun(codePoint: char, mut destination: array[u8, 4]) -> usize\n{\n\tval code = u32(codePoint)\n\tif code <= 0x7F\n\t{\n\t\tdestination[0] = u8(codePoint)\n\t\tret 1\n\t}\n\t\n\tif code <= 0x7FF\n\t{\n\t\tdestination[0] = u8(0xC0 | (code >> 6))\n\t\tdestination[1] = u8(0x80 | (code & 0x3F))\n\t\tret 2\n\t}\n\t\n\tif code <= 0xFFFF\n\t{\n\t\tdestination[0] = u8(0xE0 | (code >> 12))\n\t\tdestination[1] = u8(0x80 | ((code >> 6) & 0x3F))\n\t\tdestination[2] = u8(0x80 | (code & 0x3F))\n\t\tret 3\n\t}\n\t\n\tpanic \"invalid Unicode code point\"\n}\n";
+		
+		const string encodeMatch =
+			"mod test\n\nencode: fun(codePoint: char, mut destination: array[u8, 4]) -> usize\n{\n\tval code = u32(codePoint)\n\tmatch code\n\t{\n\t\t<= 0x7F =>\n\t\t{\n\t\t\tdestination[0] = u8(codePoint)\n\t\t\tret 1\n\t\t}\n\t\t<= 0x7FF =>\n\t\t{\n\t\t\tdestination[0] = u8(0xC0 | (code >> 6))\n\t\t\tdestination[1] = u8(0x80 | (code & 0x3F))\n\t\t\tret 2\n\t\t}\n\t\t<= 0xFFFF =>\n\t\t{\n\t\t\tdestination[0] = u8(0xE0 | (code >> 12))\n\t\t\tdestination[1] = u8(0x80 | ((code >> 6) & 0x3F))\n\t\t\tdestination[2] = u8(0x80 | (code & 0x3F))\n\t\t\tret 3\n\t\t}\n\t\telse => panic \"invalid Unicode code point\"\n\t}\n}\n";
+		
+		Assert.Equal(encodeMatch, await FixAsync(encode.Replace("if code <= 0xFFFF", "‸if code <= 0xFFFF"),
+			"Convert to 'match'"));
+		
+		Assert.Equal(encode, await FixAsync(encodeMatch.Replace("match code", "match‸ code"), "Convert to 'if'"));
+		
+		const string chain =
+			"mod test\n\npick: fun(x: i32) -> i32\n{\n\tvar y = 0\n\tvar z = 0\n\tif x == 1\n\t\ty = 2\n\telse if x == 2 || x == 3\n\t{\n\t\ty = 3\n\t\tz = 1\n\t}\n\telse if x > 10 && z == 0\n\t\ty = 4\n\telse\n\t\ty = 0\n\tret y + z\n}\n";
+		
+		const string chainMatch =
+			"mod test\n\npick: fun(x: i32) -> i32\n{\n\tvar y = 0\n\tvar z = 0\n\tmatch x\n\t{\n\t\t1 => y = 2\n\t\t2, 3 =>\n\t\t{\n\t\t\ty = 3\n\t\t\tz = 1\n\t\t}\n\t\t> 10 if z == 0 => y = 4\n\t\telse => y = 0\n\t}\n\tret y + z\n}\n";
+		
+		Assert.Equal(chainMatch, await FixAsync(chain.Replace("else if x == 2", "else i‸f x == 2"),
+			"Convert to 'match'"));
+		
+		Assert.Equal(chain, await FixAsync(chainMatch.Replace("match x", "‸match x"), "Convert to 'if'"));
+		
+		Assert.DoesNotContain("Convert to 'match'",
+			await ActionTitlesAsync(
+				"mod test\n\npick: fun(a: i32, b: i32) -> i32\n{\n\t‸if a == 1\n\t\tret 1\n\t\n\tif b == 2\n\t\tret 2\n\t\n\tret 0\n}\n"));
+		
+		Assert.DoesNotContain("Convert to 'match'",
+			await ActionTitlesAsync(
+				"mod test\n\npick: fun(a: i32) -> i32\n{\n\tvar y = 0\n\t‸if a == 1\n\t\ty = 1\n\t\n\tif a == 2\n\t\tret 2\n\t\n\tret y\n}\n"));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task ImplementsMissingMembers()
 	{
 		const string start = "mod test\n\nShape: trait\n{\n\tarea: fun(imm self) -> f64\n" +
