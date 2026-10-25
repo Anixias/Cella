@@ -19,6 +19,7 @@ public sealed partial class TypePool
 		parameter.InheritedConstraints =
 		[
 			..GetSelfConstraints(traits)
+				.Concat(GetSlotKeywords(parameter))
 				.Except(parameter.DeclaredConstraints)
 				.Distinct()
 		];

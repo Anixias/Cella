@@ -1,0 +1,73 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Eq: trait
+{
+	==: op(a: Self, b: Self) -> bool
+}
+
+i32: impl Eq
+
+Copies[T: copy]: trait
+{
+	first: fun(self) -> T
+}
+
+Box: rec impl Copies[i32]
+{
+	value: i32
+	
+	first: fun(self) -> i32 => self.value
+}
+
+Compares[T: Eq]: trait
+{
+	pick: fun(self) -> T
+}
+
+Box: impl Compares[i32]
+{
+	pick: fun(self) -> i32 => self.value
+}
+
+doubled[C: Copies[T]]: fun(source: C) -> array[T, 2]
+{
+	val value = source.first()
+	ret [value, value]
+}
+
+matches[C: Compares[T]]: fun(source: C, other: T) -> bool => source.pick() == other
+
+Holder[C: Copies[T]]: rec
+{
+	source: C
+	
+	both: fun(self) -> array[T, 2]
+	{
+		val value = self.source.first()
+		ret [value, value]
+	}
+}
+
+Pair[L, R]: rec
+{
+	left: L
+	right: R
+}
+
+Pair[L: Compares[T], R]: impl
+{
+	same: fun(self, other: T) -> bool => self.left.pick() == other
+}
+
+main: fun
+{
+	val pair = doubled(Box(3))
+	val holder = Holder(Box(4))
+	printf("%d %d %d\n", pair[0] + pair[1], i32(matches(Box(5), 5)), holder.both()[1])
+	printf("%d\n", i32(Pair(Box(6), 0).same(6)))
+}

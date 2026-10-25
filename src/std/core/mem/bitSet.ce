@@ -1,0 +1,32 @@
+﻿mod std.mem
+
+use std.num.Integer
+
+BitSet[T: const Integer]: pub trait req ext + enum(T)
+{
+	|: const op(a: Self, b: Self) -> Self => Self(T(a) | T(b))
+	&: const op(a: Self, b: Self) -> Self => Self(T(a) & T(b))
+	^: const op(a: Self, b: Self) -> Self => Self(T(a) ^ T(b))
+	~: const op(self) -> Self => Self(~T(self))
+	
+	|=: op(mut self, other: Self)
+	{
+		self = self | other
+	}
+	
+	&=: op(mut self, other: Self)
+	{
+		self = self & other
+	}
+	
+	^=: op(mut self, other: Self)
+	{
+		self = self ^ other
+	}
+	
+	has: const fun(self, flags: Self) -> bool
+	{
+		val mask = T(flags)
+		ret (T(self) & mask) == mask
+	}
+}

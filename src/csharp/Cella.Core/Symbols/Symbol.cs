@@ -946,6 +946,7 @@ public sealed class ImplSymbol
 	public ImmutableArray<TypeSymbol> NestedArguments { get; set; } = [];
 	public ImmutableArray<TypeParameterSymbol> FreeParameters { get; set; } = [];
 	public ImmutableArray<TypeParameterSymbol> FreeCandidates { get; init; } = [];
+	public ImmutableArray<TypeParameterSymbol> TargetFreeParameters { get; set; } = [];
 	
 	public bool Declares(TypeParameterSymbol parameter) =>
 		TargetArguments.Contains(parameter) || NestedArguments.Contains(parameter);

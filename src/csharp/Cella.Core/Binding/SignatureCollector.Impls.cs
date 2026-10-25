@@ -448,8 +448,12 @@ public sealed partial class SignatureCollector
 			var memberSymbol = _symbolTable.DeclarationSymbols[member];
 			_declarations[memberSymbol] = new(member, WithTypeParameters(memberContext, memberSymbol));
 			if (member is FunctionNode function)
+			{
 				RegisterBounds(function.TypeParameters, ((FunctionSymbol)memberSymbol).DeclaredTypeParameters,
 					_declarations[memberSymbol].Context);
+				
+				ImplyMemberConstraints((FunctionSymbol)memberSymbol);
+			}
 			
 			if (member is not PropertyNode property)
 				continue;

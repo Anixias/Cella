@@ -22,7 +22,7 @@ pvt ext
 	fmaF64: ext("fma") fun(x: f64, y: f64, z: f64) -> f64
 }
 
-i8: impl SignedInteger
+i8: impl const SignedInteger
 {
 	minValue: const i8 = -0x80
 	maxValue: const i8 =  0x7F
@@ -30,7 +30,7 @@ i8: impl SignedInteger
 	one: const i8 = 1
 }
 
-u8: impl UnsignedInteger
+u8: impl const UnsignedInteger
 {
 	minValue: const u8 = 0
 	maxValue: const u8 = 0xFF
@@ -38,7 +38,7 @@ u8: impl UnsignedInteger
 	one: const u8 = 1
 }
 
-i16: impl SignedInteger
+i16: impl const SignedInteger
 {
 	minValue: const i16 = -0x8000
 	maxValue: const i16 =  0x7FFF
@@ -46,7 +46,7 @@ i16: impl SignedInteger
 	one: const i16 = 1
 }
 
-u16: impl UnsignedInteger
+u16: impl const UnsignedInteger
 {
 	minValue: const u16 = 0
 	maxValue: const u16 = 0xFFFF
@@ -54,7 +54,7 @@ u16: impl UnsignedInteger
 	one: const u16 = 1
 }
 
-i32: impl SignedInteger
+i32: impl const SignedInteger
 {
 	minValue: const i32 = -0x80000000
 	maxValue: const i32 =  0x7FFFFFFF
@@ -62,7 +62,7 @@ i32: impl SignedInteger
 	one: const i32 = 1
 }
 
-u32: impl UnsignedInteger
+u32: impl const UnsignedInteger
 {
 	minValue: const u32 = 0
 	maxValue: const u32 = 0xFFFFFFFF
@@ -70,7 +70,7 @@ u32: impl UnsignedInteger
 	one: const u32 = 1
 }
 
-i64: impl SignedInteger
+i64: impl const SignedInteger
 {
 	minValue: const i64 = -0x80000000_00000000
 	maxValue: const i64 =  0x7FFFFFFF_FFFFFFFF
@@ -78,7 +78,7 @@ i64: impl SignedInteger
 	one: const i64 = 1
 }
 
-u64: impl UnsignedInteger
+u64: impl const UnsignedInteger
 {
 	minValue: const u64 = 0
 	maxValue: const u64 = 0xFFFFFFFF_FFFFFFFF
@@ -86,7 +86,7 @@ u64: impl UnsignedInteger
 	one: const u64 = 1
 }
 
-i128: impl SignedInteger
+i128: impl const SignedInteger
 {
 	minValue: const i128 = -0x80000000_00000000_00000000_00000000
 	maxValue: const i128 =  0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
@@ -94,7 +94,7 @@ i128: impl SignedInteger
 	one: const i128 = 1
 }
 
-u128: impl UnsignedInteger
+u128: impl const UnsignedInteger
 {
 	minValue: const u128 = 0
 	maxValue: const u128 = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
@@ -102,7 +102,7 @@ u128: impl UnsignedInteger
 	one: const u128 = 1
 }
 
-isize: impl SignedInteger
+isize: impl const SignedInteger
 {
 	minValue: const isize = -isize.maxValue - 1
 	maxValue: const isize = isize(usize.maxValue >> 1)
@@ -110,7 +110,7 @@ isize: impl SignedInteger
 	one: const isize = 1
 }
 
-usize: impl UnsignedInteger
+usize: impl const UnsignedInteger
 {
 	minValue: const usize = 0
 	maxValue: const usize = ~0

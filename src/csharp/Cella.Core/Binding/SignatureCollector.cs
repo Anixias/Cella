@@ -163,6 +163,7 @@ public sealed partial class SignatureCollector
 			ResolveIncompleteHeaders(file);
 		
 		ReportRequirementCycles(files);
+		ImplyDerivedConstraints();
 		InheritSelfConstraints();
 		ReportInheritedConflicts();
 		ReportRedundantKeywords();
