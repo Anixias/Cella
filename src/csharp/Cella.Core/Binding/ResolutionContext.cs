@@ -1483,8 +1483,9 @@ public readonly struct ResolutionContext
 			
 			case null when node.Qualifiers.IsEmpty:
 				Diagnostics.Add(ReportHidden(name.Text, name.SourceLocation) ??
-				                DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
-					                GetVisibleTypeNames().Concat(NativeSymbols.GenericNames)));
+				                WithImportFixes(DiagnosticReporter.ReportUndefinedType(name.SourceLocation, name.Text,
+						                GetVisibleTypeNames().Concat(NativeSymbols.GenericNames)), name.Text,
+					                static symbol => symbol is NamedTypeSymbol or TraitSymbol));
 				
 				break;
 			

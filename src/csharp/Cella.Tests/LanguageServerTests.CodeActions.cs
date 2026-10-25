@@ -410,7 +410,8 @@ public sealed partial class LanguageServerTests
 	public async Task ImportsNamesThatAreNotFound()
 	{
 		await File.WriteAllTextAsync(Path.Combine(_directory, "util.ce"),
-			"mod test.util\n\nhelper: pub fun -> i32 => 1\n\nShape: pub rec\n{\n\tside: i32\n}\n", Token);
+			"mod test.util\n\nhelper: pub fun -> i32 => 1\n\nShape: pub rec\n{\n\tside: i32\n}\n\n" +
+			"Span[T]: pub rec\n{\n\tlength: usize\n}\n", Token);
 		
 		Assert.Equal("mod test\n\nuse test.util.helper\n\nmain: fun -> i32 => helper()\n",
 			await FixAsync("mod test\n\nmain: fun -> i32 => he‸lper()\n", "Import 'test.util.helper'"));
@@ -420,7 +421,11 @@ public sealed partial class LanguageServerTests
 			await FixAsync(
 				"mod test\n\nuse test.util.helper\n\nmain: fun -> i32 => helper()\n\nmake: fun -> Sh‸ape => Shape(1)\n",
 				"Import 'test.util.Shape'"));
-		
+
+		Assert.Equal("mod test\n\nuse test.util.Span\n\nencode: fun(destination: Span[u16]) -> usize => 0\n",
+			await FixAsync("mod test\n\nencode: fun(destination: Sp‸an[u16]) -> usize => 0\n",
+				"Import 'test.util.Span'"));
+
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
