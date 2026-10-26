@@ -369,7 +369,7 @@ public sealed partial class Lowerer
 				? LowerAssignment(assignment, false)
 				: VisitNode(node.Expression);
 			
-			if (currentBlock is not null && !IsPlaceValue(expression))
+			if (currentBlock is not null && !IsPlaceValue(expression) && expression is not UndefValue)
 			{
 				if (expression is CallValue or IndirectCallValue && _typePool.NeedsDrop(expression.Type))
 					StoreTemporary(expression, "discard");

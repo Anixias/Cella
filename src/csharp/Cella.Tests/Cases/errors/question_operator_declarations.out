@@ -13,10 +13,10 @@ Error at question_operator_declarations.ce:31:2
 31 │ ?: op -> i32 => 1
      ^ Cannot declare '?' operators without 'self'
 
-Error at question_operator_declarations.ce:38:2
+Error at question_operator_declarations.ce:38:17
 37 │ 
 38 │ ?: op(self) => 1
-     ^ '?' operators need a return type
+                    ^ Cannot use values as statements
 
 Error at question_operator_declarations.ce:45:4
 44 │ 

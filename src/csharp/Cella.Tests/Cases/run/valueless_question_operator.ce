@@ -1,0 +1,103 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Result[T, E]: enum
+{
+	ok(value: T)
+	err(error: E)
+
+	?: op(self) -> T => match self
+	{
+		ok(val value) => value
+		err(val error) => ret err(error)
+	}
+}
+
+Result[E]: enum
+{
+	ok
+	err(error: E)
+
+	?: op(self)
+	{
+		if self is err(val error)
+			ret err(error)
+	}
+}
+
+Status[E]: enum
+{
+	done
+	failed(error: E)
+
+	?: op(self) => match self
+	{
+		done => { }
+		failed(val error) => ret err(error)
+	}
+}
+
+flush: fun(fail: bool) -> Result[i32]
+{
+	if fail
+		ret err(5)
+
+	ret ok
+}
+
+parse: fun(fail: bool) -> Result[i32, i32]
+{
+	if fail
+		ret err(7)
+
+	ret ok(3)
+}
+
+check: fun(fail: bool) -> Status[i32]
+{
+	if fail
+		ret failed(9)
+
+	ret done
+}
+
+save: fun(fail: bool) -> Result[i32, i32]
+{
+	flush(fail)?
+	ret ok(1)
+}
+
+load: fun(first: bool, second: bool) -> Result[i32]
+{
+	val value = parse(first)?
+	printf("parsed %d\n", value)
+	flush(second)?
+	check(false)?
+	ret ok
+}
+
+describe: fun(result: Result[i32]) => match result
+{
+	ok => printf("ok\n")
+	err(val error) => printf("err %d\n", error)
+}
+
+describe: fun(result: Result[i32, i32]) => match result
+{
+	ok(val value) => printf("ok %d\n", value)
+	err(val error) => printf("err %d\n", error)
+}
+
+main: fun -> i32
+{
+	describe(save(false))
+	describe(save(true))
+	describe(load(false, false))
+	describe(load(true, false))
+	describe(load(false, true))
+	ret 0
+}

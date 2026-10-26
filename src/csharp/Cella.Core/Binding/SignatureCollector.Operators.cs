@@ -426,8 +426,7 @@ public sealed partial class SignatureCollector
 			(receiver.SourceLocation, $"Cannot take '{DescribeReceiver(receiver)}' in '?' operators"),
 		{ Parameters: [var parameter, ..] } =>
 			(parameter.SourceLocation, "Cannot take parameters in '?' operators with 'self'"),
-		{ ReturnType: null } => (node.Identifier.SourceLocation, "'?' operators need a return type"),
-		{ Body: not ExpressionStatementNode } =>
+		{ ReturnType: not null, Body: not ExpressionStatementNode } =>
 			(node.Identifier.SourceLocation, "'?' operators must have an expression body"),
 		_ => null
 	};

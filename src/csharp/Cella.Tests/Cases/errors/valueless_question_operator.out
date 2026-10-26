@@ -1,0 +1,17 @@
+Error at valueless_question_operator.ce:20:2
+19 │ 
+20 │ ?: op(self) -> i32
+     ^ '?' operators must have an expression body
+
+Error at valueless_question_operator.ce:30:15
+29 │ {
+30 │     val result = flush()?
+                      ╘══════╛ 'flush()?' doesn't return a value
+
+Error at valueless_question_operator.ce:36:9
+35 │ {
+36 │     flush()?
+                ^ Cannot use '?' on 'Outcome[i32]' in 'inPlainFunction'
+                | 'inPlainFunction' doesn't return a value
+
+[compilation failed]

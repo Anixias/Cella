@@ -368,8 +368,11 @@ public sealed partial class ConstantEvaluator
 	
 	private Constant FoldQuestion(ResolvedQuestionExpressionNode node)
 	{
+		if (node.Body is not { } body)
+			throw Fault(node);
+		
 		Declare(node.Self, Value(node.Operand));
-		return Value(node.Body);
+		return Value(body);
 	}
 	
 	private Constant Assign(ResolvedAssignmentExpressionNode node)

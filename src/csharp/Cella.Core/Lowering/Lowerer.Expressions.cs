@@ -421,8 +421,15 @@ public sealed partial class Lowerer
 			Declare(GetOrMakeBlock(),
 				new LocalVarInstruction(node.Self, operand, node.Syntax.SourceLocation, CurrentScopeId));
 			
-			_function.InlinedBodies.Add(node.Body.Syntax.SourceLocation);
-			return VisitNode(node.Body);
+			if (node.Body is not { } body)
+			{
+				_function.InlinedBodies.Add(node.Statement!.Syntax.SourceLocation);
+				VisitNode(node.Statement);
+				return new UndefValue(node.Type);
+			}
+			
+			_function.InlinedBodies.Add(body.Syntax.SourceLocation);
+			return VisitNode(body);
 		}
 		
 		public Value Visit(ResolvedMutArgumentExpressionNode node) => new UnaryOpValue(node.Type,

@@ -1,0 +1,39 @@
+mod test
+
+Outcome[E]: enum
+{
+	ok
+	err(error: E)
+
+	?: op(self)
+	{
+		if self is err(val error)
+			ret err(error)
+	}
+}
+
+Valued[E]: enum
+{
+	ok
+	err(error: E)
+
+	?: op(self) -> i32
+	{
+		ret 0
+	}
+}
+
+flush: fun -> Outcome[i32] => ok
+
+asValue: fun -> Outcome[i32]
+{
+	val result = flush()?
+	ret ok
+}
+
+inPlainFunction: fun
+{
+	flush()?
+}
+
+main: fun -> i32 => 0

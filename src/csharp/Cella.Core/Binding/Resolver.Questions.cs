@@ -12,6 +12,7 @@ public sealed partial class Resolver
 	
 	private readonly Dictionary<FunctionSymbol, bool> _questionBodies = [];
 	private readonly Dictionary<FunctionSymbol, IResolvedExpressionNode> _questionDeclarations = [];
+	private readonly Dictionary<FunctionSymbol, IResolvedStatementNode> _questionStatements = [];
 	private readonly HashSet<FunctionSymbol> _inlinedQuestions = [];
 	
 	public IResolvedExpressionNode Visit(QuestionExpressionNode node)
@@ -36,7 +37,7 @@ public sealed partial class Resolver
 		var function = info.Symbol;
 		if (info.Signature.GetMode(0) != ParameterMode.Value || info.Signature.ReturnType is InvalidType ||
 		    _signatures.FindInlineContext(function) is not { } declaration ||
-		    FindQuestionBody(function) is not { } body || !IsSoundQuestionBody(function, declaration, body))
+		    FindQuestionSyntax(function) is not { } body || !IsSoundQuestionBody(function, declaration, body))
 			return new ResolvedInvalidExpressionNode(node, CurrentTargetType);
 		
 		var context = CurrentResolutionContext;
@@ -68,22 +69,28 @@ public sealed partial class Resolver
 		
 		var captured = new List<Diagnostic>();
 		var previous = Diagnostics.Redirect(captured);
-		var resolvedBody = VisitNode(body, info.Signature.ReturnType);
+		var resolvedBody = body is IExpressionNode expression ? VisitNode(expression, info.Signature.ReturnType) : null;
+		var resolvedStatement = body is IStatementNode statement ? VisitNode(statement) : null;
 		Diagnostics.Redirect(previous);
 		Diagnostics.AddRange(captured.Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
 		_resolutionContexts.Pop();
 		_inlinedQuestions.Remove(function);
 		
-		return new ResolvedQuestionExpressionNode(info, self, CreateReceiver(operand, info), resolvedBody, node);
+		return new ResolvedQuestionExpressionNode(info, self, CreateReceiver(operand, info), resolvedBody,
+			resolvedStatement, node);
 	}
 	
 	private ResolvedFunctionNode? ResolveQuestionDeclaration(FunctionSymbol function)
 	{
 		if (_signatures.FindInlineContext(function) is not { } declaration ||
-		    FindQuestionBody(function) is not { } body)
+		    FindQuestionSyntax(function) is not { } body)
 			return null;
 		
 		IsSoundQuestionBody(function, declaration, body);
+		if (_questionStatements.TryGetValue(function, out var resolvedStatement))
+			return new ResolvedFunctionNode(_signatures.GetFunctionInfo(function), resolvedStatement,
+				(FunctionNode)function.Syntax) { IsInline = true };
+		
 		if (!_questionDeclarations.TryGetValue(function, out var resolved))
 			return null;
 		
@@ -94,12 +101,13 @@ public sealed partial class Resolver
 			new ResolvedExpressionStatementNode(returned, statement), syntax) { IsInline = true };
 	}
 	
-	private static IExpressionNode? FindQuestionBody(FunctionSymbol function) => function.Syntax is FunctionNode
+	private static ISyntaxNode? FindQuestionSyntax(FunctionSymbol function) => function.Syntax switch
 	{
-		Body: ExpressionStatementNode { ExpressionNode: ReturnExpressionNode { Value: { } value } }
-	}
-		? value
-		: null;
+		FunctionNode { Body: ExpressionStatementNode { ExpressionNode: ReturnExpressionNode { Value: { } value } } } =>
+			value,
+		FunctionNode { ReturnType: null, Body: { } body } => body,
+		_ => null
+	};
 	
 	private ResolutionContext WithResolverState(ResolutionContext declaration)
 	{
@@ -120,7 +128,7 @@ public sealed partial class Resolver
 		};
 	}
 	
-	private bool IsSoundQuestionBody(FunctionSymbol function, ResolutionContext declaration, IExpressionNode body)
+	private bool IsSoundQuestionBody(FunctionSymbol function, ResolutionContext declaration, ISyntaxNode body)
 	{
 		if (!_signatures.IsLocal(function))
 			return true;
@@ -142,7 +150,11 @@ public sealed partial class Resolver
 			InlineReturn = new(null, body.SourceLocation)
 		});
 		
-		_questionDeclarations[function] = InferLocals(() => VisitNode(body, info.Signature.ReturnType));
+		if (body is IExpressionNode expression)
+			_questionDeclarations[function] = InferLocals(() => VisitNode(expression, info.Signature.ReturnType));
+		else if (body is IStatementNode statement)
+			_questionStatements[function] = InferLocals(() => VisitNode(statement));
+		
 		_resolutionContexts.Pop();
 		
 		isSound = Diagnostics.ErrorCount == errors;

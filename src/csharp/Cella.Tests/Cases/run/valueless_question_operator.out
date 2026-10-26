@@ -1,0 +1,8 @@
+ok 1
+err 5
+parsed 3
+ok
+err 7
+parsed 3
+err 5
+[exit code 0]

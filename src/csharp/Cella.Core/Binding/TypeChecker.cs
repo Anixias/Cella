@@ -414,7 +414,11 @@ public sealed class TypeChecker
 		(breakDepth, continueDepth) = (0, 0);
 		var captured = new List<Diagnostic>();
 		var previous = Diagnostics.Redirect(captured);
-		VisitNode(node.Body);
+		if (node.Body is { } body)
+			VisitNode(body);
+		else if (node.Statement is { } statement)
+			VisitNode(statement);
+		
 		Diagnostics.Redirect(previous);
 		(breakDepth, continueDepth) = (breaks, continues);
 		if (currentDeclaration is { } user)
@@ -557,6 +561,7 @@ public sealed class TypeChecker
 		ResolvedAtomicExpressionNode => true,
 		ResolvedErasedCallExpressionNode => true,
 		ResolvedTrapExpressionNode => true,
+		ResolvedQuestionExpressionNode { Body: null } => true,
 		_ => false
 	};
 	
