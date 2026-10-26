@@ -50,6 +50,22 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 			self.grow()
 	}
 	
+	reserve: fun(mut self, additional: usize)
+	{
+		val needed = self.count + additional
+		if needed <= self.capacity
+			ret
+		
+		var newCapacity = self.capacity * 2
+		if newCapacity < needed
+			newCapacity = needed
+		
+		val oldLayout = Layout.arrayOf[T](self.capacity)
+		val newLayout = Layout.arrayOf[T](newCapacity)
+		self.data = ptr[T](self.alloc.resize(self.data, oldLayout, newLayout.size))
+		self.capacity = newCapacity
+	}
+	
 	add: fun(mut self, value: T)
 	{
 		self.growIfNeeded()
@@ -130,6 +146,19 @@ List[T: noref, A: Allocator + new]: impl
 	new: op
 	{
 		self = List[T, A](A())
+	}
+}
+
+List[T: noref + copy, A: Allocator]: impl
+{
+	addAll: fun(mut self, values: View[T])
+	{
+		self.reserve(values.length)
+		for value in values
+		{
+			self.data[self.count] = value
+			self.count += 1
+		}
 	}
 }
 

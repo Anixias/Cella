@@ -1,0 +1,154 @@
+﻿mod std.fs
+
+use when linux
+
+use std.[Result, Span]
+use std.io.IoError
+use std.mem.[Heap, Layout]
+
+Status: pvt rec
+{
+	device: u64
+	inode: u64
+	links: u64
+	mode: u32
+	user: u32
+	group: u32
+	padding: i32
+	specialDevice: u64
+	size: i64
+	blockSize: i64
+	blocks: i64
+	accessed: array[i64, 2]
+	modified: array[i64, 2]
+	changed: array[i64, 2]
+	reserved: array[i64, 3]
+}
+
+pvt ext
+{
+	openFile: ext("open") fun(path: ptr[u8], flags: i32, ...) -> i32
+	readFile: ext("read") fun(file: i32, buffer: ptr, count: usize) -> isize
+	fstat: fun(file: i32, status: ptr[Status]) -> i32
+	closeFile: ext("close") fun(file: i32) -> i32
+	errorLocation: ext("__errno_location") fun -> ptr[i32]
+}
+
+readOnly: pvt const i32 = 0x0
+closeOnExec: pvt const i32 = 0x80000
+notPermitted: pvt const u32 = 1
+noEntry: pvt const u32 = 2
+interrupted: pvt const u32 = 4
+accessDenied: pvt const u32 = 13
+notDirectory: pvt const u32 = 20
+isDirectoryError: pvt const u32 = 21
+invalidArgument: pvt const u32 = 22
+nameTooLong: pvt const u32 = 36
+typeMask: pvt const u32 = 0xF000
+directoryType: pvt const u32 = 0x4000
+largestRead: pvt const usize = 0x7FFFF000
+stackPathLength: pvt const usize = 512
+
+lastError: pvt fun -> u32 => u32(*errorLocation())
+
+errorFrom: pvt fun(code: u32) -> IoError => match code
+{
+	noEntry, notDirectory => IoError(notFound, code)
+	accessDenied, notPermitted => IoError(permissionDenied, code)
+	isDirectoryError => IoError(isDirectory, code)
+	invalidArgument, nameTooLong => IoError(invalidInput, code)
+	else => IoError(other, code)
+}
+
+NativeFile: mod rec
+{
+	descriptor: i32
+	
+	open: fun(path: str) -> Result[NativeFile, IoError]
+	{
+		for i in 0..path.byteLength
+		{
+			if path[i] == 0
+				ret err(IoError(invalidInput, invalidArgument))
+		}
+		
+		if path.byteLength < stackPathLength
+		{
+			var buffer: array[u8, stackPathLength]
+			ret openBytes(path, ptr[u8](@buffer))
+		}
+		
+		var heap = Heap()
+		val layout = Layout.arrayOf[u8](path.byteLength + 1)
+		val bytes = ptr[u8](heap.allocate(layout))
+		if bytes == null
+			panic "out of memory"
+		
+		val result = openBytes(path, bytes)
+		heap.release(bytes, layout)
+		ret result
+	}
+	
+	openBytes: pvt fun(path: str, bytes: ptr[u8]) -> Result[NativeFile, IoError]
+	{
+		for i in 0..path.byteLength
+			bytes[i] = path[i]
+		
+		bytes[path.byteLength] = 0
+		
+		var descriptor = openFile(bytes, readOnly | closeOnExec)
+		var code: u32 = 0
+		while descriptor < 0
+		{
+			code = lastError()
+			if code != interrupted
+				break
+			
+			descriptor = openFile(bytes, readOnly | closeOnExec)
+		}
+		
+		if descriptor < 0
+			ret err(errorFrom(code))
+		
+		var status: Status
+		if fstat(descriptor, @status) == 0 && (status.mode & typeMask) == directoryType
+		{
+			closeFile(descriptor)
+			ret err(IoError(isDirectory, isDirectoryError))
+		}
+		
+		ret ok(NativeFile(descriptor))
+	}
+	
+	read: fun(self, buffer: Span[u8]) -> Result[usize, IoError]
+	{
+		var count = buffer.length
+		if count > largestRead
+			count = largestRead
+		
+		loop
+		{
+			val result = readFile(self.descriptor, buffer.data, count)
+			if result >= 0
+				ret ok(usize(result))
+			
+			val code = lastError()
+			if code != interrupted
+				ret err(errorFrom(code))
+		}
+	}
+	
+	size: fun(self) -> Result[u64, IoError]
+	{
+		var status: Status
+		if fstat(self.descriptor, @status) != 0
+			ret err(errorFrom(lastError()))
+		
+		ret ok(u64(status.size))
+	}
+	
+	close: fun(self)
+	{
+		closeFile(self.descriptor)
+	}
+}

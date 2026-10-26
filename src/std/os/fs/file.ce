@@ -1,0 +1,41 @@
+﻿mod std.fs
+
+use std.[Result, Span, View]
+use std.containers.List
+use std.io.IoError
+
+File: pub own rec
+{
+	native: pvt NativeFile
+	
+	new: pvt op(native: NativeFile)
+	{
+		self.native = native
+	}
+	
+	drop: op
+	{
+		self.native.close()
+	}
+	
+	open: fun(path: str) -> Result[File, IoError] => ok(File(NativeFile.open(path)?))
+	read: fun(mut self, buffer: Span[u8]) -> Result[usize, IoError] => self.native.read(buffer)
+	size: fun(imm self) -> Result[u64, IoError] => self.native.size()
+}
+
+readBytes: pub fun(path: str) -> Result[List[u8], IoError]
+{
+	var file = File.open(path)?
+	var bytes = List[u8]()
+	bytes.reserve(usize(file.size()?))
+	
+	var chunk: array[u8, 4096]
+	loop
+	{
+		val count = file.read(mut chunk)?
+		if count == 0
+			ret ok(bytes)
+		
+		bytes.addAll(View[u8](@chunk, count))
+	}
+}

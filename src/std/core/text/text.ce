@@ -43,7 +43,7 @@ Text[E: Encoding[T: Eq]]: impl Eq
 Text[E: Encoding[T]]: impl Hash
 {
 	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) =>
-		hashBuilder.writeBytes(...View[u8](ptr[u8](ptr(self.data)), self.length * sizeOf(T)))
+		hashBuilder.writeBytes(...View[u8](ptr[u8](self.data), self.length * sizeOf(T)))
 }
 
 Text[Utf8]: impl

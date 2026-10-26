@@ -1,0 +1,179 @@
+﻿mod std.fs
+
+use when windows
+
+use std.[Result, Span]
+use std.io.IoError
+use std.mem.[BitSet, Heap, Layout]
+use std.text.[Utf16, Utf8, measure, transcode]
+
+pvt ext
+{
+	// https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
+	CreateFileW: fun(path: ptr[u16], access: Access, share: Share, security: ptr, disposition: Disposition,
+		flags: Flags, template: ptr) -> ptr
+	
+	ReadFile: fun(file: ptr, buffer: ptr, count: u32, read: ptr[u32], overlapped: ptr) -> i32
+	GetFileSizeEx: fun(file: ptr, size: ptr[i64]) -> i32
+	GetFileAttributesW: fun(path: ptr[u16]) -> u32
+	CloseHandle: fun(handle: ptr) -> i32
+	GetLastError: fun -> u32
+}
+
+Access: pvt ext enum(u32) impl BitSet
+{
+	genericAll = 0x10000000
+	genericExecute = 0x20000000
+	genericWrite = 0x40000000
+	genericRead = 0x80000000
+}
+
+Share: pvt ext enum(u32) impl BitSet
+{
+	none = 0x00000000
+	read = 0x00000001
+	write = 0x00000002
+	delete = 0x00000004
+}
+
+Disposition: pvt ext enum(u32)
+{
+	createNew = 1
+	createAlways = 2
+	openExisting = 3
+	openAlways = 4
+	truncateExisting = 5
+}
+
+Flags: pvt ext enum(u32) impl BitSet
+{
+	// Attributes
+	readonly = 0x0001
+	hidden = 0x0002
+	system = 0x0004
+	archive = 0x0020
+	normal = 0x0080
+	temporary = 0x0100
+	offline = 0x1000
+	encrypted = 0x4000
+	
+	// Flags
+	openNoRecall = 0x00100000
+	openReparsePoint = 0x00200000
+	sessionAware = 0x00800000
+	posixSemantics = 0x01000000
+	backupSemantics = 0x02000000
+	deleteOnClose = 0x04000000
+	sequentialScan = 0x08000000
+	randomAccess = 0x10000000
+	noBuffering = 0x20000000
+	overlapped = 0x40000000
+	writeThrough = 0x80000000
+}
+
+fileNotFound: pvt const u32 = 2
+pathNotFound: pvt const u32 = 3
+accessDenied: pvt const u32 = 5
+handleEndOfFile: pvt const u32 = 38
+invalidParameter: pvt const u32 = 87
+brokenPipe: pvt const u32 = 109
+invalidName: pvt const u32 = 123
+badPathName: pvt const u32 = 161
+fileNameTooLong: pvt const u32 = 206
+invalidAttributes: pvt const u32 = 0xFFFFFFFF
+directoryAttribute: pvt const u32 = 0x10
+largestRead: pvt const usize = 0xFFFFFFFF
+stackPathLength: pvt const usize = 512
+
+errorFrom: pvt fun(code: u32) -> IoError => match code
+{
+	fileNotFound, pathNotFound => IoError(notFound, code)
+	accessDenied => IoError(permissionDenied, code)
+	invalidName, badPathName, fileNameTooLong, invalidParameter => IoError(invalidInput, code)
+	else => IoError(other, code)
+}
+
+NativeFile: mod rec
+{
+	handle: ptr
+	
+	open: fun(path: str) -> Result[NativeFile, IoError]
+	{
+		for i in 0..path.byteLength
+		{
+			if path[i] == 0
+				ret err(IoError(invalidInput, invalidName))
+		}
+		
+		val length = measure[Utf8, Utf16](path)
+		if length < stackPathLength
+		{
+			var buffer: array[u16, stackPathLength]
+			ret openWide(path, @buffer, length)
+		}
+		
+		var heap = Heap()
+		val layout = Layout.arrayOf[u16](length + 1)
+		val wide = ptr[u16](heap.allocate(layout))
+		if wide == null
+			panic "out of memory"
+		
+		val result = openWide(path, wide, length)
+		heap.release(wide, layout)
+		ret result
+	}
+	
+	openWide: pvt fun(path: str, wide: ptr[u16], length: usize) -> Result[NativeFile, IoError]
+	{
+		transcode[Utf8, Utf16](path, Span[u16](wide, length))
+		wide[length] = 0
+		
+		val handle = CreateFileW(wide, Access.genericRead, Share.read | Share.write | Share.delete, null,
+			Disposition.openExisting, Flags.normal, null)
+		
+		if handle == ptr(usize.maxValue)
+		{
+			val code = GetLastError()
+			val attributes = GetFileAttributesW(wide)
+			if code == accessDenied && attributes != invalidAttributes && (attributes & directoryAttribute) != 0
+				ret err(IoError(isDirectory, code))
+			
+			ret err(errorFrom(code))
+		}
+		
+		ret ok(NativeFile(handle))
+	}
+	
+	read: fun(self, buffer: Span[u8]) -> Result[usize, IoError]
+	{
+		var count = buffer.length
+		if count > largestRead
+			count = largestRead
+		
+		var read: u32 = 0
+		if ReadFile(self.handle, buffer.data, u32(count), @read, null) == 0
+		{
+			val code = GetLastError()
+			if code == handleEndOfFile || code == brokenPipe
+				ret ok(0)
+			
+			ret err(errorFrom(code))
+		}
+		
+		ret ok(usize(read))
+	}
+	
+	size: fun(self) -> Result[u64, IoError]
+	{
+		var size: i64 = 0
+		if GetFileSizeEx(self.handle, @size) == 0
+			ret err(errorFrom(GetLastError()))
+		
+		ret ok(u64(size))
+	}
+	
+	close: fun(self)
+	{
+		CloseHandle(self.handle)
+	}
+}

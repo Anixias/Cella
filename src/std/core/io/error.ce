@@ -1,0 +1,22 @@
+﻿mod std.io
+
+ErrorKind: pub enum
+{
+	other
+	notFound
+	permissionDenied
+	isDirectory
+	invalidInput
+}
+
+IoError: pub rec
+{
+	kind: pvt set ErrorKind
+	code: pvt set u32
+	
+	new: op(kind: ErrorKind, code: u32)
+	{
+		self.kind = kind
+		self.code = code
+	}
+}
