@@ -136,28 +136,34 @@ public sealed partial class SignatureCollector
 		return candidates.Where(candidate => outer.Resolve(candidate.Name) is not null);
 	}
 	
+	private static bool OmitsDerived(ImmutableArray<TypeParameterSymbol> parameters, int written) =>
+		written < parameters.Length && parameters.Skip(written).All(static parameter => parameter.IsDerived);
+	
+	private ImmutableArray<TypeSymbol>? CompleteTargetArguments(NamedTypeSymbol target,
+		IReadOnlyList<TypeSymbol> arguments, SourceLocation location)
+	{
+		if (_typePool.CompleteArguments(target.TypeParameters, arguments, null, out var uninferred) is { } completed)
+			return completed;
+		
+		var map = _typePool.MapKnownArguments(target.TypeParameters, arguments);
+		for (var i = 0; i < arguments.Count; i++)
+		{
+			if (_typePool.FindConstraintViolation(target.TypeParameters[i], arguments[i], map) is { } violation)
+			{
+				Diagnostics.Add(violation.At(location));
+				return null;
+			}
+		}
+		
+		var missing = uninferred ?? target.TypeParameters[arguments.Count];
+		Diagnostics.Add(new(DiagnosticSeverity.Error, location, $"Cannot infer '{missing.Name}' for '{target.Name}'"));
+		return null;
+	}
+	
 	private bool CompleteDerivedTarget(ImplSymbol impl, NamedTypeSymbol target, SourceLocation location)
 	{
-		if (_typePool.CompleteArguments(target.TypeParameters, impl.TargetArguments, null, out var uninferred) is not
-		    { } completed)
-		{
-			var map = _typePool.MapKnownArguments(target.TypeParameters, impl.TargetArguments);
-			for (var i = 0; i < impl.TargetArguments.Length; i++)
-			{
-				if (_typePool.FindConstraintViolation(target.TypeParameters[i], impl.TargetArguments[i], map) is
-				    { } violation)
-				{
-					Diagnostics.Add(violation.At(location));
-					return false;
-				}
-			}
-			
-			var missing = uninferred ?? target.TypeParameters[impl.TargetArguments.Length];
-			Diagnostics.Add(new(DiagnosticSeverity.Error, location,
-				$"Cannot infer '{missing.Name}' for '{target.Name}'"));
-			
+		if (CompleteTargetArguments(target, impl.TargetArguments, location) is not { } completed)
 			return false;
-		}
 		
 		var written = impl.TargetArguments.Length;
 		var bound = completed.Skip(written).OfType<TypeParameterSymbol>().Where(impl.FreeParameters.Contains)
@@ -169,11 +175,26 @@ public sealed partial class SignatureCollector
 				? parameter
 				: new TypeParameterSymbol(target.TypeParameters[written + i].Name, []) { IsDerived = true }));
 		
+		UpdateBlockParameters(impl, bound);
+		return true;
+	}
+	
+	private static void BindTargetFreeParameters(ImplSymbol impl, ImmutableArray<TypeParameterSymbol> bound)
+	{
+		if (bound.IsEmpty)
+			return;
+		
+		impl.TypeParameters = impl.TypeParameters.AddRange(bound);
+		UpdateBlockParameters(impl, [..bound]);
+	}
+	
+	private static void UpdateBlockParameters(ImplSymbol impl, HashSet<TypeParameterSymbol> bound)
+	{
 		foreach (var constructor in impl.Constructors)
 			constructor.TypeParameters = impl.TypeParameters;
 		
 		impl.FreeParameters = [..impl.FreeParameters.Where(parameter => !bound.Contains(parameter))];
-		impl.TargetFreeParameters = [..bound];
+		impl.TargetFreeParameters = [..impl.TargetFreeParameters, ..bound];
 		ImmutableArray<TypeParameterSymbol> outer = impl.Node.Traits.IsEmpty
 			? impl.TypeParameters
 			: [..impl.TypeParameters, ..impl.FreeParameters];
@@ -183,8 +204,6 @@ public sealed partial class SignatureCollector
 			function.DeclaredTypeParameters = [..function.DeclaredTypeParameters.Where(p => !bound.Contains(p))];
 			function.TypeParameters = [..outer, ..function.DeclaredTypeParameters];
 		}
-		
-		return true;
 	}
 	
 	private void RegisterDerivedBounds(ImmutableArray<TypeParameterNode> nodes,

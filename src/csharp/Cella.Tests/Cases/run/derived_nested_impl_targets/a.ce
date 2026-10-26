@@ -1,0 +1,78 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Box[Pair[Words]]: impl
+{
+	fixed: fun(imm self) -> usize => self.value.count + 100
+}
+
+Made[Pair[H: Holds[T]]]: impl
+{
+	new: op(count: usize)
+	{
+		self = Made[Pair[H]](Pair[H](count + sizeOf(T) * 1000), 0)
+	}
+}
+
+Box[Pair[H: Holds[T]]]: impl
+{
+	open: fun(imm self) -> usize => self.value.count + sizeOf(T) * 10
+	unit: get(imm self) -> usize => sizeOf(T)
+	scaled[F: Holds[U]]: fun(imm self, source: F) -> usize => sizeOf(U) * 100 + sizeOf(T) * 10 + self.value.count
+}
+
+Box[Pair[Words]]: impl Checks[usize]
+{
+	check[F: fun[imm usize -> bool]]: fun(imm value: Box[Pair[Words]], imm test: F) -> bool => test(imm value.value.count)
+	label: fun -> usize => 7
+}
+
+Tagged[Pair[H: Holds[T]], X]: impl Checks[X]
+{
+	check[F: fun[imm X -> bool]]: fun(imm value: Tagged[Pair[H], X], imm test: F) -> bool => test(imm value.extra)
+	label: fun -> usize => sizeOf(T) * 10 + sizeOf(X)
+}
+
+Box[Duo[Pair[Words], B]]: impl
+{
+	deep: fun(imm self) -> usize => self.value.first.count + sizeOf(B) * 10
+}
+
+Duo[Words, Pair[H: Holds[V]]]: impl
+{
+	mixed: fun(imm self) -> usize => sizeOf(V) * 10 + self.second.count
+}
+
+Holder[Words, Pair[H: Holds[V]]]: impl
+{
+	both: fun(imm self) -> usize => sizeOf(V) * 10 + self.second.count
+}
+
+Keeper[E: Holds[T], Pair[H: Holds[V]]]: impl
+{
+	named: fun(imm self) -> usize => sizeOf(T) * 100 + sizeOf(V) * 10 + self.second.count
+}
+
+checked[S: Checks[Q], Q]: fun(imm item: S, imm wanted: Q) -> usize
+{
+	val same = fun(imm shown: Q) -> bool => true
+	ret usize(S.check(imm item, imm same)) + S.label() * 10
+}
+
+main: fun -> i32
+{
+	val words = Box[Pair[Words]](Pair[Words](1))
+	val bytes = Box[Pair[Bytes]](Pair[Bytes](2))
+	printf("%zu %zu %zu %zu %zu\n", words.fixed(), words.open(), bytes.open(), bytes.unit, bytes.scaled(Words()))
+	printf("%zu %zu\n", Made[Pair[Bytes]](3).value.count, checked(imm words, imm 1usize))
+	printf("%zu\n", checked(imm Tagged[Pair[Bytes], i64](Pair[Bytes](0), 6), imm 6i64))
+	val deep = Box[Duo[Pair[Words], i64]](Duo[Pair[Words], i64](Pair[Words](4), 0))
+	printf("%zu %zu\n", deep.deep(), Duo[Words, Pair[Bytes]](Words(), Pair[Bytes](5)).mixed())
+	printf("%zu %zu\n", Holder[Words, Pair[Bytes]](Pair[Bytes](6)).both(),
+		Keeper[Words, Pair[Bytes]](Pair[Bytes](7)).named())
+	ret 0
+}

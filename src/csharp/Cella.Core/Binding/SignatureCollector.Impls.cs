@@ -121,11 +121,12 @@ public sealed partial class SignatureCollector
 		];
 		
 		var nestedIndex = 0;
+		var deferred = false;
 		impl.TargetArguments =
 		[
 			..node.TypeParameters.Select((entry, i) => entry.Nested.IsEmpty
 				? ResolveTargetArgument(entry, context) ?? impl.TypeParameters[i]
-				: ResolveNestedTarget(impl, entry, context, ref nestedIndex))
+				: ResolveNestedTarget(impl, entry, context, ref nestedIndex, false, ref deferred))
 		];
 		
 		DeclareFreeParameters(impl, context with { ImplBlock = impl });
@@ -137,8 +138,12 @@ public sealed partial class SignatureCollector
 		ReportDuplicateNestedParameters(impl, node, leaves);
 		switch (ResolveImplTarget(impl, node, context))
 		{
+			case { } target when deferred:
+				_derivedTargets.Add((impl, node, target, context, true));
+				break;
+			
 			case NamedTypeSymbol named when impl.TargetArguments.Length < named.TypeParameters.Length:
-				_derivedTargets.Add((impl, node, named, context));
+				_derivedTargets.Add((impl, node, named, context, false));
 				break;
 			
 			case { } target:
@@ -149,12 +154,35 @@ public sealed partial class SignatureCollector
 	
 	private void RegisterDerivedTargets()
 	{
-		foreach (var (impl, node, target, context) in _derivedTargets)
+		foreach (var (impl, node, written, context, nested) in _derivedTargets)
 		{
 			using var frame = Own(node);
-			if (CompleteDerivedTarget(impl, target, node.Target.SourceLocation))
+			var target = nested ? CompleteNestedTargets(impl, node, context) : written;
+			if (target is NamedTypeSymbol named && impl.TargetArguments.Length < named.TypeParameters.Length &&
+			    !CompleteDerivedTarget(impl, named, node.Target.SourceLocation))
+				continue;
+			
+			if (target is not null)
 				RegisterImplTarget(impl, node, target, context);
 		}
+	}
+	
+	private TypeSymbol? CompleteNestedTargets(ImplSymbol impl, ImplNode node, ResolutionContext context)
+	{
+		var nestedIndex = 0;
+		var deferred = false;
+		var arguments = impl.TargetArguments.ToBuilder();
+		for (var i = 0; i < node.TypeParameters.Length; i++)
+		{
+			if (!node.TypeParameters[i].Nested.IsEmpty)
+				arguments[i] = ResolveNestedTarget(impl, node.TypeParameters[i], context, ref nestedIndex, true,
+					ref deferred);
+		}
+		
+		impl.TargetArguments = arguments.ToImmutable();
+		var mentioned = impl.TargetArguments.SelectMany(TypePool.FindTypeParameters).ToHashSet();
+		BindTargetFreeParameters(impl, [..impl.FreeParameters.Where(mentioned.Contains)]);
+		return ResolveImplTarget(impl, node, context);
 	}
 	
 	private void RegisterImplTarget(ImplSymbol impl, ImplNode node, TypeSymbol target, ResolutionContext context)
@@ -267,17 +295,19 @@ public sealed partial class SignatureCollector
 			.Select(static accessor => accessor.Function));
 	
 	private TypeSymbol ResolveNestedTarget(ImplSymbol impl, TypeParameterNode entry, ResolutionContext context,
-		ref int nestedIndex)
+		ref int nestedIndex, bool completesDerived, ref bool deferred)
 	{
 		var arguments = new List<TypeSymbol>();
 		foreach (var child in entry.Nested)
 			arguments.Add(child.Nested.IsEmpty
 				? impl.NestedArguments[nestedIndex++]
-				: ResolveNestedTarget(impl, child, context, ref nestedIndex));
+				: ResolveNestedTarget(impl, child, context, ref nestedIndex, completesDerived, ref deferred));
 		
 		var symbol = context.ResolveTypeName(new IdentifierTypeNode(entry.Identifier), true);
 		if (TypeOverloads.FindFamily(symbol) is { } family)
-			symbol = family.FirstOrDefault(member => TypeOverloads.GetParameters(member).Length == arguments.Count);
+			symbol = family.FirstOrDefault(member => TypeOverloads.GetParameters(member).Length == arguments.Count) ??
+			         family.FirstOrDefault(member =>
+				         OmitsDerived(TypeOverloads.GetParameters(member), arguments.Count));
 		
 		if (symbol is not NamedTypeSymbol { IsGenericDefinition: true } definition)
 		{
@@ -288,7 +318,8 @@ public sealed partial class SignatureCollector
 			return NativeSymbols.Invalid;
 		}
 		
-		if (definition.TypeParameters.Length != arguments.Count)
+		if (definition.TypeParameters.Length != arguments.Count &&
+		    !OmitsDerived(definition.TypeParameters, arguments.Count))
 		{
 			Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(entry.Identifier.SourceLocation,
 				definition.Name, definition.TypeParameters.Length));
@@ -296,9 +327,25 @@ public sealed partial class SignatureCollector
 			return NativeSymbols.Invalid;
 		}
 		
+		if (deferred || definition.TypeParameters.Length != arguments.Count && !completesDerived)
+		{
+			deferred = true;
+			return NativeSymbols.Invalid;
+		}
+		
+		if (definition.TypeParameters.Length != arguments.Count)
+		{
+			if (arguments.Any(static argument => argument is InvalidType) ||
+			    CompleteTargetArguments(definition, arguments, entry.Identifier.SourceLocation) is not { } completed)
+				return NativeSymbols.Invalid;
+			
+			arguments = [..completed];
+		}
+		
 		var map = TypePool.CreateMap(definition.TypeParameters, arguments);
 		for (var i = 0; i < arguments.Count; i++)
-			DeferAlways(new(definition.TypeParameters[i], arguments[i], map, entry.Nested[i].SourceLocation));
+			DeferAlways(new(definition.TypeParameters[i], arguments[i], map,
+				i < entry.Nested.Length ? entry.Nested[i].SourceLocation : entry.Identifier.SourceLocation));
 		
 		return arguments.Any(static argument => argument is InvalidType)
 			? NativeSymbols.Invalid
@@ -361,9 +408,7 @@ public sealed partial class SignatureCollector
 			case NamedTypeSymbol named when named.TypeParameters.Length == impl.TargetArguments.Length:
 				return named;
 			
-			case NamedTypeSymbol named when impl.TargetArguments.Length < named.TypeParameters.Length &&
-			                                named.TypeParameters.Skip(impl.TargetArguments.Length)
-				                                .All(static parameter => parameter.IsDerived):
+			case NamedTypeSymbol named when OmitsDerived(named.TypeParameters, impl.TargetArguments.Length):
 				return named;
 			
 			case NamedTypeSymbol named:

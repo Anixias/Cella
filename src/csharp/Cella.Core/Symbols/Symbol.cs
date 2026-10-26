@@ -951,7 +951,8 @@ public sealed class ImplSymbol
 	public ImmutableArray<TypeParameterSymbol> TargetFreeParameters { get; set; } = [];
 	
 	public bool Declares(TypeParameterSymbol parameter) =>
-		TargetArguments.Contains(parameter) || NestedArguments.Contains(parameter);
+		TargetArguments.Contains(parameter) || NestedArguments.Contains(parameter) ||
+		TargetFreeParameters.Contains(parameter);
 	
 	public FileSymbol? ExtensionFile { get; set; }
 	public string? ExtensionAssembly { get; set; }

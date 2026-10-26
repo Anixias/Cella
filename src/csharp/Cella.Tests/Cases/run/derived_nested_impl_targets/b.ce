@@ -1,0 +1,66 @@
+mod test
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Checks[Q]: trait
+{
+	check[F: fun[imm Q -> bool]]: fun(imm value: Self, imm test: F) -> bool
+	label: fun -> usize
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Bytes: rec impl Holds[u8]
+{
+	unit: fun -> u8 => 3
+}
+
+Pair[H: Holds[T]]: rec
+{
+	count: usize
+}
+
+Box[X]: rec
+{
+	value: X
+}
+
+Duo[A, B]: rec
+{
+	first: A
+	second: B
+}
+
+Made[X]: rec
+{
+	value: X
+	tag: i32
+	
+	new: op(value: X, tag: i32)
+	{
+		self.value = value
+		self.tag = tag
+	}
+}
+
+Tagged[X, Y]: rec
+{
+	value: X
+	extra: Y
+}
+
+Holder[E: Holds[T], X]: rec
+{
+	second: X
+}
+
+Keeper[E: Holds[T], X]: rec
+{
+	second: X
+}

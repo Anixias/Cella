@@ -523,7 +523,10 @@ public sealed partial class TypePool
 				? arguments
 				: null;
 		
-		var variables = new OrderedSet<TypeParameterSymbol>(impl.NestedParameters);
+		ImmutableArray<TypeParameterSymbol> bound =
+			[..impl.TargetFreeParameters.Where(parameter => !impl.TargetArguments.Contains(parameter))];
+		
+		var variables = new OrderedSet<TypeParameterSymbol>([..impl.NestedParameters, ..bound]);
 		var bindings = new Dictionary<TypeParameterSymbol, TypeSymbol>();
 		for (var i = 0; i < arguments.Length; i++)
 		{
@@ -539,7 +542,8 @@ public sealed partial class TypePool
 			..arguments,
 			..impl.NestedParameters.Select((parameter, i) => impl.NestedArguments[i] is TypeParameterSymbol
 				? bindings.GetValueOrDefault(parameter, parameter)
-				: impl.NestedArguments[i])
+				: impl.NestedArguments[i]),
+			..bound.Select(parameter => bindings.GetValueOrDefault(parameter, parameter))
 		];
 	}
 	

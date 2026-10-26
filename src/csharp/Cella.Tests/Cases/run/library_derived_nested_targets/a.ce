@@ -1,0 +1,13 @@
+mod test
+
+use shared.*
+
+Box[Pair[Given]]: impl
+{
+	fixed: fun(imm self) -> usize => self.value.count + 100
+}
+
+Box[Pair[H: Holds[T]]]: impl
+{
+	open: fun(imm self) -> usize => self.value.count + sizeOf(T) * 10
+}

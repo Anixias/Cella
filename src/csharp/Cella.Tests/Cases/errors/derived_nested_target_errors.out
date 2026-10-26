@@ -1,0 +1,18 @@
+Error at derived_nested_target_errors.ce:20:5
+19 │ 
+20 │ Box[Pair[H]]: impl
+         ╘══╛ 'Pair' requires 'H: Holds[T]'
+            | 'H' doesn't implement 'Holds[T]'
+
+Error at derived_nested_target_errors.ce:25:5
+24 │ 
+25 │ Box[Pair[Plain]]: impl
+         ╘══╛ 'Pair' requires 'H: Holds[T]'
+            | 'Plain' doesn't implement 'Holds[T]'
+
+Error at derived_nested_target_errors.ce:30:5
+29 │ 
+30 │ Box[Pair[Plain, i32, i8]]: impl
+         ╘══╛ 'Pair' takes 2 generic arguments
+
+[compilation failed]

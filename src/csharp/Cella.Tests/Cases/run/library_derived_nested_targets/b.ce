@@ -1,0 +1,28 @@
+mod test
+
+use shared.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Box[X]: rec
+{
+	value: X
+}
+
+main: fun -> i32
+{
+	val given = Box[Pair[Given]](Pair[Given](1))
+	val words = Box[Pair[Words]](Pair[Words](2))
+	printf("%zu %zu %zu\n", given.fixed(), given.open(), words.open())
+	val wrapped = Wrapped[Pair[Given]](Pair[Given](3))
+	printf("%zu %zu %zu\n", wrapped.width(), wrapped.given(), Wrapped[Pair[Words]](Pair[Words](4)).width())
+	ret 0
+}

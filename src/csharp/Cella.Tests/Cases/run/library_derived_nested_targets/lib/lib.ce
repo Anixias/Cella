@@ -1,0 +1,31 @@
+mod shared
+
+Holds[T]: pub trait
+{
+	unit: fun -> T
+}
+
+Pair[H: Holds[T]]: pub rec
+{
+	count: usize
+}
+
+Given: pub rec impl Holds[u32]
+{
+	unit: fun -> u32 => 5
+}
+
+Wrapped[X]: pub rec
+{
+	value: X
+}
+
+Wrapped[Pair[H: Holds[T]]]: impl
+{
+	width: fun(imm self) -> usize => sizeOf(T) * 10 + self.value.count
+}
+
+Wrapped[Pair[Given]]: impl
+{
+	given: fun(imm self) -> usize => self.value.count + 500
+}

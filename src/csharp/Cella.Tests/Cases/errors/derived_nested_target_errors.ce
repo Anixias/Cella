@@ -1,0 +1,35 @@
+mod test
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Plain: rec
+
+Pair[H: Holds[T]]: rec
+{
+	count: usize
+}
+
+Box[X]: rec
+{
+	value: X
+}
+
+Box[Pair[H]]: impl
+{
+	open: fun(imm self) -> usize => self.value.count
+}
+
+Box[Pair[Plain]]: impl
+{
+	plain: fun(imm self) -> usize => self.value.count
+}
+
+Box[Pair[Plain, i32, i8]]: impl
+{
+	many: fun(imm self) -> usize => self.value.count
+}
+
+main: fun -> i32 => 0
