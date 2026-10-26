@@ -182,7 +182,7 @@ HashSet[T: noref + Hash + Eq + Shows[Q: Hash + Eq], H: HashBuilder + copy, A: Al
 				empty => ret SetSearch(index, false)
 				full(val stored) =>
 				{
-					if stored.show(imm matches)
+					if T.show(imm stored, imm matches)
 						ret SetSearch(index, true)
 				}
 				else => { }

@@ -2,10 +2,10 @@
 
 Shows[Q]: pub trait
 {
-	show[F: fun[imm Q -> bool]]: fun(imm self, imm check: F) -> bool
+	show[F: fun[imm Q -> bool]]: fun(imm value: Self, imm check: F) -> bool
 }
 
 [T]: impl Shows[T]
 {
-	show[F: fun[imm T -> bool]]: fun(imm self, imm check: F) -> bool => check(imm self)
+	show[F: fun[imm T -> bool]]: fun(imm value: T, imm check: F) -> bool => check(imm value)
 }

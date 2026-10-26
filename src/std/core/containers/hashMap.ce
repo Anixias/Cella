@@ -212,7 +212,7 @@ HashMap[K: noref + Hash + Eq + Shows[Q: Hash + Eq], V: noref, H: HashBuilder + c
 				empty => ret SlotSearch(index, false)
 				full(val stored, _) =>
 				{
-					if stored.show(imm matches)
+					if K.show(imm stored, imm matches)
 						ret SlotSearch(index, true)
 				}
 				else => { }

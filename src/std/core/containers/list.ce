@@ -179,7 +179,7 @@ List[T: noref + Shows[Q: Eq], A: Allocator]: impl
 	{
 		val matches = fun(imm shown: Q) -> bool => shown == value
 		for item, i in self
-			if item.show(imm matches)
+			if T.show(imm item, imm matches)
 				ret i
 		
 		ret self.count
