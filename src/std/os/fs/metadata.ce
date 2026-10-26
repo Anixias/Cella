@@ -1,0 +1,31 @@
+﻿mod std.fs
+
+use std.Result
+use std.io.IoError
+
+EntryKind: pub enum
+{
+	file
+	directory
+	symbolicLink
+	other
+}
+
+Metadata: pub rec
+{
+	kind: pvt set EntryKind
+	size: pvt set u64
+	readOnly: pvt set bool
+	// TODO: creation, modification and access times, once std has a date-time type
+	
+	new: mod op(kind: EntryKind, size: u64, readOnly: bool)
+	{
+		self.kind = kind
+		self.size = size
+		self.readOnly = readOnly
+	}
+}
+
+metadata: pub fun(path: str, followLinks: bool = true) -> Result[Metadata, IoError] => pathMetadata(path, followLinks)
+
+exists: pub fun(path: str) -> bool => metadata(path) is ok(_)

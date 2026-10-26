@@ -16,9 +16,9 @@ pvt ext
 	ReadFile: fun(file: ptr, buffer: ptr, count: u32, read: ptr[u32], overlapped: ptr) -> i32
 	WriteFile: fun(file: ptr, buffer: ptr, count: u32, written: ptr[u32], overlapped: ptr) -> i32
 	GetFileSizeEx: fun(file: ptr, size: ptr[i64]) -> i32
-	
 	SetFilePointerEx: fun(file: ptr, distance: i64, position: ptr[i64], method: MoveMethod) -> i32
-	
+	GetFileInformationByHandle: fun(file: ptr, information: ptr[FileInformation]) -> i32
+	GetFileInformationByHandleEx: fun(file: ptr, kind: u32, information: ptr, size: u32) -> i32
 	FlushFileBuffers: fun(file: ptr) -> i32
 	GetFileAttributesW: fun(path: ptr[u16]) -> u32
 	CloseHandle: fun(handle: ptr) -> i32
@@ -89,6 +89,26 @@ Flags: pvt ext enum(u32) impl BitSet
 	writeThrough = 0x80000000
 }
 
+FileInformation: pvt rec
+{
+	attributes: u32
+	created: array[u32, 2]
+	accessed: array[u32, 2]
+	written: array[u32, 2]
+	volumeSerial: u32
+	sizeHigh: u32
+	sizeLow: u32
+	links: u32
+	indexHigh: u32
+	indexLow: u32
+}
+
+AttributeTag: pvt rec
+{
+	attributes: u32
+	tag: u32
+}
+
 fileNotFound: pvt const u32 = 2
 pathNotFound: pvt const u32 = 3
 writeProtect: pvt const u32 = 19
@@ -105,7 +125,11 @@ negativeSeek: pvt const u32 = 131
 badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
+readOnlyAttribute: pvt const u32 = 0x1
 directoryAttribute: pvt const u32 = 0x10
+reparsePointAttribute: pvt const u32 = 0x400
+nameSurrogateTag: pvt const u32 = 0x20000000
+attributeTagInfo: pvt const u32 = 9
 largestTransfer: pvt const usize = 0xFFFFFFFF
 stackPathLength: pvt const usize = 512
 
@@ -146,42 +170,103 @@ dispositionOf: pvt fun(mode: FileMode) -> Disposition => match mode
 	truncate => Disposition.truncateExisting
 }
 
+checkPath: pvt fun(path: str) -> Result[IoError]
+{
+	for i in 0..path.byteLength
+	{
+		if path[i] == 0
+			ret err(IoError(invalidInput, invalidName))
+	}
+	
+	ret ok
+}
+
+withWidePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u16] -> R]) -> R
+{
+	val length = measure[Utf8, Utf16](path)
+	if length < stackPathLength
+	{
+		var buffer: array[u16, stackPathLength]
+		transcode[Utf8, Utf16](path, Span[u16](@buffer, length))
+		buffer[length] = 0
+		ret action(@buffer)
+	}
+	
+	var heap = Heap()
+	val layout = Layout.arrayOf[u16](length + 1)
+	val wide = ptr[u16](heap.allocate(layout))
+	if wide == null
+		panic "out of memory"
+	
+	transcode[Utf8, Utf16](path, Span[u16](wide, length))
+	wide[length] = 0
+	val result = action(wide)
+	heap.release(wide, layout)
+	ret result
+}
+
+pathMetadata: mod fun(path: str, followLinks: bool) -> Result[Metadata, IoError]
+{
+	checkPath(path)?
+	ret withWidePath(path, fun(wide) => metadataOfPath(wide, followLinks))
+}
+
+metadataOfPath: pvt fun(wide: ptr[u16], followLinks: bool) -> Result[Metadata, IoError]
+{
+	var flags = Flags.backupSemantics
+	if !followLinks
+		flags |= Flags.openReparsePoint
+	
+	val handle = CreateFileW(wide, Access.readAttributes, Share.read | Share.write | Share.delete, null,
+		Disposition.openExisting, flags, null)
+	
+	if handle == ptr(usize.maxValue)
+		ret err(errorFrom(GetLastError()))
+	
+	val result = metadataOfHandle(handle, followLinks)
+	CloseHandle(handle)
+	ret result
+}
+
+metadataOfHandle: pvt fun(handle: ptr, followLinks: bool) -> Result[Metadata, IoError]
+{
+	var information: FileInformation
+	if GetFileInformationByHandle(handle, @information) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	var kind = EntryKind.file
+	if (information.attributes & directoryAttribute) != 0
+		kind = EntryKind.directory
+	
+	if !followLinks && (information.attributes & reparsePointAttribute) != 0
+	{
+		var tag: AttributeTag
+		if GetFileInformationByHandleEx(handle, attributeTagInfo, @tag, u32(sizeOf(AttributeTag))) == 0
+			ret err(errorFrom(GetLastError()))
+		
+		if (tag.tag & nameSurrogateTag) != 0
+			kind = EntryKind.symbolicLink
+	}
+	
+	var size: u64 = 0
+	if kind is file
+		size = u64(information.sizeHigh) << 32 | u64(information.sizeLow)
+	
+	ret ok(Metadata(kind, size, (information.attributes & readOnlyAttribute) != 0))
+}
+
 NativeFile: mod rec
 {
 	handle: ptr
 	
 	open: fun(path: str, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
 	{
-		for i in 0..path.byteLength
-		{
-			if path[i] == 0
-				ret err(IoError(invalidInput, invalidName))
-		}
-		
-		val length = measure[Utf8, Utf16](path)
-		if length < stackPathLength
-		{
-			var buffer: array[u16, stackPathLength]
-			ret openWide(path, @buffer, length, mode, access)
-		}
-		
-		var heap = Heap()
-		val layout = Layout.arrayOf[u16](length + 1)
-		val wide = ptr[u16](heap.allocate(layout))
-		if wide == null
-			panic "out of memory"
-		
-		val result = openWide(path, wide, length, mode, access)
-		heap.release(wide, layout)
-		ret result
+		checkPath(path)?
+		ret withWidePath(path, fun(wide) => openWide(wide, mode, access))
 	}
 	
-	openWide: pvt fun(path: str, wide: ptr[u16], length: usize, mode: FileMode, access: FileAccess)
-		-> Result[NativeFile, IoError]
+	openWide: pvt fun(wide: ptr[u16], mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
 	{
-		transcode[Utf8, Utf16](path, Span[u16](wide, length))
-		wide[length] = 0
-		
 		val handle = CreateFileW(wide, desiredAccess(mode, access), Share.read | Share.write | Share.delete, null,
 			dispositionOf(mode), Flags.normal, null)
 		
@@ -261,6 +346,8 @@ NativeFile: mod rec
 		
 		ret ok(u64(size))
 	}
+	
+	metadata: fun(self) -> Result[Metadata, IoError] => metadataOfHandle(self.handle, true)
 	
 	sync: fun(self) -> Result[IoError]
 	{

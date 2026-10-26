@@ -76,6 +76,7 @@ File: pub own rec impl Read + Write + Seek
 	}
 	
 	size: fun(imm self) -> Result[u64, IoError] => self.native.size()
+	metadata: fun(imm self) -> Result[Metadata, IoError] => self.native.metadata()
 	
 	sync: fun(mut self) -> Result[IoError]
 	{

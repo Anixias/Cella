@@ -32,6 +32,8 @@ pvt ext
 	writeFile: ext("write") fun(file: i32, buffer: ptr, count: usize) -> isize
 	seekFile: ext("lseek") fun(file: i32, offset: i64, origin: i32) -> i64
 	fstat: fun(file: i32, status: ptr[Status]) -> i32
+	pathStatus: ext("stat") fun(path: ptr[u8], status: ptr[Status]) -> i32
+	linkStatus: ext("lstat") fun(path: ptr[u8], status: ptr[Status]) -> i32
 	fsync: fun(file: i32) -> i32
 	closeFile: ext("close") fun(file: i32) -> i32
 	errorLocation: ext("__errno_location") fun -> ptr[i32]
@@ -62,7 +64,10 @@ isDirectoryError: pvt const u32 = 21
 invalidArgument: pvt const u32 = 22
 nameTooLong: pvt const u32 = 36
 typeMask: pvt const u32 = 0xF000
+regularType: pvt const u32 = 0x8000
 directoryType: pvt const u32 = 0x4000
+linkType: pvt const u32 = 0xA000
+writePermissions: pvt const u32 = 0x92
 largestTransfer: pvt const usize = 0x7FFFF000
 stackPathLength: pvt const usize = 512
 
@@ -101,42 +106,97 @@ flagsOf: pvt fun(mode: FileMode, access: FileAccess) -> i32
 	ret flags
 }
 
+checkPath: pvt fun(path: str) -> Result[IoError]
+{
+	for i in 0..path.byteLength
+	{
+		if path[i] == 0
+			ret err(IoError(invalidInput, invalidArgument))
+	}
+	
+	ret ok
+}
+
+withBytePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u8] -> R]) -> R
+{
+	if path.byteLength < stackPathLength
+	{
+		var buffer: array[u8, stackPathLength]
+		copyPath(path, @buffer)
+		ret action(@buffer)
+	}
+	
+	var heap = Heap()
+	val layout = Layout.arrayOf[u8](path.byteLength + 1)
+	val bytes = ptr[u8](heap.allocate(layout))
+	if bytes == null
+		panic "out of memory"
+	
+	copyPath(path, bytes)
+	val result = action(bytes)
+	heap.release(bytes, layout)
+	ret result
+}
+
+copyPath: pvt fun(path: str, bytes: ptr[u8])
+{
+	for i in 0..path.byteLength
+		bytes[i] = path[i]
+	
+	bytes[path.byteLength] = 0
+}
+
+pathMetadata: mod fun(path: str, followLinks: bool) -> Result[Metadata, IoError]
+{
+	checkPath(path)?
+	ret withBytePath(path, fun(bytes) => metadataOfPath(bytes, followLinks))
+}
+
+metadataOfPath: pvt fun(bytes: ptr[u8], followLinks: bool) -> Result[Metadata, IoError]
+{
+	var status: Status
+	var result: i32 = 0
+	if followLinks
+		result = pathStatus(bytes, @status)
+	else
+		result = linkStatus(bytes, @status)
+	
+	if result != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok(metadataOf(status))
+}
+
+metadataOf: pvt fun(status: Status) -> Metadata
+{
+	val kind = match status.mode & typeMask
+	{
+		regularType => EntryKind.file
+		directoryType => EntryKind.directory
+		linkType => EntryKind.symbolicLink
+		else => EntryKind.other
+	}
+	
+	var size: u64 = 0
+	if kind is file
+		size = u64(status.size)
+	
+	ret Metadata(kind, size, (status.mode & writePermissions) == 0)
+}
+
 NativeFile: mod rec
 {
 	descriptor: i32
 	
 	open: fun(path: str, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
 	{
-		for i in 0..path.byteLength
-		{
-			if path[i] == 0
-				ret err(IoError(invalidInput, invalidArgument))
-		}
-		
-		if path.byteLength < stackPathLength
-		{
-			var buffer: array[u8, stackPathLength]
-			ret openBytes(path, ptr[u8](@buffer), flagsOf(mode, access))
-		}
-		
-		var heap = Heap()
-		val layout = Layout.arrayOf[u8](path.byteLength + 1)
-		val bytes = ptr[u8](heap.allocate(layout))
-		if bytes == null
-			panic "out of memory"
-		
-		val result = openBytes(path, bytes, flagsOf(mode, access))
-		heap.release(bytes, layout)
-		ret result
+		checkPath(path)?
+		val flags = flagsOf(mode, access)
+		ret withBytePath(path, fun(bytes) => openBytes(bytes, flags))
 	}
 	
-	openBytes: pvt fun(path: str, bytes: ptr[u8], flags: i32) -> Result[NativeFile, IoError]
+	openBytes: pvt fun(bytes: ptr[u8], flags: i32) -> Result[NativeFile, IoError]
 	{
-		for i in 0..path.byteLength
-			bytes[i] = path[i]
-		
-		bytes[path.byteLength] = 0
-		
 		var descriptor = openFile(bytes, flags, createPermissions)
 		var code: u32 = 0
 		while descriptor < 0
@@ -227,6 +287,15 @@ NativeFile: mod rec
 			ret err(errorFrom(lastError()))
 		
 		ret ok(u64(status.size))
+	}
+	
+	metadata: fun(self) -> Result[Metadata, IoError]
+	{
+		var status: Status
+		if fstat(self.descriptor, @status) != 0
+			ret err(errorFrom(lastError()))
+		
+		ret ok(metadataOf(status))
 	}
 	
 	sync: fun(self) -> Result[IoError]
