@@ -1,0 +1,20 @@
+mod test
+
+use shared.*
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Words: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+main: fun
+{
+	printf("%d %d\n", Box(Words(21)).doubled(), Box(Given(5)).tripled())
+}

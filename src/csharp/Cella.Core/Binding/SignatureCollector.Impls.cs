@@ -135,9 +135,30 @@ public sealed partial class SignatureCollector
 			context with { ImplBlock = impl });
 		
 		ReportDuplicateNestedParameters(impl, node, leaves);
-		if (ResolveImplTarget(impl, node, context) is not { } target)
-			return;
-		
+		switch (ResolveImplTarget(impl, node, context))
+		{
+			case NamedTypeSymbol named when impl.TargetArguments.Length < named.TypeParameters.Length:
+				_derivedTargets.Add((impl, node, named, context));
+				break;
+			
+			case { } target:
+				RegisterImplTarget(impl, node, target, context);
+				break;
+		}
+	}
+	
+	private void RegisterDerivedTargets()
+	{
+		foreach (var (impl, node, target, context) in _derivedTargets)
+		{
+			using var frame = Own(node);
+			if (CompleteDerivedTarget(impl, target, node.Target.SourceLocation))
+				RegisterImplTarget(impl, node, target, context);
+		}
+	}
+	
+	private void RegisterImplTarget(ImplSymbol impl, ImplNode node, TypeSymbol target, ResolutionContext context)
+	{
 		_implTargets[impl] = target;
 		if (node.Traits.IsEmpty && IsExtensionTarget(target, context))
 			RegisterExtension(impl, node, context);
@@ -343,7 +364,7 @@ public sealed partial class SignatureCollector
 			case NamedTypeSymbol named when impl.TargetArguments.Length < named.TypeParameters.Length &&
 			                                named.TypeParameters.Skip(impl.TargetArguments.Length)
 				                                .All(static parameter => parameter.IsDerived):
-				return CompleteDerivedTarget(impl, named, location) ? named : null;
+				return named;
 			
 			case NamedTypeSymbol named:
 				Diagnostics.Add(ResolutionContext.ReportGenericArgumentCount(location, named.Name,

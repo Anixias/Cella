@@ -1,0 +1,19 @@
+Error at a.ce:3:1
+2 │ 
+3 │ Box[Plain]: impl
+    ╘═╛ 'Box' requires 'H: Holds[T]'
+      | 'Plain' doesn't implement 'Holds[T]'
+
+Error at a.ce:8:1
+7 │ 
+8 │ Box[Plain]: impl Counts
+    ╘═╛ 'Box' requires 'H: Holds[T]'
+      | 'Plain' doesn't implement 'Holds[T]'
+
+Error at a.ce:13:1
+12 │ 
+13 │ Duo[Words, Plain]: impl
+     ╘═╛ 'Duo' requires 'B: Holds[U]'
+       | 'Plain' doesn't implement 'Holds[U]'
+
+[compilation failed]

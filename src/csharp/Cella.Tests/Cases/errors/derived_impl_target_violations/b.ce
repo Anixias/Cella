@@ -1,0 +1,38 @@
+mod test
+
+Holds[T]: trait
+{
+	get: fun(self) -> T
+}
+
+Counts: trait
+{
+	count: fun(self) -> i32
+}
+
+Box[H: Holds[T]]: rec
+{
+	inner: H
+}
+
+Duo[A: Holds[T], B: Holds[U]]: rec
+{
+	first: A
+	second: B
+}
+
+Plain: rec
+{
+	value: i32
+}
+
+Words: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+main: fun
+{
+}

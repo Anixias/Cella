@@ -212,7 +212,7 @@ public sealed partial class TypePool
 		return [..completed];
 	}
 	
-	private Dictionary<TypeParameterSymbol, TypeSymbol> MapKnownArguments(
+	public Dictionary<TypeParameterSymbol, TypeSymbol> MapKnownArguments(
 		ImmutableArray<TypeParameterSymbol> parameters, IReadOnlyList<TypeSymbol> known)
 	{
 		var map = CreateMap(parameters, known);

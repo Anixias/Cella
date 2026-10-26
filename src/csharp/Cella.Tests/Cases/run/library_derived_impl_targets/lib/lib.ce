@@ -1,0 +1,18 @@
+mod shared
+
+Holds[T]: pub trait
+{
+	get: fun(self) -> T
+}
+
+Box[H: Holds[T]]: pub rec
+{
+	inner: H
+}
+
+Given: pub rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}

@@ -1,0 +1,38 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Words: rec impl Holds[i32]
+{
+	value: i32
+	
+	get: fun(self) -> i32 => self.value
+}
+
+Spare: rec
+{
+	value: i64
+}
+
+Spare: impl Holds[i64]
+{
+	get: fun(self) -> i64 => self.value
+}
+
+Pair[A]: impl Holds[i32]
+{
+	get: fun(self) -> i32 => 5
+}
+
+counted[C: Counts]: fun(counter: C) -> i32 => counter.count()
+
+main: fun
+{
+	val box = Box(Words(21))
+	printf("%d %d %d\n", box.doubled(), box.count(), counted(box))
+	printf("%d\n", Box(Pair(Words(5))).tripled())
+	printf("%lld\n", Duo(Words(1), Spare(8)).right())
+}

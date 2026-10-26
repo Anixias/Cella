@@ -1,0 +1,13 @@
+mod test
+
+use shared.*
+
+Box[Words]: impl
+{
+	doubled: fun(self) -> i32 => self.inner.get() * 2
+}
+
+Box[Given]: impl
+{
+	tripled: fun(self) -> i32 => self.inner.get() * 3
+}

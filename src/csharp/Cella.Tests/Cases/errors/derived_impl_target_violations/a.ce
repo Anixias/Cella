@@ -1,0 +1,16 @@
+mod test
+
+Box[Plain]: impl
+{
+	size: fun(self) -> i32 => 1
+}
+
+Box[Plain]: impl Counts
+{
+	count: fun(self) -> i32 => 2
+}
+
+Duo[Words, Plain]: impl
+{
+	size: fun(self) -> i32 => 3
+}

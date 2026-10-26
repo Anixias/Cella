@@ -72,6 +72,7 @@ public sealed partial class SignatureCollector
 	private readonly uint _pointerBitSize;
 	private readonly List<ImplSymbol> _impls = [];
 	private readonly Dictionary<ImplSymbol, TypeSymbol> _implTargets = [];
+	private readonly List<(ImplSymbol, ImplNode, NamedTypeSymbol, ResolutionContext)> _derivedTargets = [];
 	private readonly List<Conformance> _localConformances = [];
 	private readonly Dictionary<Conformance, string> _foreignErrors = [];
 	private readonly HashSet<FunctionSymbol> _witnessMembers = [];
@@ -157,6 +158,8 @@ public sealed partial class SignatureCollector
 		
 		foreach (var file in files)
 			RegisterConstraints(file);
+		
+		RegisterDerivedTargets();
 		
 		foreach (var file in files)
 			ResolveIncompleteHeaders(file);

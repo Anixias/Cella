@@ -1,0 +1,21 @@
+mod test
+
+Box[Words]: impl
+{
+	doubled: fun(self) -> i32 => self.inner.get() * 2
+}
+
+Box[Words]: impl Counts
+{
+	count: fun(self) -> i32 => self.inner.get() + 1
+}
+
+Box[Pair[Words]]: impl
+{
+	tripled: fun(self) -> i32 => self.inner.get() * 3
+}
+
+Duo[Words, Spare]: impl
+{
+	right: fun(self) -> i64 => self.second.get() * 2
+}

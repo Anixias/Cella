@@ -141,7 +141,7 @@ public sealed partial class SignatureCollector
 		if (_typePool.CompleteArguments(target.TypeParameters, impl.TargetArguments, null, out var uninferred) is not
 		    { } completed)
 		{
-			var map = TypePool.CreateMap(target.TypeParameters, impl.TargetArguments);
+			var map = _typePool.MapKnownArguments(target.TypeParameters, impl.TargetArguments);
 			for (var i = 0; i < impl.TargetArguments.Length; i++)
 			{
 				if (_typePool.FindConstraintViolation(target.TypeParameters[i], impl.TargetArguments[i], map) is
