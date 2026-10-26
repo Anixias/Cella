@@ -24,7 +24,8 @@ public sealed partial class Resolver
 		var candidates = functions.ToList();
 		var shapes = candidates
 			.Select(GetOpenTypeParameters)
-			.Where(open => open.Length == node.Arguments.Length)
+			.Where(open => TypePool.CountRequiredArguments(open) <= node.Arguments.Length &&
+			               node.Arguments.Length <= open.Length)
 			.ToList();
 		
 		if (shapes.Count == 0 && candidates.Count > 1)
@@ -79,11 +80,9 @@ public sealed partial class Resolver
 		Func<int, SourceLocation> locate;
 		if (typeArguments is { } explicitArguments)
 		{
-			if (_typePool.CompleteArguments(open, explicitArguments.Types) is not { } completed)
-			{
-				failures.Add(ResolutionContext.ReportGenericArgumentCount(explicitArguments.Location, name, open));
+			if (CompleteWrittenArguments(candidate, args, open, explicitArguments, name, location, failures) is not
+			    { } completed)
 				return null;
-			}
 			
 			arguments = SubstituteOwnerArguments(info, completed);
 			locate = explicitArguments.Locate;
@@ -130,6 +129,32 @@ public sealed partial class Resolver
 		RecordGenericUses(args, specialized);
 		return specialized;
 	}
+	
+	private ImmutableArray<TypeSymbol>? CompleteWrittenArguments(ICallable candidate,
+		IReadOnlyList<IResolvedExpressionNode> args, ImmutableArray<TypeParameterSymbol> open,
+		TypeArgumentList written, string name, SourceLocation location, List<Diagnostic> failures)
+	{
+		var count = written.Types.Length;
+		var inferred = count < open.Length && count >= TypePool.CountRequiredArguments(open)
+			? InferOmittedArguments(CreateWrittenShape(candidate, open, written.Types), args)
+			: null;
+		
+		if (inferred is { Succeeded: true })
+			return inferred.Arguments;
+		
+		if (_typePool.CompleteArguments(open, written.Types) is { } completed)
+			return completed;
+		
+		failures.Add(inferred is null
+			? ResolutionContext.ReportGenericArgumentCount(written.Location, name, open)
+			: ReportInferenceFailure(inferred, name, location));
+		
+		return null;
+	}
+	
+	private InferenceResult InferOmittedArguments(CallShape shape, IReadOnlyList<IResolvedExpressionNode> args) =>
+		_inference.Infer(shape.Open, CreateInferenceInputs(shape, args),
+			shape.ReturnType is { } returnType ? _typePool.Substitute(returnType, shape.Written) : null, ExpectedType);
 	
 	private Dictionary<TypeParameterSymbol, TypeSymbol> ChooseFreeLiteralTypes(FunctionInfo info,
 		ICallable candidate, IReadOnlyList<IResolvedExpressionNode> args, ImmutableArray<TypeParameterSymbol> open)

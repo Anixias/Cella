@@ -463,6 +463,9 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	{
 		public IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> Outer { get; init; } =
 			new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		
+		public IReadOnlyDictionary<TypeParameterSymbol, TypeSymbol> Written { get; init; } =
+			new Dictionary<TypeParameterSymbol, TypeSymbol>();
 	}
 	
 	private sealed record LambdaAnnotations

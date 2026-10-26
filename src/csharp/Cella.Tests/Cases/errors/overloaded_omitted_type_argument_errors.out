@@ -1,0 +1,33 @@
+Error at overloaded_omitted_type_argument_errors.ce:26:10
+25 │ {
+26 │     val a = both[i32](1, 2)
+                 ╘═══════╛ Call to 'both' is ambiguous
+                         | Candidate on line 13
+                         | Candidate on line 14
+
+Error at overloaded_omitted_type_argument_errors.ce:27:10
+26 │ val a = both[i32](1, 2)
+27 │ val b = fit[Small, u8, u16](1)
+             ╘═════════════════╛ No overload of 'fit' takes 3 generic arguments
+
+Error at overloaded_omitted_type_argument_errors.ce:28:10
+27 │ val b = fit[Small, u8, u16](1)
+28 │ val c = fit[Small](1, 2, 3)
+             ╘════════╛ No overload of 'fit' accepts these arguments
+
+Error at overloaded_omitted_type_argument_errors.ce:29:10
+28 │ val c = fit[Small](1, 2, 3)
+29 │ val d = fit[i32](1)
+             ╘══════╛ No overload of 'fit' accepts these arguments
+
+Error at overloaded_omitted_type_argument_errors.ce:30:10
+29 │ val d = fit[i32](1)
+30 │ val e = needs[Small](1)
+             ╘══════════╛ No overload of 'needs' takes one generic argument
+
+Error at overloaded_omitted_type_argument_errors.ce:31:10
+30 │ val e = needs[Small](1)
+31 │ val f = single[i32](1)
+             ╘════╛ Cannot infer 'T' for 'single'
+
+[compilation failed]

@@ -1,0 +1,33 @@
+mod test
+
+Shape[T]: trait
+{
+	size: fun -> usize
+}
+
+Small: rec impl Shape[u8]
+{
+	size: fun -> usize => 1
+}
+
+both[T, U = u8]: fun(x: T, y: i32) -> i32 => 1
+both[T]: fun(x: i32, y: T) -> i32 => 2
+
+fit[S: Shape[T]]: fun(value: usize) -> usize => value
+fit[S: Shape[T]]: fun(value: usize, scale: usize) -> usize => value * scale
+
+needs[S: Shape[T], U]: fun(value: U) -> usize => 1
+needs[S: Shape[T], U]: fun(value: U, scale: usize) -> usize => 2
+
+single[S: Shape[T]]: fun(value: usize) -> usize => value
+
+main: fun -> i32
+{
+	val a = both[i32](1, 2)
+	val b = fit[Small, u8, u16](1)
+	val c = fit[Small](1, 2, 3)
+	val d = fit[i32](1)
+	val e = needs[Small](1)
+	val f = single[i32](1)
+	ret 0
+}

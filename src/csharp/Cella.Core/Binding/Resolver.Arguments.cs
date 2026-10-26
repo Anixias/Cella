@@ -439,8 +439,11 @@ public sealed partial class Resolver
 	private IEnumerable<InferenceInput> CreateInferenceInputs(CallShape shape,
 		IReadOnlyList<IResolvedExpressionNode?> values) => values
 		.Take(shape.Parameters.Count)
-		.Select((value, i) => value is null ? null : CreateInferenceInput(shape.Parameters[i], shape.Modes[i], value))
-		.OfType<InferenceInput>();
+		.Select((value, i) => value is null
+			? null
+			: CreateInferenceInput(_typePool.Substitute(shape.Parameters[i], shape.Written), shape.Modes[i], value))
+		.OfType<InferenceInput>()
+		.Concat(shape.Written.Select(static pair => new InferenceInput(pair.Key, pair.Value) { IsExact = true }));
 	
 	private bool IsDeferred(IExpressionNode node) => node switch
 	{
@@ -468,8 +471,12 @@ public sealed partial class Resolver
 		
 		var open = info is { } declared ? GetOpenTypeParameters(declared) : [];
 		if (info is not { } function || open.IsEmpty || typeArguments is not { } explicitArguments ||
-		    explicitArguments.Types.Length != open.Length)
+		    explicitArguments.Types.Length > open.Length ||
+		    explicitArguments.Types.Length < TypePool.CountRequiredArguments(open))
 			return CreateShape(candidate, open);
+		
+		if (explicitArguments.Types.Length < open.Length)
+			return CreateWrittenShape(candidate, open, explicitArguments.Types);
 		
 		var instantiated = InstantiateDeclared(function, explicitArguments.Types);
 		return CreateShape(candidate is FunctionCallable
@@ -477,6 +484,10 @@ public sealed partial class Resolver
 			: new ReceiverCallable(instantiated, instantiated.Signature.ReturnType,
 				Repack(candidate, instantiated)), []);
 	}
+	
+	private static CallShape CreateWrittenShape(ICallable candidate, ImmutableArray<TypeParameterSymbol> open,
+		ImmutableArray<TypeSymbol> written) =>
+		CreateShape(candidate, open) with { Written = TypePool.CreateMap(open, written) };
 	
 	private static CallShape CreateShape(ICallable candidate, ImmutableArray<TypeParameterSymbol> open) => new(
 		candidate.ParameterTypes, open, candidate.ReturnType,

@@ -1,0 +1,78 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Encoding[T]: trait
+{
+	lengthOf: fun(codePoint: char) -> usize
+}
+
+Utf8: rec impl Encoding[u8]
+{
+	new: pvt op = default
+
+	lengthOf: fun(codePoint: char) -> usize => 1
+}
+
+Utf16: rec impl Encoding[u16]
+{
+	new: pvt op = default
+
+	lengthOf: fun(codePoint: char) -> usize => 2
+}
+
+Tagged: trait
+{
+	tag: fun -> usize
+}
+
+Heap: rec impl Tagged
+{
+	tag: fun -> usize => 100
+}
+
+Arena: rec impl Tagged
+{
+	tag: fun -> usize => 200
+}
+
+readText[E: Encoding[T] = Utf8, A: Tagged = Heap]: fun(path: usize) -> usize =>
+	E.lengthOf('a') * 10 + A.tag() + sizeOf(T) * 1000 + path * 0
+
+readText[E: Encoding[T] = Utf8, A: Tagged = Heap]: fun(path: usize, alloc: A) -> usize =>
+	E.lengthOf('a') * 10 + A.tag() + 7
+
+measure[From: Encoding[S], To: Encoding[D]]: fun -> usize => sizeOf(S) * 10 + sizeOf(D)
+
+measure[From: Encoding[S], To: Encoding[D]]: fun(count: usize) -> usize => (sizeOf(S) * 10 + sizeOf(D)) * count
+
+pick[T, U = u8]: fun -> usize => sizeOf(T) * 10 + sizeOf(U)
+
+pick[T]: fun(scale: usize) -> usize => sizeOf(T) * scale
+
+tagOf[E, A: Tagged = Heap]: fun(alloc: A) -> usize => A.tag() + sizeOf(E)
+
+forward[E: Encoding[T], A: Tagged = Heap]: fun(first: A, second: A) -> usize =>
+	readText[E](2, first) * 1000 + tagOf[T](second)
+
+apply[T: copy, U = T]: fun(value: T, imm f: fun[T -> U]) -> U => f(value)
+
+twice[T: copy, U = T]: fun(value: T, imm f: fun[T -> T]) -> T => f(f(value))
+twice[T: copy, U = T]: fun(value: T) -> T => value
+
+main: fun -> i32
+{
+	printf("%zu %zu %zu\n", readText(1), readText[Utf16](1), readText[Utf16](1, Arena()))
+	printf("%zu %zu %zu\n", readText[Utf16, Arena](1), measure[Utf8, Utf16](), measure[Utf8, Utf16](3))
+	printf("%zu %zu %zu\n", pick[u32](), pick[u32, u16](), pick[u32](5))
+	printf("%zu %zu %zu\n", tagOf[u32](Arena()), tagOf[u32, Heap](Heap()), forward[Utf16](Arena(), Arena()))
+	val doubled = apply[i64](1, fun(x) => x * 2)
+	val quadrupled = twice[i64](3, fun(x) => x * 2)
+	printf("%zu %zu %lld %lld\n", sizeOf(doubled), sizeOf(quadrupled), doubled, quadrupled)
+	val reader = readText[Utf16]
+	printf("%zu\n", reader(1))
+	ret 0
+}
