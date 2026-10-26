@@ -10,7 +10,7 @@ internal static class Pins
 		IEnumerable<string> projects = File.Exists(path)
 			? [path]
 			: Directory.Exists(path)
-				? Directory.EnumerateFiles(path, "*.celp", SearchOption.AllDirectories)
+				? ProjectSearch.FindProjects(path)
 				: [];
 		
 		return projects.Select(ReadPin).OfType<SemanticVersion>().OrderDescending().Cast<SemanticVersion?>()

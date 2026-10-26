@@ -97,9 +97,6 @@ public sealed partial class CellaProject
 	
 	public ImmutableArray<CelpEntry> ImportEntries { get; private set; } = [];
 	
-	public static IEnumerable<string> FindProjects(string directory) =>
-		Directory.EnumerateFiles(directory, ProjectSearchPattern, SearchOption.AllDirectories);
-	
 	public static IEnumerable<string> FindSiblingProjects(string path) => Directory
 		.EnumerateFiles(Path.GetDirectoryName(path) ?? ".", ProjectSearchPattern)
 		.Where(other => !Path.GetFullPath(other).Equals(Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
@@ -493,7 +490,7 @@ public sealed partial class CellaProject
 		foreach (var file in Directory.EnumerateFiles(directory, SourceSearchPattern))
 			yield return file;
 		
-		foreach (var subdirectory in Directory.EnumerateDirectories(directory))
+		foreach (var subdirectory in ProjectSearch.EnumerateSubdirectories(directory))
 			foreach (var file in FindSourceFiles(subdirectory, false))
 				yield return file;
 	}

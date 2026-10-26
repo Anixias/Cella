@@ -57,10 +57,10 @@ public sealed partial class Builder(BuildOptions options, IBuildOutput output)
 	private IEnumerable<string> FindProjects(string directory)
 	{
 		if (!RemembersProjects)
-			return CellaProject.FindProjects(directory);
+			return ProjectSearch.FindProjects(directory);
 		
 		if (!_foundProjects.TryGetValue(directory, out var found))
-			_foundProjects[directory] = found = [..CellaProject.FindProjects(directory)];
+			_foundProjects[directory] = found = [..ProjectSearch.FindProjects(directory)];
 		
 		return found.Where(File.Exists);
 	}

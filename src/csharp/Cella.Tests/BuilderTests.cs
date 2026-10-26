@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -309,6 +310,54 @@ public sealed class BuilderTests : IDisposable
 		Assert.Empty(project.Diagnostics);
 		Assert.NotEmpty(project.Files);
 		Assert.Empty(output.Lines);
+	}
+	
+	[Fact]
+	public async Task SkipsDirectoryLinks()
+	{
+		await WriteProgramAsync(ValidSource);
+		var links = Directory.CreateDirectory(Path.Combine(_directory, "out")).FullName;
+		var outside = TestDirectory.Create("builder");
+		await File.WriteAllTextAsync(Path.Combine(outside, "linked.ce"), InvalidSource, Token);
+		List<string> junctions = [];
+		
+		try
+		{
+			await CreateDirectoryLinkAsync(Path.Combine(links, "broken"), Path.Combine(links, "gone"), junctions);
+			await CreateDirectoryLinkAsync(Path.Combine(links, "cycle"), links, junctions);
+			await CreateDirectoryLinkAsync(Path.Combine(links, "outside"), outside, junctions);
+			
+			var result = await CheckAsync(CreateBuilder(new RecordingOutput()));
+			
+			Assert.True(result.Succeeded, Describe(result));
+			Assert.Single(Assert.Single(result.Projects).Files);
+		}
+		finally
+		{
+			foreach (var junction in junctions)
+				Directory.Delete(junction);
+			
+			Directory.Delete(outside, true);
+		}
+	}
+	
+	private static async Task CreateDirectoryLinkAsync(string path, string target, List<string> junctions)
+	{
+		if (!OperatingSystem.IsWindows())
+		{
+			Directory.CreateSymbolicLink(path, target);
+			return;
+		}
+		
+		using var process = Process.Start(new ProcessStartInfo("cmd.exe", ["/c", "mklink", "/J", path, target])
+		{
+			RedirectStandardOutput = true,
+			RedirectStandardError = true
+		})!;
+		
+		await process.WaitForExitAsync(Token);
+		Assert.Equal(0, process.ExitCode);
+		junctions.Add(path);
 	}
 	
 	[Fact]

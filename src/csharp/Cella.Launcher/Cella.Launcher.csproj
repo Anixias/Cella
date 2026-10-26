@@ -17,6 +17,7 @@
     <Compile Include="..\Cella.Compiler\CommandLine.cs" Link="CommandLine.cs"/>
     <Compile Include="..\Cella.Compiler\ComponentVersions.cs" Link="ComponentVersions.cs"/>
     <Compile Include="..\Cella.Compiler\Projects\ProjectPin.cs" Link="ProjectPin.cs"/>
+    <Compile Include="..\Cella.Compiler\Projects\ProjectSearch.cs" Link="ProjectSearch.cs"/>
     <Compile Include="..\Cella.Compiler\Projects\SemanticVersion.cs" Link="SemanticVersion.cs"/>
   </ItemGroup>
 

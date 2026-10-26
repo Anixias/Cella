@@ -14,7 +14,7 @@ public static class ProjectRequests
 	{
 		var paths = roots
 			.Where(Directory.Exists)
-			.SelectMany(CellaProject.FindProjects)
+			.SelectMany(ProjectSearch.FindProjects)
 			.Select(Path.GetFullPath)
 			.Distinct(Protocol.PathComparer)
 			.Order(Protocol.PathComparer);
