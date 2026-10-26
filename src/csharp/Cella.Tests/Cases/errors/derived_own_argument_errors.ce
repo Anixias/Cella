@@ -1,0 +1,29 @@
+mod test
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Plain: rec
+
+Box[E: Holds[T], A]: rec
+{
+	value: i32
+
+	loose[B, H]: fun(imm other: Box[H, B]) -> i32 => 0
+	bound[B, H: Holds[V]]: fun(imm other: Box[H, B]) -> usize => sizeOf(V) + sizeOf(T)
+	fixed: fun(imm other: Box[Plain, A]) -> i32 => 0
+}
+
+Box[Plain, A]: impl Holds[i32]
+{
+	unit: fun -> i32 => 0
+}
+
+main: fun -> i32 => 0

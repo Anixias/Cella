@@ -1,0 +1,76 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Encoding[T]: trait
+{
+	unit: fun -> T
+}
+
+Allocator: trait
+{
+	id: fun -> i32
+}
+
+Heap: rec impl Allocator
+{
+	id: fun -> i32 => 1
+}
+
+Arena: rec impl Allocator
+{
+	id: fun -> i32 => 2
+}
+
+Utf8: rec impl Encoding[u8]
+{
+	unit: fun -> u8 => 1
+}
+
+Utf16: rec impl Encoding[u16]
+{
+	unit: fun -> u16 => 2
+}
+
+Box[E: Holds[T], A]: rec
+{
+	value: i32
+
+	same[B]: fun(imm self, imm other: Box[E, B]) -> bool => self.value == other.value + i32(sizeOf(T)) - 2
+}
+
+Text[E: Encoding[T: copy + default] = Utf8, A: Allocator = Heap]: rec
+{
+	length: usize
+
+	==[B: Allocator]: op(imm left: Text[E, A], imm right: Text[E, B]) -> bool =>
+		left.length * sizeOf(T) == right.length * sizeOf(T)
+
+	joined[B: Allocator]: fun(imm self, imm other: Text[E, B]) -> usize =>
+		self.length + other.length * sizeOf(T) + usize(A.id() * 100) + usize(B.id() * 1000)
+}
+
+main: fun -> i32
+{
+	printf("%d %d\n", Box[Words, i32](5).same(imm Box[Words, u8](5)), Box[Words, i32](5).same(imm Box[Words, u8](6)))
+	val plain = Text(3)
+	val arena = Text[Utf8, Arena](3)
+	val wide = Text[Utf16, Arena](4)
+	printf("%d %d %zu %zu\n", plain == arena, plain == Text[Utf8, Arena](4), plain.joined(imm arena),
+		Text[Utf16](1).joined(imm wide))
+
+	ret 0
+}

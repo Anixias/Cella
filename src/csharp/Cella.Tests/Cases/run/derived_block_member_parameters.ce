@@ -1,0 +1,62 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Bytes: rec impl Holds[u8]
+{
+	unit: fun -> u8 => 3
+}
+
+Wrap[F: Holds[U]]: rec
+{
+	count: usize
+}
+
+Box[E: Holds[T], X]: rec
+{
+	extra: usize
+
+	inBody[F: Holds[U]]: fun(source: Wrap[F]) -> Box[E, X] => Box[E, X](source.count + sizeOf(U) + sizeOf(T) * 100)
+}
+
+Box[E: Holds[T], X: default]: impl
+{
+	inBlock[F: Holds[U]]: fun(source: Wrap[F]) -> Box[E, X] => Box[E, X](source.count + sizeOf(U) * 10 + sizeOf(T) * 100)
+}
+
+Duo[E: Holds[T], B]: rec
+{
+	value: B
+}
+
+Duo[E: Holds[T], B: default]: impl
+{
+	blank[H: Holds[V]]: fun(source: H) -> Duo[E, B] => Duo[E, B](B())
+	width[H: Holds[V]]: fun(imm self, source: H) -> usize => sizeOf(V) * 100 + sizeOf(B) * 10 + sizeOf(T)
+	other[C]: fun(imm self, imm with: Duo[E, C]) -> usize => sizeOf(C) * 100 + sizeOf(B) * 10 + sizeOf(T)
+	unit: get(imm self) -> usize => sizeOf(T) + sizeOf(B) * 10
+	shown[K]: fun(imm self, extra: K) -> usize => sizeOf(K) * 10 + sizeOf(T)
+	unitOf[H: Holds[V]]: fun -> usize => sizeOf(V) * 10 + sizeOf(T)
+}
+
+main: fun -> i32
+{
+	printf("%zu %zu\n", Box[Bytes, i32].inBody(Wrap[Words](1)).extra, Box[Bytes, i32].inBlock(Wrap[Words](1)).extra)
+	val duo = Duo[Bytes, i32].blank(Words())
+	printf("%d %zu %zu\n", duo.value, duo.width(Bytes()), duo.other(imm Duo[Bytes, i64](0)))
+	printf("%zu %zu %zu\n", duo.unit, duo.shown(1i64), Duo[Words, i8].unitOf[Bytes]())
+	ret 0
+}

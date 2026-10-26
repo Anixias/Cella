@@ -224,10 +224,10 @@ public sealed class TypeInference(TypePool typePool)
 		var progress = false;
 		for (var j = 0; j < parameters.Length; j++)
 		{
-			if (inferred[j] is not null || !match.TryGetValue(parameters[j], out var found))
+			if (inferred[j] is not null || !open.Contains(parameters[j]))
 				continue;
 			
-			inferred[j] = found;
+			inferred[j] = match.GetValueOrDefault(parameters[j], parameters[j]);
 			progress = true;
 		}
 		

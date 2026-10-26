@@ -1,0 +1,22 @@
+Error at derived_own_argument_errors.ce:19:30
+18 │ 
+19 │ loose[B, H]: fun(imm other: Box[H, B]) -> i32 => 0
+                                 ╘═══════╛ Cannot infer 'T' for 'Box'
+
+Hint at derived_own_argument_errors.ce:20:2
+19 │ loose[B, H]: fun(imm other: Box[H, B]) -> i32 => 0
+20 │ bound[B, H: Holds[V]]: fun(imm other: Box[H, B]) -> usize => sizeOf(V) + sizeOf(T)
+     ╘═══╛ 'bound' is never used
+
+Error at derived_own_argument_errors.ce:21:24
+20 │ bound[B, H: Holds[V]]: fun(imm other: Box[H, B]) -> usize => sizeOf(V) + sizeOf(T)
+21 │ fixed: fun(imm other: Box[Plain, A]) -> i32 => 0
+                           ╘═══════════╛ Cannot infer 'T' for 'Box'
+
+Error at derived_own_argument_errors.ce:24:1
+23 │ 
+24 │ Box[Plain, A]: impl Holds[i32]
+     ╘═╛ 'Box' requires 'E: Holds[T]'
+       | 'Plain' doesn't implement 'Holds[T]'
+
+[compilation failed]

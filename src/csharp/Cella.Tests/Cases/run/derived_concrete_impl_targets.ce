@@ -1,0 +1,117 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Holds[T]: trait
+{
+	unit: fun -> T
+}
+
+Words: rec impl Holds[u16]
+{
+	unit: fun -> u16 => 9
+}
+
+Bytes: rec impl Holds[u8]
+{
+	unit: fun -> u8 => 3
+}
+
+Wrapper[W: default]: rec impl Holds[W]
+{
+	unit: fun -> W => W()
+}
+
+Shows[Q]: trait
+{
+	show[F: fun[imm Q -> bool]]: fun(imm value: Self, imm check: F) -> bool
+}
+
+Checks[Q]: trait
+{
+	check[F: fun[imm Q -> bool]]: fun(imm value: Self, imm test: F) -> bool
+	size: get(imm self) -> usize
+	twice[G: fun[Q -> Q]]: fun(imm self, step: G, start: Q) -> Q
+	label: fun -> usize
+}
+
+Counts: trait
+{
+	count[H: Holds[V]]: fun(imm self, source: H) -> usize
+}
+
+Box[E: Holds[T]]: rec
+{
+	value: i32
+}
+
+Box[Words]: impl Shows[i32]
+{
+	show[F: fun[imm i32 -> bool]]: fun(imm value: Box[Words], imm check: F) -> bool => check(imm value.value)
+}
+
+Box[Words]: impl Checks[i32]
+{
+	check[F: fun[imm i32 -> bool]]: fun(imm value: Box[Words], imm test: F) -> bool => test(imm value.value)
+	size: get(imm self) -> usize => usize(self.value) * 10
+	twice[G: fun[i32 -> i32]]: fun(imm self, step: G, start: i32) -> i32 => step(step(start + self.value))
+	label: fun -> usize => 40
+}
+
+Box[Bytes]: impl Counts
+{
+	count[H: Holds[V]]: fun(imm self, source: H) -> usize => sizeOf(V) * 100 + usize(self.value)
+}
+
+Box[Wrapper[W: default]]: impl Counts
+{
+	count[H: Holds[V]]: fun(imm self, source: H) -> usize => sizeOf(V) * 100 + sizeOf(W) * 10
+}
+
+Duo[E: Holds[T], B]: rec
+{
+	value: B
+}
+
+Duo[Words, i32]: impl Checks[i32]
+{
+	check[F: fun[imm i32 -> bool]]: fun(imm value: Duo[Words, i32], imm test: F) -> bool => test(imm value.value)
+	size: get(imm self) -> usize => usize(self.value) + 1
+	twice[G: fun[i32 -> i32]]: fun(imm self, step: G, start: i32) -> i32 => step(step(start) * 2)
+	label: fun -> usize => 7
+}
+
+Duo[Bytes, B]: impl Counts
+{
+	count[H: Holds[V]]: fun(imm self, source: H) -> usize => sizeOf(V) * 100 + sizeOf(B)
+}
+
+find[S: Shows[i32]]: fun(imm item: S, imm wanted: i32) -> bool
+{
+	val matches = fun(imm shown: i32) -> bool => shown == wanted
+	ret S.show(imm item, imm matches)
+}
+
+checked[S: Checks[i32]]: fun(imm item: S, imm wanted: i32) -> i32
+{
+	val same = fun(imm shown: i32) -> bool => shown == wanted
+	val add = fun(x: i32) -> i32 => x + 1
+	ret i32(S.check(imm item, imm same)) + i32(item.size) * 10 + i32(S.label()) * 1000 + item.twice(add, 1) * 100000
+}
+
+counted[S: Counts]: fun(imm item: S) -> usize => item.count(Words())
+
+main: fun -> i32
+{
+	val five = 5
+	printf("%d %d\n", find(imm Box[Words](5), imm five), find(imm Box[Words](6), imm five))
+	printf("%d %d\n", checked(imm Box[Words](5), imm five), checked(imm Box[Words](6), imm five))
+	printf("%d %zu\n", checked(imm Duo[Words, i32](7), imm 7), counted(imm Box[Bytes](4)))
+	printf("%zu %zu %zu\n", Box[Bytes](4).count(Words()), counted(imm Box[Wrapper[i64]](0)),
+		counted(imm Duo[Bytes, i64](0)))
+
+	ret 0
+}

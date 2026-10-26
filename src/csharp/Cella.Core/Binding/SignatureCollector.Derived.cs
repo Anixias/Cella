@@ -172,13 +172,17 @@ public sealed partial class SignatureCollector
 		foreach (var constructor in impl.Constructors)
 			constructor.TypeParameters = impl.TypeParameters;
 		
-		if (bound.Count == 0)
-			return true;
-		
 		impl.FreeParameters = [..impl.FreeParameters.Where(parameter => !bound.Contains(parameter))];
 		impl.TargetFreeParameters = [..bound];
+		ImmutableArray<TypeParameterSymbol> outer = impl.Node.Traits.IsEmpty
+			? impl.TypeParameters
+			: [..impl.TypeParameters, ..impl.FreeParameters];
+		
 		foreach (var function in GetBlockFunctions(impl))
+		{
 			function.DeclaredTypeParameters = [..function.DeclaredTypeParameters.Where(p => !bound.Contains(p))];
+			function.TypeParameters = [..outer, ..function.DeclaredTypeParameters];
+		}
 		
 		return true;
 	}
