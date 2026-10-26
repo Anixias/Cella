@@ -3,7 +3,7 @@
 use when linux
 
 use std.[Result, Span, View]
-use std.io.IoError
+use std.io.[IoError, SeekFrom]
 use std.mem.[Heap, Layout]
 
 Status: pvt rec
@@ -30,6 +30,7 @@ pvt ext
 	openFile: ext("open") fun(path: ptr[u8], flags: i32, ...) -> i32
 	readFile: ext("read") fun(file: i32, buffer: ptr, count: usize) -> isize
 	writeFile: ext("write") fun(file: i32, buffer: ptr, count: usize) -> isize
+	seekFile: ext("lseek") fun(file: i32, offset: i64, origin: i32) -> i64
 	fstat: fun(file: i32, status: ptr[Status]) -> i32
 	fsync: fun(file: i32) -> i32
 	closeFile: ext("close") fun(file: i32) -> i32
@@ -45,6 +46,9 @@ truncateFlag: pvt const i32 = 0x200
 appendFlag: pvt const i32 = 0x400
 createPermissions: pvt const i32 = 0x1B6
 closeOnExec: pvt const i32 = 0x80000
+seekStart: pvt const i32 = 0
+seekCurrent: pvt const i32 = 1
+seekEnd: pvt const i32 = 2
 notPermitted: pvt const u32 = 1
 noEntry: pvt const u32 = 2
 interrupted: pvt const u32 = 4
@@ -177,30 +181,43 @@ NativeFile: mod rec
 	
 	write: fun(self, data: View[u8]) -> Result[usize, IoError]
 	{
-		var offset: usize = 0
-		while offset < data.length
+		var count = data.length
+		if count > largestTransfer
+			count = largestTransfer
+		
+		loop
 		{
-			var count = data.length - offset
-			if count > largestTransfer
-				count = largestTransfer
+			val result = writeFile(self.descriptor, data.data, count)
+			if result >= 0
+				ret ok(usize(result))
 			
-			val result = writeFile(self.descriptor, data.data + offset, count)
-			if result < 0
-			{
-				val code = lastError()
-				if code == interrupted
-					cont
-				
+			val code = lastError()
+			if code != interrupted
 				ret err(errorFrom(code))
-			}
-			
-			if result == 0
-				ret err(IoError(other, 0))
-			
-			offset += usize(result)
+		}
+	}
+	
+	seek: fun(self, target: SeekFrom) -> Result[u64, IoError]
+	{
+		val distance = match target
+		{
+			start(val offset) => i64(offset)
+			current(val offset) => offset
+			end(val offset) => offset
 		}
 		
-		ret ok(data.length)
+		val origin = match target
+		{
+			start(_) => seekStart
+			current(_) => seekCurrent
+			end(_) => seekEnd
+		}
+		
+		val position = seekFile(self.descriptor, distance, origin)
+		if position < 0
+			ret err(errorFrom(lastError()))
+		
+		ret ok(u64(position))
 	}
 	
 	size: fun(self) -> Result[u64, IoError]

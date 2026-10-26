@@ -1,0 +1,24 @@
+﻿mod std.io
+
+use std.[Result, View]
+
+Write: pub trait
+{
+	write: fun(mut self, data: View[u8]) -> Result[usize, IoError]
+	flush: fun(mut self) -> Result[IoError] => ok
+	
+	writeAll: fun(mut self, data: View[u8]) -> Result[IoError]
+	{
+		var rest = data
+		while !rest.isEmpty
+		{
+			val written = self.write(rest)?
+			if written == 0
+				ret err(IoError(other, 0))
+			
+			rest = rest.slice(written, rest.length)
+		}
+		
+		ret ok
+	}
+}

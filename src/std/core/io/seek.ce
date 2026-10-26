@@ -1,0 +1,16 @@
+﻿mod std.io
+
+use std.Result
+
+SeekFrom: pub enum
+{
+	start(offset: u64)
+	current(offset: i64)
+	end(offset: i64)
+}
+
+Seek: pub trait
+{
+	seek: fun(mut self, target: SeekFrom) -> Result[u64, IoError]
+	position: fun(mut self) -> Result[u64, IoError] => self.seek(current(0))
+}

@@ -1,0 +1,46 @@
+﻿mod std.io
+
+use std.[Result, Span, View]
+use std.containers.List
+use std.mem.Allocator
+
+Read: pub trait
+{
+	read: fun(mut self, destination: Span[u8]) -> Result[usize, IoError]
+	
+	readAll: fun(mut self, destination: Span[u8]) -> Result[usize, IoError]
+	{
+		var count = 0
+		while count < destination.length
+		{
+			val read = self.read(destination.slice(count, destination.length))?
+			if read == 0
+				break
+			
+			count += read
+		}
+		
+		ret ok(count)
+	}
+	
+	readExact: fun(mut self, destination: Span[u8]) -> Result[IoError]
+	{
+		if self.readAll(destination)? < destination.length
+			ret err(IoError(unexpectedEnd, 0))
+		
+		ret ok
+	}
+}
+
+readToEnd[A: Allocator]: pub fun(mut source: dyn[Read], mut bytes: List[u8, A]) -> Result[IoError]
+{
+	var chunk: array[u8, 4096]
+	loop
+	{
+		val count = source.read(mut chunk)?
+		if count == 0
+			ret ok
+		
+		bytes.addAll(View[u8](@chunk, count))
+	}
+}

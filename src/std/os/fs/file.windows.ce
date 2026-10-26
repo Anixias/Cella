@@ -3,7 +3,7 @@
 use when windows
 
 use std.[Result, Span, View]
-use std.io.IoError
+use std.io.[IoError, SeekFrom]
 use std.mem.[BitSet, Heap, Layout]
 use std.text.[Utf16, Utf8, measure, transcode]
 
@@ -16,6 +16,9 @@ pvt ext
 	ReadFile: fun(file: ptr, buffer: ptr, count: u32, read: ptr[u32], overlapped: ptr) -> i32
 	WriteFile: fun(file: ptr, buffer: ptr, count: u32, written: ptr[u32], overlapped: ptr) -> i32
 	GetFileSizeEx: fun(file: ptr, size: ptr[i64]) -> i32
+	
+	SetFilePointerEx: fun(file: ptr, distance: i64, position: ptr[i64], method: MoveMethod) -> i32
+	
 	FlushFileBuffers: fun(file: ptr) -> i32
 	GetFileAttributesW: fun(path: ptr[u16]) -> u32
 	CloseHandle: fun(handle: ptr) -> i32
@@ -51,6 +54,13 @@ Disposition: pvt ext enum(u32)
 	openExisting = 3
 	openAlways = 4
 	truncateExisting = 5
+}
+
+MoveMethod: pvt ext enum(u32)
+{
+	begin = 0
+	current = 1
+	end = 2
 }
 
 Flags: pvt ext enum(u32) impl BitSet
@@ -91,6 +101,7 @@ handleEndOfFile: pvt const u32 = 38
 invalidParameter: pvt const u32 = 87
 brokenPipe: pvt const u32 = 109
 invalidName: pvt const u32 = 123
+negativeSeek: pvt const u32 = 131
 badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
@@ -104,7 +115,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	accessDenied, writeProtect => IoError(permissionDenied, code)
 	fileExists, alreadyExistsError => IoError(alreadyExists, code)
 	diskFull, handleDiskFull => IoError(storageFull, code)
-	invalidName, badPathName, fileNameTooLong, invalidParameter => IoError(invalidInput, code)
+	invalidName, badPathName, fileNameTooLong, invalidParameter, negativeSeek => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
 
@@ -208,24 +219,38 @@ NativeFile: mod rec
 	
 	write: fun(self, data: View[u8]) -> Result[usize, IoError]
 	{
-		var offset: usize = 0
-		while offset < data.length
+		var count = data.length
+		if count > largestTransfer
+			count = largestTransfer
+		
+		var written: u32 = 0
+		if WriteFile(self.handle, data.data, u32(count), @written, null) == 0
+			ret err(errorFrom(GetLastError()))
+		
+		ret ok(usize(written))
+	}
+	
+	seek: fun(self, target: SeekFrom) -> Result[u64, IoError]
+	{
+		val distance = match target
 		{
-			var count = data.length - offset
-			if count > largestTransfer
-				count = largestTransfer
-			
-			var written: u32 = 0
-			if WriteFile(self.handle, data.data + offset, u32(count), @written, null) == 0
-				ret err(errorFrom(GetLastError()))
-			
-			if written == 0
-				ret err(IoError(other, 0))
-			
-			offset += usize(written)
+			start(val offset) => i64(offset)
+			current(val offset) => offset
+			end(val offset) => offset
 		}
 		
-		ret ok(data.length)
+		val method = match target
+		{
+			start(_) => MoveMethod.begin
+			current(_) => MoveMethod.current
+			end(_) => MoveMethod.end
+		}
+		
+		var position: i64 = 0
+		if SetFilePointerEx(self.handle, distance, @position, method) == 0
+			ret err(errorFrom(GetLastError()))
+		
+		ret ok(u64(position))
 	}
 	
 	size: fun(self) -> Result[u64, IoError]

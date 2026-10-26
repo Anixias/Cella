@@ -1,6 +1,6 @@
 ﻿mod std.fs
 
-use std.[Result, Span, View]
+use std.[Result, View]
 use std.cmp.Eq
 use std.io.IoError
 use std.mem.[Allocator, Heap]
@@ -72,38 +72,28 @@ decodeAs[F: Encoding[u8], E: Encoding[T: copy + Eq + default], A: Allocator + no
 }
 
 writeText[To: Encoding[u8] = Utf8, F: Encoding[U] = Utf8]: pub fun(path: str, text: Text[F],
-	byteOrderMark: bool = false) -> Result[usize, IoError]
+	byteOrderMark: bool = false) -> Result[IoError]
 {
 	var file = File.open(path, create, write)?
-	var total = 0
 	if byteOrderMark
 	{
 		var mark: array[u8, 4]
 		val count = To.encode('\uFEFF', mut mark)
-		total += file.write(View[u8](@mark, count))?
+		file.writeAll(View[u8](@mark, count))?
 	}
-	
-	ret ok(total + writeEncoded[To, F](mut file, text)?)
+
+	ret writeEncoded[To, F](mut file, text)
 }
 
 appendText[F: Encoding[U] = Utf8]: pub fun(path: str, text: Text[F], target: FileEncoding = detect)
-	-> Result[usize, IoError]
+	-> Result[IoError]
 {
 	var file = File.open(path, append, readWrite)?
 	var encoding = target
 	if encoding is detect
 	{
 		var start: array[u8, 3]
-		var count = 0
-		while count < 3
-		{
-			val read = file.read(Span[u8](@start, 3).slice(count, 3))?
-			if read == 0
-				break
-			
-			count += read
-		}
-		
+		val count = file.readAll(mut start)?
 		encoding = markedEncoding(View[u8](@start, count))
 	}
 	
@@ -115,17 +105,16 @@ appendText[F: Encoding[U] = Utf8]: pub fun(path: str, text: Text[F], target: Fil
 	}
 }
 
-writeEncoded[To: Encoding[u8], F: Encoding[U]]: pvt fun(mut file: File, text: Text[F]) -> Result[usize, IoError]
+writeEncoded[To: Encoding[u8], F: Encoding[U]]: pvt fun(mut file: File, text: Text[F]) -> Result[IoError]
 {
 	var chunk: array[u8, 4096]
-	var total = 0
 	var rest: View[U] = text
 	while !rest.isEmpty
 	{
 		val result = transcode[F, To](rest, mut chunk)
-		total += file.write(View[u8](@chunk, result.written))?
+		file.writeAll(View[u8](@chunk, result.written))?
 		rest = rest.slice(result.read, rest.length)
 	}
-	
-	ret ok(total)
+
+	ret ok
 }
