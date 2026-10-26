@@ -16,11 +16,11 @@ namespace Cella.Compiler.Building;
 public sealed partial class Builder
 {
 	private static Lazy<SemanticModel> CreateModel(ImmutableArray<ResolvedFileNode> files,
-		List<(Token Name, Symbol Symbol)> names, TypePool typePool, SignatureCollector signatures)
+		List<(Token Name, Symbol Symbol)> names, TypePool typePool, SignatureCollector signatures, Resolver resolver)
 	{
 		var model = new SemanticModel(files, names, signatures.FindFunctionInfo,
 			signatures.GetGlobalInfo, signatures.DescribeTypeConstant, typePool.GetCaseValue, signatures.FindImports,
-			typePool.FindFoldedFunction);
+			typePool.FindFoldedFunction, resolver.SignatureExpressions);
 		
 		return new(() => model);
 	}
@@ -292,7 +292,9 @@ public sealed partial class Builder
 				],
 				resolvedFiles)
 			{
-				Model = options.ChecksOnly ? CreateModel(resolvedFiles, names, typePool, signatureCollector) : null,
+				Model = options.ChecksOnly
+					? CreateModel(resolvedFiles, names, typePool, signatureCollector, resolver)
+					: null,
 				InactiveCode = inactiveCode
 			});
 			

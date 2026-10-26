@@ -2008,6 +2008,81 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task ClassifiesParameterDefaults()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Malformed: enum
+		                                 {
+		                                 	replace
+		                                 	stop
+		                                 }
+		                                 
+		                                 Limit: val i32 = 4
+		                                 
+		                                 decode: fun(count: i32, malformed: Malformed = replace, size: i32 = Limit,
+		                                 	other: Malformed = Malformed.stop) -> i32 => count
+		                                 
+		                                 Level: enum
+		                                 {
+		                                 	low = Limit
+		                                 }
+		                                 
+		                                 Grid[const size: i32 = Limit]: rec
+		                                 {
+		                                 	cells: array[i32, Limit]
+		                                 }
+		                                 
+		                                 main: fun -> i32 => decode(1)
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"10:47:7 enumMember", "10:68:5 variable", "11:30:4 enumMember", "15:7:5 variable", "18:23:5 variable",
+			"20:19:5 variable"
+		];
+		
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task ClassifiesParametersDeclaredInUnfinishedHeaders()
+	{
+		var tokens = await ClassifyAsync("""
+		                                 mod test
+		                                 
+		                                 Encoding[T]: trait
+		                                 {
+		                                 }
+		                                 
+		                                 Name: rec
+		                                 {
+		                                 }
+		                                 
+		                                 measure[From: Encoding[S], To: Encoding[D], Other: Encoding[Name]]
+		                                 
+		                                 main: fun -> i32 => 0
+		                                 
+		                                 """);
+		
+		string[] expected =
+		[
+			"10:8:4 typeParameter declaration", "10:14:8 interface", "10:23:1 typeParameter", "10:27:2 typeParameter",
+			"10:31:8 interface", "10:40:1 typeParameter", "10:44:5 typeParameter", "10:60:4 struct"
+		];
+		
+		foreach (var prefix in expected)
+			Assert.Contains(tokens, token => token.StartsWith(prefix));
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task CompletesConstraintKeywords()
 	{
 		await InitializeAsync();

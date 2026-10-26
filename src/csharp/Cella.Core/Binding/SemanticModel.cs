@@ -47,7 +47,8 @@ public sealed class SemanticModel
 		Func<TypeConstantUse, (GlobalSymbol Declared, Constant? Value)?>? typeConstants = null,
 		Func<EnumSymbol, EnumCaseSymbol, BigInteger>? caseValues = null,
 		Func<FileSymbol, ImportEnvironment?>? imports = null,
-		Func<FunctionSymbol, Constant?>? foldedFunctions = null)
+		Func<FunctionSymbol, Constant?>? foldedFunctions = null,
+		IEnumerable<IResolvedExpressionNode>? signatureExpressions = null)
 	{
 		_imports = imports;
 		_foldedFunctions = foldedFunctions;
@@ -59,6 +60,8 @@ public sealed class SemanticModel
 		_types = new(IndexTypes);
 		foreach (var file in files)
 			Walk(file);
+		
+		WalkSignatureExpressions(signatureExpressions ?? []);
 		
 		var named = new Dictionary<SourceLocation, List<Symbol>>();
 		foreach (var (name, symbol) in names)
@@ -223,6 +226,29 @@ public sealed class SemanticModel
 	{
 		if (token is { } name)
 			Add(name.SourceLocation, symbol, description);
+	}
+	
+	private void WalkSignatureExpressions(IEnumerable<IResolvedExpressionNode> expressions)
+	{
+		var known = _references.Values.SelectMany(static references => references)
+			.Select(static reference => reference.Location)
+			.ToHashSet();
+		
+		var counts = _references.ToDictionary(static entry => entry.Key, static entry => entry.Value.Count);
+		foreach (var expression in expressions)
+			Walk(expression);
+		
+		foreach (var (path, references) in _references)
+		{
+			var start = counts.GetValueOrDefault(path);
+			var added = references.Skip(start)
+				.Where(reference => !known.Contains(reference.Location))
+				.DistinctBy(static reference => reference.Location)
+				.ToList();
+			
+			references.RemoveRange(start, references.Count - start);
+			references.AddRange(added);
+		}
 	}
 	
 	private void Walk(object root)

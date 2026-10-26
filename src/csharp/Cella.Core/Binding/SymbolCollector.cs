@@ -57,7 +57,7 @@ public sealed class SymbolCollector : IDeclarationNodeVisitor<Symbol>
 		];
 	}
 	
-	private static ImmutableArray<TypeParameterSymbol> CreateAllTypeParameters(ImmutableArray<TypeParameterNode> nodes,
+	public static ImmutableArray<TypeParameterSymbol> CreateAllTypeParameters(ImmutableArray<TypeParameterNode> nodes,
 		string owner, IEnumerable<string> outer) =>
 		CreateTypeParameters(nodes, owner).AddRange(CreateDerivedParameters(nodes, owner, outer));
 	

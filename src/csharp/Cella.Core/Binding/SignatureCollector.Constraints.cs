@@ -152,8 +152,18 @@ public sealed partial class SignatureCollector
 		foreach (var header in node.IncompleteHeaders)
 		{
 			using var frame = Own(new ErrorContainment.Owner(null, true));
-			var parameters = SymbolCollector.CreateTypeParameters(header.TypeParameters, header.Identifier.Text);
-			var context = _fileContexts[node] with { TypeParameters = parameters };
+			var fileContext = _fileContexts[node];
+			var visible = fileContext.GetAllSymbols().Select(static symbol => symbol.Name).ToHashSet();
+			var all = SymbolCollector.CreateAllTypeParameters(header.TypeParameters, header.Identifier.Text, [])
+				.Where(parameter => !parameter.IsImplicit || !visible.Contains(parameter.Name))
+				.ToImmutableArray();
+			
+			var parameters = all[..header.TypeParameters.Length];
+			var context = fileContext with { TypeParameters = all };
+			foreach (var derived in all[header.TypeParameters.Length..]
+				         .Where(static parameter => !parameter.IsImplicit))
+				RecordName?.Invoke(derived.Definition!.Value, derived);
+			
 			for (var i = 0; i < parameters.Length; i++)
 			{
 				var parameter = header.TypeParameters[i];

@@ -57,6 +57,10 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	private readonly Stack<UnaryOpJob> _unaryOpJobs = [];
 	private readonly Stack<Expectation> _expectations = [];
 	private readonly Stack<ResolutionContext> _resolutionContexts = [];
+	
+	private readonly Dictionary<IExpressionNode, IResolvedExpressionNode> _signatureExpressions =
+		new(ReferenceEqualityComparer.Instance);
+	
 	private readonly List<IResolvedExpressionNode[]?> _callArguments = [];
 	private readonly HashSet<LocalVariableSymbol> _repeatedBindings = [];
 	private readonly Dictionary<IResolvedExpressionNode, ImmutableArray<LocalVariableSymbol?>> _failedPatterns = [];
@@ -109,19 +113,29 @@ public sealed partial class Resolver : IStatementNodeVisitor<IResolvedStatementN
 	
 	public ResolvedFileNode Resolve(FileNode root) => (ResolvedFileNode)Visit(root);
 	
+	public IEnumerable<IResolvedExpressionNode> SignatureExpressions => _signatureExpressions.Values;
+	
+	private IResolvedExpressionNode KeepSignatureExpression(IExpressionNode syntax, IResolvedExpressionNode resolved)
+	{
+		if (RecordName is not null)
+			_signatureExpressions.TryAdd(syntax, resolved);
+		
+		return resolved;
+	}
+	
 	public IResolvedExpressionNode ResolveInitializer(IExpressionNode initializer, TypeSymbol? type,
 		ResolutionContext context)
 	{
 		_resolutionContexts.Push(context);
 		var result = InferLocals(() => VisitNode(initializer, type));
 		_resolutionContexts.Pop();
-		return result;
+		return KeepSignatureExpression(initializer, result);
 	}
 	
 	public Constant? EvaluateConstant(IExpressionNode expression, ResolutionContext context, TypeSymbol? targetType)
 	{
 		_resolutionContexts.Push(context);
-		var result = VisitNode(expression, targetType);
+		var result = KeepSignatureExpression(expression, VisitNode(expression, targetType));
 		_resolutionContexts.Pop();
 		if (targetType is null || _evaluator.FindConstantError(result) is not { } error)
 			return _evaluator.EvaluateRequired(result);
