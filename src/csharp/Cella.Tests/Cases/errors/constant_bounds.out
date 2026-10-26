@@ -20,10 +20,10 @@ Error at constant_bounds.ce:21:29
 21 │ Ore: rec impl Score + const Ranked
                                  ╘════╛ 'Ore' needs 'impl const Score'
 
-Error at constant_bounds.ce:39:52
+Hint at constant_bounds.ce:39:1
 38 │ total[T: copy + const Ranked]: const fun(x: T) -> i32 => x.rank()
 39 │ plain[T: copy + Ranked]: const fun(x: T) -> i32 => x.rank()
-                                                        ╘══════╛ Cannot call 'Ranked.rank' in constant functions
+     ╘═══╛ 'plain' is never used
 
 Error at constant_bounds.ce:40:14
 39 │ plain[T: copy + Ranked]: const fun(x: T) -> i32 => x.rank()

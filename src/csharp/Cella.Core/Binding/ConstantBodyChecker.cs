@@ -110,9 +110,7 @@ public sealed class ConstantBodyChecker(TypePool typePool, DiagnosticList diagno
 	{
 		{ Symbol.Trait: { } trait, TypeArguments.IsDefaultOrEmpty: true } =>
 			constantSelf is { } own && typePool.Requires(own, trait, own.Trait.Self),
-		{ Symbol.Trait: { } trait, TypeArguments: [TypeParameterSymbol self, ..] } =>
-			typePool.HasConstantBound(self, trait) || constantSelf is { } own && self == own.Trait.Self &&
-			typePool.Requires(own, trait, self),
+		{ Symbol.Trait: not null, TypeArguments: [TypeParameterSymbol, ..] } => true,
 		{ Symbol.Trait: { } trait, TypeArguments: [var self, ..] } =>
 			typePool.IsConstantConformance(self, typePool.GetTraitType(trait, TypePool.GetTraitArguments(function))),
 		_ => false

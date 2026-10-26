@@ -1,0 +1,23 @@
+Error at conditional_constant_functions.ce:24:20
+23 │ 
+24 │ loose: const i32 = abs(-7)
+                        ╘═════╛ Cannot evaluate 'abs' at compile time
+                              | 'i32' doesn't implement 'const Number'
+
+Error at conditional_constant_functions.ce:25:18
+24 │ loose: const i32 = abs(-7)
+25 │ big: const Big = twice(Big(-7))
+                      ╘════════════╛ Cannot evaluate 'abs' at compile time
+                                   | 'Big' doesn't implement 'const Number'
+
+Hint at conditional_constant_functions.ce:26:1
+25 │ big: const Big = twice(Big(-7))
+26 │ direct: const i32 = i32.abs(3)
+     ╘════╛ 'direct' is never used
+
+Error at conditional_constant_functions.ce:26:21
+25 │ big: const Big = twice(Big(-7))
+26 │ direct: const i32 = i32.abs(3)
+                         ╘════════╛ The initial value of 'direct' must be a constant
+
+[compilation failed]

@@ -9,10 +9,10 @@ Error at required_constant_traits.ce:19:10
 19 │ u8: impl Scaled
               ╘════╛ 'u8' needs 'impl const Measure'
 
-Error at required_constant_traits.ce:29:45
+Hint at required_constant_traits.ce:29:1
 28 │ 
 29 │ scales[T: Measure]: const fun(x: T) -> T => T.unit(x)
-                                                 ╘═══════╛ Cannot call 'Measure.unit' in constant functions
+     ╘════╛ 'scales' is never used
 
 Hint at required_constant_traits.ce:31:19
 30 │ 

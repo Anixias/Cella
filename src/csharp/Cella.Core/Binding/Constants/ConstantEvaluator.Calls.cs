@@ -293,6 +293,16 @@ public sealed partial class ConstantEvaluator
 		
 		var self = function.TypeArguments[0];
 		var traitArguments = TypePool.GetTraitArguments(function);
+		var trait = typePool.GetTraitType(function.Symbol.Trait!, traitArguments);
+		if (!function.Symbol.IsConstant && !typePool.IsConstantConformance(self, trait))
+			return IsInterpreting
+				? throw new EvaluationFault(FaultKind.Unsupported, "", callSite)
+				{
+					Function = _frames.Peek().Function.Symbol.Name,
+					Detail = $"'{self.Name}' doesn't implement 'const {trait.Name}'"
+				}
+				: null;
+		
 		var witness = typePool.FindWitness(self, function.Symbol, traitArguments);
 		if (witness is null or FunctionWitness { Function.Trait: not null } &&
 		    typePool.FindNativeWitness(function.Symbol, function.Signature, self) is { } native)
@@ -420,9 +430,11 @@ public sealed partial class ConstantEvaluator
 		if (fault.IsChecked || !_reportedFaults.Add((callSite, message)))
 			return;
 		
-		var hints = fault.Kind is FaultKind.Steps or FaultKind.Depth || fault.Location == SourceLocation.None
-			? ImmutableArray<string>.Empty
-			: [DescribeFaultLocation(fault.Location, callSite)];
+		var hints = fault.Detail is { } detail
+			? [detail]
+			: fault.Kind is FaultKind.Steps or FaultKind.Depth || fault.Location == SourceLocation.None
+				? ImmutableArray<string>.Empty
+				: [DescribeFaultLocation(fault.Location, callSite)];
 		
 		ReportFault?.Invoke(new Diagnostic(DiagnosticSeverity.Error, callSite, message) { Hints = hints });
 	}
@@ -572,6 +584,7 @@ public sealed partial class ConstantEvaluator
 		public SourceLocation Location { get; } = location;
 		public string? Function { get; init; }
 		public bool IsChecked { get; init; }
+		public string? Detail { get; init; }
 	}
 	
 	private sealed class AbortedEvaluation : Exception;

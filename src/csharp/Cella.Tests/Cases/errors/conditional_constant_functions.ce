@@ -1,0 +1,30 @@
+mod test
+
+Number: trait req copy
+{
+	abs: fun(x: Self) -> Self
+}
+
+i32: impl Number
+{
+	abs: fun(x: i32) -> i32 => x
+}
+
+Big: rec impl Number
+{
+	value: i32
+	
+	abs: fun(x: Big) -> Big => x
+}
+
+abs[T: Number]: const fun(x: T) -> T => T.abs(x)
+
+twice[T: Number]: const fun(x: T) -> T => abs(abs(x))
+
+loose: const i32 = abs(-7)
+big: const Big = twice(Big(-7))
+direct: const i32 = i32.abs(3)
+
+main: fun
+{
+}

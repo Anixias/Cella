@@ -1,0 +1,55 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Number: trait req copy
+{
+	abs: fun(x: Self) -> Self
+	+: op(a: Self, b: Self) -> Self
+	zero: const Self
+}
+
+i32: impl const Number
+{
+	abs: const fun(x: i32) -> i32 => match x < 0 { true => -x, else => x }
+	zero: const i32 = 0
+}
+
+Big: rec impl Number
+{
+	value: i32
+	
+	abs: fun(x: Big) -> Big => Big(i32.abs(x.value))
+	+: op(a: Big, b: Big) -> Big => Big(a.value + b.value)
+	zero: const Big = Big(0)
+}
+
+abs[T: Number]: const fun(x: T) -> T => T.abs(x)
+
+total[T: Number]: const fun(items: array[T, 3]) -> T
+{
+	var sum = T.zero
+	for item in items
+		sum = sum + abs(item)
+	
+	ret sum
+}
+
+Pair[T: Number]: rec
+{
+	left: T
+	right: T
+	
+	sum: const fun(self) -> T => self.left + self.right
+}
+
+small: const i32 = abs(-7) + total([1, -2, 3]) + Pair(4, 5).sum()
+
+main: fun
+{
+	val big = total([Big(-1), Big(2), Big(-3)])
+	printf("%d %d %d\n", small, big.value, Pair(Big(1), Big(2)).sum().value)
+}
