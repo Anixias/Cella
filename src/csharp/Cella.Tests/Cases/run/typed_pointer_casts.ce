@@ -1,0 +1,45 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Halves: rec
+{
+	low: u16
+	high: u16
+}
+
+missing: const ptr[u8] = ptr[u8](ptr[i32](null))
+empty: val ptr[Halves] = ptr[Halves](missing)
+
+firstByte[T]: fun(p: ptr[T]) -> u8 => *ptr[u8](p)
+
+reinterpret[T, U]: fun(p: ptr[T]) -> ptr[U] => ptr[U](p)
+
+nothing: const fun -> ptr[u16] => ptr[u16](ptr[u64](null))
+
+main: fun -> i32
+{
+	var value: u32 = 0x12345678
+	val p = @value
+	val bytes = ptr[u8](p)
+	printf("%x %x\n", i32(bytes[0]), i32(bytes[3]))
+	val halves = ptr[Halves](p)
+	printf("%x %x\n", i32(halves.low), i32(halves.high))
+	val back = ptr[u32](bytes)
+	printf("%d %d\n", i32(back == p), i32(usize(bytes) == usize(p)))
+	printf("%x\n", i32(firstByte(p)))
+	val words = reinterpret[u32, u16](p)
+	printf("%x\n", i32(words[1]))
+	val raw: ptr = p
+	val again = ptr[u32](raw)
+	printf("%d\n", i32(*again == value))
+	*ptr[u8](p) = 0xFF
+	printf("%x\n", value)
+	val none: ptr[i64] = null
+	printf("%d %d %d\n", i32(ptr[u8](none) == null), i32(missing == null), i32(empty == null))
+	printf("%d\n", i32(nothing() == null))
+	ret 0
+}

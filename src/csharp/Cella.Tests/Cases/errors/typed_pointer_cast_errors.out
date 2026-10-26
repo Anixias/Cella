@@ -1,0 +1,36 @@
+Error at typed_pointer_cast_errors.ce:10:40
+ 9 │ 
+10 │ widen[T]: fun(p: ptr[T]) -> ptr[u8] => p
+                                            ^ Cannot convert type 'ptr[T]' to 'ptr[u8]'
+
+Error at typed_pointer_cast_errors.ce:15:23
+14 │ var value: u32 = 1
+15 │ val bytes: ptr[u8] = @value
+                          ╘════╛ Cannot convert type 'ptr[u32]' to 'ptr[u8]'
+
+Error at typed_pointer_cast_errors.ce:18:11
+17 │ var target: ptr[u16] = words
+18 │ target = bytes
+              ╘═══╛ Cannot convert type 'ptr[u8]' to 'ptr[u16]'
+
+Error at typed_pointer_cast_errors.ce:19:7
+18 │ target = bytes
+19 │ take(words)
+          ╘═══╛ Cannot convert type 'ptr[u16]' to 'ptr[u8]'
+
+Error at typed_pointer_cast_errors.ce:21:19
+20 │ val shape: ptr[dyn[Shape]] = null
+21 │ val shapeBytes = ptr[u8](shape)
+                      ╘════════════╛ No constructor for 'ptr[u8]' accepts argument of type 'ptr[dyn[Shape]]'
+
+Error at typed_pointer_cast_errors.ce:23:13
+22 │ val text: cstr = "a"
+23 │ val wide = ptr[u32](text)
+                ╘════════════╛ No constructor for 'ptr[u32]' accepts argument of type 'cstr'
+
+Error at typed_pointer_cast_errors.ce:24:13
+23 │ val wide = ptr[u32](text)
+24 │ val back = cstr(words)
+                ╘═════════╛ No constructor for 'cstr' accepts argument of type 'ptr[u16]'
+
+[compilation failed]

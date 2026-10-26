@@ -1,0 +1,26 @@
+mod test
+
+Shape: trait
+{
+	area: fun(self) -> i32
+}
+
+take: fun(bytes: ptr[u8]) -> i32 => 0
+
+widen[T]: fun(p: ptr[T]) -> ptr[u8] => p
+
+main: fun -> i32
+{
+	var value: u32 = 1
+	val bytes: ptr[u8] = @value
+	val words = ptr[u16](@value)
+	var target: ptr[u16] = words
+	target = bytes
+	take(words)
+	val shape: ptr[dyn[Shape]] = null
+	val shapeBytes = ptr[u8](shape)
+	val text: cstr = "a"
+	val wide = ptr[u32](text)
+	val back = cstr(words)
+	ret 0
+}

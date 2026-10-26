@@ -33,7 +33,7 @@ public sealed class ConversionTable
 		return from == to
 			? ConstructsItself(from) ? new IdentityConversion(from) : null
 			: _conversions.GetValueOrDefault((from, to)) ?? FindFunctionConversion(from, to) ??
-			FindCallableConversion(from, to);
+			FindCallableConversion(from, to) ?? FindPointerConversion(from, to);
 	}
 	
 	private void Complete(TypeSymbol from, TypeSymbol to)
@@ -55,6 +55,19 @@ public sealed class ConversionTable
 		Add(conversion);
 		return conversion;
 	}
+	
+	private Conversion? FindPointerConversion(TypeSymbol from, TypeSymbol to)
+	{
+		if (!IsThinTypedPointer(from) || !IsThinTypedPointer(to))
+			return null;
+		
+		var conversion = new NativeConversion(from, to, ConversionKind.Explicit, 0);
+		Add(conversion);
+		return conversion;
+	}
+	
+	private static bool IsThinTypedPointer(TypeSymbol type) =>
+		type is PointerType { BaseType: not DynType } && type != PointerType.VoidPtr;
 	
 	private Conversion? FindFunctionConversion(TypeSymbol from, TypeSymbol to)
 	{
