@@ -2311,13 +2311,17 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
+	private static readonly string _otherSystem = OperatingSystem.IsWindows() ? "linux" : "windows";
+	
+	private static readonly string _otherSystemSource =
+		$"mod test\n\nwhen {_otherSystem}\n{{\n\tseparator: val char = '/'\n}}\n\nmain: fun -> i32 => 0\n";
+	
 	[Fact]
 	public async Task DimsInactiveCodeAfterAMove()
 	{
-		const string source = "mod test\n\nwhen linux\n{\n\tseparator: val char = '/'\n}\n\nmain: fun -> i32 => 0\n";
-		await File.WriteAllTextAsync(SourcePath, source, Token);
+		await File.WriteAllTextAsync(SourcePath, _otherSystemSource, Token);
 		await InitializeAsync();
-		await OpenSourceAsync(source);
+		await OpenSourceAsync(_otherSystemSource);
 		await ReadInactiveAsync((SourceUri, ["3:0-5:1"]));
 		
 		var movedPath = Path.Combine(_directory, "moved", "main.ce");
@@ -2340,7 +2344,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 				["uri"] = movedUri,
 				["languageId"] = "cella",
 				["version"] = 1,
-				["text"] = source
+				["text"] = _otherSystemSource
 			}
 		});
 		
@@ -2356,8 +2360,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		
 		var otherPath = Path.Combine(_directory, "other.ce");
 		await File.WriteAllTextAsync(otherPath, "mod test.other\nuse when logging\n\nvalue: fun -> i32 => 1\n", Token);
-		await File.WriteAllTextAsync(SourcePath,
-			"mod test\n\nwhen linux\n{\n\tseparator: val char = '/'\n}\n\nmain: fun -> i32 => 0\n", Token);
+		await File.WriteAllTextAsync(SourcePath, _otherSystemSource, Token);
 		
 		await InitializeAsync();
 		var otherUri = UriOf(otherPath);
@@ -2365,7 +2368,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		
 		await NotifyAsync("cella/configuration", new JsonObject
 		{
-			["target"] = "linux-x64",
+			["target"] = $"{_otherSystem}-x64",
 			["flags"] = new JsonObject { ["logging"] = true }
 		});
 		
