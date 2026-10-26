@@ -6,7 +6,7 @@ namespace Cella.Tests;
 
 public sealed class CommandLineTests : IDisposable
 {
-	private readonly string _directory = Directory.CreateTempSubdirectory("cella-cli-").FullName;
+	private readonly string _directory = TestDirectory.Create("cli");
 	
 	public void Dispose() => Directory.Delete(_directory, true);
 	

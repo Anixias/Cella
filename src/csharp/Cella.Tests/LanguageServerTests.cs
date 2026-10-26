@@ -10,8 +10,7 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	private const string ValidSource = "mod test\n\nmain: fun -> i32 => 0\n";
 	private const string InvalidSource = "mod test\n\nmain: fun -> i32 => true\n";
 	
-	private readonly string _directory =
-		Path.Combine(Path.GetTempPath(), "cella-server-tests", Guid.NewGuid().ToString("N"));
+	private readonly string _directory = TestDirectory.Create("server");
 	
 	private readonly AnonymousPipeServerStream _clientOutput = new(PipeDirection.Out);
 	private readonly AnonymousPipeServerStream _clientInput = new(PipeDirection.In);
@@ -21,7 +20,6 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	
 	public LanguageServerTests()
 	{
-		Directory.CreateDirectory(_directory);
 		File.WriteAllText(Path.Combine(_directory, "test.celp"),
 			"OutputType = \"Executable\"\nStandardLibrary = \"None\"\n");
 		

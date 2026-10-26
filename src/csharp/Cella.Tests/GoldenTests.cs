@@ -119,7 +119,7 @@ public sealed class GoldenTests
 	public async Task BuildsAreDeterministic(bool release)
 	{
 		var cancellationToken = TestContext.Current.CancellationToken;
-		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
+		var caseDirectory = TestDirectory.Create("golden");
 		try
 		{
 			CopySources(Path.Combine(_casesDirectory, "run", "library_dependencies"), caseDirectory);
@@ -193,7 +193,7 @@ public sealed class GoldenTests
 	private static async Task<string> RunAsync(string sourcePath, bool usesLibrary, bool release, string target,
 		CancellationToken cancellationToken)
 	{
-		var caseDirectory = Directory.CreateTempSubdirectory("cella-").FullName;
+		var caseDirectory = TestDirectory.Create("golden");
 		try
 		{
 			CopySources(sourcePath, caseDirectory);
@@ -332,10 +332,10 @@ public sealed class GoldenTests
 			}
 			catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
 			{
-				if (attempt == 50)
+				if (attempt == 500)
 					return;
 				
-				await Task.Delay(100);
+				await Task.Delay(10);
 			}
 		}
 	}

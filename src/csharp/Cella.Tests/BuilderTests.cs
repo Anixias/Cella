@@ -81,8 +81,7 @@ public sealed class BuilderTests : IDisposable
 	                                     
 	                                     """;
 	
-	private readonly string _directory =
-		Path.Combine(Path.GetTempPath(), "cella-builder-tests", Guid.NewGuid().ToString("N"));
+	private readonly string _directory = TestDirectory.Create("builder");
 	
 	private sealed class RecordingOutput : IBuildOutput
 	{
@@ -97,8 +96,6 @@ public sealed class BuilderTests : IDisposable
 		
 		public List<(string Project, string Path)> Outputs { get; } = [];
 	}
-	
-	public BuilderTests() => Directory.CreateDirectory(_directory);
 	
 	public void Dispose() => Directory.Delete(_directory, true);
 	

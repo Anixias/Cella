@@ -5,10 +5,7 @@ namespace Cella.Tests;
 
 public sealed class LauncherTests : IDisposable
 {
-	private readonly string _directory =
-		Path.Combine(Path.GetTempPath(), "cella-launcher-tests", Guid.NewGuid().ToString("N"));
-	
-	public LauncherTests() => Directory.CreateDirectory(_directory);
+	private readonly string _directory = TestDirectory.Create("launcher");
 	
 	public void Dispose() => Directory.Delete(_directory, true);
 	
