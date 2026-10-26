@@ -1,37 +1,39 @@
 ﻿mod std.text
 
-use std.[Hash, HashBuilder, Shows, View]
+use std.[Hash, HashBuilder, Shows, Span, View]
 use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout]
 
-String[A: Allocator = Heap]: pub own rec
+String[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator = Heap]: pub own rec
 {
-	data: pvt ptr[u8]
+	data: pvt ptr[T]
 	length: pvt set usize
 	alloc: pvt req A
+	
+	isEmpty: get(imm self) -> bool => self.length == 0
 	
 	new: op(text: str, allocator: A)
 	{
 		self.alloc = allocator
-		
-		val length = text.byteLength
+		self.length = measure[Utf8, E](text)
+		self.data = allocateUnits(mut self.alloc, self.length)
+		transcode[Utf8, E](text, Span[T](self.data, self.length))
+	}
+	
+	new: pvt op(data: ptr[T], length: usize, allocator: A)
+	{
+		self.data = data
 		self.length = length
-		
-		if length == 0
-		{
-			self.data = null
-			ret
-		}
-		
-		val layout = Layout.arrayOf[u8](length)
-		
-		val p = self.alloc.allocate(layout)
-		if p == null
-			panic "out of memory"
-		
-		self.data = ptr[u8](p)
-		for i in 0..length
-			*(self.data + i) = text[i]
+		self.alloc = allocator
+	}
+	
+	from[F: Encoding[U]]: fun(source: Text[F], allocator: A) -> String[E, A]
+	{
+		var alloc = allocator
+		val length = measure[F, E](source)
+		val data = allocateUnits(mut alloc, length)
+		transcode[F, E](source, Span[T](data, length))
+		ret String[E, A](data, length, alloc)
 	}
 	
 	drop: op
@@ -39,53 +41,88 @@ String[A: Allocator = Heap]: pub own rec
 		if self.data == null
 			ret
 		
-		val layout = Layout.arrayOf[u8](self.length)
-		self.alloc.release(self.data, layout)
+		self.alloc.release(self.data, Layout.arrayOf[T](self.length))
 	}
 	
-	as: op(imm self) -> str => str(self.data, self.length)
-	as: op(imm self) -> View[u8] => View[u8](self.data, self.length)
+	as: op(imm self) -> Text[E] => Text[E](View[T](self.data, self.length))
+	as: op(imm self) -> View[T] => View[T](self.data, self.length)
 	
-	==[B: Allocator]: op(imm left: String[A], imm right: String[B]) -> bool
+	chars: fun(imm self) -> CharCursor[E] => CharCursor[E](View[T](self.data, self.length))
+	
+	==[B: Allocator]: op(imm left: String[E, A], imm right: String[E, B]) -> bool
 	{
-		val leftText: str = left
-		val rightText: str = right
-		ret leftText == rightText
+		if left.length != right.length
+			ret false
+		
+		for i in 0..left.length
+		{
+			if left.data[i] != right.data[i]
+				ret false
+		}
+		
+		ret true
 	}
 	
-	!=[B: Allocator]: op(imm left: String[A], imm right: String[B]) -> bool => !(left == right)
+	!=[B: Allocator]: op(imm left: String[E, A], imm right: String[E, B]) -> bool => !(left == right)
+	
+	allocateUnits: pvt fun(mut alloc: A, length: usize) -> ptr[T]
+	{
+		if length == 0
+			ret null
+		
+		val memory = alloc.allocate(Layout.arrayOf[T](length))
+		if memory == null
+			panic "out of memory"
+		
+		ret ptr[T](memory)
+	}
 }
 
-String[A: Allocator]: impl Hash
+String[E: Encoding[T: copy + Eq + default], A: Allocator + default]: impl
 {
-	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...self)
+	new: op(text: str)
+	{
+		self = String[E, A](text, A())
+	}
+	
+	from[F: Encoding[U]]: fun(source: Text[F]) -> String[E, A] => String[E, A].from(source, A())
 }
 
-String[A: Allocator]: impl Shows[str]
+String[E: Encoding[T: copy + Eq + default], A: Allocator]: impl Eq
 {
-	show[F: fun[imm str -> bool]]: fun(imm value: String[A], imm check: F) -> bool
+	==: op(imm left: String[E, A], imm right: String[E, A]) -> bool
+	{
+		if left.length != right.length
+			ret false
+		
+		for i in 0..left.length
+		{
+			if left.data[i] != right.data[i]
+				ret false
+		}
+		
+		ret true
+	}
+	
+	!=: op(imm left: String[E, A], imm right: String[E, A]) -> bool => !(left == right)
+}
+
+String[E: Encoding[T: copy + Eq + default], A: Allocator]: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) =>
+		hashBuilder.writeBytes(...View[u8](ptr[u8](self.data), self.length * sizeOf(T)))
+}
+
+String[Utf8, A: Allocator]: impl
+{
+	as: op(imm self) -> str => str(self.data, self.length)
+}
+
+String[Utf8, A: Allocator]: impl Shows[str]
+{
+	show[F: fun[imm str -> bool]]: fun(imm value: String[Utf8, A], imm check: F) -> bool
 	{
 		val text: str = value
 		ret check(imm text)
-	}
-}
-
-String[A: Allocator]: impl Eq
-{
-	==: op(imm left: String[A], imm right: String[A]) -> bool
-	{
-		val leftText: str = left
-		val rightText: str = right
-		ret leftText == rightText
-	}
-	
-	!=: op(imm left: String[A], imm right: String[A]) -> bool => !(left == right)
-}
-
-String[A: Allocator + default]: impl
-{
-	new: op(value: str)
-	{
-		self = String[A](value, A())
 	}
 }

@@ -1,6 +1,6 @@
 ﻿mod std.text
 
-use std.[Span, View]
+use std.[Option, Span, View]
 use std.cmp.Eq
 
 Malformed: pub enum
@@ -70,4 +70,20 @@ untilZero[T: Eq + default]: pub fun(start: ptr[T]) -> View[T]
 		length += 1
 	
 	ret View[T](start, length)
+}
+
+findMalformed[E: Encoding[T]]: pub fun(src: View[T]) -> Option[usize]
+{
+	var read: usize = 0
+	while read < src.length
+	{
+		var codePoint: char
+		var count: usize
+		if !E.tryDecode(src.slice(read, src.length), mut codePoint, mut count)
+			ret some(read)
+		
+		read += count
+	}
+	
+	ret none
 }

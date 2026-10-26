@@ -1,0 +1,99 @@
+﻿mod std.text
+
+use std.[Span, View]
+
+Utf16Le: pub rec impl Encoding[u8]
+{
+	new: pvt op = default
+	
+	lengthOf: fun(codePoint: char) -> usize => Utf16.lengthOf(codePoint) * 2
+	
+	encode: fun(codePoint: char, destination: Span[u8]) -> usize => encodeBytes(codePoint, destination, false)
+	
+	tryDecode: fun(source: View[u8], mut codePoint: char, mut read: usize) -> bool =>
+		decodeBytes(source, false, mut codePoint, mut read)
+}
+
+Utf16Be: pub rec impl Encoding[u8]
+{
+	new: pvt op = default
+	
+	lengthOf: fun(codePoint: char) -> usize => Utf16.lengthOf(codePoint) * 2
+	
+	encode: fun(codePoint: char, destination: Span[u8]) -> usize => encodeBytes(codePoint, destination, true)
+	
+	tryDecode: fun(source: View[u8], mut codePoint: char, mut read: usize) -> bool =>
+		decodeBytes(source, true, mut codePoint, mut read)
+}
+
+unitAt: pvt fun(source: View[u8], index: usize, bigEndian: bool) -> u16
+{
+	val first = u16(source[index])
+	val second = u16(source[index + 1])
+	if bigEndian
+		ret (first << 8) | second
+	
+	ret first | (second << 8)
+}
+
+encodeBytes: pvt fun(codePoint: char, destination: Span[u8], bigEndian: bool) -> usize
+{
+	var units: array[u16, 2]
+	val count = Utf16.encode(codePoint, mut units)
+	for i in 0..count
+	{
+		val high = u8(units[i] >> 8)
+		val low = u8(units[i] & 0xFF)
+		if bigEndian
+		{
+			destination[i * 2] = high
+			destination[i * 2 + 1] = low
+		}
+		else
+		{
+			destination[i * 2] = low
+			destination[i * 2 + 1] = high
+		}
+	}
+	
+	ret count * 2
+}
+
+decodeBytes: pvt fun(source: View[u8], bigEndian: bool, mut codePoint: char, mut read: usize) -> bool
+{
+	if source.isEmpty
+	{
+		codePoint = char(0)
+		read = 0
+		ret false
+	}
+	
+	const replacementChar = '\uFFFD'
+	if source.length < 2
+	{
+		codePoint = replacementChar
+		read = source.length
+		ret false
+	}
+	
+	var units: array[u16, 2]
+	units[0] = unitAt(source, 0, bigEndian)
+	var count: usize = 1
+	if 0xD800 <= units[0] <= 0xDBFF
+	{
+		if source.length < 4
+		{
+			codePoint = replacementChar
+			read = source.length
+			ret false
+		}
+		
+		units[1] = unitAt(source, 2, bigEndian)
+		count = 2
+	}
+	
+	var unitsRead: usize
+	val isValid = Utf16.tryDecode(View[u16](ptr[u16](@units), count), mut codePoint, mut unitsRead)
+	read = unitsRead * 2
+	ret isValid
+}

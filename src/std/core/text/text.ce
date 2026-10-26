@@ -7,17 +7,17 @@ Text[E: Encoding[T]]: pub ref rec
 {
 	data: pvt ptr[T]
 	length: pvt set usize
-
+	
 	isEmpty: get(self) -> bool => self.length == 0
-
+	
 	new: op(units: View[T])
 	{
 		self.data = units.data
 		self.length = units.length
 	}
-
+	
 	as: op(self) -> View[T] => View[T](self.data, self.length)
-
+	
 	chars: fun(self) -> CharCursor[E] => CharCursor[E](View[T](self.data, self.length))
 }
 
@@ -27,16 +27,16 @@ Text[E: Encoding[T: Eq]]: impl Eq
 	{
 		if left.length != right.length
 			ret false
-
+		
 		for i in 0..left.length
 		{
 			if left.data[i] != right.data[i]
 				ret false
 		}
-
+		
 		ret true
 	}
-
+	
 	!=: op(imm left: Text[E], imm right: Text[E]) -> bool => !(left == right)
 }
 

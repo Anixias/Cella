@@ -1,0 +1,67 @@
+﻿mod std.fs
+
+use std.[Result, View]
+use std.cmp.Eq
+use std.io.IoError
+use std.mem.[Allocator, Heap]
+use std.text.[Encoding, Malformed, String, Text, Utf16Be, Utf16Le, Utf8, findMalformed]
+
+FileEncoding: pub enum
+{
+	detect
+	utf8
+	utf16LittleEndian
+	utf16BigEndian
+}
+
+readText[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator + noref + default = Heap]: pub fun(path: str,
+	source: FileEncoding = detect, malformed: Malformed = stop) -> Result[String[E, A], IoError] =>
+	decodeFile[E, A](path, A(), source, malformed)
+
+readText[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator + noref = Heap]: pub fun(path: str, alloc: A,
+	source: FileEncoding = detect, malformed: Malformed = stop) -> Result[String[E, A], IoError] =>
+	decodeFile[E, A](path, alloc, source, malformed)
+
+decodeFile[E: Encoding[T: copy + Eq + default], A: Allocator + noref]: pvt fun(path: str, alloc: A,
+	source: FileEncoding, malformed: Malformed) -> Result[String[E, A], IoError]
+{
+	val bytes = readBytes(path)?
+	val all: View[u8] = bytes
+	val hasUtf8Mark = all.length >= 3 && all[0] == 0xEF && all[1] == 0xBB && all[2] == 0xBF
+	val hasLittleMark = all.length >= 2 && all[0] == 0xFF && all[1] == 0xFE
+	val hasBigMark = all.length >= 2 && all[0] == 0xFE && all[1] == 0xFF
+	
+	var encoding = source
+	if encoding is detect
+	{
+		encoding = utf8
+		if hasLittleMark
+			encoding = utf16LittleEndian
+		else if hasBigMark
+			encoding = utf16BigEndian
+	}
+	
+	ret match encoding
+	{
+		utf16LittleEndian => decodeAs[Utf16Le, E, A](all.slice(skipOf(hasLittleMark, 2), all.length), alloc, malformed)
+		utf16BigEndian => decodeAs[Utf16Be, E, A](all.slice(skipOf(hasBigMark, 2), all.length), alloc, malformed)
+		else => decodeAs[Utf8, E, A](all.slice(skipOf(hasUtf8Mark, 3), all.length), alloc, malformed)
+	}
+}
+
+skipOf: pvt fun(hasMark: bool, markLength: usize) -> usize
+{
+	if hasMark
+		ret markLength
+	
+	ret 0
+}
+
+decodeAs[F: Encoding[u8], E: Encoding[T: copy + Eq + default], A: Allocator + noref]: pvt fun(bytes: View[u8], alloc: A,
+	malformed: Malformed) -> Result[String[E, A], IoError]
+{
+	if malformed is stop && findMalformed[F](bytes) is some(_)
+		ret err(IoError(invalidData, 0))
+	
+	ret ok(String[E, A].from(Text[F](bytes), alloc))
+}
