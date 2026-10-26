@@ -127,7 +127,18 @@ f32: impl
 	fromBits: pvt const fun(bits: u32) -> f32 => Bitcast[u32, f32](bits).to
 }
 
-f32: impl Transcendental + const Float
+f32: impl Transcendental
+{
+	sqrt: fun(x: f32) -> f32 => sqrtF32(x)
+	sin: fun(x: f32) -> f32 => sinF32(x)
+	cos: fun(x: f32) -> f32 => cosF32(x)
+	exp: fun(x: f32) -> f32 => expF32(x)
+	log: fun(x: f32) -> f32 => logF32(x)
+	pow: fun(x: f32, e: f32) -> f32 => powF32(x, e)
+	fma: fun(x: f32, y: f32, z: f32) -> f32 => fmaF32(x, y, z)
+}
+
+f32: impl const Float
 {
 	minValue: const f32 = Bitcast[u32, f32](0xFF7FFFFFu32).to
 	maxValue: const f32 = Bitcast[u32, f32](0x7F7FFFFFu32).to
@@ -354,14 +365,6 @@ f32: impl Transcendental + const Float
 		val result = x - floor(x)
 		ret match result < one { true => result, else => fromBits(0x3F7FFFFFu32) }
 	}
-	
-	sqrt: fun(x: f32) -> f32 => sqrtF32(x)
-	sin: fun(x: f32) -> f32 => sinF32(x)
-	cos: fun(x: f32) -> f32 => cosF32(x)
-	exp: fun(x: f32) -> f32 => expF32(x)
-	log: fun(x: f32) -> f32 => logF32(x)
-	pow: fun(x: f32, e: f32) -> f32 => powF32(x, e)
-	fma: fun(x: f32, y: f32, z: f32) -> f32 => fmaF32(x, y, z)
 }
 
 f64: impl
@@ -373,7 +376,18 @@ f64: impl
 	fromBits: pvt const fun(bits: u64) -> f64 => Bitcast[u64, f64](bits).to
 }
 
-f64: impl Transcendental + const Float
+f64: impl Transcendental
+{
+	sqrt: fun(x: f64) -> f64 => sqrtF64(x)
+	sin: fun(x: f64) -> f64 => sinF64(x)
+	cos: fun(x: f64) -> f64 => cosF64(x)
+	exp: fun(x: f64) -> f64 => expF64(x)
+	log: fun(x: f64) -> f64 => logF64(x)
+	pow: fun(x: f64, e: f64) -> f64 => powF64(x, e)
+	fma: fun(x: f64, y: f64, z: f64) -> f64 => fmaF64(x, y, z)
+}
+
+f64: impl const Float
 {
 	minValue: const f64 = Bitcast[u64, f64](0xFFEFFFFFFFFFFFFFu64).to
 	maxValue: const f64 = Bitcast[u64, f64](0x7FEFFFFFFFFFFFFFu64).to
@@ -602,12 +616,4 @@ f64: impl Transcendental + const Float
 		val result = x - floor(x)
 		ret match result < one { true => result, else => fromBits(0x3FEFFFFFFFFFFFFFu64) }
 	}
-	
-	sqrt: fun(x: f64) -> f64 => sqrtF64(x)
-	sin: fun(x: f64) -> f64 => sinF64(x)
-	cos: fun(x: f64) -> f64 => cosF64(x)
-	exp: fun(x: f64) -> f64 => expF64(x)
-	log: fun(x: f64) -> f64 => logF64(x)
-	pow: fun(x: f64, e: f64) -> f64 => powF64(x, e)
-	fma: fun(x: f64, y: f64, z: f64) -> f64 => fmaF64(x, y, z)
 }

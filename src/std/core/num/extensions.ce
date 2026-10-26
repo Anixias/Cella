@@ -123,7 +123,7 @@ UnsignedInteger: pub trait req Integer
 	abs: fun(x: Self) -> Self => x
 }
 
-Transcendental: pub trait
+Transcendental: pub trait req Float
 {
 	sqrt: fun(x: Self) -> Self
 	sin: fun(x: Self) -> Self
@@ -134,7 +134,7 @@ Transcendental: pub trait
 	fma: fun(x: Self, y: Self, z: Self) -> Self
 }
 
-Float: pub trait req SignedNumber + Transcendental
+Float: pub trait req SignedNumber
 {
 	posInf: const Self
 	negInf: const Self
