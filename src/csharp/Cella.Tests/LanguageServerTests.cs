@@ -1622,6 +1622,50 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 	}
 	
 	[Fact]
+	public async Task CompletesMembersOfReturnedGenericEnums()
+	{
+		await InitializeAsync();
+		const string source = """
+		                      mod test
+		                      
+		                      Outcome[T, E]: enum
+		                      {
+		                      	ok(value: T)
+		                      	err(error: E)
+		                      
+		                      	isOk: get(imm self) -> bool => self is ok(_)
+		                      
+		                      	unwrap: fun(self) -> T => match self
+		                      	{
+		                      		ok(val value) => value
+		                      		err(_) => panic "unwrapped an error"
+		                      	}
+		                      }
+		                      
+		                      Handle: rec
+		                      {
+		                      	id: i32
+		                      
+		                      	open: fun(path: str) -> Outcome[Handle, i32] => ok(Handle(1))
+		                      }
+		                      
+		                      main: fun -> i32
+		                      {
+		                      	val file = Handle.open("x").|
+		                      	ret 0
+		                      }
+		                      
+		                      """;
+		
+		Assert.Equal(["isOk", "unwrap"], (await CompleteInAsync(source)).Keys.Order());
+		Assert.Equal(["isOk", "unwrap"],
+			(await CompleteInAsync(source.Replace("val file = Handle.open(\"x\").|",
+				"val stored = Handle.open(\"x\")\n\tstored.|"))).Keys.Order());
+		
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
 	public async Task InsertsImportsByModuleBeforeName()
 	{
 		await File.WriteAllTextAsync(Path.Combine(_directory, "lib.ce"),
