@@ -2,18 +2,16 @@
 
 use std.View
 use std.cmp.Eq
-
-StringComparison: pub enum
-{
-	exact = 0
-	ignoreCase = 1
-}
+use std.text.[CharCursor, Text, Utf8]
 
 str: pub impl
 {
 	refEq: fun(imm left: str, imm right: str) -> bool => left.data == right.data
 	
 	as: op(imm self) -> View[u8] => View[u8](self.data, self.byteLength)
+	as: op(imm self) -> Text[Utf8] => Text[Utf8](View[u8](self.data, self.byteLength))
+	
+	chars: fun(imm self) -> CharCursor[Utf8] => CharCursor[Utf8](self)
 }
 
 str: impl Eq

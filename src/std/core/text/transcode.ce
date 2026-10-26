@@ -1,0 +1,73 @@
+﻿mod std.text
+
+use std.[Span, View]
+use std.cmp.Eq
+
+Malformed: pub enum
+{
+	replace
+	stop
+}
+
+TranscodeResult: pub rec
+{
+	read: usize
+	written: usize
+	isMalformed: bool
+}
+
+transcode[From: Encoding[S], To: Encoding[D]]: pub fun(src: View[S], dest: Span[D], malformed: Malformed = replace,
+	isFinal: bool = true) -> TranscodeResult
+{
+	var read = 0
+	var written = 0
+	while read < src.length
+	{
+		var codePoint: char
+		var count: usize
+		if !From.tryDecode(src.slice(read, src.length), mut codePoint, mut count)
+		{
+			if !isFinal && read + count == src.length
+				break
+			
+			if malformed is stop
+				ret TranscodeResult(read, written, true)
+		}
+		
+		val needed = To.lengthOf(codePoint)
+		if written + needed > dest.length
+			break
+		
+		To.encode(codePoint, dest.slice(written, written + needed))
+		written += needed
+		read += count
+	}
+	
+	ret TranscodeResult(read, written, false)
+}
+
+measure[From: Encoding[S], To: Encoding[D]]: pub fun(src: View[S]) -> usize
+{
+	var total = 0
+	var read = 0
+	while read < src.length
+	{
+		var codePoint: char
+		var count: usize
+		From.tryDecode(src.slice(read, src.length), mut codePoint, mut count)
+		total += To.lengthOf(codePoint)
+		read += count
+	}
+	
+	ret total
+}
+
+untilZero[T: Eq + default]: pub fun(start: ptr[T]) -> View[T]
+{
+	val zero = T()
+	var length = 0u
+	while start[length] != zero
+		length += 1
+	
+	ret View[T](start, length)
+}

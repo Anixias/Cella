@@ -1,0 +1,136 @@
+﻿mod std.text
+
+use std.[Span, View]
+
+Utf8: pub rec impl Encoding[u8]
+{
+	new: pvt op = default
+	
+	lengthOf: fun(codePoint: char) -> usize => match u32(codePoint)
+	{
+		<= 0x7F => 1
+		<= 0x7FF => 2
+		<= 0xFFFF => 3
+		else => 4
+	}
+	
+	encode: fun(codePoint: char, destination: Span[u8]) -> usize
+	{
+		val code = u32(codePoint)
+		match code
+		{
+			<= 0x7F =>
+			{
+				destination[0] = u8(codePoint)
+				ret 1
+			}
+			<= 0x7FF =>
+			{
+				destination[0] = u8(0xC0 | (code >> 6))
+				destination[1] = u8(0x80 | (code & 0x3F))
+				ret 2
+			}
+			<= 0xFFFF =>
+			{
+				destination[0] = u8(0xE0 | (code >> 12))
+				destination[1] = u8(0x80 | ((code >> 6) & 0x3F))
+				destination[2] = u8(0x80 | (code & 0x3F))
+				ret 3
+			}
+			<= 0x10FFFF =>
+			{
+				destination[0] = u8(0xF0 | (code >> 18))
+				destination[1] = u8(0x80 | ((code >> 12) & 0x3F))
+				destination[2] = u8(0x80 | ((code >> 6) & 0x3F))
+				destination[3] = u8(0x80 | (code & 0x3F))
+				ret 4
+			}
+			else => panic "invalid Unicode code point"
+		}
+	}
+	
+	tryDecode: fun(source: View[u8], mut codePoint: char, mut read: usize) -> bool
+	{
+		if source.isEmpty
+		{
+			codePoint = char(0)
+			read = 0
+			ret false
+		}
+		
+		const replacementChar = '\uFFFD'
+		codePoint = replacementChar
+		read = 1
+		
+		val first = source[0]
+		if first <= 0x7F
+		{
+			codePoint = char(first)
+			ret true
+		}
+		
+		var length: usize = 0
+		var code: u32 = 0
+		var lowest: u8 = 0x80
+		var highest: u8 = 0xBF
+		match first
+		{
+			0xC2..=0xDF =>
+			{
+				length = 2
+				code = u32(first & 0x1F)
+			}
+			0xE0 =>
+			{
+				length = 3
+				lowest = 0xA0
+			}
+			0xED =>
+			{
+				length = 3
+				code = 0xD
+				highest = 0x9F
+			}
+			0xE1..=0xEF =>
+			{
+				length = 3
+				code = u32(first & 0x0F)
+			}
+			0xF0 =>
+			{
+				length = 4
+				lowest = 0x90
+			}
+			0xF4 =>
+			{
+				length = 4
+				code = 0x4
+				highest = 0x8F
+			}
+			0xF1..=0xF3 =>
+			{
+				length = 4
+				code = u32(first & 0x07)
+			}
+			else => ret false
+		}
+		
+		for i in 1..length
+		{
+			if i >= source.length
+				ret false
+			
+			val next = source[i]
+			if !(lowest <= next <= highest)
+				ret false
+			
+			code = (code << 6) | u32(next & 0x3F)
+			read = i + 1
+			lowest = 0x80
+			highest = 0xBF
+		}
+		
+		codePoint = char(code)
+		ret true
+	}
+}

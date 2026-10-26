@@ -1,0 +1,15 @@
+﻿mod std.extensions
+
+use std.View
+use std.text.[CharCursor, Utf8, untilZero]
+
+cstr: pub impl
+{
+	chars: fun(self) -> CharCursor[Utf8]
+	{
+		if self == null
+			ret CharCursor[Utf8](View[u8](null, 0))
+		
+		ret CharCursor[Utf8](untilZero(ptr[u8](self)))
+	}
+}

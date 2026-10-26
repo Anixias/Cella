@@ -9,4 +9,3 @@ Shows[Q]: pub trait
 {
 	show[F: fun[imm T -> bool]]: fun(imm self, imm check: F) -> bool => check(imm self)
 }
-

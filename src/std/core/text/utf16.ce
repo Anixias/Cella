@@ -1,0 +1,71 @@
+﻿mod std.text
+
+use std.[Span, View]
+
+Utf16: pub rec impl Encoding[u16]
+{
+	new: pvt op = default
+	
+	lengthOf: fun(codePoint: char) -> usize
+	{
+		if u32(codePoint) < 0x10000
+			ret 1
+		
+		ret 2
+	}
+	
+	encode: fun(codePoint: char, destination: Span[u16]) -> usize
+	{
+		val code = u32(codePoint)
+		if code < 0x10000
+		{
+			destination[0] = u16(codePoint)
+			ret 1
+		}
+		
+		val offset = code - 0x10000
+		destination[0] = u16(0xD800 + (offset >> 10))
+		destination[1] = u16(0xDC00 + (offset & 0x3FF))
+		ret 2
+	}
+	
+	tryDecode: fun(source: View[u16], mut codePoint: char, mut read: usize) -> bool
+	{
+		if source.isEmpty
+		{
+			codePoint = char(0)
+			read = 0
+			ret false
+		}
+		
+		val first = source[0]
+		
+		// standalone BMP code point
+		if first < 0xD800 || first > 0xDFFF
+		{
+			codePoint = char(first)
+			read = 1
+			ret true
+		}
+		
+		if 0xD800 <= first <= 0xDBFF && source.length >= 2
+		{
+			val second = source[1]
+			
+			if 0xDC00 <= second <= 0xDFFF
+			{
+				val high = u32(first - 0xD800)
+				val low = u32(second - 0xDC00)
+				
+				codePoint = char(((high << 10) | low) + 0x10000)
+				read = 2
+				ret true
+			}
+		}
+		
+		const replacementChar = '\uFFFD'
+		codePoint = replacementChar
+		read = 1
+		ret false
+	}
+}

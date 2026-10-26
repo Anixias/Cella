@@ -1,0 +1,10 @@
+﻿mod std.text
+
+use std.[Span, View]
+
+Encoding[T]: pub trait
+{
+	lengthOf: fun(codePoint: char) -> usize
+	encode: fun(codePoint: char, destination: Span[T]) -> usize
+	tryDecode: fun(source: View[T], mut codePoint: char, mut read: usize) -> bool
+}

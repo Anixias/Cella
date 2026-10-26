@@ -2,7 +2,7 @@
 
 View[T]: pub ref rec
 {
-	data: pvt ptr[T]
+	data: pvt set ptr[T]
 	length: pvt set usize
 	
 	isEmpty: get(self) -> bool => self.length == 0

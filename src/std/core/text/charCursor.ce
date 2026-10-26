@@ -1,0 +1,30 @@
+﻿mod std.text
+
+use std.View
+
+CharCursor[E: Encoding[T]]: pub ref rec
+{
+	units: pvt View[T]
+	position: pvt usize
+	current: pvt char
+	
+	new: op(units: View[T])
+	{
+		self.units = units
+		self.position = 0
+		self.current = char(0)
+	}
+	
+	for: op(mut self) -> bool
+	{
+		if self.position >= self.units.length
+			ret false
+		
+		var read: usize
+		E.tryDecode(self.units.slice(self.position, self.units.length), mut self.current, mut read)
+		self.position += read
+		ret true
+	}
+	
+	*: op(self) -> char => self.current
+}
