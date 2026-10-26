@@ -1,10 +1,10 @@
 ﻿mod std.fs
 
-use std.[Result, View]
+use std.[Result, Span, View]
 use std.cmp.Eq
 use std.io.IoError
 use std.mem.[Allocator, Heap]
-use std.text.[Encoding, Malformed, String, Text, Utf16Be, Utf16Le, Utf8, findMalformed]
+use std.text.[Encoding, Malformed, String, Text, Utf16Be, Utf16Le, Utf8, findMalformed, transcode]
 
 FileEncoding: pub enum
 {
@@ -33,13 +33,7 @@ decodeFile[E: Encoding[T: copy + Eq + default], A: Allocator + noref]: pvt fun(p
 	
 	var encoding = source
 	if encoding is detect
-	{
-		encoding = utf8
-		if hasLittleMark
-			encoding = utf16LittleEndian
-		else if hasBigMark
-			encoding = utf16BigEndian
-	}
+		encoding = markedEncoding(all)
 	
 	ret match encoding
 	{
@@ -47,6 +41,17 @@ decodeFile[E: Encoding[T: copy + Eq + default], A: Allocator + noref]: pvt fun(p
 		utf16BigEndian => decodeAs[Utf16Be, E, A](all.slice(skipOf(hasBigMark, 2), all.length), alloc, malformed)
 		else => decodeAs[Utf8, E, A](all.slice(skipOf(hasUtf8Mark, 3), all.length), alloc, malformed)
 	}
+}
+
+markedEncoding: pvt fun(start: View[u8]) -> FileEncoding
+{
+	if start.length >= 2 && start[0] == 0xFF && start[1] == 0xFE
+		ret utf16LittleEndian
+	
+	if start.length >= 2 && start[0] == 0xFE && start[1] == 0xFF
+		ret utf16BigEndian
+	
+	ret utf8
 }
 
 skipOf: pvt fun(hasMark: bool, markLength: usize) -> usize
@@ -64,4 +69,63 @@ decodeAs[F: Encoding[u8], E: Encoding[T: copy + Eq + default], A: Allocator + no
 		ret err(IoError(invalidData, 0))
 	
 	ret ok(String[E, A].from(Text[F](bytes), alloc))
+}
+
+writeText[To: Encoding[u8] = Utf8, F: Encoding[U] = Utf8]: pub fun(path: str, text: Text[F],
+	byteOrderMark: bool = false) -> Result[usize, IoError]
+{
+	var file = File.open(path, create, write)?
+	var total = 0
+	if byteOrderMark
+	{
+		var mark: array[u8, 4]
+		val count = To.encode('\uFEFF', mut mark)
+		total += file.write(View[u8](@mark, count))?
+	}
+	
+	ret ok(total + writeEncoded[To, F](mut file, text)?)
+}
+
+appendText[F: Encoding[U] = Utf8]: pub fun(path: str, text: Text[F], target: FileEncoding = detect)
+	-> Result[usize, IoError]
+{
+	var file = File.open(path, append, readWrite)?
+	var encoding = target
+	if encoding is detect
+	{
+		var start: array[u8, 3]
+		var count = 0
+		while count < 3
+		{
+			val read = file.read(Span[u8](@start, 3).slice(count, 3))?
+			if read == 0
+				break
+			
+			count += read
+		}
+		
+		encoding = markedEncoding(View[u8](@start, count))
+	}
+	
+	ret match encoding
+	{
+		utf16LittleEndian => writeEncoded[Utf16Le, F](mut file, text)
+		utf16BigEndian => writeEncoded[Utf16Be, F](mut file, text)
+		else => writeEncoded[Utf8, F](mut file, text)
+	}
+}
+
+writeEncoded[To: Encoding[u8], F: Encoding[U]]: pvt fun(mut file: File, text: Text[F]) -> Result[usize, IoError]
+{
+	var chunk: array[u8, 4096]
+	var total = 0
+	var rest: View[U] = text
+	while !rest.isEmpty
+	{
+		val result = transcode[F, To](rest, mut chunk)
+		total += file.write(View[u8](@chunk, result.written))?
+		rest = rest.slice(result.read, rest.length)
+	}
+	
+	ret ok(total)
 }

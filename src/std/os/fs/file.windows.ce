@@ -2,7 +2,7 @@
 
 use when windows
 
-use std.[Result, Span]
+use std.[Result, Span, View]
 use std.io.IoError
 use std.mem.[BitSet, Heap, Layout]
 use std.text.[Utf16, Utf8, measure, transcode]
@@ -14,7 +14,9 @@ pvt ext
 		flags: Flags, template: ptr) -> ptr
 	
 	ReadFile: fun(file: ptr, buffer: ptr, count: u32, read: ptr[u32], overlapped: ptr) -> i32
+	WriteFile: fun(file: ptr, buffer: ptr, count: u32, written: ptr[u32], overlapped: ptr) -> i32
 	GetFileSizeEx: fun(file: ptr, size: ptr[i64]) -> i32
+	FlushFileBuffers: fun(file: ptr) -> i32
 	GetFileAttributesW: fun(path: ptr[u16]) -> u32
 	CloseHandle: fun(handle: ptr) -> i32
 	GetLastError: fun -> u32
@@ -22,6 +24,12 @@ pvt ext
 
 Access: pvt ext enum(u32) impl BitSet
 {
+	appendData = 0x00000004
+	writeExtendedAttributes = 0x00000010
+	readAttributes = 0x00000080
+	writeAttributes = 0x00000100
+	readControl = 0x00020000
+	synchronize = 0x00100000
 	genericAll = 0x10000000
 	genericExecute = 0x20000000
 	genericWrite = 0x40000000
@@ -73,7 +81,12 @@ Flags: pvt ext enum(u32) impl BitSet
 
 fileNotFound: pvt const u32 = 2
 pathNotFound: pvt const u32 = 3
+writeProtect: pvt const u32 = 19
 accessDenied: pvt const u32 = 5
+handleDiskFull: pvt const u32 = 39
+fileExists: pvt const u32 = 80
+diskFull: pvt const u32 = 112
+alreadyExistsError: pvt const u32 = 183
 handleEndOfFile: pvt const u32 = 38
 invalidParameter: pvt const u32 = 87
 brokenPipe: pvt const u32 = 109
@@ -82,22 +95,51 @@ badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
 directoryAttribute: pvt const u32 = 0x10
-largestRead: pvt const usize = 0xFFFFFFFF
+largestTransfer: pvt const usize = 0xFFFFFFFF
 stackPathLength: pvt const usize = 512
 
 errorFrom: pvt fun(code: u32) -> IoError => match code
 {
 	fileNotFound, pathNotFound => IoError(notFound, code)
-	accessDenied => IoError(permissionDenied, code)
+	accessDenied, writeProtect => IoError(permissionDenied, code)
+	fileExists, alreadyExistsError => IoError(alreadyExists, code)
+	diskFull, handleDiskFull => IoError(storageFull, code)
 	invalidName, badPathName, fileNameTooLong, invalidParameter => IoError(invalidInput, code)
 	else => IoError(other, code)
+}
+
+desiredAccess: pvt fun(mode: FileMode, access: FileAccess) -> Access
+{
+	val appending = Access.appendData | Access.writeAttributes | Access.writeExtendedAttributes | Access.readControl |
+		Access.synchronize | Access.readAttributes
+	
+	if access is read
+		ret Access.genericRead
+	
+	var result = Access.genericWrite
+	if mode is append
+		result = appending
+	
+	if access is readWrite
+		result |= Access.genericRead
+	
+	ret result
+}
+
+dispositionOf: pvt fun(mode: FileMode) -> Disposition => match mode
+{
+	open => Disposition.openExisting
+	openOrCreate, append => Disposition.openAlways
+	create => Disposition.createAlways
+	createNew => Disposition.createNew
+	truncate => Disposition.truncateExisting
 }
 
 NativeFile: mod rec
 {
 	handle: ptr
 	
-	open: fun(path: str) -> Result[NativeFile, IoError]
+	open: fun(path: str, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
 	{
 		for i in 0..path.byteLength
 		{
@@ -109,7 +151,7 @@ NativeFile: mod rec
 		if length < stackPathLength
 		{
 			var buffer: array[u16, stackPathLength]
-			ret openWide(path, @buffer, length)
+			ret openWide(path, @buffer, length, mode, access)
 		}
 		
 		var heap = Heap()
@@ -118,18 +160,19 @@ NativeFile: mod rec
 		if wide == null
 			panic "out of memory"
 		
-		val result = openWide(path, wide, length)
+		val result = openWide(path, wide, length, mode, access)
 		heap.release(wide, layout)
 		ret result
 	}
 	
-	openWide: pvt fun(path: str, wide: ptr[u16], length: usize) -> Result[NativeFile, IoError]
+	openWide: pvt fun(path: str, wide: ptr[u16], length: usize, mode: FileMode, access: FileAccess)
+		-> Result[NativeFile, IoError]
 	{
 		transcode[Utf8, Utf16](path, Span[u16](wide, length))
 		wide[length] = 0
 		
-		val handle = CreateFileW(wide, Access.genericRead, Share.read | Share.write | Share.delete, null,
-			Disposition.openExisting, Flags.normal, null)
+		val handle = CreateFileW(wide, desiredAccess(mode, access), Share.read | Share.write | Share.delete, null,
+			dispositionOf(mode), Flags.normal, null)
 		
 		if handle == ptr(usize.maxValue)
 		{
@@ -147,8 +190,8 @@ NativeFile: mod rec
 	read: fun(self, buffer: Span[u8]) -> Result[usize, IoError]
 	{
 		var count = buffer.length
-		if count > largestRead
-			count = largestRead
+		if count > largestTransfer
+			count = largestTransfer
 		
 		var read: u32 = 0
 		if ReadFile(self.handle, buffer.data, u32(count), @read, null) == 0
@@ -163,6 +206,28 @@ NativeFile: mod rec
 		ret ok(usize(read))
 	}
 	
+	write: fun(self, data: View[u8]) -> Result[usize, IoError]
+	{
+		var offset: usize = 0
+		while offset < data.length
+		{
+			var count = data.length - offset
+			if count > largestTransfer
+				count = largestTransfer
+			
+			var written: u32 = 0
+			if WriteFile(self.handle, data.data + offset, u32(count), @written, null) == 0
+				ret err(errorFrom(GetLastError()))
+			
+			if written == 0
+				ret err(IoError(other, 0))
+			
+			offset += usize(written)
+		}
+		
+		ret ok(data.length)
+	}
+	
 	size: fun(self) -> Result[u64, IoError]
 	{
 		var size: i64 = 0
@@ -170,6 +235,14 @@ NativeFile: mod rec
 			ret err(errorFrom(GetLastError()))
 		
 		ret ok(u64(size))
+	}
+	
+	sync: fun(self) -> Result[IoError]
+	{
+		if FlushFileBuffers(self.handle) == 0
+			ret err(errorFrom(GetLastError()))
+		
+		ret ok
 	}
 	
 	close: fun(self)

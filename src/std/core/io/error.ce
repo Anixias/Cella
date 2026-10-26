@@ -8,6 +8,8 @@ ErrorKind: pub enum
 	isDirectory
 	invalidInput
 	invalidData
+	alreadyExists
+	storageFull
 }
 
 IoError: pub rec

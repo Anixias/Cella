@@ -4,13 +4,32 @@ use std.[Result, Span, View]
 use std.containers.List
 use std.io.IoError
 
+FileMode: pub enum
+{
+	open
+	openOrCreate
+	create
+	createNew
+	truncate
+	append
+}
+
+FileAccess: pub enum
+{
+	read
+	write
+	readWrite
+}
+
 File: pub own rec
 {
 	native: pvt NativeFile
+	access: pvt FileAccess
 	
-	new: pvt op(native: NativeFile)
+	new: pvt op(native: NativeFile, access: FileAccess)
 	{
 		self.native = native
+		self.access = access
 	}
 	
 	drop: op
@@ -18,9 +37,31 @@ File: pub own rec
 		self.native.close()
 	}
 	
-	open: fun(path: str) -> Result[File, IoError] => ok(File(NativeFile.open(path)?))
+	open: fun(path: str, mode: FileMode = open, access: FileAccess = read) -> Result[File, IoError]
+	{
+		val changesFile = match mode
+		{
+			open, openOrCreate => false
+			else => true
+		}
+		
+		if changesFile && access is read
+			ret err(IoError(invalidInput, 0))
+		
+		ret ok(File(NativeFile.open(path, mode, access)?, access))
+	}
+	
 	read: fun(mut self, buffer: Span[u8]) -> Result[usize, IoError] => self.native.read(buffer)
+	write: fun(mut self, data: View[u8]) -> Result[usize, IoError] => self.native.write(data)
 	size: fun(imm self) -> Result[u64, IoError] => self.native.size()
+	
+	sync: fun(mut self) -> Result[IoError]
+	{
+		if self.access is read
+			ret ok
+		
+		ret self.native.sync()
+	}
 }
 
 readBytes: pub fun(path: str) -> Result[List[u8], IoError]
@@ -38,4 +79,16 @@ readBytes: pub fun(path: str) -> Result[List[u8], IoError]
 		
 		bytes.addAll(View[u8](@chunk, count))
 	}
+}
+
+writeBytes: pub fun(path: str, data: View[u8]) -> Result[usize, IoError]
+{
+	var file = File.open(path, create, write)?
+	ret file.write(data)
+}
+
+appendBytes: pub fun(path: str, data: View[u8]) -> Result[usize, IoError]
+{
+	var file = File.open(path, append, write)?
+	ret file.write(data)
 }

@@ -38,3 +38,30 @@ Result[T, E]: pub enum
 		err(val error) => ret err(error)
 	}
 }
+
+Result[E]: pub enum
+{
+	ok
+	err(error: E)
+	
+	isOk: get(imm self) -> bool => self is ok
+	isErr: get(imm self) -> bool => self is err(_)
+	
+	unwrap: fun(self)
+	{
+		if self is err(_)
+			panic "called '{nameOf(unwrap)}' on '{nameOf(err)}'"
+	}
+	
+	expect: fun(self, message: str)
+	{
+		if self is err(_)
+			panic message
+	}
+	
+	?: op(self)
+	{
+		if self is err(val error)
+			ret err(error)
+	}
+}
