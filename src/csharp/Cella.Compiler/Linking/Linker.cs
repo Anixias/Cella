@@ -16,28 +16,41 @@ public sealed class Linker(string rootPath, Action<string>? log)
 		if (request.OutputType == ProjectOutputType.StaticLibrary)
 			File.Delete(request.OutputFile);
 		
+		var leadingArgs = toolchain.GetLeadingLinkerArgs(request.OutputType);
 		var args = toolchain.GetLinkerArgs(request);
 		
-		log?.Invoke($"Linker starting with arguments: {string.Join(" ", args)}");
+		log?.Invoke($"Linker starting with arguments: {string.Join(" ", leadingArgs.Concat(args))}");
 		
-		using var process = new Process();
-		process.StartInfo.FileName = GetLinkerPath(request, toolchain);
-		process.StartInfo.RedirectStandardError = true;
-		process.StartInfo.UseShellExecute = false;
-		
-		foreach (var arg in args)
-			process.StartInfo.ArgumentList.Add(arg);
-		
-		if (OperatingSystem.IsLinux())
-			process.StartInfo.Environment["LD_LIBRARY_PATH"] = rootPath;
-		
-		var environmentVars = toolchain.GetLinkerEnvironmentVars();
-		foreach (var (key, value) in environmentVars)
-			process.StartInfo.Environment[key] = value;
-		
-		process.Start();
-		var errors = process.StandardError.ReadToEndAsync();
-		await process.WaitForExitAsync();
-		return (process.ExitCode, await errors);
+		var responseFile = Path.GetTempFileName();
+		try
+		{
+			await ResponseFile.WriteAsync(responseFile, args, toolchain.GetResponseFileQuoting(request.OutputType));
+			
+			using var process = new Process();
+			process.StartInfo.FileName = GetLinkerPath(request, toolchain);
+			process.StartInfo.RedirectStandardError = true;
+			process.StartInfo.UseShellExecute = false;
+			
+			foreach (var arg in leadingArgs)
+				process.StartInfo.ArgumentList.Add(arg);
+			
+			process.StartInfo.ArgumentList.Add($"@{responseFile}");
+			
+			if (OperatingSystem.IsLinux())
+				process.StartInfo.Environment["LD_LIBRARY_PATH"] = rootPath;
+			
+			var environmentVars = toolchain.GetLinkerEnvironmentVars();
+			foreach (var (key, value) in environmentVars)
+				process.StartInfo.Environment[key] = value;
+			
+			process.Start();
+			var errors = process.StandardError.ReadToEndAsync();
+			await process.WaitForExitAsync();
+			return (process.ExitCode, await errors);
+		}
+		finally
+		{
+			File.Delete(responseFile);
+		}
 	}
 }

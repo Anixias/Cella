@@ -195,6 +195,29 @@ public sealed class BuilderTests : IDisposable
 				SearchOption.AllDirectories), static directory => Path.GetFileName(directory) is "bin" or "obj");
 	}
 	
+	[Theory]
+	[InlineData("windows-x64")]
+	[InlineData("windows-x64-gnu")]
+	[InlineData("linux-x64")]
+	public async Task LinksTheStandardLibraryForEveryTarget(string target)
+	{
+		var directory = Path.Combine(_directory, "app's linked dir");
+		var project = Path.Combine(directory, "test.celp");
+		Directory.CreateDirectory(directory);
+		await File.WriteAllTextAsync(project, "OutputType = \"Executable\"\n", Token);
+		await File.WriteAllTextAsync(Path.Combine(directory, "main.ce"), ValidSource, Token);
+		var output = new RecordingOutput();
+		var builder = new Builder(new BuildOptions { Target = TargetTriple.Parse(target)!.Value.WithDefaultAbi() },
+			output);
+		
+		var result = await CompilerThread.Run(() => builder.BuildAsync(project, null, Token));
+		Assert.True(result.Succeeded,
+			string.Join('\n', output.Lines.Concat(output.Diagnostics.Select(static d => d.Message))));
+		
+		var (_, path) = Assert.Single(output.Outputs);
+		Assert.True(File.Exists(path), path);
+	}
+	
 	[Fact]
 	public async Task ReportsNothingFromTheStandardLibrary()
 	{

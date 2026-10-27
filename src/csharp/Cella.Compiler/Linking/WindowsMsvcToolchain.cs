@@ -17,6 +17,12 @@ public sealed class WindowsMsvcToolchain(string root, MsvcLibraries? libraries, 
 		["_LINK_"] = string.Empty,
 	};
 	
+	public override List<string> GetLeadingLinkerArgs(ProjectOutputType outputType) =>
+		outputType == ProjectOutputType.StaticLibrary ? [] : ["-flavor", "link"];
+	
+	public override ResponseFileQuoting GetResponseFileQuoting(ProjectOutputType outputType) =>
+		ResponseFileQuoting.Windows;
+	
 	public override string? GetDebugSymbolsPath(LinkRequest request) =>
 		request.DebugInfo && request.OutputType != ProjectOutputType.StaticLibrary
 			? Path.ChangeExtension(request.OutputFile, ".pdb")
@@ -24,9 +30,7 @@ public sealed class WindowsMsvcToolchain(string root, MsvcLibraries? libraries, 
 	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
-		var args = request.OutputType == ProjectOutputType.StaticLibrary
-			? new List<string> { "/nologo" }
-			: ["-flavor", "link", "/nologo"];
+		var args = new List<string> { "/nologo" };
 		
 		if (request.OutputType == ProjectOutputType.WindowedExecutable)
 			args.AddRange(["/subsystem:windows", "/entry:mainCRTStartup"]);

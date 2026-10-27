@@ -6,9 +6,14 @@ public abstract class Toolchain
 {
 	public abstract string GetTool(ProjectOutputType outputType);
 	public abstract Dictionary<string, string?> GetLinkerEnvironmentVars();
+	public abstract List<string> GetLeadingLinkerArgs(ProjectOutputType outputType);
 	public abstract List<string> GetLinkerArgs(LinkRequest request);
+	public abstract ResponseFileQuoting GetResponseFileQuoting(ProjectOutputType outputType);
 	public virtual string? GetDebugSymbolsPath(LinkRequest request) => null;
 	public virtual string ToLinkerInput(string library) => library;
+	
+	protected static ResponseFileQuoting HostQuoting =>
+		OperatingSystem.IsWindows() ? ResponseFileQuoting.Windows : ResponseFileQuoting.Gnu;
 	
 	public static Toolchain FromTargetTriple(TargetTriple targetTriple)
 	{

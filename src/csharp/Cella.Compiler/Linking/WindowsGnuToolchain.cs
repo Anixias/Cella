@@ -15,6 +15,12 @@ public sealed class WindowsGnuToolchain(string root) : Toolchain
 	
 	public override Dictionary<string, string?> GetLinkerEnvironmentVars() => [];
 	
+	public override List<string> GetLeadingLinkerArgs(ProjectOutputType outputType) =>
+		outputType == ProjectOutputType.StaticLibrary ? [] : ["-flavor", "gnu", "-m", "i386pep"];
+	
+	public override ResponseFileQuoting GetResponseFileQuoting(ProjectOutputType outputType) =>
+		outputType == ProjectOutputType.StaticLibrary ? ResponseFileQuoting.Windows : HostQuoting;
+	
 	public override string? GetDebugSymbolsPath(LinkRequest request) =>
 		request.DebugInfo ? Path.ChangeExtension(request.OutputFile, ".pdb") : null;
 	
@@ -26,8 +32,6 @@ public sealed class WindowsGnuToolchain(string root) : Toolchain
 		var isShared = request.OutputType == ProjectOutputType.SharedLibrary;
 		var args = new List<string>
 		{
-			"-flavor", "gnu",
-			"-m", "i386pep",
 			"-o", request.OutputFile,
 			"--subsystem", request.OutputType == ProjectOutputType.WindowedExecutable ? "windows" : "console",
 			"--stack", StackReserve,

@@ -14,6 +14,11 @@ public sealed class LinuxGnuToolchain(string root) : Toolchain
 	
 	public override Dictionary<string, string?> GetLinkerEnvironmentVars() => [];
 	
+	public override List<string> GetLeadingLinkerArgs(ProjectOutputType outputType) =>
+		outputType == ProjectOutputType.StaticLibrary ? [] : ["-flavor", "gnu"];
+	
+	public override ResponseFileQuoting GetResponseFileQuoting(ProjectOutputType outputType) => HostQuoting;
+	
 	public override List<string> GetLinkerArgs(LinkRequest request)
 	{
 		if (request.OutputType == ProjectOutputType.StaticLibrary)
@@ -23,7 +28,6 @@ public sealed class LinuxGnuToolchain(string root) : Toolchain
 		var isShared = request.OutputType == ProjectOutputType.SharedLibrary;
 		var args = new List<string>
 		{
-			"-flavor", "gnu",
 			$"--sysroot={_sysroot}",
 			"-m", "elf_x86_64",
 			"--eh-frame-hdr",
