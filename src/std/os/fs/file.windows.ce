@@ -140,6 +140,15 @@ badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
 readOnlyAttribute: pvt const u32 = 0x1
+hiddenAttribute: pvt const u32 = 0x2
+systemAttribute: pvt const u32 = 0x4
+archiveAttribute: pvt const u32 = 0x20
+temporaryAttribute: pvt const u32 = 0x100
+sparseAttribute: pvt const u32 = 0x200
+compressedAttribute: pvt const u32 = 0x800
+offlineAttribute: pvt const u32 = 0x1000
+notContentIndexedAttribute: pvt const u32 = 0x2000
+encryptedAttribute: pvt const u32 = 0x4000
 directoryAttribute: pvt const u32 = 0x10
 reparsePointAttribute: pvt const u32 = 0x400
 nameSurrogateTag: pvt const u32 = 0x20000000
@@ -274,7 +283,7 @@ metadataOfHandle: pvt fun(handle: ptr, followLinks: bool) -> Result[Metadata, Io
 	if kind is file
 		size = u64(information.sizeHigh) << 32 | u64(information.sizeLow)
 	
-	ret ok(Metadata(kind, size, (information.attributes & readOnlyAttribute) != 0))
+	ret ok(Metadata(kind, size, Attributes(information.attributes)))
 }
 
 removePath: mod fun(path: str) -> Result[IoError]
@@ -416,6 +425,89 @@ moveWide: pvt fun(source: ptr[u16], target: ptr[u16], replace: bool) -> Result[I
 	val failure = GetLastError()
 	SetFileAttributesW(target, attributesWithout(attributes, 0))
 	ret err(errorFrom(failure))
+}
+
+Attributes: pub rec
+{
+	bits: pvt u32
+	
+	new: mod op(bits: u32)
+	{
+		self.bits = bits
+	}
+	
+	readOnly: prop bool
+	{
+		get(self) => self.has(readOnlyAttribute)
+		set(mut self, value) => self.change(readOnlyAttribute, value)
+	}
+	
+	hidden: prop bool
+	{
+		get(self) => self.has(hiddenAttribute)
+		set(mut self, value) => self.change(hiddenAttribute, value)
+	}
+	
+	system: prop bool
+	{
+		get(self) => self.has(systemAttribute)
+		set(mut self, value) => self.change(systemAttribute, value)
+	}
+	
+	archive: prop bool
+	{
+		get(self) => self.has(archiveAttribute)
+		set(mut self, value) => self.change(archiveAttribute, value)
+	}
+	
+	temporary: prop bool
+	{
+		get(self) => self.has(temporaryAttribute)
+		set(mut self, value) => self.change(temporaryAttribute, value)
+	}
+	
+	offline: prop bool
+	{
+		get(self) => self.has(offlineAttribute)
+		set(mut self, value) => self.change(offlineAttribute, value)
+	}
+	
+	notContentIndexed: prop bool
+	{
+		get(self) => self.has(notContentIndexedAttribute)
+		set(mut self, value) => self.change(notContentIndexedAttribute, value)
+	}
+	
+	compressed: get(self) -> bool => self.has(compressedAttribute)
+	encrypted: get(self) -> bool => self.has(encryptedAttribute)
+	sparse: get(self) -> bool => self.has(sparseAttribute)
+	
+	has: pvt fun(self, flag: u32) -> bool => (self.bits & flag) != 0
+	
+	change: pvt fun(mut self, flag: u32, value: bool)
+	{
+		if value
+			self.bits |= flag
+		else
+			self.bits &= ~flag
+	}
+	
+	settable: mod get(self) -> u32 => attributesWithout(self.bits, 0)
+}
+
+setPathAttributes: mod fun(path: str, attributes: Attributes) -> Result[IoError]
+{
+	checkPath(path)?
+	val bits = attributes.settable
+	ret withWidePath(path, fun(wide) => setWideAttributes(wide, bits))
+}
+
+setWideAttributes: pvt fun(wide: ptr[u16], bits: u32) -> Result[IoError]
+{
+	if SetFileAttributesW(wide, bits) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	ret ok
 }
 
 NativeFile: mod rec

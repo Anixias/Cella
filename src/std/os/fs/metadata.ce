@@ -15,17 +15,19 @@ Metadata: pub rec
 {
 	kind: pvt set EntryKind
 	size: pvt set u64
-	readOnly: pvt set bool
+	attributes: pvt set Attributes
 	// TODO: creation, modification and access times, once std has a date-time type
 	
-	new: mod op(kind: EntryKind, size: u64, readOnly: bool)
+	new: mod op(kind: EntryKind, size: u64, attributes: Attributes)
 	{
 		self.kind = kind
 		self.size = size
-		self.readOnly = readOnly
+		self.attributes = attributes
 	}
 }
 
 metadata: pub fun(path: str, followLinks: bool = true) -> Result[Metadata, IoError] => pathMetadata(path, followLinks)
+
+setAttributes: pub fun(path: str, attributes: Attributes) -> Result[IoError] => setPathAttributes(path, attributes)
 
 exists: pub fun(path: str) -> bool => metadata(path) is ok(_)

@@ -36,6 +36,7 @@ pvt ext
 	linkStatus: ext("lstat") fun(path: ptr[u8], status: ptr[Status]) -> i32
 	fsync: fun(file: i32) -> i32
 	fchmod: fun(file: i32, mode: u32) -> i32
+	changeMode: ext("chmod") fun(path: ptr[u8], mode: u32) -> i32
 	ftruncate: fun(file: i32, length: i64) -> i32
 	renameFile: ext("rename") fun(from: ptr[u8], to: ptr[u8]) -> i32
 	renameat2: fun(fromDirectory: i32, from: ptr[u8], toDirectory: i32, to: ptr[u8], flags: u32) -> i32
@@ -78,6 +79,18 @@ regularType: pvt const u32 = 0x8000
 directoryType: pvt const u32 = 0x4000
 linkType: pvt const u32 = 0xA000
 writePermissions: pvt const u32 = 0x92
+ownerReadBit: pvt const u32 = 0x100
+ownerWriteBit: pvt const u32 = 0x80
+ownerExecuteBit: pvt const u32 = 0x40
+groupReadBit: pvt const u32 = 0x20
+groupWriteBit: pvt const u32 = 0x10
+groupExecuteBit: pvt const u32 = 0x8
+othersReadBit: pvt const u32 = 0x4
+othersWriteBit: pvt const u32 = 0x2
+othersExecuteBit: pvt const u32 = 0x1
+setUserIdBit: pvt const u32 = 0x800
+setGroupIdBit: pvt const u32 = 0x400
+stickyBit: pvt const u32 = 0x200
 permissionBits: pvt const u32 = 0xFFF
 largestTransfer: pvt const usize = 0x7FFFF000
 stackPathLength: pvt const usize = 512
@@ -193,7 +206,7 @@ metadataOf: pvt fun(status: Status) -> Metadata
 	if kind is file
 		size = u64(status.size)
 	
-	ret Metadata(kind, size, (status.mode & writePermissions) == 0)
+	ret Metadata(kind, size, Attributes(status.mode))
 }
 
 removePath: mod fun(path: str) -> Result[IoError]
@@ -353,6 +366,127 @@ moveAcrossDevices: pvt fun(source: ptr[u8], target: ptr[u8], replace: bool) -> R
 	
 	copyBytes(source, target, replace)?
 	unlinkFile(source)
+	ret ok
+}
+
+Attributes: pub rec
+{
+	mode: pvt u32
+	
+	new: mod op(mode: u32)
+	{
+		self.mode = mode & permissionBits
+	}
+	
+	readOnly: prop bool
+	{
+		get(self) => (self.mode & writePermissions) == 0
+		set(mut self, value)
+		{
+			if value
+				self.mode &= ~writePermissions
+			else
+				self.mode |= ownerWriteBit
+		}
+	}
+	
+	ownerRead: prop bool
+	{
+		get(self) => self.has(ownerReadBit)
+		set(mut self, value) => self.change(ownerReadBit, value)
+	}
+	
+	ownerWrite: prop bool
+	{
+		get(self) => self.has(ownerWriteBit)
+		set(mut self, value) => self.change(ownerWriteBit, value)
+	}
+	
+	ownerExecute: prop bool
+	{
+		get(self) => self.has(ownerExecuteBit)
+		set(mut self, value) => self.change(ownerExecuteBit, value)
+	}
+	
+	groupRead: prop bool
+	{
+		get(self) => self.has(groupReadBit)
+		set(mut self, value) => self.change(groupReadBit, value)
+	}
+	
+	groupWrite: prop bool
+	{
+		get(self) => self.has(groupWriteBit)
+		set(mut self, value) => self.change(groupWriteBit, value)
+	}
+	
+	groupExecute: prop bool
+	{
+		get(self) => self.has(groupExecuteBit)
+		set(mut self, value) => self.change(groupExecuteBit, value)
+	}
+	
+	othersRead: prop bool
+	{
+		get(self) => self.has(othersReadBit)
+		set(mut self, value) => self.change(othersReadBit, value)
+	}
+	
+	othersWrite: prop bool
+	{
+		get(self) => self.has(othersWriteBit)
+		set(mut self, value) => self.change(othersWriteBit, value)
+	}
+	
+	othersExecute: prop bool
+	{
+		get(self) => self.has(othersExecuteBit)
+		set(mut self, value) => self.change(othersExecuteBit, value)
+	}
+	
+	setUserId: prop bool
+	{
+		get(self) => self.has(setUserIdBit)
+		set(mut self, value) => self.change(setUserIdBit, value)
+	}
+	
+	setGroupId: prop bool
+	{
+		get(self) => self.has(setGroupIdBit)
+		set(mut self, value) => self.change(setGroupIdBit, value)
+	}
+	
+	sticky: prop bool
+	{
+		get(self) => self.has(stickyBit)
+		set(mut self, value) => self.change(stickyBit, value)
+	}
+	
+	has: pvt fun(self, bit: u32) -> bool => (self.mode & bit) != 0
+	
+	change: pvt fun(mut self, bit: u32, value: bool)
+	{
+		if value
+			self.mode |= bit
+		else
+			self.mode &= ~bit
+	}
+	
+	bits: mod get(self) -> u32 => self.mode
+}
+
+setPathAttributes: mod fun(path: str, attributes: Attributes) -> Result[IoError]
+{
+	checkPath(path)?
+	val mode = attributes.bits
+	ret withBytePath(path, fun(bytes) => setByteAttributes(bytes, mode))
+}
+
+setByteAttributes: pvt fun(bytes: ptr[u8], mode: u32) -> Result[IoError]
+{
+	if changeMode(bytes, mode) != 0
+		ret err(errorFrom(lastError()))
+	
 	ret ok
 }
 
