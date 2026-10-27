@@ -2,10 +2,10 @@
 
 use when windows
 
-use std.[Result, Span, View]
+use std.[Option, Result, Span, View]
 use std.io.[IoError, SeekFrom]
 use std.mem.[BitSet, Heap, Layout]
-use std.text.[Text, Utf16, Utf8, measure, transcode]
+use std.path.Path
 
 pvt ext
 {
@@ -238,25 +238,21 @@ dispositionOf: pvt fun(mode: FileMode) -> Disposition => match mode
 	truncate => Disposition.truncateExisting
 }
 
-checkPath: pvt fun(path: str) -> Result[IoError]
+checkPath: pvt fun(path: Path) -> Result[IoError]
 {
-	for i in 0..path.byteLength
-	{
-		if path[i] == 0
-			ret err(IoError(invalidInput, invalidName))
-	}
+	if wideLength(path.bytes) is none
+		ret err(IoError(invalidInput, invalidName))
 	
 	ret ok
 }
 
-withWidePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u16] -> R]) -> R
+withWidePath[R: noref]: pvt fun(path: Path, imm action: fun[ptr[u16] -> R]) -> R
 {
-	val length = measure[Utf8, Utf16](path)
+	val length = wideLength(path.bytes).valueOr(0)
 	if length < stackPathLength
 	{
 		var buffer: array[u16, stackPathLength]
-		transcode[Utf8, Utf16](path, Span[u16](@buffer, length))
-		buffer[length] = 0
+		bytesToWide(path.bytes, @buffer)
 		ret action(@buffer)
 	}
 	
@@ -266,14 +262,180 @@ withWidePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u16] -> R]) -> R
 	if wide == null
 		panic "out of memory"
 	
-	transcode[Utf8, Utf16](path, Span[u16](wide, length))
-	wide[length] = 0
+	bytesToWide(path.bytes, wide)
 	val result = action(wide)
 	heap.release(wide, layout)
 	ret result
 }
 
-pathMetadata: mod fun(path: str, followLinks: bool) -> Result[Metadata, IoError]
+Decoded: pvt rec
+{
+	code: u32
+	length: usize
+}
+
+decodeAt: pvt fun(bytes: View[u8], index: usize) -> Decoded
+{
+	val first = bytes[index]
+	if first == 0
+		ret Decoded(0, 0)
+	
+	if first <= 0x7F
+		ret Decoded(u32(first), 1)
+	
+	var length: usize = 0
+	var code: u32 = 0
+	var lowest: u8 = 0x80
+	var highest: u8 = 0xBF
+	match first
+	{
+		0xC2..=0xDF =>
+		{
+			length = 2
+			code = u32(first & 0x1F)
+		}
+		0xE0 =>
+		{
+			length = 3
+			lowest = 0xA0
+		}
+		0xE1..=0xEF =>
+		{
+			length = 3
+			code = u32(first & 0x0F)
+		}
+		0xF0 =>
+		{
+			length = 4
+			lowest = 0x90
+		}
+		0xF1..=0xF3 =>
+		{
+			length = 4
+			code = u32(first & 0x07)
+		}
+		0xF4 =>
+		{
+			length = 4
+			code = 0x4
+			highest = 0x8F
+		}
+		else => ret Decoded(0, 0)
+	}
+	
+	if index + length > bytes.length
+		ret Decoded(0, 0)
+	
+	for i in 1..length
+	{
+		val next = bytes[index + i]
+		if !(lowest <= next <= highest)
+			ret Decoded(0, 0)
+		
+		code = (code << 6) | u32(next & 0x3F)
+		lowest = 0x80
+		highest = 0xBF
+	}
+	
+	ret Decoded(code, length)
+}
+
+wideLength: pvt fun(bytes: View[u8]) -> Option[usize]
+{
+	var length: usize = 0
+	var index: usize = 0
+	while index < bytes.length
+	{
+		val decoded = decodeAt(bytes, index)
+		if decoded.length == 0
+			ret none
+		
+		index += decoded.length
+		length += 1
+		if decoded.code >= 0x10000
+			length += 1
+	}
+	
+	ret length
+}
+
+bytesToWide: pvt fun(bytes: View[u8], wide: ptr[u16])
+{
+	var index: usize = 0
+	var written: usize = 0
+	while index < bytes.length
+	{
+		val decoded = decodeAt(bytes, index)
+		if decoded.length == 0
+			break
+		
+		index += decoded.length
+		if decoded.code >= 0x10000
+		{
+			val value = decoded.code - 0x10000
+			wide[written] = u16(0xD800 | (value >> 10))
+			wide[written + 1] = u16(0xDC00 | (value & 0x3FF))
+			written += 2
+		}
+		else
+		{
+			wide[written] = u16(decoded.code)
+			written += 1
+		}
+	}
+	
+	wide[written] = 0
+}
+
+wideToBytes: pvt fun(units: View[u16], bytes: ptr[u8]) -> usize
+{
+	var written: usize = 0
+	var index: usize = 0
+	while index < units.length
+	{
+		var code = u32(units[index])
+		index += 1
+		if 0xD800 <= code <= 0xDBFF && index < units.length && 0xDC00 <= units[index] <= 0xDFFF
+		{
+			code = 0x10000 + ((code - 0xD800) << 10) + (u32(units[index]) - 0xDC00)
+			index += 1
+		}
+		
+		match code
+		{
+			<= 0x7F =>
+			{
+				bytes[written] = u8(code)
+				written += 1
+			}
+			<= 0x7FF =>
+			{
+				bytes[written] = u8(0xC0 | (code >> 6))
+				bytes[written + 1] = u8(0x80 | (code & 0x3F))
+				written += 2
+			}
+			<= 0xFFFF =>
+			{
+				bytes[written] = u8(0xE0 | (code >> 12))
+				bytes[written + 1] = u8(0x80 | ((code >> 6) & 0x3F))
+				bytes[written + 2] = u8(0x80 | (code & 0x3F))
+				written += 3
+			}
+			else =>
+			{
+				bytes[written] = u8(0xF0 | (code >> 18))
+				bytes[written + 1] = u8(0x80 | ((code >> 12) & 0x3F))
+				bytes[written + 2] = u8(0x80 | ((code >> 6) & 0x3F))
+				bytes[written + 3] = u8(0x80 | (code & 0x3F))
+				written += 4
+			}
+		}
+	}
+	
+	ret written
+}
+
+pathMetadata: mod fun(path: Path, followLinks: bool) -> Result[Metadata, IoError]
 {
 	checkPath(path)?
 	ret withWidePath(path, fun(wide) => metadataOfPath(wide, followLinks))
@@ -324,7 +486,7 @@ metadataOfHandle: pvt fun(handle: ptr, followLinks: bool) -> Result[Metadata, Io
 		u64(information.indexHigh) << 32 | u64(information.indexLow)))
 }
 
-removePath: mod fun(path: str) -> Result[IoError]
+removePath: mod fun(path: Path) -> Result[IoError]
 {
 	checkPath(path)?
 	ret withWidePath(path, fun(wide) => removeWide(wide, false))
@@ -394,7 +556,7 @@ setHandleAttributes: pvt fun(handle: ptr, attributes: u32) -> bool
 	ret SetFileInformationByHandle(handle, basicInfo, @basic, u32(sizeOf(BasicInformation))) != 0
 }
 
-createPath: mod fun(path: str) -> Result[IoError]
+createPath: mod fun(path: Path) -> Result[IoError]
 {
 	checkPath(path)?
 	ret withWidePath(path, fun(wide) => createWide(wide))
@@ -408,7 +570,7 @@ createWide: pvt fun(wide: ptr[u16]) -> Result[IoError]
 	ret ok
 }
 
-removeDirectoryPath: mod fun(path: str) -> Result[IoError]
+removeDirectoryPath: mod fun(path: Path) -> Result[IoError]
 {
 	checkPath(path)?
 	ret withWidePath(path, fun(wide) => removeWide(wide, true))
@@ -423,7 +585,7 @@ attributesWithout: pvt fun(attributes: u32, removed: u32) -> u32
 	ret result
 }
 
-copyPath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+copyPath: mod fun(from: Path, to: Path, replace: bool) -> Result[IoError]
 {
 	checkPath(from)?
 	checkPath(to)?
@@ -468,7 +630,7 @@ identify: pvt fun(wide: ptr[u16], information: ptr[FileInformation]) -> bool
 	ret found
 }
 
-movePath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+movePath: mod fun(from: Path, to: Path, replace: bool) -> Result[IoError]
 {
 	checkPath(from)?
 	checkPath(to)?
@@ -569,7 +731,7 @@ Attributes: pub rec
 	settable: mod get(self) -> u32 => attributesWithout(self.bits, 0)
 }
 
-setPathAttributes: mod fun(path: str, attributes: Attributes) -> Result[IoError]
+setPathAttributes: mod fun(path: Path, attributes: Attributes) -> Result[IoError]
 {
 	checkPath(path)?
 	val bits = attributes.settable
@@ -677,7 +839,7 @@ NativeListing: mod rec
 		self.nameLength = 0
 	}
 	
-	open: fun(path: str, followLinks: bool) -> Result[NativeListing, IoError]
+	open: fun(path: Path, followLinks: bool) -> Result[NativeListing, IoError]
 	{
 		checkPath(path)?
 		ret withWidePath(path, fun(wide) => openListing(wide, followLinks))
@@ -733,13 +895,13 @@ NativeListing: mod rec
 			if (attributes & reparsePointAttribute) != 0 && (*ptr[u32](entry + tagOffset) & nameSurrogateTag) != 0
 				self.currentKind = EntryKind.symbolicLink
 			
-			self.nameLength = transcode[Utf16, Utf8](View[u16](name, length), Span[u8](@self.nameBytes, 1024)).written
+			self.nameLength = wideToBytes(View[u16](name, length), @self.nameBytes)
 			ret ok(true)
 		}
 	}
 	
 	entry: pvt fun(imm self) -> ptr[u8] => self.buffer + usize(self.offset)
-	name: get(imm self) -> str => Text[Utf8](View[u8](@self.nameBytes, self.nameLength))
+	name: get(imm self) -> Path => Path(View[u8](@self.nameBytes, self.nameLength))
 	kind: get(imm self) -> EntryKind => self.currentKind
 	
 	openRelative: pvt fun(imm self, access: Access, options: u32) -> Result[ptr, IoError]
@@ -781,7 +943,7 @@ NativeListing: mod rec
 	}
 }
 
-copyLink: mod fun(from: str, to: str) -> Result[IoError]
+copyLink: mod fun(from: Path, to: Path) -> Result[IoError]
 {
 	checkPath(from)?
 	checkPath(to)?
@@ -868,7 +1030,7 @@ recreateJunction: pvt fun(target: ptr[u16], data: ptr[u8]) -> Result[IoError]
 	ret err(errorFrom(code))
 }
 
-createLinkPath: mod fun(target: str, link: str, directory: bool) -> Result[IoError]
+createLinkPath: mod fun(target: Path, link: Path, directory: bool) -> Result[IoError]
 {
 	checkPath(target)?
 	checkPath(link)?
@@ -891,7 +1053,7 @@ NativeFile: mod rec
 {
 	handle: ptr
 	
-	open: fun(path: str, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
+	open: fun(path: Path, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
 	{
 		checkPath(path)?
 		ret withWidePath(path, fun(wide) => openWide(wide, mode, access))

@@ -3,6 +3,7 @@
 use std.[Result, Span, View]
 use std.containers.List
 use std.io.[IoError, Read, Seek, SeekFrom, Write, readToEnd]
+use std.path.Path
 
 FileMode: pub enum
 {
@@ -37,7 +38,7 @@ File: pub own rec impl Read + Write + Seek
 		self.native.close()
 	}
 	
-	open: fun(path: str, mode: FileMode = open, access: FileAccess = read) -> Result[File, IoError]
+	open: fun(path: Path, mode: FileMode = open, access: FileAccess = read) -> Result[File, IoError]
 	{
 		val changesFile = match mode
 		{
@@ -87,7 +88,7 @@ File: pub own rec impl Read + Write + Seek
 	}
 }
 
-readBytes: pub fun(path: str) -> Result[List[u8], IoError]
+readBytes: pub fun(path: Path) -> Result[List[u8], IoError]
 {
 	var file = File.open(path)?
 	var bytes = List[u8]()
@@ -96,13 +97,13 @@ readBytes: pub fun(path: str) -> Result[List[u8], IoError]
 	ret ok(bytes)
 }
 
-writeBytes: pub fun(path: str, data: View[u8]) -> Result[IoError]
+writeBytes: pub fun(path: Path, data: View[u8]) -> Result[IoError]
 {
 	var file = File.open(path, create, write)?
 	ret file.writeAll(data)
 }
 
-appendBytes: pub fun(path: str, data: View[u8]) -> Result[IoError]
+appendBytes: pub fun(path: Path, data: View[u8]) -> Result[IoError]
 {
 	var file = File.open(path, append, write)?
 	ret file.writeAll(data)

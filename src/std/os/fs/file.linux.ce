@@ -5,7 +5,7 @@ use when linux
 use std.[Result, Span, View]
 use std.io.[IoError, SeekFrom]
 use std.mem.[Heap, Layout]
-use std.text.[Text, Utf8]
+use std.path.Path
 
 Status: pvt rec
 {
@@ -158,20 +158,20 @@ flagsOf: pvt fun(mode: FileMode, access: FileAccess) -> i32
 	ret flags
 }
 
-checkPath: pvt fun(path: str) -> Result[IoError]
+checkPath: pvt fun(path: Path) -> Result[IoError]
 {
-	for i in 0..path.byteLength
+	for byte in path.bytes
 	{
-		if path[i] == 0
+		if byte == 0
 			ret err(IoError(invalidInput, invalidArgument))
 	}
 	
 	ret ok
 }
 
-withBytePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u8] -> R]) -> R
+withBytePath[R: noref]: pvt fun(path: Path, imm action: fun[ptr[u8] -> R]) -> R
 {
-	if path.byteLength < stackPathLength
+	if path.length < stackPathLength
 	{
 		var buffer: array[u8, stackPathLength]
 		copyPath(path, @buffer)
@@ -179,7 +179,7 @@ withBytePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u8] -> R]) -> R
 	}
 	
 	var heap = Heap()
-	val layout = Layout.arrayOf[u8](path.byteLength + 1)
+	val layout = Layout.arrayOf[u8](path.length + 1)
 	val bytes = ptr[u8](heap.allocate(layout))
 	if bytes == null
 		panic "out of memory"
@@ -190,15 +190,16 @@ withBytePath[R: noref]: pvt fun(path: str, imm action: fun[ptr[u8] -> R]) -> R
 	ret result
 }
 
-copyPath: pvt fun(path: str, bytes: ptr[u8])
+copyPath: pvt fun(path: Path, bytes: ptr[u8])
 {
-	for i in 0..path.byteLength
-		bytes[i] = path[i]
+	val source = path.bytes
+	for i in 0..source.length
+		bytes[i] = source[i]
 	
-	bytes[path.byteLength] = 0
+	bytes[source.length] = 0
 }
 
-pathMetadata: mod fun(path: str, followLinks: bool) -> Result[Metadata, IoError]
+pathMetadata: mod fun(path: Path, followLinks: bool) -> Result[Metadata, IoError]
 {
 	checkPath(path)?
 	ret withBytePath(path, fun(bytes) => metadataOfPath(bytes, followLinks))
@@ -236,7 +237,7 @@ metadataOf: pvt fun(status: Status) -> Metadata
 	ret Metadata(kind, size, Attributes(status.mode), status.device, status.inode)
 }
 
-removePath: mod fun(path: str) -> Result[IoError]
+removePath: mod fun(path: Path) -> Result[IoError]
 {
 	checkPath(path)?
 	ret withBytePath(path, fun(bytes) => removeBytes(bytes))
@@ -250,7 +251,7 @@ removeBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
 	ret ok
 }
 
-createPath: mod fun(path: str) -> Result[IoError]
+createPath: mod fun(path: Path) -> Result[IoError]
 {
 	checkPath(path)?
 	ret withBytePath(path, fun(bytes) => createBytes(bytes))
@@ -264,7 +265,7 @@ createBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
 	ret ok
 }
 
-removeDirectoryPath: mod fun(path: str) -> Result[IoError]
+removeDirectoryPath: mod fun(path: Path) -> Result[IoError]
 {
 	checkPath(path)?
 	ret withBytePath(path, fun(bytes) => removeDirectoryBytes(bytes))
@@ -283,7 +284,7 @@ removeDirectoryBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
 	ret err(errorFrom(code))
 }
 
-copyPath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+copyPath: mod fun(from: Path, to: Path, replace: bool) -> Result[IoError]
 {
 	checkPath(from)?
 	checkPath(to)?
@@ -347,7 +348,7 @@ copyInto: pvt fun(input: NativeFile, output: NativeFile) -> Result[IoError]
 	ret ok
 }
 
-movePath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+movePath: mod fun(from: Path, to: Path, replace: bool) -> Result[IoError]
 {
 	checkPath(from)?
 	checkPath(to)?
@@ -535,7 +536,7 @@ Attributes: pub rec
 	bits: mod get(self) -> u32 => self.mode
 }
 
-setPathAttributes: mod fun(path: str, attributes: Attributes) -> Result[IoError]
+setPathAttributes: mod fun(path: Path, attributes: Attributes) -> Result[IoError]
 {
 	checkPath(path)?
 	val mode = attributes.bits
@@ -606,7 +607,7 @@ NativeListing: mod rec
 		self.currentKind = EntryKind.other
 	}
 	
-	open: fun(path: str, followLinks: bool) -> Result[NativeListing, IoError]
+	open: fun(path: Path, followLinks: bool) -> Result[NativeListing, IoError]
 	{
 		checkPath(path)?
 		var flags = readOnly | directoryFlag | closeOnExec
@@ -666,7 +667,7 @@ NativeListing: mod rec
 	}
 	
 	currentName: pvt fun(self) -> ptr[u8] => ptr[u8](@self.current.name)
-	name: get(self) -> str => Text[Utf8](View[u8](self.currentName(), stringLength(self.currentName())))
+	name: get(self) -> Path => Path(View[u8](self.currentName(), stringLength(self.currentName())))
 	kind: get(self) -> EntryKind => self.currentKind
 	
 	removeCurrent: fun(self) -> Result[IoError]
@@ -687,7 +688,7 @@ NativeListing: mod rec
 	}
 }
 
-copyLink: mod fun(from: str, to: str) -> Result[IoError]
+copyLink: mod fun(from: Path, to: Path) -> Result[IoError]
 {
 	checkPath(from)?
 	checkPath(to)?
@@ -708,7 +709,7 @@ copyLinkBytes: pvt fun(source: ptr[u8], target: ptr[u8]) -> Result[IoError]
 	ret ok
 }
 
-createLinkPath: mod fun(target: str, link: str, directory: bool) -> Result[IoError]
+createLinkPath: mod fun(target: Path, link: Path, directory: bool) -> Result[IoError]
 {
 	checkPath(target)?
 	checkPath(link)?
@@ -727,7 +728,7 @@ NativeFile: mod rec
 {
 	descriptor: i32
 	
-	open: fun(path: str, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
+	open: fun(path: Path, mode: FileMode, access: FileAccess) -> Result[NativeFile, IoError]
 	{
 		checkPath(path)?
 		val flags = flagsOf(mode, access)

@@ -1,12 +1,12 @@
 ﻿mod std.fs
 
-use std.[Result, View]
+use std.Result
 use std.io.IoError
-use std.text.[Text, Utf8]
+use std.path.Path
 
-remove: pub fun(path: str) -> Result[IoError] => removePath(path)
+remove: pub fun(path: Path) -> Result[IoError] => removePath(path)
 
-copy: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
+copy: pub fun(from: Path, to: Path, replace: bool = false) -> Result[IoError]
 {
 	if isDirectoryAt(from) || isDirectoryAt(to)
 		ret err(IoError(isDirectory, 0))
@@ -14,7 +14,7 @@ copy: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
 	ret copyPath(from, to, replace)
 }
 
-move: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
+move: pub fun(from: Path, to: Path, replace: bool = false) -> Result[IoError]
 {
 	if replace && isDirectoryAt(to)
 		ret err(IoError(isDirectory, 0))
@@ -22,9 +22,9 @@ move: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
 	ret movePath(from, to, replace)
 }
 
-createDirectory: pub fun(path: str) -> Result[IoError] => createPath(path)
+createDirectory: pub fun(path: Path) -> Result[IoError] => createPath(path)
 
-createDirectories: pub fun(path: str) -> Result[IoError]
+createDirectories: pub fun(path: Path) -> Result[IoError]
 {
 	val result = createDirectory(path)
 	if result is ok || isDirectoryAt(path)
@@ -33,11 +33,11 @@ createDirectories: pub fun(path: str) -> Result[IoError]
 	if result is err(val error) && !(error.kind is notFound)
 		ret result
 	
-	val parent = parentOf(path)
-	if parent.byteLength == 0
+	val above = path.parent.valueOr(Path(""))
+	if above.isEmpty
 		ret result
 	
-	createDirectories(parent)?
+	createDirectories(above)?
 	val retry = createDirectory(path)
 	if retry is err(_) && isDirectoryAt(path)
 		ret ok
@@ -45,7 +45,7 @@ createDirectories: pub fun(path: str) -> Result[IoError]
 	ret retry
 }
 
-removeDirectory: pub fun(path: str, recursive: bool = false) -> Result[IoError]
+removeDirectory: pub fun(path: Path, recursive: bool = false) -> Result[IoError]
 {
 	if recursive
 	{
@@ -56,21 +56,6 @@ removeDirectory: pub fun(path: str, recursive: bool = false) -> Result[IoError]
 	}
 	
 	ret removeDirectoryPath(path)
-}
-
-parentOf: mod fun(path: str) -> str
-{
-	var end = path.byteLength
-	while end > 0 && isSeparator(path[end - 1])
-		end -= 1
-	
-	while end > 0 && !isSeparator(path[end - 1])
-		end -= 1
-	
-	while end > 1 && isSeparator(path[end - 1])
-		end -= 1
-	
-	ret Text[Utf8](View[u8](path.data, end))
 }
 
 isSeparator: mod fun(byte: u8) -> bool
@@ -84,4 +69,4 @@ isSeparator: mod fun(byte: u8) -> bool
 	ret byte == 0x2F
 }
 
-isDirectoryAt: mod fun(path: str) -> bool => metadata(path) is ok(val data) && data.kind is directory
+isDirectoryAt: mod fun(path: Path) -> bool => metadata(path) is ok(val data) && data.kind is directory

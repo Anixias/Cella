@@ -4,14 +4,14 @@ use std.[Cursor, Result, View]
 use std.containers.List
 use std.io.IoError
 use std.mem.[Allocator, Heap]
-use std.text.[Text, Utf8]
+use std.path.Path
 
 Entry: pub ref rec
 {
-	name: pvt set str
+	name: pvt set Path
 	kind: pvt set EntryKind
 	
-	new: mod op(name: str, kind: EntryKind)
+	new: mod op(name: Path, kind: EntryKind)
 	{
 		self.name = name
 		self.kind = kind
@@ -71,10 +71,10 @@ Entries[F: fun[Entry -> bool]]: pub own rec impl Cursor[Result[Entry, IoError]]
 	}
 }
 
-entries: pub fun(path: str) -> Result[Entries[fun[Entry -> bool]], IoError] =>
+entries: pub fun(path: Path) -> Result[Entries[fun[Entry -> bool]], IoError] =>
 	entries[fun[Entry -> bool]](path, keepEntry)
 
-entries[F: fun[Entry -> bool]]: pub fun(path: str, keep: F) -> Result[Entries[F], IoError]
+entries[F: fun[Entry -> bool]]: pub fun(path: Path, keep: F) -> Result[Entries[F], IoError]
 {
 	val listing = NativeListing.open(path, true)?
 	ret ok(Entries[F](listing, keep))
@@ -90,12 +90,12 @@ WalkOrder: pub enum
 
 WalkEntry: pub ref rec
 {
-	path: pvt set str
-	name: pvt set str
+	path: pvt set Path
+	name: pvt set Path
 	kind: pvt set EntryKind
 	depth: pvt set usize
 	
-	new: mod op(path: str, name: str, kind: EntryKind, depth: usize)
+	new: mod op(path: Path, name: Path, kind: EntryKind, depth: usize)
 	{
 		self.path = path
 		self.name = name
@@ -125,7 +125,7 @@ Walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub own rec impl Cursor[Re
 	nameStart: pvt usize
 	depth: pvt usize
 	
-	new: mod op(root: str, listing: NativeListing, keep: F, order: WalkOrder, alloc: A)
+	new: mod op(root: Path, listing: NativeListing, keep: F, order: WalkOrder, alloc: A)
 	{
 		self.frames = List[WalkFrame, A](alloc)
 		self.path = List[u8, A](alloc)
@@ -138,11 +138,12 @@ Walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub own rec impl Cursor[Re
 		self.nameStart = 0
 		self.depth = 0
 		
-		var length = root.byteLength
-		while length > 1 && isSeparator(root[length - 1]) && root[length - 2] != 0x3A
+		val bytes = root.bytes
+		var length = bytes.length
+		while length > 1 && isSeparator(bytes[length - 1]) && bytes[length - 2] != 0x3A
 			length -= 1
 		
-		self.path.addAll(View[u8](root.data, length))
+		self.path.addAll(bytes.slice(0, length))
 		self.frames.add(WalkFrame(listing, length, 0, 0))
 	}
 	
@@ -194,7 +195,7 @@ Walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub own rec impl Cursor[Re
 				self.path.add(separator)
 			
 			self.nameStart = self.path.count
-			self.path.addAll(self.frames[index].listing.name)
+			self.path.addAll(self.frames[index].listing.name.bytes)
 			self.kind = self.frames[index].listing.kind
 			self.depth = self.frames.count
 			if !self.keep(self.current())
@@ -245,10 +246,8 @@ Walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub own rec impl Cursor[Re
 	
 	current: pvt fun(imm self) -> WalkEntry
 	{
-		val text: View[u8] = self.path
-		val path: str = Text[Utf8](text)
-		val name: str = Text[Utf8](text.slice(self.nameStart, text.length))
-		ret WalkEntry(path, name, self.kind, self.depth)
+		val bytes: View[u8] = self.path
+		ret WalkEntry(Path(bytes), Path(bytes.slice(self.nameStart, bytes.length)), self.kind, self.depth)
 	}
 	
 	*: op(imm self) -> Result[WalkEntry, IoError]
@@ -260,13 +259,13 @@ Walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub own rec impl Cursor[Re
 	}
 }
 
-walk: pub fun(path: str, order: WalkOrder = parentsFirst) -> Result[Walk[fun[WalkEntry -> bool], Heap], IoError] =>
+walk: pub fun(path: Path, order: WalkOrder = parentsFirst) -> Result[Walk[fun[WalkEntry -> bool], Heap], IoError] =>
 	walk[fun[WalkEntry -> bool], Heap](path, keepWalkEntry, Heap(), order)
 
-walk[F: fun[WalkEntry -> bool]]: pub fun(path: str, keep: F, order: WalkOrder = parentsFirst)
+walk[F: fun[WalkEntry -> bool]]: pub fun(path: Path, keep: F, order: WalkOrder = parentsFirst)
 	-> Result[Walk[F, Heap], IoError] => walk[F, Heap](path, keep, Heap(), order)
 
-walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub fun(path: str, keep: F, alloc: A,
+walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub fun(path: Path, keep: F, alloc: A,
 	order: WalkOrder = parentsFirst) -> Result[Walk[F, A], IoError]
 {
 	val listing = NativeListing.open(path, true)?
@@ -282,13 +281,13 @@ LinkCopy: pub enum
 	skip
 }
 
-copyDirectory: pub fun(from: str, to: str, replace: bool = false, links: LinkCopy = recreate) -> Result[IoError]
+copyDirectory: pub fun(from: Path, to: Path, replace: bool = false, links: LinkCopy = recreate) -> Result[IoError]
 {
 	var chain = List[Metadata]()
 	ret copyTree(from, to, replace, links, mut chain)
 }
 
-copyTree: pvt fun(from: str, to: str, replace: bool, links: LinkCopy, mut chain: List[Metadata]) -> Result[IoError]
+copyTree: pvt fun(from: Path, to: Path, replace: bool, links: LinkCopy, mut chain: List[Metadata]) -> Result[IoError]
 {
 	val source = metadata(from)?
 	if !(source.kind is directory)
@@ -304,15 +303,13 @@ copyTree: pvt fun(from: str, to: str, replace: bool, links: LinkCopy, mut chain:
 	ret result
 }
 
-copyContents: pvt fun(from: str, to: str, replace: bool, links: LinkCopy, mut chain: List[Metadata]) -> Result[IoError]
+copyContents: pvt fun(from: Path, to: Path, replace: bool, links: LinkCopy, mut chain: List[Metadata]) -> Result[IoError]
 {
 	for item in entries(from)?
 	{
 		val entry = item?
-		val sourcePath = joinPath(from, entry.name)
-		val targetPath = joinPath(to, entry.name)
-		val source: str = Text[Utf8](View[u8](sourcePath))
-		val target: str = Text[Utf8](View[u8](targetPath))
+		val source = from.join(entry.name)
+		val target = to.join(entry.name)
 		if entry.kind is directory
 			copyTree(source, target, replace, links, mut chain)?
 		else if entry.kind is file
@@ -326,7 +323,7 @@ copyContents: pvt fun(from: str, to: str, replace: bool, links: LinkCopy, mut ch
 	ret ok
 }
 
-copyLinkEntry: pvt fun(source: str, target: str, replace: bool, links: LinkCopy, mut chain: List[Metadata])
+copyLinkEntry: pvt fun(source: Path, target: Path, replace: bool, links: LinkCopy, mut chain: List[Metadata])
 	-> Result[IoError]
 {
 	if links is skip
@@ -351,13 +348,13 @@ copyLinkEntry: pvt fun(source: str, target: str, replace: bool, links: LinkCopy,
 	ret copyTree(source, target, replace, links, mut chain)
 }
 
-copyReplacing: pvt fun(source: str, target: str, replace: bool) -> Result[IoError]
+copyReplacing: pvt fun(source: Path, target: Path, replace: bool) -> Result[IoError]
 {
 	clearTarget(target, replace)?
 	ret copy(source, target)
 }
 
-clearTarget: pvt fun(target: str, replace: bool) -> Result[IoError]
+clearTarget: pvt fun(target: Path, replace: bool) -> Result[IoError]
 {
 	if replace && metadata(target, false) is ok(val existing) && !(existing.kind is directory)
 		ret remove(target)
@@ -365,44 +362,10 @@ clearTarget: pvt fun(target: str, replace: bool) -> Result[IoError]
 	ret ok
 }
 
-joinPath: pvt fun(base: str, name: str) -> List[u8]
+createLink: pub fun(target: Path, link: Path) -> Result[IoError]
 {
-	var path = List[u8]()
-	path.reserve(base.byteLength + name.byteLength + 1)
-	path.addAll(base)
-	if base.byteLength > 0 && !isSeparator(base[base.byteLength - 1])
-		path.add(separator)
-	
-	path.addAll(name)
-	ret path
-}
-
-createLink: pub fun(target: str, link: str) -> Result[IoError]
-{
-	var directory = false
-	if isAbsolute(target)
-		directory = isDirectoryAt(target)
-	else
-	{
-		val resolved = joinPath(parentOf(link), target)
-		directory = isDirectoryAt(Text[Utf8](View[u8](resolved)))
-	}
-	
-	ret createLinkPath(target, link, directory)
-}
-
-isAbsolute: pvt fun(path: str) -> bool
-{
-	if path.byteLength > 0 && isSeparator(path[0])
-		ret true
-	
-	when windows
-	{
-		if path.byteLength > 1 && path[1] == 0x3A
-			ret true
-	}
-	
-	ret false
+	val base = link.parent.valueOr(Path(""))
+	ret createLinkPath(target, link, isDirectoryAt(base.join(target)))
 }
 
 removeContents: mod fun(mut listing: NativeListing) -> Result[IoError]

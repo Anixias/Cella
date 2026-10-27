@@ -2,6 +2,7 @@
 
 use std.Result
 use std.io.IoError
+use std.path.Path
 
 EntryKind: pub enum
 {
@@ -32,8 +33,8 @@ Metadata: pub rec
 	sameEntry: mod fun(imm self, other: Metadata) -> bool => self.device == other.device && self.node == other.node
 }
 
-metadata: pub fun(path: str, followLinks: bool = true) -> Result[Metadata, IoError] => pathMetadata(path, followLinks)
+metadata: pub fun(path: Path, followLinks: bool = true) -> Result[Metadata, IoError] => pathMetadata(path, followLinks)
 
-setAttributes: pub fun(path: str, attributes: Attributes) -> Result[IoError] => setPathAttributes(path, attributes)
+setAttributes: pub fun(path: Path, attributes: Attributes) -> Result[IoError] => setPathAttributes(path, attributes)
 
-exists: pub fun(path: str) -> bool => metadata(path) is ok(_)
+exists: pub fun(path: Path) -> bool => metadata(path) is ok(_)
