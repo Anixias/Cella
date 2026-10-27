@@ -258,13 +258,16 @@ public sealed class Server
 			return null;
 		
 		var offset = GetOffset(text, parameters);
-		if ((string?)parameters?["context"]?["triggerCharacter"] == " " &&
-		    !Completion.FollowsCompletionKeyword(text, offset))
-			return new JsonObject { ["isIncomplete"] = false, ["items"] = new JsonArray() };
+		var trigger = (string?)parameters?["context"]?["triggerCharacter"];
+		var closer = Completion.FindHoleCloser(text, offset);
+		if (trigger == " " && !Completion.FollowsCompletionKeyword(text, offset) &&
+		    !Completion.FollowsOperator(text, offset) || trigger == "{" && closer is null)
+			return Completion.Empty();
 		
 		var inserted = Completion.FindNameStart(text, offset) < offset ? 0 : Completion.Placeholder.Length;
-		var probed = text.Insert(offset, Completion.Placeholder[..inserted]);
-		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset, ct), text, inserted);
+		var probed = text.Insert(offset, Completion.Placeholder[..inserted] + closer);
+		return Completion.ToList(await _workspace.ProbeAsync(Protocol.ToPath(uri), probed, offset, ct), text,
+			inserted + (closer?.Length ?? 0));
 	}
 	
 	private async Task<JsonNode?> FindVisibleGlobalsAsync(JsonObject? parameters, CancellationToken ct)
@@ -537,7 +540,7 @@ public sealed class Server
 				["codeActionKinds"] = new JsonArray(CodeActions.QuickFix, CodeActions.Rewrite, TypeMoves.Kind),
 				["resolveProvider"] = true
 			},
-			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".", " ") },
+			["completionProvider"] = new JsonObject { ["triggerCharacters"] = new JsonArray(".", " ", "{") },
 			["signatureHelpProvider"] = new JsonObject
 			{
 				["triggerCharacters"] = new JsonArray("(", ","),

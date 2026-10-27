@@ -59,7 +59,17 @@ public static class Completion
 	private static readonly string[] _topLevelKeywords = ["mod", "use", "ext", "pub", "pvt"];
 	
 	private static readonly HashSet<string> _completionKeywords =
-		["ret", "if", "while", "match", "in", "is", "panic", "drop", "imm", "mut", "own", "break", "cont"];
+	[
+		"ret", "if", "while", "match", "in", "is", "panic", "drop", "imm", "mut", "own", "break", "cont", "impl", "req"
+	];
+	
+	private static readonly HashSet<char> _operatorCharacters = [..".=+-*/%&|^<>!"];
+	
+	private static readonly HashSet<string> _spacedOperators =
+	[
+		"=", "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>", "<", ">", "<=", ">=", "==", "!=", "&&", "||", "+=",
+		"-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "+%", "-%", "*%", "..", "..=", "=>", "->"
+	];
 	
 	public static bool IsNameCharacter(char c) => char.IsLetterOrDigit(c) || c == '_';
 	
@@ -72,6 +82,97 @@ public static class Completion
 		var start = FindNameStart(text, end);
 		return end < offset && _completionKeywords.Contains(text[start..end]);
 	}
+	
+	public static bool FollowsOperator(string text, int offset)
+	{
+		var end = offset;
+		while (end > 0 && text[end - 1] is ' ' or '\t')
+			end--;
+		
+		var start = end;
+		while (start > 0 && _operatorCharacters.Contains(text[start - 1]))
+			start--;
+		
+		return end < offset && _spacedOperators.Contains(text[start..end]);
+	}
+	
+	private enum Frame
+	{
+		String,
+		Hole,
+		Brace
+	}
+	
+	public static string? FindHoleCloser(string text, int offset)
+	{
+		var lineStart = offset == 0 ? 0 : text.LastIndexOf('\n', offset - 1) + 1;
+		var frames = new Stack<Frame>();
+		if (!Scan(text, lineStart, offset, frames, out _) || !frames.TryPeek(out var top) || top != Frame.Hole)
+			return null;
+		
+		var depth = frames.Count;
+		var lineEnd = text.IndexOf('\n', offset);
+		if (lineEnd < 0)
+			lineEnd = text.Length;
+		
+		Scan(text, offset, lineEnd, new Stack<Frame>(frames.Reverse()), out var lowest);
+		if (lowest < depth)
+			return "";
+		
+		frames.Pop();
+		Scan(text, offset, lineEnd, frames, out lowest);
+		return lowest < depth - 1 ? "}" : "}\"";
+	}
+	
+	private static bool Scan(string text, int start, int end, Stack<Frame> frames, out int lowest)
+	{
+		lowest = frames.Count;
+		var escaped = false;
+		for (var i = start; i < end; i++)
+		{
+			var c = text[i];
+			if (frames.TryPeek(out var top) && top == Frame.String)
+			{
+				if (escaped)
+					escaped = false;
+				else if (c == '\\')
+					escaped = true;
+				else if (c == '"')
+					frames.Pop();
+				else if (c == '{')
+					frames.Push(Frame.Hole);
+			}
+			else if (c == '"')
+				frames.Push(Frame.String);
+			else if (c == '{' && frames.Count > 0)
+				frames.Push(Frame.Brace);
+			else if (c == '}' && frames.Count > 0)
+				frames.Pop();
+			else if (c == '/' && i + 1 < end && text[i + 1] == '/')
+				return false;
+			else if (c == '\'')
+				i = SkipCharacter(text, i, end);
+			
+			lowest = Math.Min(lowest, frames.Count);
+		}
+		
+		return true;
+	}
+	
+	private static int SkipCharacter(string text, int start, int end)
+	{
+		for (var i = start + 1; i < end; i++)
+		{
+			if (text[i] == '\\')
+				i++;
+			else if (text[i] == '\'')
+				return i;
+		}
+		
+		return end;
+	}
+	
+	public static JsonObject Empty() => new() { ["isIncomplete"] = false, ["items"] = new JsonArray() };
 	
 	public static int FindNameStart(string text, int offset)
 	{

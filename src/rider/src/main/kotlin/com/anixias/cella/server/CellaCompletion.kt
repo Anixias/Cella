@@ -3,6 +3,7 @@ package com.anixias.cella.server
 import com.anixias.cella.CellaLanguage
 import com.anixias.cella.lexer.CellaScanner
 import com.anixias.cella.lexer.CellaToken
+import com.anixias.cella.lexer.CellaTokenTypes
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
@@ -250,7 +251,18 @@ class CellaParameterInfoHandler : ParameterInfoHandler<PsiElement, SignatureInfo
 }
 
 private val completionKeywords =
-	setOf("ret", "if", "while", "match", "in", "is", "panic", "drop", "imm", "mut", "own", "break", "cont")
+	setOf("ret", "if", "while", "match", "in", "is", "panic", "drop", "imm", "mut", "own", "break", "cont", "impl",
+		"req")
+
+private const val OperatorCharacters = ".=+-*/%&|^<>!"
+
+private val stringParts = setOf(CellaToken.STRING, CellaToken.STRING_ESCAPE, CellaToken.INVALID_STRING_ESCAPE,
+	CellaToken.INTERPOLATION_END)
+
+private val spacedOperators = setOf(
+	"=", "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>", "<", ">", "<=", ">=", "==", "!=", "&&", "||", "+=", "-=",
+	"*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "+%", "-%", "*%", "..", "..=", "=>", "->"
+)
 
 class CellaTypedHandler : TypedHandlerDelegate() {
 	override fun checkAutoPopup(charTyped: Char, project: Project, editor: Editor, file: PsiFile): Result {
@@ -259,12 +271,46 @@ class CellaTypedHandler : TypedHandlerDelegate() {
 		
 		when (charTyped) {
 			'.' -> AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-			' ' -> if (followsCompletionKeyword(editor, file))
+			' ' -> if (followsCompletionKeyword(editor, file) || followsOperator(editor, file))
+				AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+			'{' -> if (opensInterpolation(editor, file))
 				AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
 			'(', ',' -> AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
 		}
 		
 		return Result.CONTINUE
+	}
+	
+	private fun opensInterpolation(editor: Editor, file: PsiFile): Boolean {
+		val offset = editor.caretModel.offset
+		val text = editor.document.charsSequence
+		var backslashes = 0
+		while (offset - backslashes > 0 && text[offset - backslashes - 1] == '\\')
+			backslashes++
+		
+		if (offset == 0 || backslashes % 2 == 1)
+			return false
+		
+		val element = file.findElementAt(offset - 1) ?: return false
+		val type = CellaTokenTypes.tokenOf(element.node.elementType)
+		val closesString = type == CellaToken.STRING && element.textLength > 1 && element.text.endsWith('"') &&
+			element.textRange.endOffset == offset
+		
+		return type in stringParts && !closesString
+	}
+	
+	private fun followsOperator(editor: Editor, file: PsiFile): Boolean {
+		val offset = editor.caretModel.offset
+		val text = editor.document.charsSequence
+		var start = offset
+		while (start > 0 && text[start - 1] in OperatorCharacters)
+			start--
+		
+		if (text.subSequence(start, offset).toString() !in spacedOperators)
+			return false
+		
+		val type = file.findElementAt(offset - 1)?.node?.elementType ?: return true
+		return type !in CellaTokenTypes.COMMENTS && type !in CellaTokenTypes.STRINGS
 	}
 	
 	private fun followsCompletionKeyword(editor: Editor, file: PsiFile): Boolean {

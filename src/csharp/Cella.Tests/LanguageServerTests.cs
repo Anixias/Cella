@@ -2977,6 +2977,37 @@ public sealed partial class LanguageServerTests : IAsyncDisposable
 		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("ret |")).Keys);
 		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("if |")).Keys);
 		Assert.Empty(ItemsOf(await CompleteAfterSpaceAsync("val total = q |")));
+		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("val total = |")).Keys);
+		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("val total = q + |")).Keys);
+		Assert.Contains("q", ItemsOf(await CompleteAfterSpaceAsync("val total = q >= |")).Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesTraitsAfterImplAndReq()
+	{
+		await InitializeAsync();
+		const string prefix = "mod test\n\nShape: trait\n{\n}\n\nPoint: rec\n{\n\tx: i32\n}\n\n";
+		foreach (var line in (string[])["Circle: rec impl |", "Point: impl |\n{\n}\n", "[T]: impl |"])
+			Assert.Contains("Shape", ItemsOf(await CompleteTextAfterSpaceAsync(prefix + line)).Keys);
+		
+		var required = ItemsOf(await CompleteTextAfterSpaceAsync(prefix + "Sized: trait req |\n{\n}\n")).Keys;
+		Assert.Contains("Shape", required);
+		Assert.Contains("copy", required);
+		Assert.Contains("Shape", ItemsOf(await CompleteTextAfterSpaceAsync(prefix + "Sized: trait req copy + |")).Keys);
+		Assert.Equal(0, await ShutDownAsync());
+	}
+	
+	[Fact]
+	public async Task CompletesInsideInterpolationHoles()
+	{
+		await InitializeAsync();
+		const string prefix = "mod test\n\nmain: fun -> i32\n{\n\tval count = 3\n\tval text = ";
+		const string suffix = "\n\tret 0\n}\n";
+		foreach (var line in (string[])["\"total {|}\"", "\"total {|\"", "\"total {|", "\"total {count} and {|\""])
+			Assert.Contains("count", (await CompleteInAsync(prefix + line + suffix)).Keys);
+		
+		Assert.DoesNotContain("count", (await CompleteInAsync(prefix + "\"total \\{|\"" + suffix)).Keys);
 		Assert.Equal(0, await ShutDownAsync());
 	}
 	
