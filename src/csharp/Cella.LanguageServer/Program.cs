@@ -9,6 +9,6 @@ internal static class Program
 		Installation.UseComponentLibraries();
 		var output = Console.OpenStandardOutput();
 		Console.SetOut(Console.Error);
-		return await new Server(Console.OpenStandardInput(), output, TimeSpan.FromMilliseconds(250)).RunAsync();
+		return await new Server(Console.OpenStandardInput(), output, TimeSpan.FromMilliseconds(50)).RunAsync();
 	}
 }
