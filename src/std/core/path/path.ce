@@ -1,0 +1,323 @@
+﻿mod std.path
+
+use std.[Hash, HashBuilder, Option, View]
+use std.cmp.Eq
+use std.mem.[Allocator, Heap]
+use std.text.[Utf8, findMalformed]
+
+Path: pub ref rec
+{
+	data: pvt ptr[u8]
+	length: pvt set usize
+	
+	isEmpty: get(self) -> bool => self.length == 0
+	
+	bytes: get(self) -> View[u8] => View[u8](self.data, self.length)
+	
+	text: get(self) -> Option[str]
+	{
+		if findMalformed[Utf8](self.bytes) is some(_)
+			ret none
+		
+		ret str(self.data, self.length)
+	}
+	
+	new: op(bytes: View[u8])
+	{
+		self.data = bytes.data
+		self.length = bytes.length
+	}
+	
+	as: op(text: str) -> Path => Path(View[u8](text.data, text.byteLength))
+	
+	components: get(self) -> Components => Components(self)
+	
+	isAbsolute: get(self) -> bool
+	{
+		when windows
+		{
+			val prefix = prefixOf(self.bytes)
+			if prefix.kind is disk
+				ret self.length > 2 && isSeparator(self.data[2])
+			
+			ret !(prefix.kind is noPrefix)
+		}
+		else
+		{
+			ret self.length > 0 && isSeparator(self.data[0])
+		}
+	}
+	
+	parent: get(self) -> Option[Path]
+	{
+		var before: usize = 0
+		var lastEnd: usize = 0
+		var found = false
+		var parts = Components(self)
+		while parts.advance()
+		{
+			if parts.item is prefix(_) || parts.item is root
+				before = parts.end
+			else
+			{
+				if found
+					before = lastEnd
+				
+				lastEnd = parts.end
+				found = true
+			}
+		}
+		
+		if !found
+			ret none
+		
+		ret Path(View[u8](self.data, before))
+	}
+	
+	name: get(self) -> Option[Path]
+	{
+		var last: Option[Path] = none
+		for part in self.components
+		{
+			if part is normal(val name)
+				last = name
+			else
+				last = none
+		}
+		
+		ret last
+	}
+	
+	stem: get(self) -> Option[Path]
+	{
+		val name = self.name?
+		val dot = lastDot(name)
+		if dot == 0
+			ret name
+		
+		ret Path(name.bytes.slice(0, dot))
+	}
+	
+	extension: get(self) -> Option[Path]
+	{
+		val name = self.name?
+		val dot = lastDot(name)
+		if dot == 0
+			ret none
+		
+		ret Path(name.bytes.slice(dot + 1, name.length))
+	}
+	
+	join: fun(self, other: Path) -> PathBuffer[Heap] => self.join(other, Heap())
+	
+	join[A: Allocator]: fun(self, other: Path, alloc: A) -> PathBuffer[A]
+	{
+		var result = PathBuffer[A](self, alloc)
+		result.add(other)
+		ret result
+	}
+	
+	normalized: fun(self) -> PathBuffer[Heap] => self.normalized(Heap())
+	
+	normalized[A: Allocator]: fun(self, alloc: A) -> PathBuffer[A]
+	{
+		var result = PathBuffer[A](alloc)
+		if prefixOf(self.bytes).isVerbatim
+		{
+			result.bytes.addAll(self.bytes)
+			ret result
+		}
+		
+		var base: usize = 0
+		var rooted = false
+		var separatorPending = false
+		var depth: usize = 0
+		for part in self.components
+		{
+			match part
+			{
+				prefix(val text) =>
+				{
+					result.bytes.addAll(text.bytes)
+					base = result.bytes.count
+				}
+				root =>
+				{
+					if base < self.length && isSeparator(self.data[base])
+						result.bytes.add(separator)
+					else
+						separatorPending = true
+					
+					base = result.bytes.count
+					rooted = true
+				}
+				current => {}
+				parent =>
+				{
+					if depth > 0
+					{
+						result.removePiece(base)
+						depth -= 1
+					}
+					else if !rooted
+						result.addPiece(Path(".."), base)
+				}
+				normal(val name) =>
+				{
+					if separatorPending
+					{
+						result.bytes.add(separator)
+						base = result.bytes.count
+						separatorPending = false
+					}
+					
+					result.addPiece(name, base)
+					depth += 1
+				}
+			}
+		}
+		
+		if result.bytes.count == 0 && self.length > 0
+			result.bytes.add(0x2E)
+		
+		ret result
+	}
+}
+
+Path: impl Eq
+{
+	==: op(imm left: Path, imm right: Path) -> bool
+	{
+		if left.length != right.length
+			ret false
+		
+		for i in 0..left.length
+		{
+			if left.data[i] != right.data[i]
+				ret false
+		}
+		
+		ret true
+	}
+	
+	!=: op(imm left: Path, imm right: Path) -> bool => !(left == right)
+}
+
+Path: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...self.bytes)
+}
+
+lastDot: pvt fun(name: Path) -> usize
+{
+	var index = name.length
+	while index > 1
+	{
+		index -= 1
+		if name.bytes[index] == 0x2E
+			ret index
+	}
+	
+	ret 0
+}
+
+PrefixKind: mod enum
+{
+	noPrefix
+	disk
+	unc
+	device
+	verbatim
+	verbatimUnc
+	verbatimDisk
+}
+
+Prefix: mod rec
+{
+	kind: mod PrefixKind
+	length: mod usize
+	
+	hasImplicitRoot: get(self) -> bool => !(self.kind is noPrefix || self.kind is disk)
+	
+	isVerbatim: get(self) -> bool => self.kind is verbatim || self.kind is verbatimUnc || self.kind is verbatimDisk
+}
+
+when windows
+{
+	separator: mod const u8 = 0x5C
+	
+	isSeparator: mod fun(byte: u8) -> bool => byte == 0x5C || byte == 0x2F
+	
+	prefixOf: mod fun(bytes: View[u8]) -> Prefix
+	{
+		val length = bytes.length
+		if length >= 4 && bytes[0] == 0x5C && bytes[1] == 0x5C && bytes[2] == 0x3F && bytes[3] == 0x5C
+			ret verbatimPrefix(bytes)
+		
+		if length >= 2 && isSeparator(bytes[0]) && isSeparator(bytes[1])
+		{
+			if length >= 4 && bytes[2] == 0x2E && isSeparator(bytes[3])
+				ret Prefix(device, componentEnd(bytes, 4, false))
+			
+			val server = componentEnd(bytes, 2, false)
+			if server == 2
+				ret Prefix(noPrefix, 0)
+			
+			val share = componentEnd(bytes, server + 1, false)
+			if server == length || share == server + 1
+				ret Prefix(unc, server)
+			
+			ret Prefix(unc, share)
+		}
+		
+		if length >= 2 && isLetter(bytes[0]) && bytes[1] == 0x3A
+			ret Prefix(disk, 2)
+		
+		ret Prefix(noPrefix, 0)
+	}
+	
+	verbatimPrefix: pvt fun(bytes: View[u8]) -> Prefix
+	{
+		val length = bytes.length
+		if length >= 8 && bytes[4] == 0x55 && bytes[5] == 0x4E && bytes[6] == 0x43 && bytes[7] == 0x5C
+		{
+			val server = componentEnd(bytes, 8, true)
+			if server == length
+				ret Prefix(verbatimUnc, server)
+			
+			ret Prefix(verbatimUnc, componentEnd(bytes, server + 1, true))
+		}
+		
+		if length >= 6 && isLetter(bytes[4]) && bytes[5] == 0x3A
+			ret Prefix(verbatimDisk, 6)
+		
+		ret Prefix(verbatim, componentEnd(bytes, 4, true))
+	}
+	
+	isLetter: pvt fun(byte: u8) -> bool => 0x41 <= byte <= 0x5A || 0x61 <= byte <= 0x7A
+}
+else
+{
+	separator: mod const u8 = 0x2F
+	
+	isSeparator: mod fun(byte: u8) -> bool => byte == 0x2F
+	
+	prefixOf: mod fun(bytes: View[u8]) -> Prefix => Prefix(noPrefix, 0)
+}
+
+isSeparatorIn: mod fun(byte: u8, verbatim: bool) -> bool
+{
+	if verbatim
+		ret byte == 0x5C
+	
+	ret isSeparator(byte)
+}
+
+componentEnd: mod fun(bytes: View[u8], start: usize, verbatim: bool) -> usize
+{
+	var index = start
+	while index < bytes.length && !isSeparatorIn(bytes[index], verbatim)
+		index += 1
+	
+	ret index
+}

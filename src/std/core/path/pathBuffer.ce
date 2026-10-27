@@ -1,0 +1,108 @@
+﻿mod std.path
+
+use std.[Hash, HashBuilder, Shows, View]
+use std.cmp.Eq
+use std.containers.List
+use std.mem.[Allocator, Heap]
+
+PathBuffer[A: Allocator = Heap]: pub own rec
+{
+	bytes: mod List[u8, A]
+	
+	new: op(alloc: A)
+	{
+		self.bytes = List[u8, A](alloc)
+	}
+	
+	new: op(path: Path, alloc: A)
+	{
+		self.bytes = List[u8, A](alloc)
+		self.bytes.addAll(path.bytes)
+	}
+	
+	as: op(imm self) -> Path => Path(View[u8](self.bytes))
+	
+	*: op(imm self) -> Path => Path(View[u8](self.bytes))
+	
+	add: fun(mut self, other: Path)
+	{
+		if prefixOf(other.bytes).length > 0
+		{
+			self.bytes.truncate(0)
+			self.bytes.addAll(other.bytes)
+			ret
+		}
+		
+		if other.length > 0 && isSeparator(other.bytes[0])
+		{
+			self.bytes.truncate(prefixOf(View[u8](self.bytes)).length)
+			self.bytes.addAll(other.bytes)
+			ret
+		}
+		
+		val current = View[u8](self.bytes)
+		val head = prefixOf(current)
+		val needsSeparator = current.length > 0 && !isSeparatorIn(current[current.length - 1], head.isVerbatim) &&
+			!(head.kind is disk && head.length == current.length)
+		
+		if needsSeparator
+			self.bytes.add(separator)
+		
+		self.bytes.addAll(other.bytes)
+	}
+	
+	addPiece: mod fun(mut self, piece: Path, base: usize)
+	{
+		if self.bytes.count > base
+			self.bytes.add(separator)
+		
+		self.bytes.addAll(piece.bytes)
+	}
+	
+	removePiece: mod fun(mut self, base: usize)
+	{
+		val current = View[u8](self.bytes)
+		var end = current.length
+		while end > base && current[end - 1] != separator
+			end -= 1
+		
+		if end > base
+			end -= 1
+		
+		self.bytes.truncate(end)
+	}
+}
+
+PathBuffer[A: Allocator + new]: impl
+{
+	new: op
+	{
+		self = PathBuffer[A](A())
+	}
+	
+	new: op(path: Path)
+	{
+		self = PathBuffer[A](path, A())
+	}
+}
+
+PathBuffer[A: Allocator]: impl Eq
+{
+	==: op(imm left: PathBuffer[A], imm right: PathBuffer[A]) -> bool => Path(left) == Path(right)
+	
+	!=: op(imm left: PathBuffer[A], imm right: PathBuffer[A]) -> bool => !(left == right)
+}
+
+PathBuffer[A: Allocator]: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) => hashBuilder.writeBytes(...Path(self).bytes)
+}
+
+PathBuffer[A: Allocator]: impl Shows[Path]
+{
+	show[F: fun[imm Path -> bool]]: fun(imm value: PathBuffer[A], imm check: F) -> bool
+	{
+		val path: Path = value
+		ret check(imm path)
+	}
+}

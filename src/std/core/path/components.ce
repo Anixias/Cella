@@ -1,0 +1,107 @@
+﻿mod std.path
+
+use std.Cursor
+
+Component: pub ref enum
+{
+	prefix(path: Path)
+	root
+	current
+	parent
+	normal(name: Path)
+}
+
+Components: pub ref rec impl Cursor[Component]
+{
+	path: pvt Path
+	head: pvt Prefix
+	position: pvt usize
+	stage: pvt u8
+	rooted: pvt bool
+	started: pvt bool
+	item: mod Component
+	end: mod usize
+	
+	new: mod op(path: Path)
+	{
+		self.path = path
+		self.head = prefixOf(path.bytes)
+		self.position = 0
+		self.stage = 0
+		self.rooted = false
+		self.started = false
+		self.item = root
+		self.end = 0
+	}
+	
+	for: op(mut self) -> bool => self.advance()
+	
+	*: op(self) -> Component => self.item
+	
+	advance: mod fun(mut self) -> bool
+	{
+		val bytes = self.path.bytes
+		if self.stage == 0
+		{
+			self.stage = 1
+			if self.head.length > 0
+			{
+				self.position = self.head.length
+				self.end = self.position
+				self.item = prefix(Path(bytes.slice(0, self.position)))
+				ret true
+			}
+		}
+		
+		val verbatim = self.head.isVerbatim
+		if self.stage == 1
+		{
+			self.stage = 2
+			val physical = self.position < bytes.length && isSeparatorIn(bytes[self.position], verbatim)
+			if physical || self.head.hasImplicitRoot
+			{
+				self.rooted = true
+				self.end = self.position
+				if physical
+					self.end += 1
+				
+				self.item = root
+				ret true
+			}
+		}
+		
+		loop
+		{
+			while self.position < bytes.length && isSeparatorIn(bytes[self.position], verbatim)
+				self.position += 1
+			
+			if self.position >= bytes.length
+				ret false
+			
+			val start = self.position
+			self.position = componentEnd(bytes, start, verbatim)
+			self.end = self.position
+			val first = !self.started
+			self.started = true
+			val length = self.position - start
+			if length == 1 && bytes[start] == 0x2E
+			{
+				if first && !self.rooted
+				{
+					self.item = current
+					ret true
+				}
+			}
+			else if length == 2 && bytes[start] == 0x2E && bytes[start + 1] == 0x2E
+			{
+				self.item = parent
+				ret true
+			}
+			else
+			{
+				self.item = normal(Path(bytes.slice(start, self.position)))
+				ret true
+			}
+		}
+	}
+}
