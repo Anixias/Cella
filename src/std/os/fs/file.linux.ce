@@ -4,8 +4,8 @@ use when linux
 
 use std.[Result, Span, View]
 use std.io.[IoError, SeekFrom]
-use std.mem.[Heap, Layout]
-use std.path.Path
+use std.mem.[Allocator, Heap, Layout]
+use std.path.[Path, PathBuffer]
 
 Status: pvt rec
 {
@@ -57,6 +57,8 @@ pvt ext
 	stringLength: ext("strlen") fun(text: ptr[u8]) -> usize
 	readLink: ext("readlink") fun(path: ptr[u8], buffer: ptr[u8], size: usize) -> isize
 	makeLink: ext("symlink") fun(target: ptr[u8], link: ptr[u8]) -> i32
+	resolvePath: ext("realpath") fun(path: ptr[u8], resolved: ptr[u8]) -> ptr[u8]
+	freeMemory: ext("free") fun(memory: ptr)
 }
 
 readOnly: pvt const i32 = 0x0
@@ -132,6 +134,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	isDirectoryError => IoError(isDirectory, code)
 	crossDevice => IoError(crossesDevices, code)
 	directoryNotEmptyError => IoError(directoryNotEmpty, code)
+	tooManyLinks => IoError(linkLoop, code)
 	invalidArgument, nameTooLong => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
@@ -197,6 +200,18 @@ copyPath: pvt fun(path: Path, bytes: ptr[u8])
 		bytes[i] = source[i]
 	
 	bytes[source.length] = 0
+}
+
+canonicalPath[A: Allocator + noref]: mod fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError]
+{
+	checkPath(path)?
+	val resolved = withBytePath(path, fun(bytes) => resolvePath(bytes, null))
+	if resolved == null
+		ret err(errorFrom(lastError()))
+	
+	val result = PathBuffer[A](Path(View[u8](resolved, stringLength(resolved))), alloc)
+	freeMemory(resolved)
+	ret ok(result)
 }
 
 pathMetadata: mod fun(path: Path, followLinks: bool) -> Result[Metadata, IoError]

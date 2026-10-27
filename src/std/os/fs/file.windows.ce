@@ -4,8 +4,8 @@ use when windows
 
 use std.[Option, Result, Span, View]
 use std.io.[IoError, SeekFrom]
-use std.mem.[BitSet, Heap, Layout]
-use std.path.Path
+use std.mem.[Allocator, BitSet, Heap, Layout]
+use std.path.[Path, PathBuffer]
 
 pvt ext
 {
@@ -28,6 +28,7 @@ pvt ext
 	CreateDirectoryW: fun(path: ptr[u16], security: ptr) -> i32
 	CloseHandle: fun(handle: ptr) -> i32
 	GetLastError: fun -> u32
+	GetFinalPathNameByHandleW: fun(file: ptr, path: ptr[u16], length: u32, flags: u32) -> u32
 	DeviceIoControl: fun(device: ptr, code: u32, input: ptr, inputSize: u32, output: ptr, outputSize: u32,
 		returned: ptr[u32], overlapped: ptr) -> i32
 	
@@ -154,6 +155,7 @@ directoryNotEmptyError: pvt const u32 = 145
 badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 privilegeNotHeld: pvt const u32 = 1314
+cantResolveFilename: pvt const u32 = 1921
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
 readOnlyAttribute: pvt const u32 = 0x1
 hiddenAttribute: pvt const u32 = 0x2
@@ -178,6 +180,9 @@ posixSemantics: pvt const u32 = 0x2
 ignoreReadOnly: pvt const u32 = 0x10
 largestTransfer: pvt const usize = 0xFFFFFFFF
 stackPathLength: pvt const usize = 512
+shortPathLimit: pvt const usize = 260
+volumeNameDos: pvt const u32 = 0x0
+volumeNameGuid: pvt const u32 = 0x1
 listingBufferSize: pvt const usize = 16384
 reparseBufferSize: pvt const usize = 16384
 getReparsePoint: pvt const u32 = 0x900A8
@@ -207,6 +212,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	diskFull, handleDiskFull => IoError(storageFull, code)
 	notSameDevice => IoError(crossesDevices, code)
 	directoryNotEmptyError => IoError(directoryNotEmpty, code)
+	cantResolveFilename => IoError(linkLoop, code)
 	invalidName, badPathName, fileNameTooLong, invalidParameter, negativeSeek => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
@@ -434,6 +440,189 @@ wideToBytes: pvt fun(units: View[u16], bytes: ptr[u8]) -> usize
 	
 	ret written
 }
+
+canonicalPath[A: Allocator + noref]: mod fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError]
+{
+	checkPath(path)?
+	val handle = withWidePath(path, fun(wide) => CreateFileW(wide, Access.readAttributes,
+		Share.read | Share.write | Share.delete, null, Disposition.openExisting, Flags.backupSemantics, null))
+	
+	if handle == ptr(usize.maxValue)
+		ret err(errorFrom(GetLastError()))
+	
+	var heap = Heap()
+	var buffer: array[u16, stackPathLength]
+	var units = ptr[u16](@buffer)
+	var onHeap = false
+	var capacity = stackPathLength
+	var flags = volumeNameDos
+	var length = GetFinalPathNameByHandleW(handle, units, u32(capacity), flags)
+	if length == 0 && GetLastError() == pathNotFound
+	{
+		flags = volumeNameGuid
+		length = GetFinalPathNameByHandleW(handle, units, u32(capacity), flags)
+	}
+	
+	while usize(length) >= capacity
+	{
+		if onHeap
+			heap.release(units, Layout.arrayOf[u16](capacity))
+		
+		capacity = usize(length)
+		units = ptr[u16](heap.allocate(Layout.arrayOf[u16](capacity)))
+		if units == null
+			panic "out of memory"
+		
+		onHeap = true
+		length = GetFinalPathNameByHandleW(handle, units, u32(capacity), flags)
+	}
+	
+	val code = GetLastError()
+	CloseHandle(handle)
+	if length == 0
+	{
+		if onHeap
+			heap.release(units, Layout.arrayOf[u16](capacity))
+		
+		ret err(errorFrom(code))
+	}
+	
+	val result = pathFromWide(shortened(Span[u16](units, usize(length))), alloc)
+	if onHeap
+		heap.release(units, Layout.arrayOf[u16](capacity))
+	
+	ret ok(result)
+}
+
+pathFromWide[A: Allocator + noref]: pvt fun(units: View[u16], alloc: A) -> PathBuffer[A]
+{
+	var heap = Heap()
+	val layout = Layout.arrayOf[u8](units.length * 3)
+	val bytes = ptr[u8](heap.allocate(layout))
+	if bytes == null
+		panic "out of memory"
+	
+	val length = wideToBytes(units, bytes)
+	val result = PathBuffer[A](Path(View[u8](bytes, length)), alloc)
+	heap.release(bytes, layout)
+	ret result
+}
+
+shortened: pvt fun(units: Span[u16]) -> Span[u16]
+{
+	var start: usize = 0
+	var names: usize = 0
+	if units.length >= 7 && matchesName(units.slice(0, 4), "\\\\?\\") && isWideLetter(units[4]) && units[5] == 0x3A &&
+		units[6] == 0x5C
+	{
+		start = 4
+		names = 7
+	}
+	else if units.length >= 8 && matchesName(units.slice(0, 8), "\\\\?\\UNC\\")
+	{
+		start = 6
+		names = 8
+	}
+	else
+		ret units
+	
+	if units.length - start >= shortPathLimit || !plainNames(units.slice(names, units.length))
+		ret units
+	
+	if start == 6
+		units[start] = 0x5C
+	
+	ret units.slice(start, units.length)
+}
+
+plainNames: pvt fun(units: View[u16]) -> bool
+{
+	var start: usize = 0
+	while start < units.length
+	{
+		var end = start
+		while end < units.length && units[end] != 0x5C
+			end += 1
+		
+		if !plainName(units.slice(start, end))
+			ret false
+		
+		start = end + 1
+	}
+	
+	ret true
+}
+
+plainName: pvt fun(name: View[u16]) -> bool
+{
+	if name.isEmpty
+		ret false
+	
+	val last = name[name.length - 1]
+	if last == 0x2E || last == 0x20
+		ret false
+	
+	for unit in name
+	{
+		if forbiddenUnit(unit)
+			ret false
+	}
+	
+	ret !deviceName(name)
+}
+
+forbiddenUnit: pvt fun(unit: u16) -> bool => match unit
+{
+	< 0x20 => true
+	0x22, 0x2A, 0x2F, 0x3A, 0x3C, 0x3E, 0x3F, 0x7C => true
+	else => false
+}
+
+deviceName: pvt fun(name: View[u16]) -> bool
+{
+	var length: usize = 0
+	while length < name.length && name[length] != 0x2E
+		length += 1
+	
+	while length > 0 && name[length - 1] == 0x20
+		length -= 1
+	
+	val stem = name.slice(0, length)
+	if length == 3
+		ret matchesName(stem, "CON") || matchesName(stem, "PRN") || matchesName(stem, "AUX") || matchesName(stem, "NUL")
+	
+	if length == 4 && (matchesName(stem.slice(0, 3), "COM") || matchesName(stem.slice(0, 3), "LPT"))
+		ret deviceDigit(stem[3])
+	
+	ret matchesName(stem, "CONIN$") || matchesName(stem, "CONOUT$")
+}
+
+deviceDigit: pvt fun(unit: u16) -> bool => match unit
+{
+	0x30..=0x39 => true
+	0xB9, 0xB2, 0xB3 => true
+	else => false
+}
+
+matchesName: pvt fun(name: View[u16], upper: str) -> bool
+{
+	if name.length != upper.byteLength
+		ret false
+	
+	for i in 0..name.length
+	{
+		var unit = name[i]
+		if 0x61 <= unit <= 0x7A
+			unit -= 0x20
+		
+		if unit != u16(upper[i])
+			ret false
+	}
+	
+	ret true
+}
+
+isWideLetter: pvt fun(unit: u16) -> bool => 0x41 <= unit <= 0x5A || 0x61 <= unit <= 0x7A
 
 pathMetadata: mod fun(path: Path, followLinks: bool) -> Result[Metadata, IoError]
 {

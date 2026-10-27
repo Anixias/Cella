@@ -2,7 +2,8 @@
 
 use std.Result
 use std.io.IoError
-use std.path.Path
+use std.mem.[Allocator, Heap]
+use std.path.[Path, PathBuffer]
 
 remove: pub fun(path: Path) -> Result[IoError] => removePath(path)
 
@@ -57,6 +58,11 @@ removeDirectory: pub fun(path: Path, recursive: bool = false) -> Result[IoError]
 	
 	ret removeDirectoryPath(path)
 }
+
+canonical: pub fun(path: Path) -> Result[PathBuffer, IoError] => canonicalPath(path, Heap())
+
+canonical[A: Allocator + noref]: pub fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError] =>
+	canonicalPath(path, alloc)
 
 isSeparator: mod fun(byte: u8) -> bool
 {
