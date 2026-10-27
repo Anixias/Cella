@@ -35,6 +35,12 @@ pvt ext
 	pathStatus: ext("stat") fun(path: ptr[u8], status: ptr[Status]) -> i32
 	linkStatus: ext("lstat") fun(path: ptr[u8], status: ptr[Status]) -> i32
 	fsync: fun(file: i32) -> i32
+	fchmod: fun(file: i32, mode: u32) -> i32
+	ftruncate: fun(file: i32, length: i64) -> i32
+	renameFile: ext("rename") fun(from: ptr[u8], to: ptr[u8]) -> i32
+	renameat2: fun(fromDirectory: i32, from: ptr[u8], toDirectory: i32, to: ptr[u8], flags: u32) -> i32
+	linkFile: ext("link") fun(from: ptr[u8], to: ptr[u8]) -> i32
+	unlinkFile: ext("unlink") fun(path: ptr[u8]) -> i32
 	closeFile: ext("close") fun(file: i32) -> i32
 	errorLocation: ext("__errno_location") fun -> ptr[i32]
 }
@@ -51,11 +57,14 @@ closeOnExec: pvt const i32 = 0x80000
 seekStart: pvt const i32 = 0
 seekCurrent: pvt const i32 = 1
 seekEnd: pvt const i32 = 2
+currentDirectory: pvt const i32 = -100
+noReplace: pvt const u32 = 1
 notPermitted: pvt const u32 = 1
 noEntry: pvt const u32 = 2
 interrupted: pvt const u32 = 4
 accessDenied: pvt const u32 = 13
 fileExists: pvt const u32 = 17
+crossDevice: pvt const u32 = 18
 noSpace: pvt const u32 = 28
 readOnlyFileSystem: pvt const u32 = 30
 quotaExceeded: pvt const u32 = 122
@@ -63,11 +72,13 @@ notDirectory: pvt const u32 = 20
 isDirectoryError: pvt const u32 = 21
 invalidArgument: pvt const u32 = 22
 nameTooLong: pvt const u32 = 36
+notImplemented: pvt const u32 = 38
 typeMask: pvt const u32 = 0xF000
 regularType: pvt const u32 = 0x8000
 directoryType: pvt const u32 = 0x4000
 linkType: pvt const u32 = 0xA000
 writePermissions: pvt const u32 = 0x92
+permissionBits: pvt const u32 = 0xFFF
 largestTransfer: pvt const usize = 0x7FFFF000
 stackPathLength: pvt const usize = 512
 
@@ -80,6 +91,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	fileExists => IoError(alreadyExists, code)
 	noSpace, quotaExceeded => IoError(storageFull, code)
 	isDirectoryError => IoError(isDirectory, code)
+	crossDevice => IoError(crossesDevices, code)
 	invalidArgument, nameTooLong => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
@@ -184,6 +196,166 @@ metadataOf: pvt fun(status: Status) -> Metadata
 	ret Metadata(kind, size, (status.mode & writePermissions) == 0)
 }
 
+removePath: mod fun(path: str) -> Result[IoError]
+{
+	checkPath(path)?
+	ret withBytePath(path, fun(bytes) => removeBytes(bytes))
+}
+
+removeBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
+{
+	if unlinkFile(bytes) != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok
+}
+
+copyPath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+{
+	checkPath(from)?
+	checkPath(to)?
+	ret withBytePath(from, fun(source) => withBytePath(to, fun(target) => copyBytes(source, target, replace)))
+}
+
+copyBytes: pvt fun(source: ptr[u8], target: ptr[u8], replace: bool) -> Result[IoError]
+{
+	val input = NativeFile.openBytes(source, readOnly | closeOnExec)?
+	val result = copyFrom(input, target, replace)
+	input.close()
+	ret result
+}
+
+copyFrom: pvt fun(input: NativeFile, target: ptr[u8], replace: bool) -> Result[IoError]
+{
+	var flags = writeOnly | createFlag | closeOnExec
+	if !replace
+		flags |= exclusiveFlag
+	
+	val output = NativeFile.openBytes(target, flags)?
+	val result = copyInto(input, output)
+	output.close()
+	ret result
+}
+
+copyInto: pvt fun(input: NativeFile, output: NativeFile) -> Result[IoError]
+{
+	var source: Status
+	var target: Status
+	if fstat(input.descriptor, @source) != 0 || fstat(output.descriptor, @target) != 0
+		ret err(errorFrom(lastError()))
+	
+	if source.device == target.device && source.inode == target.inode
+		ret err(IoError(invalidInput, 0))
+	
+	if ftruncate(output.descriptor, 0) != 0
+		ret err(errorFrom(lastError()))
+	
+	var chunk: array[u8, 65536]
+	loop
+	{
+		val count = input.read(mut chunk)?
+		if count == 0
+			break
+		
+		var rest = View[u8](@chunk, count)
+		while !rest.isEmpty
+		{
+			val written = output.write(rest)?
+			if written == 0
+				ret err(IoError(other, 0))
+			
+			rest = rest.slice(written, rest.length)
+		}
+	}
+	
+	if fchmod(output.descriptor, source.mode & permissionBits) != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok
+}
+
+movePath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+{
+	checkPath(from)?
+	checkPath(to)?
+	ret withBytePath(from, fun(source) => withBytePath(to, fun(target) => moveBytes(source, target, replace)))
+}
+
+moveBytes: pvt fun(source: ptr[u8], target: ptr[u8], replace: bool) -> Result[IoError]
+{
+	var result: i32 = 0
+	if replace
+		result = renameFile(source, target)
+	else
+		result = renameat2(currentDirectory, source, currentDirectory, target, noReplace)
+	
+	if result == 0
+		ret ok
+	
+	val code = lastError()
+	if code == crossDevice
+		ret moveAcrossDevices(source, target, replace)
+	
+	if !replace && (code == invalidArgument || code == notImplemented)
+		ret moveWithoutReplacing(source, target)
+	
+	if code == fileExists && sameFile(source, target)
+		ret ok
+	
+	ret err(errorFrom(code))
+}
+
+sameFile: pvt fun(first: ptr[u8], second: ptr[u8]) -> bool
+{
+	var a: Status
+	var b: Status
+	ret linkStatus(first, @a) == 0 && linkStatus(second, @b) == 0 && a.device == b.device && a.inode == b.inode
+}
+
+moveWithoutReplacing: pvt fun(source: ptr[u8], target: ptr[u8]) -> Result[IoError]
+{
+	if linkFile(source, target) == 0
+	{
+		if unlinkFile(source) != 0
+			ret err(errorFrom(lastError()))
+		
+		ret ok
+	}
+	
+	val code = lastError()
+	if code == fileExists && sameFile(source, target)
+		ret ok
+	
+	if code == fileExists
+		ret err(errorFrom(code))
+	
+	if code == crossDevice
+		ret moveAcrossDevices(source, target, false)
+	
+	var status: Status
+	if linkStatus(target, @status) == 0
+		ret err(IoError(alreadyExists, fileExists))
+	
+	if renameFile(source, target) != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok
+}
+
+moveAcrossDevices: pvt fun(source: ptr[u8], target: ptr[u8], replace: bool) -> Result[IoError]
+{
+	var status: Status
+	if linkStatus(source, @status) != 0
+		ret err(errorFrom(lastError()))
+	
+	if (status.mode & typeMask) != regularType
+		ret err(IoError(crossesDevices, crossDevice))
+	
+	copyBytes(source, target, replace)?
+	unlinkFile(source)
+	ret ok
+}
+
 NativeFile: mod rec
 {
 	descriptor: i32
@@ -195,7 +367,7 @@ NativeFile: mod rec
 		ret withBytePath(path, fun(bytes) => openBytes(bytes, flags))
 	}
 	
-	openBytes: pvt fun(bytes: ptr[u8], flags: i32) -> Result[NativeFile, IoError]
+	openBytes: fun(bytes: ptr[u8], flags: i32) -> Result[NativeFile, IoError]
 	{
 		var descriptor = openFile(bytes, flags, createPermissions)
 		var code: u32 = 0

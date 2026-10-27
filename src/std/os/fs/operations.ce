@@ -1,0 +1,24 @@
+﻿mod std.fs
+
+use std.Result
+use std.io.IoError
+
+remove: pub fun(path: str) -> Result[IoError] => removePath(path)
+
+copy: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
+{
+	if isDirectoryAt(from) || isDirectoryAt(to)
+		ret err(IoError(isDirectory, 0))
+	
+	ret copyPath(from, to, replace)
+}
+
+move: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
+{
+	if replace && isDirectoryAt(to)
+		ret err(IoError(isDirectory, 0))
+	
+	ret movePath(from, to, replace)
+}
+
+isDirectoryAt: pvt fun(path: str) -> bool => metadata(path) is ok(val data) && data.kind is directory

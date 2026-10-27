@@ -21,6 +21,10 @@ pvt ext
 	GetFileInformationByHandleEx: fun(file: ptr, kind: u32, information: ptr, size: u32) -> i32
 	FlushFileBuffers: fun(file: ptr) -> i32
 	GetFileAttributesW: fun(path: ptr[u16]) -> u32
+	SetFileAttributesW: fun(path: ptr[u16], attributes: u32) -> i32
+	SetFileInformationByHandle: fun(file: ptr, kind: u32, information: ptr, size: u32) -> i32
+	CopyFileW: fun(from: ptr[u16], to: ptr[u16], failIfExists: i32) -> i32
+	MoveFileExW: fun(from: ptr[u16], to: ptr[u16], flags: MoveFlags) -> i32
 	CloseHandle: fun(handle: ptr) -> i32
 	GetLastError: fun -> u32
 }
@@ -31,6 +35,7 @@ Access: pvt ext enum(u32) impl BitSet
 	writeExtendedAttributes = 0x00000010
 	readAttributes = 0x00000080
 	writeAttributes = 0x00000100
+	delete = 0x00010000
 	readControl = 0x00020000
 	synchronize = 0x00100000
 	genericAll = 0x10000000
@@ -54,6 +59,12 @@ Disposition: pvt ext enum(u32)
 	openExisting = 3
 	openAlways = 4
 	truncateExisting = 5
+}
+
+MoveFlags: pvt ext enum(u32) impl BitSet
+{
+	replaceExisting = 0x1
+	copyAllowed = 0x2
 }
 
 MoveMethod: pvt ext enum(u32)
@@ -109,11 +120,14 @@ AttributeTag: pvt rec
 	tag: u32
 }
 
+invalidFunction: pvt const u32 = 1
 fileNotFound: pvt const u32 = 2
 pathNotFound: pvt const u32 = 3
 writeProtect: pvt const u32 = 19
 accessDenied: pvt const u32 = 5
+notSameDevice: pvt const u32 = 17
 handleDiskFull: pvt const u32 = 39
+notSupported: pvt const u32 = 50
 fileExists: pvt const u32 = 80
 diskFull: pvt const u32 = 112
 alreadyExistsError: pvt const u32 = 183
@@ -129,7 +143,14 @@ readOnlyAttribute: pvt const u32 = 0x1
 directoryAttribute: pvt const u32 = 0x10
 reparsePointAttribute: pvt const u32 = 0x400
 nameSurrogateTag: pvt const u32 = 0x20000000
+settableAttributes: pvt const u32 = 0x3127
+normalAttribute: pvt const u32 = 0x80
 attributeTagInfo: pvt const u32 = 9
+dispositionInfo: pvt const u32 = 4
+dispositionInfoEx: pvt const u32 = 21
+deleteDisposition: pvt const u32 = 0x1
+posixSemantics: pvt const u32 = 0x2
+ignoreReadOnly: pvt const u32 = 0x10
 largestTransfer: pvt const usize = 0xFFFFFFFF
 stackPathLength: pvt const usize = 512
 
@@ -139,6 +160,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	accessDenied, writeProtect => IoError(permissionDenied, code)
 	fileExists, alreadyExistsError => IoError(alreadyExists, code)
 	diskFull, handleDiskFull => IoError(storageFull, code)
+	notSameDevice => IoError(crossesDevices, code)
 	invalidName, badPathName, fileNameTooLong, invalidParameter, negativeSeek => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
@@ -253,6 +275,147 @@ metadataOfHandle: pvt fun(handle: ptr, followLinks: bool) -> Result[Metadata, Io
 		size = u64(information.sizeHigh) << 32 | u64(information.sizeLow)
 	
 	ret ok(Metadata(kind, size, (information.attributes & readOnlyAttribute) != 0))
+}
+
+removePath: mod fun(path: str) -> Result[IoError]
+{
+	checkPath(path)?
+	ret withWidePath(path, fun(wide) => removeWide(wide))
+}
+
+removeWide: pvt fun(wide: ptr[u16]) -> Result[IoError]
+{
+	val handle = CreateFileW(wide, Access.delete | Access.readAttributes, Share.read | Share.write | Share.delete, null,
+		Disposition.openExisting, Flags.backupSemantics | Flags.openReparsePoint, null)
+	
+	if handle == ptr(usize.maxValue)
+		ret err(errorFrom(GetLastError()))
+	
+	val result = removeHandle(handle, wide)
+	CloseHandle(handle)
+	ret result
+}
+
+removeHandle: pvt fun(handle: ptr, wide: ptr[u16]) -> Result[IoError]
+{
+	var information: FileInformation
+	if GetFileInformationByHandle(handle, @information) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	val attributes = information.attributes
+	if (attributes & directoryAttribute) != 0 && (attributes & reparsePointAttribute) == 0
+		ret err(IoError(isDirectory, 0))
+	
+	var flags = deleteDisposition | posixSemantics | ignoreReadOnly
+	if SetFileInformationByHandle(handle, dispositionInfoEx, @flags, 4) != 0
+		ret ok
+	
+	val code = GetLastError()
+	if code != invalidParameter && code != notSupported && code != invalidFunction
+		ret err(errorFrom(code))
+	
+	val readOnly = (attributes & readOnlyAttribute) != 0
+	if readOnly && SetFileAttributesW(wide, attributesWithout(attributes, readOnlyAttribute)) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	var deleting: u8 = 1
+	if SetFileInformationByHandle(handle, dispositionInfo, @deleting, 1) == 0
+	{
+		val failure = GetLastError()
+		if readOnly
+			SetFileAttributesW(wide, attributesWithout(attributes, 0))
+		
+		ret err(errorFrom(failure))
+	}
+	
+	ret ok
+}
+
+attributesWithout: pvt fun(attributes: u32, removed: u32) -> u32
+{
+	val result = attributes & settableAttributes & ~removed
+	if result == 0
+		ret normalAttribute
+	
+	ret result
+}
+
+copyPath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+{
+	checkPath(from)?
+	checkPath(to)?
+	ret withWidePath(from, fun(source) => withWidePath(to, fun(target) => copyWide(source, target, replace)))
+}
+
+copyWide: pvt fun(source: ptr[u16], target: ptr[u16], replace: bool) -> Result[IoError]
+{
+	var failIfExists = 1
+	if replace
+	{
+		if sameFile(source, target)
+			ret err(IoError(invalidInput, 0))
+		
+		failIfExists = 0
+	}
+	
+	if CopyFileW(source, target, failIfExists) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	ret ok
+}
+
+sameFile: pvt fun(first: ptr[u16], second: ptr[u16]) -> bool
+{
+	var a: FileInformation
+	var b: FileInformation
+	ret identify(first, @a) && identify(second, @b) && a.volumeSerial == b.volumeSerial && a.indexHigh == b.indexHigh &&
+		a.indexLow == b.indexLow
+}
+
+identify: pvt fun(wide: ptr[u16], information: ptr[FileInformation]) -> bool
+{
+	val handle = CreateFileW(wide, Access.readAttributes, Share.read | Share.write | Share.delete, null,
+		Disposition.openExisting, Flags.backupSemantics, null)
+	
+	if handle == ptr(usize.maxValue)
+		ret false
+	
+	val found = GetFileInformationByHandle(handle, information) != 0
+	CloseHandle(handle)
+	ret found
+}
+
+movePath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]
+{
+	checkPath(from)?
+	checkPath(to)?
+	ret withWidePath(from, fun(source) => withWidePath(to, fun(target) => moveWide(source, target, replace)))
+}
+
+moveWide: pvt fun(source: ptr[u16], target: ptr[u16], replace: bool) -> Result[IoError]
+{
+	var flags = MoveFlags.copyAllowed
+	if replace
+		flags |= MoveFlags.replaceExisting
+	
+	if MoveFileExW(source, target, flags) != 0
+		ret ok
+	
+	val code = GetLastError()
+	val attributes = GetFileAttributesW(target)
+	if !replace || code != accessDenied || attributes == invalidAttributes || (attributes & readOnlyAttribute) == 0 ||
+		(attributes & directoryAttribute) != 0
+		ret err(errorFrom(code))
+	
+	if SetFileAttributesW(target, attributesWithout(attributes, readOnlyAttribute)) == 0
+		ret err(errorFrom(code))
+	
+	if MoveFileExW(source, target, flags) != 0
+		ret ok
+	
+	val failure = GetLastError()
+	SetFileAttributesW(target, attributesWithout(attributes, 0))
+	ret err(errorFrom(failure))
 }
 
 NativeFile: mod rec

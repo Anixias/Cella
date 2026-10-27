@@ -11,6 +11,7 @@ ErrorKind: pub enum
 	alreadyExists
 	storageFull
 	unexpectedEnd
+	crossesDevices
 }
 
 IoError: pub rec
