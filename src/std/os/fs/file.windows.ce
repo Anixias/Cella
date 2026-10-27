@@ -5,7 +5,7 @@ use when windows
 use std.[Result, Span, View]
 use std.io.[IoError, SeekFrom]
 use std.mem.[BitSet, Heap, Layout]
-use std.text.[Utf16, Utf8, measure, transcode]
+use std.text.[Text, Utf16, Utf8, measure, transcode]
 
 pvt ext
 {
@@ -28,10 +28,23 @@ pvt ext
 	CreateDirectoryW: fun(path: ptr[u16], security: ptr) -> i32
 	CloseHandle: fun(handle: ptr) -> i32
 	GetLastError: fun -> u32
+	DeviceIoControl: fun(device: ptr, code: u32, input: ptr, inputSize: u32, output: ptr, outputSize: u32,
+		returned: ptr[u32], overlapped: ptr) -> i32
+	
+	CreateSymbolicLinkW: fun(link: ptr[u16], target: ptr[u16], flags: u32) -> u8
+}
+
+pvt ext("ntdll")
+{
+	NtOpenFile: fun(handle: ptr[ptr], access: Access, attributes: ptr[ObjectAttributes], status: ptr[IoStatus],
+		share: Share, options: u32) -> i32
+	
+	RtlNtStatusToDosError: fun(status: i32) -> u32
 }
 
 Access: pvt ext enum(u32) impl BitSet
 {
+	listDirectory = 0x00000001
 	appendData = 0x00000004
 	writeExtendedAttributes = 0x00000010
 	readAttributes = 0x00000080
@@ -140,6 +153,7 @@ negativeSeek: pvt const u32 = 131
 directoryNotEmptyError: pvt const u32 = 145
 badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
+privilegeNotHeld: pvt const u32 = 1314
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
 readOnlyAttribute: pvt const u32 = 0x1
 hiddenAttribute: pvt const u32 = 0x2
@@ -164,11 +178,31 @@ posixSemantics: pvt const u32 = 0x2
 ignoreReadOnly: pvt const u32 = 0x10
 largestTransfer: pvt const usize = 0xFFFFFFFF
 stackPathLength: pvt const usize = 512
+listingBufferSize: pvt const usize = 16384
+reparseBufferSize: pvt const usize = 16384
+getReparsePoint: pvt const u32 = 0x900A8
+setReparsePoint: pvt const u32 = 0x900A4
+mountPointTag: pvt const u32 = 0xA0000003
+symlinkTag: pvt const u32 = 0xA000000C
+directoryLink: pvt const u32 = 0x1
+allowUnprivilegedLink: pvt const u32 = 0x2
+basicInfo: pvt const u32 = 0
+fullDirectoryInfo: pvt const u32 = 14
+noMoreFiles: pvt const u32 = 18
+directoryOption: pvt const u32 = 0x1
+synchronousOption: pvt const u32 = 0x20
+backupIntentOption: pvt const u32 = 0x4000
+reparsePointOption: pvt const u32 = 0x200000
+attributesOffset: pvt const usize = 56
+nameLengthOffset: pvt const usize = 60
+tagOffset: pvt const usize = 64
+nameOffset: pvt const usize = 68
+separator: mod const u8 = 0x5C
 
 errorFrom: pvt fun(code: u32) -> IoError => match code
 {
 	fileNotFound, pathNotFound => IoError(notFound, code)
-	accessDenied, writeProtect => IoError(permissionDenied, code)
+	accessDenied, writeProtect, privilegeNotHeld => IoError(permissionDenied, code)
 	fileExists, alreadyExistsError => IoError(alreadyExists, code)
 	diskFull, handleDiskFull => IoError(storageFull, code)
 	notSameDevice => IoError(crossesDevices, code)
@@ -286,7 +320,8 @@ metadataOfHandle: pvt fun(handle: ptr, followLinks: bool) -> Result[Metadata, Io
 	if kind is file
 		size = u64(information.sizeHigh) << 32 | u64(information.sizeLow)
 	
-	ret ok(Metadata(kind, size, Attributes(information.attributes)))
+	ret ok(Metadata(kind, size, Attributes(information.attributes), u64(information.volumeSerial),
+		u64(information.indexHigh) << 32 | u64(information.indexLow)))
 }
 
 removePath: mod fun(path: str) -> Result[IoError]
@@ -297,18 +332,19 @@ removePath: mod fun(path: str) -> Result[IoError]
 
 removeWide: pvt fun(wide: ptr[u16], directory: bool) -> Result[IoError]
 {
-	val handle = CreateFileW(wide, Access.delete | Access.readAttributes, Share.read | Share.write | Share.delete, null,
-		Disposition.openExisting, Flags.backupSemantics | Flags.openReparsePoint, null)
+	val handle = CreateFileW(wide, Access.delete | Access.readAttributes | Access.writeAttributes,
+		Share.read | Share.write | Share.delete, null, Disposition.openExisting,
+		Flags.backupSemantics | Flags.openReparsePoint, null)
 	
 	if handle == ptr(usize.maxValue)
 		ret err(errorFrom(GetLastError()))
 	
-	val result = removeHandle(handle, wide, directory)
+	val result = removeHandle(handle, directory)
 	CloseHandle(handle)
 	ret result
 }
 
-removeHandle: pvt fun(handle: ptr, wide: ptr[u16], directory: bool) -> Result[IoError]
+removeHandle: pvt fun(handle: ptr, directory: bool) -> Result[IoError]
 {
 	var information: FileInformation
 	if GetFileInformationByHandle(handle, @information) == 0
@@ -322,6 +358,11 @@ removeHandle: pvt fun(handle: ptr, wide: ptr[u16], directory: bool) -> Result[Io
 	if !folder && directory
 		ret err(IoError(notADirectory, 0))
 	
+	ret deleteHandle(handle, attributes)
+}
+
+deleteHandle: pvt fun(handle: ptr, attributes: u32) -> Result[IoError]
+{
 	var flags = deleteDisposition | posixSemantics | ignoreReadOnly
 	if SetFileInformationByHandle(handle, dispositionInfoEx, @flags, 4) != 0
 		ret ok
@@ -331,7 +372,7 @@ removeHandle: pvt fun(handle: ptr, wide: ptr[u16], directory: bool) -> Result[Io
 		ret err(errorFrom(code))
 	
 	val readOnly = (attributes & readOnlyAttribute) != 0
-	if readOnly && SetFileAttributesW(wide, attributesWithout(attributes, readOnlyAttribute)) == 0
+	if readOnly && !setHandleAttributes(handle, attributesWithout(attributes, readOnlyAttribute))
 		ret err(errorFrom(GetLastError()))
 	
 	var deleting: u8 = 1
@@ -339,12 +380,18 @@ removeHandle: pvt fun(handle: ptr, wide: ptr[u16], directory: bool) -> Result[Io
 	{
 		val failure = GetLastError()
 		if readOnly
-			SetFileAttributesW(wide, attributesWithout(attributes, 0))
+			setHandleAttributes(handle, attributesWithout(attributes, 0))
 		
 		ret err(errorFrom(failure))
 	}
 	
 	ret ok
+}
+
+setHandleAttributes: pvt fun(handle: ptr, attributes: u32) -> bool
+{
+	var basic = BasicInformation(0, 0, 0, 0, attributes)
+	ret SetFileInformationByHandle(handle, basicInfo, @basic, u32(sizeOf(BasicInformation))) != 0
 }
 
 createPath: mod fun(path: str) -> Result[IoError]
@@ -532,6 +579,309 @@ setPathAttributes: mod fun(path: str, attributes: Attributes) -> Result[IoError]
 setWideAttributes: pvt fun(wide: ptr[u16], bits: u32) -> Result[IoError]
 {
 	if SetFileAttributesW(wide, bits) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	ret ok
+}
+
+UnicodeName: pvt rec
+{
+	length: u16
+	capacity: u16
+	buffer: ptr[u16]
+}
+
+ObjectAttributes: pvt rec
+{
+	length: u32
+	root: ptr
+	name: ptr[UnicodeName]
+	attributes: u32
+	security: ptr
+	quality: ptr
+}
+
+IoStatus: pvt rec
+{
+	status: ptr
+	information: usize
+}
+
+BasicInformation: pvt rec
+{
+	created: i64
+	accessed: i64
+	written: i64
+	changed: i64
+	attributes: u32
+}
+
+listingOf: pvt fun(handle: ptr, followLinks: bool) -> Result[NativeListing, IoError]
+{
+	var information: FileInformation
+	if GetFileInformationByHandle(handle, @information) == 0
+	{
+		val code = GetLastError()
+		CloseHandle(handle)
+		ret err(errorFrom(code))
+	}
+	
+	val attributes = information.attributes
+	val linked = !followLinks && (attributes & reparsePointAttribute) != 0
+	if (attributes & directoryAttribute) == 0 || linked
+	{
+		CloseHandle(handle)
+		ret err(IoError(notADirectory, 0))
+	}
+	
+	var heap = Heap()
+	val buffer = ptr[u8](heap.allocate(Layout.arrayOf[u64](listingBufferSize / 8)))
+	if buffer == null
+		panic "out of memory"
+	
+	ret ok(NativeListing(handle, buffer))
+}
+
+openListing: pvt fun(wide: ptr[u16], followLinks: bool) -> Result[NativeListing, IoError]
+{
+	var flags = Flags.backupSemantics
+	if !followLinks
+		flags |= Flags.openReparsePoint
+	
+	val handle = CreateFileW(wide, Access.listDirectory | Access.readAttributes | Access.synchronize,
+		Share.read | Share.write | Share.delete, null, Disposition.openExisting, flags, null)
+	
+	if handle == ptr(usize.maxValue)
+		ret err(errorFrom(GetLastError()))
+	
+	ret listingOf(handle, followLinks)
+}
+
+NativeListing: mod rec
+{
+	handle: ptr
+	buffer: ptr[u8]
+	offset: u32
+	filled: bool
+	currentKind: EntryKind
+	nameLength: usize
+	nameBytes: array[u8, 1024]
+	
+	new: op(handle: ptr, buffer: ptr[u8])
+	{
+		self.handle = handle
+		self.buffer = buffer
+		self.offset = 0
+		self.filled = false
+		self.currentKind = EntryKind.other
+		self.nameLength = 0
+	}
+	
+	open: fun(path: str, followLinks: bool) -> Result[NativeListing, IoError]
+	{
+		checkPath(path)?
+		ret withWidePath(path, fun(wide) => openListing(wide, followLinks))
+	}
+	
+	openChild: fun(imm self) -> Result[NativeListing, IoError]
+	{
+		val handle = self.openRelative(Access.listDirectory | Access.readAttributes | Access.synchronize,
+			directoryOption | synchronousOption | backupIntentOption | reparsePointOption)?
+		
+		ret listingOf(handle, false)
+	}
+	
+	next: fun(mut self) -> Result[bool, IoError]
+	{
+		loop
+		{
+			if self.filled
+			{
+				val step = *ptr[u32](self.entry())
+				if step == 0
+					self.filled = false
+				else
+					self.offset += step
+			}
+			
+			if !self.filled
+			{
+				if GetFileInformationByHandleEx(self.handle, fullDirectoryInfo, self.buffer, u32(listingBufferSize)) == 0
+				{
+					val code = GetLastError()
+					if code == noMoreFiles
+						ret ok(false)
+					
+					ret err(errorFrom(code))
+				}
+				
+				self.filled = true
+				self.offset = 0
+			}
+			
+			val entry = self.entry()
+			val length = usize(*ptr[u32](entry + nameLengthOffset)) / 2
+			val name = ptr[u16](entry + nameOffset)
+			if name[0] == 0x2E && (length == 1 || length == 2 && name[1] == 0x2E)
+				cont
+			
+			val attributes = *ptr[u32](entry + attributesOffset)
+			self.currentKind = EntryKind.file
+			if (attributes & directoryAttribute) != 0
+				self.currentKind = EntryKind.directory
+			
+			if (attributes & reparsePointAttribute) != 0 && (*ptr[u32](entry + tagOffset) & nameSurrogateTag) != 0
+				self.currentKind = EntryKind.symbolicLink
+			
+			self.nameLength = transcode[Utf16, Utf8](View[u16](name, length), Span[u8](@self.nameBytes, 1024)).written
+			ret ok(true)
+		}
+	}
+	
+	entry: pvt fun(imm self) -> ptr[u8] => self.buffer + usize(self.offset)
+	name: get(imm self) -> str => Text[Utf8](View[u8](@self.nameBytes, self.nameLength))
+	kind: get(imm self) -> EntryKind => self.currentKind
+	
+	openRelative: pvt fun(imm self, access: Access, options: u32) -> Result[ptr, IoError]
+	{
+		val entry = self.entry()
+		val bytes = u16(*ptr[u32](entry + nameLengthOffset))
+		var name = UnicodeName(bytes, bytes, ptr[u16](entry + nameOffset))
+		var attributes = ObjectAttributes(u32(sizeOf(ObjectAttributes)), self.handle, @name, 0, null, null)
+		var status: IoStatus
+		var handle: ptr = null
+		val result = NtOpenFile(@handle, access, @attributes, @status, Share.read | Share.write | Share.delete, options)
+		if result != 0
+			ret err(errorFrom(RtlNtStatusToDosError(result)))
+		
+		ret ok(handle)
+	}
+	
+	removeCurrent: fun(imm self) -> Result[IoError]
+	{
+		val handle = self.openRelative(Access.delete | Access.readAttributes | Access.writeAttributes | Access.synchronize,
+			synchronousOption | backupIntentOption | reparsePointOption)?
+		
+		var information: FileInformation
+		var result: Result[IoError] = ok
+		if GetFileInformationByHandle(handle, @information) == 0
+			result = err(errorFrom(GetLastError()))
+		else
+			result = deleteHandle(handle, information.attributes)
+		
+		CloseHandle(handle)
+		ret result
+	}
+	
+	close: fun(self)
+	{
+		CloseHandle(self.handle)
+		var heap = Heap()
+		heap.release(self.buffer, Layout.arrayOf[u64](listingBufferSize / 8))
+	}
+}
+
+copyLink: mod fun(from: str, to: str) -> Result[IoError]
+{
+	checkPath(from)?
+	checkPath(to)?
+	ret withWidePath(from, fun(source) => withWidePath(to, fun(target) => copyLinkWide(source, target)))
+}
+
+copyLinkWide: pvt fun(source: ptr[u16], target: ptr[u16]) -> Result[IoError]
+{
+	val handle = CreateFileW(source, Access.readAttributes, Share.read | Share.write | Share.delete, null,
+		Disposition.openExisting, Flags.backupSemantics | Flags.openReparsePoint, null)
+	
+	if handle == ptr(usize.maxValue)
+		ret err(errorFrom(GetLastError()))
+	
+	var information: FileInformation
+	var data: array[u64, reparseBufferSize / 8]
+	var returned: u32 = 0
+	var code: u32 = 0
+	if GetFileInformationByHandle(handle, @information) == 0 ||
+		DeviceIoControl(handle, getReparsePoint, null, 0, @data, u32(reparseBufferSize), @returned, null) == 0
+		code = GetLastError()
+	
+	CloseHandle(handle)
+	if code != 0
+		ret err(errorFrom(code))
+	
+	val bytes = ptr[u8](@data)
+	val tag = *ptr[u32](bytes)
+	if tag == mountPointTag
+		ret recreateJunction(target, bytes)
+	
+	if tag != symlinkTag
+		ret err(IoError(invalidInput, 0))
+	
+	var nameOffset = usize(*ptr[u16](bytes + 12))
+	var nameLength = usize(*ptr[u16](bytes + 14)) / 2
+	if nameLength == 0
+	{
+		nameOffset = usize(*ptr[u16](bytes + 8))
+		nameLength = usize(*ptr[u16](bytes + 10)) / 2
+	}
+	
+	var name: array[u16, reparseBufferSize / 2]
+	val units = ptr[u16](bytes + 20 + nameOffset)
+	for i in 0..nameLength
+		name[i] = units[i]
+	
+	name[nameLength] = 0
+	var flags = allowUnprivilegedLink
+	if (information.attributes & directoryAttribute) != 0
+		flags |= directoryLink
+	
+	if CreateSymbolicLinkW(target, @name, flags) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	ret ok
+}
+
+recreateJunction: pvt fun(target: ptr[u16], data: ptr[u8]) -> Result[IoError]
+{
+	if CreateDirectoryW(target, null) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	val handle = CreateFileW(target, Access.genericWrite, Share.read | Share.write | Share.delete, null,
+		Disposition.openExisting, Flags.backupSemantics | Flags.openReparsePoint, null)
+	
+	var code: u32 = 0
+	if handle == ptr(usize.maxValue)
+		code = GetLastError()
+	else
+	{
+		var returned: u32 = 0
+		val size = u32(*ptr[u16](data + 4)) + 8
+		if DeviceIoControl(handle, setReparsePoint, data, size, null, 0, @returned, null) == 0
+			code = GetLastError()
+		
+		CloseHandle(handle)
+	}
+	
+	if code == 0
+		ret ok
+	
+	removeWide(target, true)
+	ret err(errorFrom(code))
+}
+
+createLinkPath: mod fun(target: str, link: str, directory: bool) -> Result[IoError]
+{
+	checkPath(target)?
+	checkPath(link)?
+	ret withWidePath(target, fun(destination) => withWidePath(link, fun(wide) => createLinkWide(destination, wide, directory)))
+}
+
+createLinkWide: pvt fun(destination: ptr[u16], link: ptr[u16], directory: bool) -> Result[IoError]
+{
+	var flags = allowUnprivilegedLink
+	if directory
+		flags |= directoryLink
+	
+	if CreateSymbolicLinkW(link, destination, flags) == 0
 		ret err(errorFrom(GetLastError()))
 	
 	ret ok

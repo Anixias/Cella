@@ -16,14 +16,20 @@ Metadata: pub rec
 	kind: pvt set EntryKind
 	size: pvt set u64
 	attributes: pvt set Attributes
+	device: pvt u64
+	node: pvt u64
 	// TODO: creation, modification and access times, once std has a date-time type
 	
-	new: mod op(kind: EntryKind, size: u64, attributes: Attributes)
+	new: mod op(kind: EntryKind, size: u64, attributes: Attributes, device: u64, node: u64)
 	{
 		self.kind = kind
 		self.size = size
 		self.attributes = attributes
+		self.device = device
+		self.node = node
 	}
+	
+	sameEntry: mod fun(imm self, other: Metadata) -> bool => self.device == other.device && self.node == other.node
 }
 
 metadata: pub fun(path: str, followLinks: bool = true) -> Result[Metadata, IoError] => pathMetadata(path, followLinks)

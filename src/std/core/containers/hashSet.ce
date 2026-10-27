@@ -1,6 +1,6 @@
 ﻿mod std.containers
 
-use std.[DefHashBuilder, Hash, HashBuilder, Shows]
+use std.[Cursor, DefHashBuilder, Hash, HashBuilder, Shows]
 use std.cmp.Eq
 use std.mem.[Allocator, fillBytes, Heap, Layout]
 
@@ -193,7 +193,7 @@ HashSet[T: noref + Hash + Eq + Shows[Q: Hash + Eq], H: HashBuilder + copy, A: Al
 	}
 }
 
-HashSetCursor[T: noref + Hash + Eq]: pub ref rec
+HashSetCursor[T: noref + Hash + Eq]: pub ref rec impl Cursor[imm[T]]
 {
 	data: pvt ptr[SetSlot[T]]
 	length: pvt usize

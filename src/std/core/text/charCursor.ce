@@ -1,8 +1,8 @@
 ﻿mod std.text
 
-use std.View
+use std.[Cursor, View]
 
-CharCursor[E: Encoding[T]]: pub ref rec
+CharCursor[E: Encoding[T]]: pub ref rec impl Cursor[char]
 {
 	units: pvt View[T]
 	position: pvt usize

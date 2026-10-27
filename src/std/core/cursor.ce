@@ -1,0 +1,12 @@
+﻿mod std
+
+Cursor[T]: pub trait
+{
+	for: op(mut self) -> bool
+	*: op(imm self) -> T
+}
+
+EditCursor[T]: pub trait req Cursor[imm[T]]
+{
+	*: op(mut self) -> mut[T]
+}

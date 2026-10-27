@@ -1,0 +1,424 @@
+﻿mod std.fs
+
+use std.[Cursor, Result, View]
+use std.containers.List
+use std.io.IoError
+use std.mem.[Allocator, Heap]
+use std.text.[Text, Utf8]
+
+Entry: pub ref rec
+{
+	name: pvt set str
+	kind: pvt set EntryKind
+	
+	new: mod op(name: str, kind: EntryKind)
+	{
+		self.name = name
+		self.kind = kind
+	}
+}
+
+Entries[F: fun[Entry -> bool]]: pub own rec impl Cursor[Result[Entry, IoError]]
+{
+	listing: pvt NativeListing
+	keep: pvt F
+	failure: pvt IoError
+	failed: pvt bool
+	finished: pvt bool
+	
+	new: mod op(listing: NativeListing, keep: F)
+	{
+		self.listing = listing
+		self.keep = keep
+		self.failure = IoError(other, 0)
+		self.failed = false
+		self.finished = false
+	}
+	
+	drop: op
+	{
+		self.listing.close()
+	}
+	
+	for: op(mut self) -> bool
+	{
+		while !self.finished
+		{
+			val next = self.listing.next()
+			if next is err(val error)
+			{
+				self.failure = error
+				self.failed = true
+				self.finished = true
+				ret true
+			}
+			
+			if !next.unwrap()
+				self.finished = true
+			else if self.keep(Entry(self.listing.name, self.listing.kind))
+				ret true
+		}
+		
+		ret false
+	}
+	
+	*: op(imm self) -> Result[Entry, IoError]
+	{
+		if self.failed
+			ret err(self.failure)
+		
+		ret ok(Entry(self.listing.name, self.listing.kind))
+	}
+}
+
+entries: pub fun(path: str) -> Result[Entries[fun[Entry -> bool]], IoError] =>
+	entries[fun[Entry -> bool]](path, keepEntry)
+
+entries[F: fun[Entry -> bool]]: pub fun(path: str, keep: F) -> Result[Entries[F], IoError]
+{
+	val listing = NativeListing.open(path, true)?
+	ret ok(Entries[F](listing, keep))
+}
+
+keepEntry: pvt fun(entry: Entry) -> bool => true
+
+WalkOrder: pub enum
+{
+	parentsFirst
+	childrenFirst
+}
+
+WalkEntry: pub ref rec
+{
+	path: pvt set str
+	name: pvt set str
+	kind: pvt set EntryKind
+	depth: pvt set usize
+	
+	new: mod op(path: str, name: str, kind: EntryKind, depth: usize)
+	{
+		self.path = path
+		self.name = name
+		self.kind = kind
+		self.depth = depth
+	}
+}
+
+WalkFrame: pvt rec
+{
+	listing: NativeListing
+	pathLength: usize
+	nameStart: usize
+	depth: usize
+}
+
+Walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub own rec impl Cursor[Result[WalkEntry, IoError]]
+{
+	frames: pvt List[WalkFrame, A]
+	path: pvt List[u8, A]
+	keep: pvt F
+	order: pvt WalkOrder
+	descend: pvt bool
+	failed: pvt bool
+	failure: pvt IoError
+	kind: pvt EntryKind
+	nameStart: pvt usize
+	depth: pvt usize
+	
+	new: mod op(root: str, listing: NativeListing, keep: F, order: WalkOrder, alloc: A)
+	{
+		self.frames = List[WalkFrame, A](alloc)
+		self.path = List[u8, A](alloc)
+		self.keep = keep
+		self.order = order
+		self.descend = false
+		self.failed = false
+		self.failure = IoError(other, 0)
+		self.kind = EntryKind.directory
+		self.nameStart = 0
+		self.depth = 0
+		
+		var length = root.byteLength
+		while length > 1 && isSeparator(root[length - 1]) && root[length - 2] != 0x3A
+			length -= 1
+		
+		self.path.addAll(View[u8](root.data, length))
+		self.frames.add(WalkFrame(listing, length, 0, 0))
+	}
+	
+	drop: op
+	{
+		for frame in self.frames
+			frame.listing.close()
+	}
+	
+	for: op(mut self) -> bool
+	{
+		self.failed = false
+		if self.descend
+		{
+			self.descend = false
+			if !self.enter()
+				ret true
+		}
+		
+		while self.frames.count > 0
+		{
+			val index = self.frames.count - 1
+			val next = self.frames[index].listing.next()
+			if next is err(val error)
+			{
+				self.fail(error)
+				self.leave()
+				ret true
+			}
+			
+			if !next.unwrap()
+			{
+				val frame = self.leave()
+				if self.order is childrenFirst && frame.depth > 0
+				{
+					self.path.truncate(frame.pathLength)
+					self.kind = EntryKind.directory
+					self.nameStart = frame.nameStart
+					self.depth = frame.depth
+					ret true
+				}
+				
+				cont
+			}
+			
+			val parentLength = self.frames[index].pathLength
+			self.path.truncate(parentLength)
+			if parentLength > 0 && !isSeparator(self.path[parentLength - 1])
+				self.path.add(separator)
+			
+			self.nameStart = self.path.count
+			self.path.addAll(self.frames[index].listing.name)
+			self.kind = self.frames[index].listing.kind
+			self.depth = self.frames.count
+			if !self.keep(self.current())
+				cont
+			
+			if !(self.kind is directory)
+				ret true
+			
+			if self.order is parentsFirst
+			{
+				self.descend = true
+				ret true
+			}
+			
+			if !self.enter()
+				ret true
+		}
+		
+		ret false
+	}
+	
+	enter: pvt fun(mut self) -> bool
+	{
+		val index = self.frames.count - 1
+		val child = self.frames[index].listing.openChild()
+		if child is err(val error)
+		{
+			self.fail(error)
+			ret false
+		}
+		
+		self.frames.add(WalkFrame(child.unwrap(), self.path.count, self.nameStart, self.depth))
+		ret true
+	}
+	
+	leave: pvt fun(mut self) -> WalkFrame
+	{
+		val frame = self.frames.removeAt(self.frames.count - 1)
+		frame.listing.close()
+		ret frame
+	}
+	
+	fail: pvt fun(mut self, error: IoError)
+	{
+		self.failed = true
+		self.failure = error
+	}
+	
+	current: pvt fun(imm self) -> WalkEntry
+	{
+		val text: View[u8] = self.path
+		val path: str = Text[Utf8](text)
+		val name: str = Text[Utf8](text.slice(self.nameStart, text.length))
+		ret WalkEntry(path, name, self.kind, self.depth)
+	}
+	
+	*: op(imm self) -> Result[WalkEntry, IoError]
+	{
+		if self.failed
+			ret err(self.failure)
+		
+		ret ok(self.current())
+	}
+}
+
+walk: pub fun(path: str, order: WalkOrder = parentsFirst) -> Result[Walk[fun[WalkEntry -> bool], Heap], IoError] =>
+	walk[fun[WalkEntry -> bool], Heap](path, keepWalkEntry, Heap(), order)
+
+walk[F: fun[WalkEntry -> bool]]: pub fun(path: str, keep: F, order: WalkOrder = parentsFirst)
+	-> Result[Walk[F, Heap], IoError] => walk[F, Heap](path, keep, Heap(), order)
+
+walk[F: fun[WalkEntry -> bool], A: Allocator + copy]: pub fun(path: str, keep: F, alloc: A,
+	order: WalkOrder = parentsFirst) -> Result[Walk[F, A], IoError]
+{
+	val listing = NativeListing.open(path, true)?
+	ret ok(Walk[F, A](path, listing, keep, order, alloc))
+}
+
+keepWalkEntry: pvt fun(entry: WalkEntry) -> bool => true
+
+LinkCopy: pub enum
+{
+	recreate
+	follow
+	skip
+}
+
+copyDirectory: pub fun(from: str, to: str, replace: bool = false, links: LinkCopy = recreate) -> Result[IoError]
+{
+	var chain = List[Metadata]()
+	ret copyTree(from, to, replace, links, mut chain)
+}
+
+copyTree: pvt fun(from: str, to: str, replace: bool, links: LinkCopy, mut chain: List[Metadata]) -> Result[IoError]
+{
+	val source = metadata(from)?
+	if !(source.kind is directory)
+		ret err(IoError(notADirectory, 0))
+	
+	val created = createDirectory(to)
+	if created is err(_) && !(replace && isDirectoryAt(to))
+		ret created
+	
+	chain.add(source)
+	val result = copyContents(from, to, replace, links, mut chain)
+	chain.truncate(chain.count - 1)
+	ret result
+}
+
+copyContents: pvt fun(from: str, to: str, replace: bool, links: LinkCopy, mut chain: List[Metadata]) -> Result[IoError]
+{
+	for item in entries(from)?
+	{
+		val entry = item?
+		val sourcePath = joinPath(from, entry.name)
+		val targetPath = joinPath(to, entry.name)
+		val source: str = Text[Utf8](View[u8](sourcePath))
+		val target: str = Text[Utf8](View[u8](targetPath))
+		if entry.kind is directory
+			copyTree(source, target, replace, links, mut chain)?
+		else if entry.kind is file
+			copyReplacing(source, target, replace)?
+		else if entry.kind is symbolicLink
+			copyLinkEntry(source, target, replace, links, mut chain)?
+		else
+			ret err(IoError(invalidInput, 0))
+	}
+	
+	ret ok
+}
+
+copyLinkEntry: pvt fun(source: str, target: str, replace: bool, links: LinkCopy, mut chain: List[Metadata])
+	-> Result[IoError]
+{
+	if links is skip
+		ret ok
+	
+	if links is recreate
+	{
+		clearTarget(target, replace)?
+		ret copyLink(source, target)
+	}
+	
+	val resolved = metadata(source)?
+	if !(resolved.kind is directory)
+		ret copyReplacing(source, target, replace)
+	
+	for ancestor in chain
+	{
+		if ancestor.sameEntry(resolved)
+			ret err(IoError(linkLoop, 0))
+	}
+	
+	ret copyTree(source, target, replace, links, mut chain)
+}
+
+copyReplacing: pvt fun(source: str, target: str, replace: bool) -> Result[IoError]
+{
+	clearTarget(target, replace)?
+	ret copy(source, target)
+}
+
+clearTarget: pvt fun(target: str, replace: bool) -> Result[IoError]
+{
+	if replace && metadata(target, false) is ok(val existing) && !(existing.kind is directory)
+		ret remove(target)
+	
+	ret ok
+}
+
+joinPath: pvt fun(base: str, name: str) -> List[u8]
+{
+	var path = List[u8]()
+	path.reserve(base.byteLength + name.byteLength + 1)
+	path.addAll(base)
+	if base.byteLength > 0 && !isSeparator(base[base.byteLength - 1])
+		path.add(separator)
+	
+	path.addAll(name)
+	ret path
+}
+
+createLink: pub fun(target: str, link: str) -> Result[IoError]
+{
+	var directory = false
+	if isAbsolute(target)
+		directory = isDirectoryAt(target)
+	else
+	{
+		val resolved = joinPath(parentOf(link), target)
+		directory = isDirectoryAt(Text[Utf8](View[u8](resolved)))
+	}
+	
+	ret createLinkPath(target, link, directory)
+}
+
+isAbsolute: pvt fun(path: str) -> bool
+{
+	if path.byteLength > 0 && isSeparator(path[0])
+		ret true
+	
+	when windows
+	{
+		if path.byteLength > 1 && path[1] == 0x3A
+			ret true
+	}
+	
+	ret false
+}
+
+removeContents: mod fun(mut listing: NativeListing) -> Result[IoError]
+{
+	while listing.next()?
+	{
+		if listing.kind is directory
+		{
+			var child = listing.openChild()?
+			val result = removeContents(mut child)
+			child.close()
+			result?
+		}
+		
+		listing.removeCurrent()?
+	}
+	
+	ret ok
+}

@@ -1,6 +1,6 @@
 ﻿mod std.containers
 
-use std.[DefHashBuilder, Hash, HashBuilder, Option, Shows]
+use std.[Cursor, DefHashBuilder, EditCursor, Hash, HashBuilder, Option, Shows]
 use std.cmp.Eq
 use std.mem.[Allocator, fillBytes, Heap, Layout]
 
@@ -244,7 +244,7 @@ nextFull[K: noref + Hash + Eq, V: noref]: pvt fun(data: ptr[MapSlot[K, V]], leng
 	ret next
 }
 
-HashMapCursor[K: noref + Hash + Eq, V: noref]: pub ref rec
+HashMapCursor[K: noref + Hash + Eq, V: noref]: pub ref rec impl Cursor[KeyValue[K, V]]
 {
 	data: pvt ptr[MapSlot[K, V]]
 	length: pvt usize
@@ -270,7 +270,7 @@ HashMapCursor[K: noref + Hash + Eq, V: noref]: pub ref rec
 	}
 }
 
-HashMapKeys[K: noref + Hash + Eq, V: noref]: pub ref rec
+HashMapKeys[K: noref + Hash + Eq, V: noref]: pub ref rec impl Cursor[imm[K]]
 {
 	data: pvt ptr[MapSlot[K, V]]
 	length: pvt usize
@@ -296,7 +296,7 @@ HashMapKeys[K: noref + Hash + Eq, V: noref]: pub ref rec
 	}
 }
 
-HashMapValues[K: noref + Hash + Eq, V: noref]: pub ref rec
+HashMapValues[K: noref + Hash + Eq, V: noref]: pub ref rec impl Cursor[imm[V]]
 {
 	data: pvt ptr[MapSlot[K, V]]
 	length: pvt usize
@@ -322,7 +322,7 @@ HashMapValues[K: noref + Hash + Eq, V: noref]: pub ref rec
 	}
 }
 
-HashMapEntryEditor[K: noref + Hash + Eq, V: noref]: pub ref rec
+HashMapEntryEditor[K: noref + Hash + Eq, V: noref]: pub ref rec impl Cursor[EditableKeyValue[K, V]]
 {
 	data: pvt ptr[MapSlot[K, V]]
 	length: pvt usize
@@ -348,7 +348,7 @@ HashMapEntryEditor[K: noref + Hash + Eq, V: noref]: pub ref rec
 	}
 }
 
-HashMapValueEditor[K: noref + Hash + Eq, V: noref]: pub ref rec
+HashMapValueEditor[K: noref + Hash + Eq, V: noref]: pub ref rec impl EditCursor[V]
 {
 	data: pvt ptr[MapSlot[K, V]]
 	length: pvt usize

@@ -5,6 +5,7 @@ use when linux
 use std.[Result, Span, View]
 use std.io.[IoError, SeekFrom]
 use std.mem.[Heap, Layout]
+use std.text.[Text, Utf8]
 
 Status: pvt rec
 {
@@ -46,6 +47,16 @@ pvt ext
 	removeFolder: ext("rmdir") fun(path: ptr[u8]) -> i32
 	closeFile: ext("close") fun(file: i32) -> i32
 	errorLocation: ext("__errno_location") fun -> ptr[i32]
+	openAt: ext("openat") fun(directory: i32, path: ptr[u8], flags: i32, ...) -> i32
+	statusAt: ext("fstatat") fun(directory: i32, path: ptr[u8], status: ptr[Status], flags: i32) -> i32
+	unlinkAt: ext("unlinkat") fun(directory: i32, path: ptr[u8], flags: i32) -> i32
+	fdopendir: fun(file: i32) -> ptr
+	readdir: fun(directory: ptr) -> ptr[DirectoryEntry]
+	dirfd: fun(directory: ptr) -> i32
+	closedir: fun(directory: ptr) -> i32
+	stringLength: ext("strlen") fun(text: ptr[u8]) -> usize
+	readLink: ext("readlink") fun(path: ptr[u8], buffer: ptr[u8], size: usize) -> isize
+	makeLink: ext("symlink") fun(target: ptr[u8], link: ptr[u8]) -> i32
 }
 
 readOnly: pvt const i32 = 0x0
@@ -57,6 +68,10 @@ truncateFlag: pvt const i32 = 0x200
 appendFlag: pvt const i32 = 0x400
 createPermissions: pvt const i32 = 0x1B6
 closeOnExec: pvt const i32 = 0x80000
+directoryFlag: pvt const i32 = 0x10000
+noFollowFlag: pvt const i32 = 0x20000
+noFollowLinks: pvt const i32 = 0x100
+removeDirectoryFlag: pvt const i32 = 0x200
 seekStart: pvt const i32 = 0
 seekCurrent: pvt const i32 = 1
 seekEnd: pvt const i32 = 2
@@ -75,6 +90,7 @@ notDirectory: pvt const u32 = 20
 isDirectoryError: pvt const u32 = 21
 invalidArgument: pvt const u32 = 22
 nameTooLong: pvt const u32 = 36
+tooManyLinks: pvt const u32 = 40
 directoryNotEmptyError: pvt const u32 = 39
 notImplemented: pvt const u32 = 38
 typeMask: pvt const u32 = 0xF000
@@ -98,6 +114,12 @@ permissionBits: pvt const u32 = 0xFFF
 folderPermissions: pvt const u32 = 0x1FF
 largestTransfer: pvt const usize = 0x7FFFF000
 stackPathLength: pvt const usize = 512
+linkBufferSize: pvt const usize = 4096
+unknownEntry: pvt const u8 = 0
+directoryEntry: pvt const u8 = 4
+regularEntry: pvt const u8 = 8
+linkEntry: pvt const u8 = 10
+separator: mod const u8 = 0x2F
 
 lastError: pvt fun -> u32 => u32(*errorLocation())
 
@@ -211,7 +233,7 @@ metadataOf: pvt fun(status: Status) -> Metadata
 	if kind is file
 		size = u64(status.size)
 	
-	ret Metadata(kind, size, Attributes(status.mode))
+	ret Metadata(kind, size, Attributes(status.mode), status.device, status.inode)
 }
 
 removePath: mod fun(path: str) -> Result[IoError]
@@ -523,6 +545,179 @@ setPathAttributes: mod fun(path: str, attributes: Attributes) -> Result[IoError]
 setByteAttributes: pvt fun(bytes: ptr[u8], mode: u32) -> Result[IoError]
 {
 	if changeMode(bytes, mode) != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok
+}
+
+DirectoryEntry: mod rec
+{
+	inode: u64
+	offset: i64
+	length: u16
+	kind: u8
+	name: array[u8, 256]
+}
+
+openListingAt: pvt fun(directory: i32, bytes: ptr[u8], flags: i32) -> Result[NativeListing, IoError]
+{
+	var descriptor = openAt(directory, bytes, flags)
+	var code: u32 = 0
+	while descriptor < 0
+	{
+		code = lastError()
+		if code != interrupted
+			break
+		
+		descriptor = openAt(directory, bytes, flags)
+	}
+	
+	if descriptor < 0
+	{
+		var status: Status
+		val linked = code == tooManyLinks && (flags & noFollowFlag) != 0
+		if (code == notDirectory || linked) && statusAt(directory, bytes, @status, noFollowLinks) == 0
+			ret err(IoError(notADirectory, code))
+		
+		ret err(errorFrom(code))
+	}
+	
+	val stream = fdopendir(descriptor)
+	if stream == null
+	{
+		val failure = lastError()
+		closeFile(descriptor)
+		ret err(errorFrom(failure))
+	}
+	
+	ret ok(NativeListing(stream))
+}
+
+NativeListing: mod rec
+{
+	stream: ptr
+	current: ptr[DirectoryEntry]
+	currentKind: EntryKind
+	
+	new: op(stream: ptr)
+	{
+		self.stream = stream
+		self.current = null
+		self.currentKind = EntryKind.other
+	}
+	
+	open: fun(path: str, followLinks: bool) -> Result[NativeListing, IoError]
+	{
+		checkPath(path)?
+		var flags = readOnly | directoryFlag | closeOnExec
+		if !followLinks
+			flags |= noFollowFlag
+		
+		ret withBytePath(path, fun(bytes) => openListingAt(currentDirectory, bytes, flags))
+	}
+	
+	openChild: fun(self) -> Result[NativeListing, IoError] =>
+		openListingAt(dirfd(self.stream), self.currentName(), readOnly | directoryFlag | noFollowFlag | closeOnExec)
+	
+	next: fun(mut self) -> Result[bool, IoError]
+	{
+		loop
+		{
+			*errorLocation() = 0
+			val entry = readdir(self.stream)
+			if entry == null
+			{
+				val code = lastError()
+				if code != 0
+					ret err(errorFrom(code))
+				
+				ret ok(false)
+			}
+			
+			self.current = entry
+			val name = self.currentName()
+			if name[0] == 0x2E && (name[1] == 0 || name[1] == 0x2E && name[2] == 0)
+				cont
+			
+			self.currentKind = self.kindOf(entry.kind, name)
+			ret ok(true)
+		}
+	}
+	
+	kindOf: pvt fun(self, kind: u8, name: ptr[u8]) -> EntryKind
+	{
+		if kind == regularEntry
+			ret EntryKind.file
+		
+		if kind == directoryEntry
+			ret EntryKind.directory
+		
+		if kind == linkEntry
+			ret EntryKind.symbolicLink
+		
+		if kind != unknownEntry
+			ret EntryKind.other
+		
+		var status: Status
+		if statusAt(dirfd(self.stream), name, @status, noFollowLinks) != 0
+			ret EntryKind.other
+		
+		ret metadataOf(status).kind
+	}
+	
+	currentName: pvt fun(self) -> ptr[u8] => ptr[u8](@self.current.name)
+	name: get(self) -> str => Text[Utf8](View[u8](self.currentName(), stringLength(self.currentName())))
+	kind: get(self) -> EntryKind => self.currentKind
+	
+	removeCurrent: fun(self) -> Result[IoError]
+	{
+		var flags: i32 = 0
+		if self.currentKind is directory
+			flags = removeDirectoryFlag
+		
+		if unlinkAt(dirfd(self.stream), self.currentName(), flags) != 0
+			ret err(errorFrom(lastError()))
+		
+		ret ok
+	}
+	
+	close: fun(self)
+	{
+		closedir(self.stream)
+	}
+}
+
+copyLink: mod fun(from: str, to: str) -> Result[IoError]
+{
+	checkPath(from)?
+	checkPath(to)?
+	ret withBytePath(from, fun(source) => withBytePath(to, fun(target) => copyLinkBytes(source, target)))
+}
+
+copyLinkBytes: pvt fun(source: ptr[u8], target: ptr[u8]) -> Result[IoError]
+{
+	var buffer: array[u8, linkBufferSize]
+	val length = readLink(source, @buffer, linkBufferSize - 1)
+	if length < 0
+		ret err(errorFrom(lastError()))
+	
+	buffer[usize(length)] = 0
+	if makeLink(@buffer, target) != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok
+}
+
+createLinkPath: mod fun(target: str, link: str, directory: bool) -> Result[IoError]
+{
+	checkPath(target)?
+	checkPath(link)?
+	ret withBytePath(target, fun(destination) => withBytePath(link, fun(bytes) => createLinkBytes(destination, bytes)))
+}
+
+createLinkBytes: pvt fun(destination: ptr[u8], link: ptr[u8]) -> Result[IoError]
+{
+	if makeLink(destination, link) != 0
 		ret err(errorFrom(lastError()))
 	
 	ret ok

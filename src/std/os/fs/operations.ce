@@ -45,9 +45,20 @@ createDirectories: pub fun(path: str) -> Result[IoError]
 	ret retry
 }
 
-removeDirectory: pub fun(path: str) -> Result[IoError] => removeDirectoryPath(path)
+removeDirectory: pub fun(path: str, recursive: bool = false) -> Result[IoError]
+{
+	if recursive
+	{
+		var listing = NativeListing.open(path, false)?
+		val result = removeContents(mut listing)
+		listing.close()
+		result?
+	}
+	
+	ret removeDirectoryPath(path)
+}
 
-parentOf: pvt fun(path: str) -> str
+parentOf: mod fun(path: str) -> str
 {
 	var end = path.byteLength
 	while end > 0 && isSeparator(path[end - 1])
@@ -62,7 +73,7 @@ parentOf: pvt fun(path: str) -> str
 	ret Text[Utf8](View[u8](path.data, end))
 }
 
-isSeparator: pvt fun(byte: u8) -> bool
+isSeparator: mod fun(byte: u8) -> bool
 {
 	when windows
 	{
@@ -73,4 +84,4 @@ isSeparator: pvt fun(byte: u8) -> bool
 	ret byte == 0x2F
 }
 
-isDirectoryAt: pvt fun(path: str) -> bool => metadata(path) is ok(val data) && data.kind is directory
+isDirectoryAt: mod fun(path: str) -> bool => metadata(path) is ok(val data) && data.kind is directory

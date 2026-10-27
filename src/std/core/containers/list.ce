@@ -1,6 +1,6 @@
 ﻿mod std.containers
 
-use std.[Option, Shows, Span, View]
+use std.[Cursor, EditCursor, Option, Shows, Span, View]
 use std.cmp.Eq
 use std.mem.[Allocator, Heap, Layout, swap]
 
@@ -77,7 +77,7 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 	{
 		if index > self.count
 			panic "index out of bounds"
-			
+		
 		if index == self.count
 		{
 			self.add(value)
@@ -117,6 +117,15 @@ List[T: noref, A: Allocator = Heap]: pub own rec
 		val oldValue = own self.data[index]
 		own self.data[index] = value
 		ret oldValue
+	}
+	
+	truncate: fun(mut self, count: usize)
+	{
+		while self.count > count
+		{
+			self.count -= 1
+			drop self.data[self.count]
+		}
 	}
 	
 	reverse: fun(mut self)
@@ -186,7 +195,7 @@ List[T: noref + Shows[Q: Eq], A: Allocator]: impl
 	}
 }
 
-ListCursor[T: noref]: pub ref rec
+ListCursor[T: noref]: pub ref rec impl Cursor[imm[T]]
 {
 	data: pvt ptr[T]
 	length: pvt usize
@@ -208,7 +217,7 @@ ListCursor[T: noref]: pub ref rec
 	*: op(self) -> imm[T] => imm self.data[self.position - 1]
 }
 
-ListEditor[T: noref]: pub ref rec
+ListEditor[T: noref]: pub ref rec impl EditCursor[T]
 {
 	data: pvt ptr[T]
 	length: pvt usize
