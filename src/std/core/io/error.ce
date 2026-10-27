@@ -12,6 +12,8 @@ ErrorKind: pub enum
 	storageFull
 	unexpectedEnd
 	crossesDevices
+	directoryNotEmpty
+	notADirectory
 }
 
 IoError: pub rec

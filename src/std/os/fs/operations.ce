@@ -1,7 +1,8 @@
 ﻿mod std.fs
 
-use std.Result
+use std.[Result, View]
 use std.io.IoError
+use std.text.[Text, Utf8]
 
 remove: pub fun(path: str) -> Result[IoError] => removePath(path)
 
@@ -19,6 +20,57 @@ move: pub fun(from: str, to: str, replace: bool = false) -> Result[IoError]
 		ret err(IoError(isDirectory, 0))
 	
 	ret movePath(from, to, replace)
+}
+
+createDirectory: pub fun(path: str) -> Result[IoError] => createPath(path)
+
+createDirectories: pub fun(path: str) -> Result[IoError]
+{
+	val result = createDirectory(path)
+	if result is ok || isDirectoryAt(path)
+		ret ok
+	
+	if result is err(val error) && !(error.kind is notFound)
+		ret result
+	
+	val parent = parentOf(path)
+	if parent.byteLength == 0
+		ret result
+	
+	createDirectories(parent)?
+	val retry = createDirectory(path)
+	if retry is err(_) && isDirectoryAt(path)
+		ret ok
+	
+	ret retry
+}
+
+removeDirectory: pub fun(path: str) -> Result[IoError] => removeDirectoryPath(path)
+
+parentOf: pvt fun(path: str) -> str
+{
+	var end = path.byteLength
+	while end > 0 && isSeparator(path[end - 1])
+		end -= 1
+	
+	while end > 0 && !isSeparator(path[end - 1])
+		end -= 1
+	
+	while end > 1 && isSeparator(path[end - 1])
+		end -= 1
+	
+	ret Text[Utf8](View[u8](path.data, end))
+}
+
+isSeparator: pvt fun(byte: u8) -> bool
+{
+	when windows
+	{
+		if byte == 0x5C
+			ret true
+	}
+	
+	ret byte == 0x2F
 }
 
 isDirectoryAt: pvt fun(path: str) -> bool => metadata(path) is ok(val data) && data.kind is directory

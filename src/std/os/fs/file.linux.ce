@@ -42,6 +42,8 @@ pvt ext
 	renameat2: fun(fromDirectory: i32, from: ptr[u8], toDirectory: i32, to: ptr[u8], flags: u32) -> i32
 	linkFile: ext("link") fun(from: ptr[u8], to: ptr[u8]) -> i32
 	unlinkFile: ext("unlink") fun(path: ptr[u8]) -> i32
+	makeFolder: ext("mkdir") fun(path: ptr[u8], mode: u32) -> i32
+	removeFolder: ext("rmdir") fun(path: ptr[u8]) -> i32
 	closeFile: ext("close") fun(file: i32) -> i32
 	errorLocation: ext("__errno_location") fun -> ptr[i32]
 }
@@ -73,6 +75,7 @@ notDirectory: pvt const u32 = 20
 isDirectoryError: pvt const u32 = 21
 invalidArgument: pvt const u32 = 22
 nameTooLong: pvt const u32 = 36
+directoryNotEmptyError: pvt const u32 = 39
 notImplemented: pvt const u32 = 38
 typeMask: pvt const u32 = 0xF000
 regularType: pvt const u32 = 0x8000
@@ -92,6 +95,7 @@ setUserIdBit: pvt const u32 = 0x800
 setGroupIdBit: pvt const u32 = 0x400
 stickyBit: pvt const u32 = 0x200
 permissionBits: pvt const u32 = 0xFFF
+folderPermissions: pvt const u32 = 0x1FF
 largestTransfer: pvt const usize = 0x7FFFF000
 stackPathLength: pvt const usize = 512
 
@@ -105,6 +109,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	noSpace, quotaExceeded => IoError(storageFull, code)
 	isDirectoryError => IoError(isDirectory, code)
 	crossDevice => IoError(crossesDevices, code)
+	directoryNotEmptyError => IoError(directoryNotEmpty, code)
 	invalidArgument, nameTooLong => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
@@ -221,6 +226,39 @@ removeBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
 		ret err(errorFrom(lastError()))
 	
 	ret ok
+}
+
+createPath: mod fun(path: str) -> Result[IoError]
+{
+	checkPath(path)?
+	ret withBytePath(path, fun(bytes) => createBytes(bytes))
+}
+
+createBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
+{
+	if makeFolder(bytes, folderPermissions) != 0
+		ret err(errorFrom(lastError()))
+	
+	ret ok
+}
+
+removeDirectoryPath: mod fun(path: str) -> Result[IoError]
+{
+	checkPath(path)?
+	ret withBytePath(path, fun(bytes) => removeDirectoryBytes(bytes))
+}
+
+removeDirectoryBytes: pvt fun(bytes: ptr[u8]) -> Result[IoError]
+{
+	if removeFolder(bytes) == 0
+		ret ok
+	
+	val code = lastError()
+	var status: Status
+	if code == notDirectory && linkStatus(bytes, @status) == 0
+		ret err(IoError(notADirectory, code))
+	
+	ret err(errorFrom(code))
 }
 
 copyPath: mod fun(from: str, to: str, replace: bool) -> Result[IoError]

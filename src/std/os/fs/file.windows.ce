@@ -25,6 +25,7 @@ pvt ext
 	SetFileInformationByHandle: fun(file: ptr, kind: u32, information: ptr, size: u32) -> i32
 	CopyFileW: fun(from: ptr[u16], to: ptr[u16], failIfExists: i32) -> i32
 	MoveFileExW: fun(from: ptr[u16], to: ptr[u16], flags: MoveFlags) -> i32
+	CreateDirectoryW: fun(path: ptr[u16], security: ptr) -> i32
 	CloseHandle: fun(handle: ptr) -> i32
 	GetLastError: fun -> u32
 }
@@ -136,6 +137,7 @@ invalidParameter: pvt const u32 = 87
 brokenPipe: pvt const u32 = 109
 invalidName: pvt const u32 = 123
 negativeSeek: pvt const u32 = 131
+directoryNotEmptyError: pvt const u32 = 145
 badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
@@ -170,6 +172,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	fileExists, alreadyExistsError => IoError(alreadyExists, code)
 	diskFull, handleDiskFull => IoError(storageFull, code)
 	notSameDevice => IoError(crossesDevices, code)
+	directoryNotEmptyError => IoError(directoryNotEmpty, code)
 	invalidName, badPathName, fileNameTooLong, invalidParameter, negativeSeek => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
@@ -289,10 +292,10 @@ metadataOfHandle: pvt fun(handle: ptr, followLinks: bool) -> Result[Metadata, Io
 removePath: mod fun(path: str) -> Result[IoError]
 {
 	checkPath(path)?
-	ret withWidePath(path, fun(wide) => removeWide(wide))
+	ret withWidePath(path, fun(wide) => removeWide(wide, false))
 }
 
-removeWide: pvt fun(wide: ptr[u16]) -> Result[IoError]
+removeWide: pvt fun(wide: ptr[u16], directory: bool) -> Result[IoError]
 {
 	val handle = CreateFileW(wide, Access.delete | Access.readAttributes, Share.read | Share.write | Share.delete, null,
 		Disposition.openExisting, Flags.backupSemantics | Flags.openReparsePoint, null)
@@ -300,20 +303,24 @@ removeWide: pvt fun(wide: ptr[u16]) -> Result[IoError]
 	if handle == ptr(usize.maxValue)
 		ret err(errorFrom(GetLastError()))
 	
-	val result = removeHandle(handle, wide)
+	val result = removeHandle(handle, wide, directory)
 	CloseHandle(handle)
 	ret result
 }
 
-removeHandle: pvt fun(handle: ptr, wide: ptr[u16]) -> Result[IoError]
+removeHandle: pvt fun(handle: ptr, wide: ptr[u16], directory: bool) -> Result[IoError]
 {
 	var information: FileInformation
 	if GetFileInformationByHandle(handle, @information) == 0
 		ret err(errorFrom(GetLastError()))
 	
 	val attributes = information.attributes
-	if (attributes & directoryAttribute) != 0 && (attributes & reparsePointAttribute) == 0
+	val folder = (attributes & directoryAttribute) != 0 && (attributes & reparsePointAttribute) == 0
+	if folder && !directory
 		ret err(IoError(isDirectory, 0))
+	
+	if !folder && directory
+		ret err(IoError(notADirectory, 0))
 	
 	var flags = deleteDisposition | posixSemantics | ignoreReadOnly
 	if SetFileInformationByHandle(handle, dispositionInfoEx, @flags, 4) != 0
@@ -338,6 +345,26 @@ removeHandle: pvt fun(handle: ptr, wide: ptr[u16]) -> Result[IoError]
 	}
 	
 	ret ok
+}
+
+createPath: mod fun(path: str) -> Result[IoError]
+{
+	checkPath(path)?
+	ret withWidePath(path, fun(wide) => createWide(wide))
+}
+
+createWide: pvt fun(wide: ptr[u16]) -> Result[IoError]
+{
+	if CreateDirectoryW(wide, null) == 0
+		ret err(errorFrom(GetLastError()))
+	
+	ret ok
+}
+
+removeDirectoryPath: mod fun(path: str) -> Result[IoError]
+{
+	checkPath(path)?
+	ret withWidePath(path, fun(wide) => removeWide(wide, true))
 }
 
 attributesWithout: pvt fun(attributes: u32, removed: u32) -> u32
