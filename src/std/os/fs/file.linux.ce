@@ -55,7 +55,7 @@ pvt ext
 	dirfd: fun(directory: ptr) -> i32
 	closedir: fun(directory: ptr) -> i32
 	stringLength: ext("strlen") fun(text: ptr[u8]) -> usize
-	readLink: ext("readlink") fun(path: ptr[u8], buffer: ptr[u8], size: usize) -> isize
+	readSymbolicLink: ext("readlink") fun(path: ptr[u8], buffer: ptr[u8], size: usize) -> isize
 	makeLink: ext("symlink") fun(target: ptr[u8], link: ptr[u8]) -> i32
 	resolvePath: ext("realpath") fun(path: ptr[u8], resolved: ptr[u8]) -> ptr[u8]
 	freeMemory: ext("free") fun(memory: ptr)
@@ -713,7 +713,7 @@ copyLink: mod fun(from: Path, to: Path) -> Result[IoError]
 copyLinkBytes: pvt fun(source: ptr[u8], target: ptr[u8]) -> Result[IoError]
 {
 	var buffer: array[u8, linkBufferSize]
-	val length = readLink(source, @buffer, linkBufferSize - 1)
+	val length = readSymbolicLink(source, @buffer, linkBufferSize - 1)
 	if length < 0
 		ret err(errorFrom(lastError()))
 	
@@ -722,6 +722,74 @@ copyLinkBytes: pvt fun(source: ptr[u8], target: ptr[u8]) -> Result[IoError]
 		ret err(errorFrom(lastError()))
 	
 	ret ok
+}
+
+createHardLinkPath: mod fun(target: Path, link: Path) -> Result[IoError]
+{
+	checkPath(target)?
+	checkPath(link)?
+	ret withBytePath(target, fun(existing) => withBytePath(link, fun(bytes) => createHardLinkBytes(existing, bytes)))
+}
+
+createHardLinkBytes: pvt fun(existing: ptr[u8], link: ptr[u8]) -> Result[IoError]
+{
+	if linkFile(existing, link) == 0
+		ret ok
+	
+	val code = lastError()
+	var status: Status
+	if code == notPermitted && linkStatus(existing, @status) == 0 && (status.mode & typeMask) == directoryType
+		ret err(IoError(isDirectory, code))
+	
+	ret err(errorFrom(code))
+}
+
+LinkBytes: pvt rec
+{
+	data: ptr[u8]
+	length: usize
+	capacity: usize
+	code: u32
+}
+
+readLinkPath[A: Allocator + noref]: mod fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError]
+{
+	checkPath(path)?
+	val read = withBytePath(path, fun(bytes) => readLinkBytes(bytes))
+	if read.code != 0
+		ret err(errorFrom(read.code))
+	
+	val result = PathBuffer[A](Path(View[u8](read.data, read.length)), alloc)
+	var heap = Heap()
+	heap.release(read.data, Layout.arrayOf[u8](read.capacity))
+	ret ok(result)
+}
+
+readLinkBytes: pvt fun(path: ptr[u8]) -> LinkBytes
+{
+	var heap = Heap()
+	var capacity = linkBufferSize
+	loop
+	{
+		val layout = Layout.arrayOf[u8](capacity)
+		val data = ptr[u8](heap.allocate(layout))
+		if data == null
+			panic "out of memory"
+		
+		val length = readSymbolicLink(path, data, capacity)
+		if length < 0
+		{
+			val code = lastError()
+			heap.release(data, layout)
+			ret LinkBytes(null, 0, 0, code)
+		}
+		
+		if usize(length) < capacity
+			ret LinkBytes(data, usize(length), capacity, 0)
+		
+		heap.release(data, layout)
+		capacity *= 2
+	}
 }
 
 createLinkPath: mod fun(target: Path, link: Path, directory: bool) -> Result[IoError]

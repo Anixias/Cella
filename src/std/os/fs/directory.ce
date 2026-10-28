@@ -4,7 +4,7 @@ use std.[Cursor, Result, View]
 use std.containers.List
 use std.io.IoError
 use std.mem.[Allocator, Heap]
-use std.path.Path
+use std.path.[Path, PathBuffer]
 
 Entry: pub ref rec
 {
@@ -367,6 +367,13 @@ createLink: pub fun(target: Path, link: Path) -> Result[IoError]
 	val base = link.parent.valueOr(Path(""))
 	ret createLinkPath(target, link, isDirectoryAt(base.join(target)))
 }
+
+createHardLink: pub fun(target: Path, link: Path) -> Result[IoError] => createHardLinkPath(target, link)
+
+readLink: pub fun(path: Path) -> Result[PathBuffer, IoError] => readLinkPath(path, Heap())
+
+readLink[A: Allocator + noref]: pub fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError] =>
+	readLinkPath(path, alloc)
 
 removeContents: mod fun(mut listing: NativeListing) -> Result[IoError]
 {

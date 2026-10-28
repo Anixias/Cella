@@ -33,6 +33,7 @@ pvt ext
 		returned: ptr[u32], overlapped: ptr) -> i32
 	
 	CreateSymbolicLinkW: fun(link: ptr[u16], target: ptr[u16], flags: u32) -> u8
+	CreateHardLinkW: fun(link: ptr[u16], existing: ptr[u16], security: ptr) -> i32
 }
 
 pvt ext("ntdll")
@@ -156,6 +157,7 @@ badPathName: pvt const u32 = 161
 fileNameTooLong: pvt const u32 = 206
 privilegeNotHeld: pvt const u32 = 1314
 cantResolveFilename: pvt const u32 = 1921
+notAReparsePoint: pvt const u32 = 4390
 invalidAttributes: pvt const u32 = 0xFFFFFFFF
 readOnlyAttribute: pvt const u32 = 0x1
 hiddenAttribute: pvt const u32 = 0x2
@@ -191,6 +193,7 @@ mountPointTag: pvt const u32 = 0xA0000003
 symlinkTag: pvt const u32 = 0xA000000C
 directoryLink: pvt const u32 = 0x1
 allowUnprivilegedLink: pvt const u32 = 0x2
+relativeLink: pvt const u32 = 0x1
 basicInfo: pvt const u32 = 0
 fullDirectoryInfo: pvt const u32 = 14
 noMoreFiles: pvt const u32 = 18
@@ -213,7 +216,7 @@ errorFrom: pvt fun(code: u32) -> IoError => match code
 	notSameDevice => IoError(crossesDevices, code)
 	directoryNotEmptyError => IoError(directoryNotEmpty, code)
 	cantResolveFilename => IoError(linkLoop, code)
-	invalidName, badPathName, fileNameTooLong, invalidParameter, negativeSeek => IoError(invalidInput, code)
+	invalidName, badPathName, fileNameTooLong, invalidParameter, negativeSeek, notAReparsePoint => IoError(invalidInput, code)
 	else => IoError(other, code)
 }
 
@@ -1217,6 +1220,70 @@ recreateJunction: pvt fun(target: ptr[u16], data: ptr[u8]) -> Result[IoError]
 	
 	removeWide(target, true)
 	ret err(errorFrom(code))
+}
+
+createHardLinkPath: mod fun(target: Path, link: Path) -> Result[IoError]
+{
+	checkPath(target)?
+	checkPath(link)?
+	ret withWidePath(target, fun(existing) => withWidePath(link, fun(wide) => createHardLinkWide(existing, wide)))
+}
+
+createHardLinkWide: pvt fun(existing: ptr[u16], link: ptr[u16]) -> Result[IoError]
+{
+	if CreateHardLinkW(link, existing, null) != 0
+		ret ok
+	
+	val code = GetLastError()
+	val attributes = GetFileAttributesW(existing)
+	if code == accessDenied && attributes != invalidAttributes && (attributes & directoryAttribute) != 0
+		ret err(IoError(isDirectory, code))
+	
+	ret err(errorFrom(code))
+}
+
+readLinkPath[A: Allocator + noref]: mod fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError]
+{
+	checkPath(path)?
+	val handle = withWidePath(path, fun(wide) => CreateFileW(wide, Access.readAttributes,
+		Share.read | Share.write | Share.delete, null, Disposition.openExisting,
+		Flags.backupSemantics | Flags.openReparsePoint, null))
+	
+	if handle == ptr(usize.maxValue)
+		ret err(errorFrom(GetLastError()))
+	
+	var data: array[u64, reparseBufferSize / 8]
+	var returned: u32 = 0
+	var code: u32 = 0
+	if DeviceIoControl(handle, getReparsePoint, null, 0, @data, u32(reparseBufferSize), @returned, null) == 0
+		code = GetLastError()
+	
+	CloseHandle(handle)
+	if code != 0
+		ret err(errorFrom(code))
+	
+	val bytes = ptr[u8](@data)
+	val tag = *ptr[u32](bytes)
+	var names = bytes + 16
+	var relative = false
+	if tag == symlinkTag
+	{
+		names = bytes + 20
+		relative = (*ptr[u32](bytes + 16) & relativeLink) != 0
+	}
+	else if tag != mountPointTag
+		ret err(IoError(invalidInput, 0))
+	
+	val offset = usize(*ptr[u16](bytes + 8))
+	val length = usize(*ptr[u16](bytes + 10)) / 2
+	val units = Span[u16](ptr[u16](names + offset), length)
+	if !relative && length >= 4 && units[0] == 0x5C && units[1] == 0x3F && units[2] == 0x3F && units[3] == 0x5C
+	{
+		units[1] = 0x5C
+		ret ok(pathFromWide(shortened(units), alloc))
+	}
+	
+	ret ok(pathFromWide(units, alloc))
 }
 
 createLinkPath: mod fun(target: Path, link: Path, directory: bool) -> Result[IoError]
