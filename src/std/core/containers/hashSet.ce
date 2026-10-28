@@ -17,59 +17,60 @@ SetSearch: pvt rec
 	found: bool
 }
 
+// When able to create with X capacity, must round X up to the next power of 2 or mask will break
 HashSet[T: noref + Hash + Eq, H: HashBuilder + copy = DefHashBuilder, A: Allocator = Heap]: pub own rec
 {
 	data: pvt ptr[SetSlot[T]]
 	count: pvt set usize
-	used: pvt usize
 	capacity: pvt set usize
+	used: pvt usize
 	hashBuilder: pvt H
 	alloc: pvt A
-
+	
 	isEmpty: get(imm self) -> bool => self.count == 0
-
+	
 	new: op(hashBuilder: H, alloc: A)
 	{
 		self.hashBuilder = hashBuilder
 		self.alloc = alloc
-
+		
 		val layout = Layout.arrayOf[SetSlot[T]](0)
 		self.data = ptr[SetSlot[T]](self.alloc.allocate(layout))
 	}
-
+	
 	drop: op
 	{
 		for i in 0..self.capacity
 			drop self.data[i]
-
+		
 		val layout = Layout.arrayOf[SetSlot[T]](self.capacity)
 		self.alloc.release(self.data, layout)
 	}
-
-	insert: fun(mut self, value: T) -> bool
+	
+	add: fun(mut self, value: T) -> bool
 	{
 		if (self.used + 1) * 4 > self.capacity * 3
 			self.grow()
-
+		
 		val search = self.findSlot(imm value)
 		if search.found
 			ret false
-
+		
 		if self.data[search.index] is empty
 			self.used += 1
-
+		
 		own self.data[search.index] = full(value)
 		self.count += 1
 		ret true
 	}
-
+	
 	hashOf: pvt fun(imm self, imm value: T) -> u64
 	{
 		var builder = self.hashBuilder
 		value.hash(mut builder)
 		ret builder.getHash()
 	}
-
+	
 	findSlot: pvt fun(imm self, imm value: T) -> SetSearch
 	{
 		val mask = self.capacity - 1
@@ -91,11 +92,11 @@ HashSet[T: noref + Hash + Eq, H: HashBuilder + copy = DefHashBuilder, A: Allocat
 						ret SetSearch(index, true)
 				}
 			}
-
+			
 			index = (index + 1) & mask
 		}
 	}
-
+	
 	grow: pvt fun(mut self)
 	{
 		val oldData = self.data
@@ -105,39 +106,35 @@ HashSet[T: noref + Hash + Eq, H: HashBuilder + copy = DefHashBuilder, A: Allocat
 			newCapacity = 8
 		else if self.count * 2 >= oldCapacity
 			newCapacity = oldCapacity * 2
-
+		
 		val newLayout = Layout.arrayOf[SetSlot[T]](newCapacity)
 		self.data = ptr[SetSlot[T]](self.alloc.allocate(newLayout))
 		if self.data == null
 			panic "out of memory"
-
+		
 		fillBytes(self.data, 0, newLayout.size)
 		self.capacity = newCapacity
 		self.used = self.count
-
+		
 		for i in 0..oldCapacity
 		{
-			val slot = own oldData[i]
-			match slot
-			{
-				full(val value) => self.place(value)
-				else => { }
-			}
+			if own oldData[i] is full(val value)
+				self.place(value)
 		}
-
+		
 		self.alloc.release(oldData, Layout.arrayOf[SetSlot[T]](oldCapacity))
 	}
-
+	
 	place: pvt fun(mut self, value: T)
 	{
 		val mask = self.capacity - 1
 		var index = usize(self.hashOf(imm value) & u64(mask))
 		while !(self.data[index] is empty)
 			index = (index + 1) & mask
-
+		
 		own self.data[index] = full(value)
 	}
-
+	
 	in: op(imm self) -> HashSetCursor[T] => HashSetCursor[T](self.data, self.capacity)
 }
 
@@ -152,24 +149,24 @@ HashSet[T: noref + Hash + Eq, H: HashBuilder + copy + new, A: Allocator + new]: 
 HashSet[T: noref + Hash + Eq + Shows[Q: Hash + Eq], H: HashBuilder + copy, A: Allocator]: impl
 {
 	contains: fun(imm self, imm value: Q) -> bool => self.findShown(imm value).found
-
+	
 	remove: fun(mut self, imm value: Q) -> bool
 	{
 		val search = self.findShown(imm value)
 		if !search.found
 			ret false
-
+		
 		drop self.data[search.index]
 		own self.data[search.index] = deleted
 		self.count -= 1
 		ret true
 	}
-
+	
 	findShown: pvt fun(imm self, imm value: Q) -> SetSearch
 	{
 		if self.capacity == 0
 			ret SetSearch(0, false)
-
+		
 		var builder = self.hashBuilder
 		value.hash(mut builder)
 		val mask = self.capacity - 1
@@ -187,7 +184,7 @@ HashSet[T: noref + Hash + Eq + Shows[Q: Hash + Eq], H: HashBuilder + copy, A: Al
 				}
 				else => { }
 			}
-
+			
 			index = (index + 1) & mask
 		}
 	}
@@ -198,23 +195,23 @@ HashSetCursor[T: noref + Hash + Eq]: pub ref rec impl Cursor[imm[T]]
 	data: pvt ptr[SetSlot[T]]
 	length: pvt usize
 	position: pvt usize
-
+	
 	new: mod op(data: ptr[SetSlot[T]], length: usize)
 	{
 		self.data = data
 		self.length = length
 		self.position = 0
 	}
-
+	
 	for: op(mut self) -> bool
 	{
 		self.position += 1
 		while self.position <= self.length && !(self.data[self.position - 1] is full(_))
 			self.position += 1
-
+		
 		ret self.position <= self.length
 	}
-
+	
 	*: op(self) -> imm[T] => match self.data[self.position - 1]
 	{
 		full(val value) => imm value

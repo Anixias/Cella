@@ -17,12 +17,13 @@ SlotSearch: pvt rec
 	found: bool
 }
 
+// When able to create with X capacity, must round X up to the next power of 2 or mask will break
 HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy = DefHashBuilder, A: Allocator = Heap]: pub own rec
 {
 	data: pvt ptr[MapSlot[K, V]]
 	count: pvt set usize
-	used: pvt usize
 	capacity: pvt set usize
+	used: pvt usize
 	hashBuilder: pvt H
 	alloc: pvt A
 	
@@ -46,7 +47,7 @@ HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy = DefHashBuilder, 
 		self.alloc.release(self.data, layout)
 	}
 	
-	insert: fun(mut self, key: K, value: V) -> Option[V]
+	add: fun(mut self, key: K, value: V) -> Option[V]
 	{
 		// 75% grow threshold
 		if (self.used + 1) * 4 > self.capacity * 3
@@ -104,7 +105,7 @@ HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy = DefHashBuilder, 
 			index = (index + 1) & mask
 		}
 	}
-
+	
 	grow: pvt fun(mut self)
 	{
 		val oldData = self.data
@@ -126,12 +127,8 @@ HashMap[K: noref + Hash + Eq, V: noref, H: HashBuilder + copy = DefHashBuilder, 
 		
 		for i in 0..oldCapacity
 		{
-			val slot = own oldData[i]
-			match slot
-			{
-				full(val key, val value) => self.place(key, value)
-				else => { }
-			}
+			if own oldData[i] is full(val key, val value)
+				self.place(key, value)
 		}
 		
 		self.alloc.release(oldData, Layout.arrayOf[MapSlot[K, V]](oldCapacity))
@@ -169,22 +166,22 @@ HashMap[K: noref + Hash + Eq + Shows[Q: Hash + Eq], V: noref, H: HashBuilder + c
 		val search = self.findShown(imm key)
 		if !search.found
 			ret none
-
+		
 		ret match self.data[search.index]
 		{
 			full(_, val value) => some(imm value)
 			else => none
 		}
 	}
-
+	
 	contains: fun(imm self, imm key: Q) -> bool => self.findShown(imm key).found
-
+	
 	remove: fun(mut self, imm key: Q) -> Option[V]
 	{
 		val search = self.findShown(imm key)
 		if !search.found
 			ret none
-
+		
 		val old = own self.data[search.index]
 		own self.data[search.index] = deleted
 		self.count -= 1
@@ -194,12 +191,12 @@ HashMap[K: noref + Hash + Eq + Shows[Q: Hash + Eq], V: noref, H: HashBuilder + c
 			else => none
 		}
 	}
-
+	
 	findShown: pvt fun(imm self, imm key: Q) -> SlotSearch
 	{
 		if self.capacity == 0
 			ret SlotSearch(0, false)
-
+		
 		var builder = self.hashBuilder
 		key.hash(mut builder)
 		val mask = self.capacity - 1
@@ -217,7 +214,7 @@ HashMap[K: noref + Hash + Eq + Shows[Q: Hash + Eq], V: noref, H: HashBuilder + c
 				}
 				else => { }
 			}
-
+			
 			index = (index + 1) & mask
 		}
 	}
