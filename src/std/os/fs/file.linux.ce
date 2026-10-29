@@ -26,6 +26,17 @@ Status: pvt rec
 	reserved: array[i64, 3]
 }
 
+PasswordEntry: pvt rec
+{
+	name: ptr[u8]
+	password: ptr[u8]
+	user: u32
+	group: u32
+	information: ptr[u8]
+	directory: ptr[u8]
+	shell: ptr[u8]
+}
+
 pvt ext
 {
 	openFile: ext("open") fun(path: ptr[u8], flags: i32, ...) -> i32
@@ -58,6 +69,10 @@ pvt ext
 	readSymbolicLink: ext("readlink") fun(path: ptr[u8], buffer: ptr[u8], size: usize) -> isize
 	makeLink: ext("symlink") fun(target: ptr[u8], link: ptr[u8]) -> i32
 	resolvePath: ext("realpath") fun(path: ptr[u8], resolved: ptr[u8]) -> ptr[u8]
+	environmentValue: ext("getenv") fun(name: cstr) -> ptr[u8]
+	userId: ext("getuid") fun -> u32
+	userEntry: ext("getpwuid_r") fun(user: u32, entry: ptr[PasswordEntry], buffer: ptr[u8], size: usize,
+		result: ptr[ptr[PasswordEntry]]) -> i32
 	freeMemory: ext("free") fun(memory: ptr)
 }
 
@@ -95,6 +110,7 @@ nameTooLong: pvt const u32 = 36
 tooManyLinks: pvt const u32 = 40
 directoryNotEmptyError: pvt const u32 = 39
 notImplemented: pvt const u32 = 38
+outOfRange: pvt const u32 = 34
 typeMask: pvt const u32 = 0xF000
 regularType: pvt const u32 = 0x8000
 directoryType: pvt const u32 = 0x4000
@@ -200,6 +216,54 @@ copyPath: pvt fun(path: Path, bytes: ptr[u8])
 		bytes[i] = source[i]
 	
 	bytes[source.length] = 0
+}
+
+tempDirectoryPath: mod fun -> Result[PathBuffer, IoError]
+{
+	// TODO: read TMPDIR through std.process once it has environment variables
+	val value = environmentValue("TMPDIR")
+	if value != null && value[0] != 0
+		ret ok(PathBuffer(Path(View[u8](value, stringLength(value)))))
+	
+	val fallback: Path = "/tmp"
+	ret ok(PathBuffer(fallback))
+}
+
+homeDirectoryPath: mod fun -> Result[PathBuffer, IoError]
+{
+	// TODO: read HOME through std.process once it has environment variables
+	val value = environmentValue("HOME")
+	if value != null && value[0] != 0
+		ret ok(PathBuffer(Path(View[u8](value, stringLength(value)))))
+	
+	var heap = Heap()
+	var capacity: usize = 1024
+	loop
+	{
+		val layout = Layout.arrayOf[u8](capacity)
+		val buffer = ptr[u8](heap.allocate(layout))
+		if buffer == null
+			panic "out of memory"
+		
+		var entry: PasswordEntry
+		var found: ptr[PasswordEntry] = null
+		val code = u32(userEntry(userId(), @entry, buffer, capacity, @found))
+		if code == 0 && found != null && entry.directory != null && entry.directory[0] != 0
+		{
+			val home = PathBuffer(Path(View[u8](entry.directory, stringLength(entry.directory))))
+			heap.release(buffer, layout)
+			ret ok(home)
+		}
+		
+		heap.release(buffer, layout)
+		if code == 0
+			ret err(IoError(notFound, 0))
+		
+		if code == outOfRange
+			capacity *= 2
+		else if code != interrupted
+			ret err(errorFrom(code))
+	}
 }
 
 canonicalPath[A: Allocator + noref]: mod fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError]
@@ -919,6 +983,18 @@ NativeFile: mod rec
 			ret err(errorFrom(lastError()))
 		
 		ret ok(metadataOf(status))
+	}
+	
+	resize: fun(self, size: u64) -> Result[IoError]
+	{
+		while ftruncate(self.descriptor, i64(size)) != 0
+		{
+			val code = lastError()
+			if code != interrupted
+				ret err(errorFrom(code))
+		}
+		
+		ret ok
 	}
 	
 	sync: fun(self) -> Result[IoError]

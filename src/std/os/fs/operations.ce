@@ -64,6 +64,31 @@ canonical: pub fun(path: Path) -> Result[PathBuffer, IoError] => canonicalPath(p
 canonical[A: Allocator + noref]: pub fun(path: Path, alloc: A) -> Result[PathBuffer[A], IoError] =>
 	canonicalPath(path, alloc)
 
+tempDirectory: pub fun -> Result[PathBuffer, IoError] => tempDirectory(Heap())
+
+tempDirectory[A: Allocator + noref]: pub fun(alloc: A) -> Result[PathBuffer[A], IoError]
+{
+	val found = tempDirectoryPath()?
+	ret ok(withoutTrailingSeparator(found, alloc))
+}
+
+homeDirectory: pub fun -> Result[PathBuffer, IoError] => homeDirectory(Heap())
+
+homeDirectory[A: Allocator + noref]: pub fun(alloc: A) -> Result[PathBuffer[A], IoError]
+{
+	val found = homeDirectoryPath()?
+	ret ok(withoutTrailingSeparator(found, alloc))
+}
+
+withoutTrailingSeparator[A: Allocator + noref]: pvt fun(path: Path, alloc: A) -> PathBuffer[A]
+{
+	var bytes = path.bytes
+	while bytes.length > 1 && isSeparator(bytes[bytes.length - 1]) && Path(bytes).parent is some(_)
+		bytes = bytes.slice(0, bytes.length - 1)
+	
+	ret PathBuffer[A](Path(bytes), alloc)
+}
+
 isSeparator: mod fun(byte: u8) -> bool
 {
 	when windows

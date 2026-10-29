@@ -26,11 +26,13 @@ File: pub own rec impl Read + Write + Seek
 {
 	native: pvt NativeFile
 	access: pvt FileAccess
+	appending: pvt bool
 	
-	new: pvt op(native: NativeFile, access: FileAccess)
+	new: pvt op(native: NativeFile, access: FileAccess, appending: bool)
 	{
 		self.native = native
 		self.access = access
+		self.appending = appending
 	}
 	
 	drop: op
@@ -49,7 +51,7 @@ File: pub own rec impl Read + Write + Seek
 		if changesFile && access is read
 			ret err(IoError(invalidInput, 0))
 		
-		ret ok(File(NativeFile.open(path, mode, access)?, access))
+		ret ok(File(NativeFile.open(path, mode, access)?, access, mode is append))
 	}
 	
 	read: fun(mut self, destination: Span[u8]) -> Result[usize, IoError]
@@ -77,6 +79,18 @@ File: pub own rec impl Read + Write + Seek
 	}
 	
 	size: fun(imm self) -> Result[u64, IoError] => self.native.size()
+	
+	resize: fun(mut self, size: u64) -> Result[IoError]
+	{
+		if self.access is read || self.appending
+			ret err(IoError(permissionDenied, 0))
+		
+		if size > u64(i64.maxValue)
+			ret err(IoError(invalidInput, 0))
+		
+		ret self.native.resize(size)
+	}
+	
 	metadata: fun(imm self) -> Result[Metadata, IoError] => self.native.metadata()
 	
 	sync: fun(mut self) -> Result[IoError]

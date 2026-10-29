@@ -34,6 +34,13 @@ pvt ext
 	
 	CreateSymbolicLinkW: fun(link: ptr[u16], target: ptr[u16], flags: u32) -> u8
 	CreateHardLinkW: fun(link: ptr[u16], existing: ptr[u16], security: ptr) -> i32
+	GetTempPath2W: fun(length: u32, buffer: ptr[u16]) -> u32
+	GetEnvironmentVariableW: fun(name: ptr[u16], buffer: ptr[u16], size: u32) -> u32
+}
+
+pvt ext("userenv")
+{
+	GetUserProfileDirectoryW: fun(token: ptr, directory: ptr[u16], size: ptr[u32]) -> i32
 }
 
 pvt ext("ntdll")
@@ -150,6 +157,7 @@ alreadyExistsError: pvt const u32 = 183
 handleEndOfFile: pvt const u32 = 38
 invalidParameter: pvt const u32 = 87
 brokenPipe: pvt const u32 = 109
+insufficientBuffer: pvt const u32 = 122
 invalidName: pvt const u32 = 123
 negativeSeek: pvt const u32 = 131
 directoryNotEmptyError: pvt const u32 = 145
@@ -195,6 +203,7 @@ directoryLink: pvt const u32 = 0x1
 allowUnprivilegedLink: pvt const u32 = 0x2
 relativeLink: pvt const u32 = 0x1
 basicInfo: pvt const u32 = 0
+endOfFileInfo: pvt const u32 = 6
 fullDirectoryInfo: pvt const u32 = 14
 noMoreFiles: pvt const u32 = 18
 directoryOption: pvt const u32 = 0x1
@@ -495,6 +504,70 @@ canonicalPath[A: Allocator + noref]: mod fun(path: Path, alloc: A) -> Result[Pat
 		heap.release(units, Layout.arrayOf[u16](capacity))
 	
 	ret ok(result)
+}
+
+tempDirectoryPath: mod fun -> Result[PathBuffer, IoError] =>
+	queryWide(fun(units, capacity) => GetTempPath2W(capacity, units))
+
+homeDirectoryPath: mod fun -> Result[PathBuffer, IoError]
+{
+	// TODO: read USERPROFILE through std.process once it has environment variables
+	val variable: Path = "USERPROFILE"
+	val profile = withWidePath(variable, fun(name) =>
+		queryWide(fun(units, capacity) => GetEnvironmentVariableW(name, units, capacity)))
+	
+	if profile is ok(_)
+		ret profile
+	
+	ret queryWide(fun(units, capacity)
+	{
+		var size = capacity
+		if GetUserProfileDirectoryW(ptr(usize.maxValue - 3), units, @size) != 0
+			ret size - 1
+		
+		if GetLastError() == insufficientBuffer
+			ret size
+		
+		ret 0
+	})
+}
+
+queryWide: pvt fun(imm query: fun[ptr[u16], u32 -> u32]) -> Result[PathBuffer, IoError]
+{
+	var heap = Heap()
+	var buffer: array[u16, stackPathLength]
+	var units = ptr[u16](@buffer)
+	var onHeap = false
+	var capacity = stackPathLength
+	var length = query(units, u32(capacity))
+	while usize(length) >= capacity
+	{
+		if onHeap
+			heap.release(units, Layout.arrayOf[u16](capacity))
+		
+		capacity = usize(length) + 1
+		units = ptr[u16](heap.allocate(Layout.arrayOf[u16](capacity)))
+		if units == null
+			panic "out of memory"
+		
+		onHeap = true
+		length = query(units, u32(capacity))
+	}
+	
+	val code = GetLastError()
+	if length == 0
+	{
+		if onHeap
+			heap.release(units, Layout.arrayOf[u16](capacity))
+		
+		ret err(errorFrom(code))
+	}
+	
+	val path = pathFromWide(View[u16](units, usize(length)), Heap())
+	if onHeap
+		heap.release(units, Layout.arrayOf[u16](capacity))
+	
+	ret ok(path)
 }
 
 pathFromWide[A: Allocator + noref]: pvt fun(units: View[u16], alloc: A) -> PathBuffer[A]
@@ -1398,6 +1471,15 @@ NativeFile: mod rec
 	}
 	
 	metadata: fun(self) -> Result[Metadata, IoError] => metadataOfHandle(self.handle, true)
+	
+	resize: fun(self, size: u64) -> Result[IoError]
+	{
+		var end = i64(size)
+		if SetFileInformationByHandle(self.handle, endOfFileInfo, @end, u32(sizeOf(i64))) == 0
+			ret err(errorFrom(GetLastError()))
+		
+		ret ok
+	}
 	
 	sync: fun(self) -> Result[IoError]
 	{
