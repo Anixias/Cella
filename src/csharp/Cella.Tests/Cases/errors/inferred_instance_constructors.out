@@ -1,0 +1,27 @@
+Error at inferred_instance_constructors.ce:61:10
+60 │ {
+61 │     val a = Plain(5u8)
+                 ╘════════╛ No constructor for 'Plain[T]' accepts argument of type 'u8'
+
+Error at inferred_instance_constructors.ce:62:10
+61 │ val a = Plain(5u8)
+62 │ val b = Plain()
+             ╘═════╛ No constructor for 'Plain[T]' accepts these arguments
+
+Error at inferred_instance_constructors.ce:63:10
+62 │ val b = Plain()
+63 │ val c = Hidden(cstr("x"))
+             ╘═══════════════╛ 'new' is private to its impl block
+
+Error at inferred_instance_constructors.ce:64:10
+63 │ val c = Hidden(cstr("x"))
+64 │ val d = Pair(Opaque(1))
+             ╘══╛ 'new' requires 'V: Keyed'
+                | 'Opaque' doesn't implement 'Keyed'
+
+Error at inferred_instance_constructors.ce:65:25
+64 │ val d = Pair(Opaque(1))
+65 │ val e: Pair[u8, i32] = Pair(7)
+                            ╘═════╛ Cannot convert type 'Pair[bool]' to 'Pair[u8]'
+
+[compilation failed]

@@ -1,0 +1,88 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Wrap[T = u8]: rec
+{
+	value: T
+
+	new: op(value: T, extra: i32)
+	{
+		self.value = value
+	}
+}
+
+Wrap[u8]: impl
+{
+	new: op(text: cstr)
+	{
+		self.value = 1
+	}
+}
+
+Plain[T = u8]: rec
+{
+	value: T
+}
+
+Plain[u8]: impl
+{
+	new: op(text: cstr)
+	{
+		self.value = 2
+	}
+}
+
+Pair[K, V = i32]: rec
+{
+	key: K
+	value: V
+}
+
+Pair[bool, V]: impl
+{
+	new: op(value: V)
+	{
+		self.key = true
+		self.value = value
+	}
+}
+
+Pair[K, i64]: impl
+{
+	new: op(key: K, text: cstr)
+	{
+		self.key = key
+		self.value = 64
+	}
+}
+
+Holder[T]: rec
+{
+	value: T
+}
+
+Holder[Wrap[T]]: impl
+{
+	new: op(inner: T, flag: bool)
+	{
+		self.value = Wrap[T](inner, 0)
+	}
+}
+
+main: fun -> i32
+{
+	val wrap = Wrap(cstr("x"))
+	val plain = Plain(cstr("x"))
+	val pair = Pair(5u16)
+	val floating = Pair(3.5)
+	val expected: Pair[bool, u8] = Pair(7)
+	val keyed = Pair(9u32, cstr("y"))
+	val holder = Holder(4u16, true)
+	printf("%u %u %d %u %d %.1f\n", wrap.value, plain.value, pair.key, pair.value, floating.key, floating.value)
+	printf("%d %u %u %lld %u\n", expected.key, expected.value, keyed.key, keyed.value, holder.value.value)
+	ret 0
+}

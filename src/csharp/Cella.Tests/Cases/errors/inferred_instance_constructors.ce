@@ -1,0 +1,66 @@
+mod test
+
+Keyed: trait
+{
+	key: fun(imm self) -> i32
+}
+
+i32: impl Keyed
+{
+	key: fun(imm self) -> i32 => self
+}
+
+Plain[T = u8]: rec
+{
+	value: T
+}
+
+Plain[u8]: impl
+{
+	new: op(text: cstr)
+	{
+		self.value = 2
+	}
+}
+
+Hidden[T]: rec
+{
+	value: T
+}
+
+Hidden[u8]: impl
+{
+	new: pvt op(text: cstr)
+	{
+		self.value = 2
+	}
+}
+
+Pair[K, V = i32]: rec
+{
+	key: K
+	value: V
+}
+
+Pair[bool, V: Keyed]: impl
+{
+	new: op(value: V)
+	{
+		self.key = true
+		self.value = value
+	}
+}
+
+Opaque: rec
+{
+	x: i32
+}
+
+main: fun
+{
+	val a = Plain(5u8)
+	val b = Plain()
+	val c = Hidden(cstr("x"))
+	val d = Pair(Opaque(1))
+	val e: Pair[u8, i32] = Pair(7)
+}

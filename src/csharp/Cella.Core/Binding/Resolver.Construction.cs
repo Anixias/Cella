@@ -1,4 +1,5 @@
-﻿using Cella.Core.Binding.Conversions;
+﻿using System.Collections.Immutable;
+using Cella.Core.Binding.Conversions;
 using Cella.Core.Binding.Nodes;
 using Cella.Core.Symbols;
 using Cella.Core.Syntax.Nodes;
@@ -198,9 +199,11 @@ public sealed partial class Resolver
 	private IResolvedExpressionNode VisitInferredConstruction(CallExpressionNode node, RecordSymbol definition)
 	{
 		var constructors = _typePool.GetDeclaredConstructors(definition);
-		var accessible = constructors.Where(info => CanAccess(definition, info.Symbol.Visibility)).ToArray();
+		var accessible = constructors.Where(constructor => CanAccess(definition, constructor.Info.Symbol.Visibility))
+			.ToArray();
+		
 		ReceiverCallable[] unpacked =
-			[..accessible.Select(constructor => new ReceiverCallable(constructor, definition))];
+			[..accessible.Select(static constructor => new ReceiverCallable(constructor.Info, constructor.Owner))];
 		
 		if (RejectSpread(node, unpacked) is { } rejected)
 			return rejected;
@@ -210,7 +213,7 @@ public sealed partial class Resolver
 		var name = GetName(node.Target);
 		var location = node.Target.SourceLocation;
 		CallShape[] shapes = constructors.Count > 0
-			? [..callables.Select(callable => CreateShape(callable, definition.TypeParameters))]
+			? [..callables.Select(static callable => CreateShape(callable, GetOwnerParameters(callable.ReturnType)))]
 			: [CreateShape([..fields.Select(GetMemberType)], definition)];
 		
 		var args = ResolveArguments(Unspread(node.Arguments), shapes, out var isAmbiguous, Succeeds, Accepts);
@@ -256,12 +259,12 @@ public sealed partial class Resolver
 	}
 	
 	private IResolvedExpressionNode ResolveInferredConstructor(CallExpressionNode node, RecordSymbol definition,
-		string name, IResolvedExpressionNode[] args, IReadOnlyList<FunctionInfo> constructors,
-		FunctionInfo[] accessible, ReceiverCallable[] callables)
+		string name, IResolvedExpressionNode[] args, IReadOnlyList<(FunctionInfo Info, TypeSymbol Owner)> constructors,
+		(FunctionInfo Info, TypeSymbol Owner)[] accessible, ReceiverCallable[] callables)
 	{
 		if (accessible.Length == 0)
 			return Error(node, ReportHiddenMember(node.SourceLocation, "new",
-				constructors.Select(static info => info.Symbol)), CurrentTargetType);
+				constructors.Select(static constructor => constructor.Info.Symbol)), CurrentTargetType);
 		
 		var failures = new List<Diagnostic>();
 		var location = node.Target.SourceLocation;
@@ -288,8 +291,15 @@ public sealed partial class Resolver
 			.Take(callable.ParameterTypes.Length)
 			.Select((arg, i) => CreateInferenceInput(callable.ParameterTypes[i], callable.GetMode(i), arg));
 		
-		var result = _inference.Infer(definition.TypeParameters, inputs.OfType<InferenceInput>(), definition,
-			ExpectedType);
+		var owner = callable.ReturnType;
+		var parameters = GetOwnerParameters(owner);
+		var result = _inference.Infer(parameters, inputs.OfType<InferenceInput>(), owner, ExpectedType);
+		if (result.Succeeded)
+		{
+			var map = TypePool.CreateMap(parameters, result.Arguments);
+			result = new()
+				{ Arguments = [..owner.TypeArguments.Select(argument => _typePool.Substitute(argument, map))] };
+		}
 		
 		if (InstantiateInferred(result, definition, name, location, failures) is not { } instance)
 			return null;
@@ -306,6 +316,9 @@ public sealed partial class Resolver
 		
 		return new ReceiverCallable(info, instance, Repack(callable, info));
 	}
+	
+	private static ImmutableArray<TypeParameterSymbol> GetOwnerParameters(TypeSymbol owner) =>
+		[..TypePool.FindTypeParameters(owner).Distinct()];
 	
 	private NamedTypeSymbol? InstantiateInferred(InferenceResult result, NamedTypeSymbol definition, string name,
 		SourceLocation location, List<Diagnostic>? failures = null)

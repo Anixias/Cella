@@ -802,9 +802,37 @@ public sealed partial class TypePool
 			: FindConstructors(type, false);
 	}
 	
-	public IReadOnlyList<FunctionInfo> GetDeclaredConstructors(TypeSymbol type) => type is TypeParameterSymbol
-		? GetConstructors(type)
-		: FindConstructors(type, true);
+	public IReadOnlyList<(FunctionInfo Info, TypeSymbol Owner)> GetDeclaredConstructors(RecordSymbol definition) =>
+	[
+		..FindConstructors(definition, true).Select(info => (info, (TypeSymbol)definition)),
+		..GetInstanceBlockConstructors(definition)
+	];
+	
+	private IEnumerable<(FunctionInfo Info, TypeSymbol Owner)> GetInstanceBlockConstructors(RecordSymbol definition)
+	{
+		var arguments = GetShapeArguments(definition);
+		foreach (var block in _blockConstructors)
+		{
+			if (!IsBlockOf(block.Impl, definition) || BindBlock(block.Impl, arguments) is not null)
+				continue;
+			
+			var owner = Instantiate(definition, GetOpenTarget(block.Impl, definition));
+			if (BindBlock(block.Impl, GetShapeArguments(owner)) is { } bound)
+				yield return (InstantiateFunction(block.Info, bound), owner);
+		}
+	}
+	
+	private ImmutableArray<TypeSymbol> GetOpenTarget(ImplSymbol impl, RecordSymbol definition)
+	{
+		var slots = new Dictionary<TypeParameterSymbol, TypeSymbol>();
+		for (var i = 0; i < impl.TargetArguments.Length; i++)
+		{
+			if (impl.TargetArguments[i] is TypeParameterSymbol slot && !impl.NestedParameters.Contains(slot))
+				slots.TryAdd(slot, definition.TypeParameters[i]);
+		}
+		
+		return [..impl.TargetArguments.Select(argument => Substitute(argument, slots))];
+	}
 	
 	public IEnumerable<(FunctionInfo Constructor, DiagnosticText Violation)> FindUnmetConstructors(TypeSymbol type) =>
 		type is TypeParameterSymbol

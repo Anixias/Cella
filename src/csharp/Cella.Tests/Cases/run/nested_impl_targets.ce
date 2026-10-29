@@ -36,6 +36,12 @@ Map[K, V]: rec
 {
 	key: K
 	value: V
+
+	new: op(key: K, value: V)
+	{
+		self.key = key
+		self.value = value
+	}
 }
 
 Map[Text[S: Alloc], V]: impl
