@@ -1,0 +1,159 @@
+﻿mod std.text
+
+use std.[Hash, HashBuilder, Result, Shows, Span, View]
+use std.cmp.Eq
+use std.mem.[Allocator, Heap, Layout]
+
+NulError: pub rec
+{
+	position: usize
+}
+
+CString[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator = Heap]: pub own rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+	alloc: pvt req A
+	
+	isEmpty: get(imm self) -> bool => self.length == 0
+	
+	new: pvt op(data: ptr[T], length: usize, allocator: A)
+	{
+		self.data = data
+		self.length = length
+		self.alloc = allocator
+	}
+	
+	from: fun(text: str, allocator: A) -> Result[CString[E, A], NulError] =>
+		CString[E, A].from(Text[Utf8](View[u8](text.data, text.byteLength)), allocator)
+	
+	from[F: Encoding[U]]: fun(source: Text[F], allocator: A) -> Result[CString[E, A], NulError]
+	{
+		var alloc = allocator
+		val length = measure[F, E](source)
+		val data = allocateUnits(mut alloc, length + 1)
+		transcode[F, E](source, Span[T](data, length))
+		data[length] = T()
+		for i in 0..length
+		{
+			if data[i] == T()
+			{
+				alloc.release(data, Layout.arrayOf[T](length + 1))
+				ret err(NulError(i))
+			}
+		}
+		
+		ret ok(CString[E, A](data, length, alloc))
+	}
+	
+	drop: op
+	{
+		if self.data == null
+			ret
+		
+		self.alloc.release(self.data, Layout.arrayOf[T](self.length + 1))
+	}
+	
+	as: op(imm self) -> Text[E] => Text[E](View[T](self.data, self.length))
+	as: op(imm self) -> View[T] => View[T](self.data, self.length)
+	
+	chars: fun(imm self) -> CharCursor[E] => CharCursor[E](View[T](self.data, self.length))
+	
+	==[B: Allocator]: op(imm left: CString[E, A], imm right: CString[E, B]) -> bool
+	{
+		if left.length != right.length
+			ret false
+		
+		for i in 0..left.length
+		{
+			if left.data[i] != right.data[i]
+				ret false
+		}
+		
+		ret true
+	}
+	
+	!=[B: Allocator]: op(imm left: CString[E, A], imm right: CString[E, B]) -> bool => !(left == right)
+	
+	allocateUnits: pvt fun(mut alloc: A, length: usize) -> ptr[T]
+	{
+		val memory = alloc.allocate(Layout.arrayOf[T](length))
+		if memory == null
+			panic "out of memory"
+		
+		ret ptr[T](memory)
+	}
+}
+
+CString[E: Encoding[T: copy + Eq + default], A: Allocator + default]: impl
+{
+	from: fun(text: str) -> Result[CString[E, A], NulError] => CString[E, A].from(text, A())
+	
+	from[F: Encoding[U]]: fun(source: Text[F]) -> Result[CString[E, A], NulError] => CString[E, A].from(source, A())
+}
+
+CString[E: Encoding[T: copy + Eq + default], A: Allocator]: impl Eq
+{
+	==: op(imm left: CString[E, A], imm right: CString[E, A]) -> bool
+	{
+		if left.length != right.length
+			ret false
+		
+		for i in 0..left.length
+		{
+			if left.data[i] != right.data[i]
+				ret false
+		}
+		
+		ret true
+	}
+	
+	!=: op(imm left: CString[E, A], imm right: CString[E, A]) -> bool => !(left == right)
+}
+
+CString[E: Encoding[T: copy + Eq + default], A: Allocator]: impl Hash
+{
+	hash[H: HashBuilder]: fun(imm self, mut hashBuilder: H) =>
+		hashBuilder.writeBytes(...View[u8](ptr[u8](self.data), self.length * sizeOf(T)))
+}
+
+CString[Utf8, A: Allocator]: impl
+{
+	new: op(text: cstr, allocator: A)
+	{
+		var units = View[u8](null, 0)
+		if text != null
+			units = untilZero(ptr[u8](text))
+		
+		self.alloc = allocator
+		self.length = units.length
+		self.data = ptr[u8](self.alloc.allocate(Layout.arrayOf[u8](self.length + 1)))
+		if self.data == null
+			panic "out of memory"
+		
+		for i in 0..self.length
+			self.data[i] = units[i]
+		
+		self.data[self.length] = 0
+	}
+	
+	as: op(imm self) -> str => str(self.data, self.length)
+	as: op(imm self) -> cstr => cstr(ptr(self.data))
+}
+
+CString[Utf8, A: Allocator + default]: impl
+{
+	new: op(text: cstr)
+	{
+		self = CString[Utf8, A](text, A())
+	}
+}
+
+CString[Utf8, A: Allocator]: impl Shows[str]
+{
+	show[F: fun[imm str -> bool]]: fun(imm value: CString[Utf8, A], imm check: F) -> bool
+	{
+		val text: str = value
+		ret check(imm text)
+	}
+}
