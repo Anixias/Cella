@@ -1,0 +1,41 @@
+mod test
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+Fixed[T, U = i32]: rec
+{
+	value: T
+	extra: U
+
+	new: op(value: T, extra: U)
+	{
+		self.value = value
+		self.extra = extra
+	}
+}
+
+Builder[T]: rec
+{
+	value: T
+
+	new: op(self) -> Fixed[T, i64] => Fixed[T, i64](self.value, 64)
+}
+
+Shown[T: copy]: rec
+{
+	value: T
+
+	as: op(imm self) -> Fixed[T] => Fixed(self.value, 32)
+}
+
+main: fun -> i32
+{
+	val built = Fixed(Builder(5u8))
+	val shown = Fixed(Shown(7))
+	val direct = Fixed(9, 1)
+	printf("%u %lld %d %d %d %d\n", built.value, built.extra, shown.value, shown.extra, direct.value, direct.extra)
+	ret 0
+}

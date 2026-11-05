@@ -1,0 +1,169 @@
+﻿mod std.text
+
+use std.[Result, Span, View]
+use std.cmp.Eq
+use std.fmt.[Display, TextWrite, writeTemplate]
+use std.io.IoError
+use std.mem.[Allocator, Heap, Layout]
+
+StringBuffer[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator = Heap]: pub own rec
+{
+	data: pvt ptr[T]
+	length: pvt set usize
+	capacity: pvt set usize
+	alloc: pvt req A
+	
+	isEmpty: get(imm self) -> bool => self.length == 0
+	
+	new: op(allocator: A)
+	{
+		self.alloc = allocator
+	}
+	
+	drop: op
+	{
+		if self.data == null
+			ret
+		
+		self.alloc.release(self.data, Layout.arrayOf[T](self.capacity))
+	}
+	
+	withCapacity: fun(capacity: usize, allocator: A) -> StringBuffer[E, A]
+	{
+		var buffer = StringBuffer[E, A](allocator)
+		buffer.reserve(capacity)
+		ret buffer
+	}
+	
+	reserve: fun(mut self, additional: usize)
+	{
+		val needed = self.length + additional
+		if needed <= self.capacity
+			ret
+		
+		var newCapacity = self.capacity * 2
+		if newCapacity < needed
+			newCapacity = needed
+		
+		val newLayout = Layout.arrayOf[T](newCapacity)
+		val memory = match self.data == null
+		{
+			true => self.alloc.allocate(newLayout)
+			else => self.alloc.resize(self.data, Layout.arrayOf[T](self.capacity), newLayout.size)
+		}
+		
+		if memory == null
+			panic "out of memory"
+		
+		self.data = ptr[T](memory)
+		self.capacity = newCapacity
+	}
+	
+	clear: fun(mut self) => self.length = 0
+	
+	truncate: fun(mut self, length: usize)
+	{
+		if length > self.length
+			panic "index out of bounds"
+		
+		var read: usize = 0
+		while read < length
+		{
+			var codePoint: char
+			var count: usize
+			E.tryDecode(View[T](self.data + read, self.length - read), mut codePoint, mut count)
+			read += count
+		}
+		
+		if read != length
+			panic "not a character boundary"
+		
+		self.length = length
+	}
+	
+	add: fun(mut self, character: char)
+	{
+		val needed = E.lengthOf(character)
+		self.reserve(needed)
+		E.encode(character, Span[T](self.data + self.length, needed))
+		self.length += needed
+	}
+	
+	add: fun(mut self, text: fstr[Display])
+	{
+		writeTemplate(mut self, text, false)
+	}
+	
+	terminated: mod fun(self) -> CString[E, A]
+	{
+		var data = own self.data
+		val length = own self.length
+		val capacity = own self.capacity
+		var alloc = own self.alloc
+		val layout = Layout.arrayOf[T](length + 1)
+		val memory = match data == null
+		{
+			true => alloc.allocate(layout)
+			else => alloc.resize(data, Layout.arrayOf[T](capacity), layout.size)
+		}
+		
+		if memory == null
+			panic "out of memory"
+		
+		data = ptr[T](memory)
+		data[length] = T()
+		ret CString[E, A](data, length, alloc)
+	}
+	
+	as: op(imm self) -> Text[E] => Text[E](View[T](self.data, self.length))
+	as: op(imm self) -> View[T] => View[T](self.data, self.length)
+	
+	new: op(self) -> String[E, A]
+	{
+		var data = own self.data
+		val length = own self.length
+		val capacity = own self.capacity
+		var alloc = own self.alloc
+		if data != null && length == 0
+		{
+			alloc.release(data, Layout.arrayOf[T](capacity))
+			data = null
+		}
+		else if data != null && length != capacity
+		{
+			data = ptr[T](alloc.resize(data, Layout.arrayOf[T](capacity), Layout.arrayOf[T](length).size))
+			if data == null
+				panic "out of memory"
+		}
+		
+		ret String[E, A](data, length, alloc)
+	}
+}
+
+StringBuffer[E: Encoding[T: copy + Eq + default], A: Allocator + default]: impl
+{
+	new: op
+	{
+		self = StringBuffer[E, A](A())
+	}
+	
+	withCapacity: fun(capacity: usize) -> StringBuffer[E, A] => StringBuffer[E, A].withCapacity(capacity, A())
+}
+
+StringBuffer[E: Encoding[T: copy + Eq + default], A: Allocator]: impl TextWrite
+{
+	write: fun(mut self, text: str) -> Result[IoError]
+	{
+		val needed = measure[Utf8, E](text)
+		self.reserve(needed)
+		transcode[Utf8, E](text, Span[T](self.data + self.length, needed))
+		self.length += needed
+		ret ok
+	}
+	
+	write: fun(mut self, character: char) -> Result[IoError]
+	{
+		self.add(character)
+		ret ok
+	}
+}

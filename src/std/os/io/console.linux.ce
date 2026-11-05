@@ -1,0 +1,60 @@
+﻿mod std.io
+
+use when linux
+
+use std.[Result, Span, View]
+use std.io.IoError
+
+pvt ext
+{
+	writeDescriptor: ext("write") fun(descriptor: i32, data: ptr, count: usize) -> isize
+	readDescriptor: ext("read") fun(descriptor: i32, data: ptr, count: usize) -> isize
+	errorLocation: ext("__errno_location") fun -> ptr[i32]
+}
+
+interrupted: pvt const u32 = 4
+
+descriptorOf: pvt fun(stream: Stream) -> i32 => match stream
+{
+	input => 0
+	output => 1
+	error => 2
+}
+
+lastError: pvt fun -> u32 => u32(*errorLocation())
+
+writeAll: mod fun(stream: Stream, data: View[u8]) -> Result[IoError]
+{
+	val descriptor = descriptorOf(stream)
+	var rest = data
+	while !rest.isEmpty
+	{
+		val written = writeDescriptor(descriptor, rest.data, rest.length)
+		if written < 0
+		{
+			val code = lastError()
+			if code == interrupted
+				cont
+			
+			ret err(IoError(other, code))
+		}
+		
+		rest = rest.slice(usize(written), rest.length)
+	}
+	
+	ret ok
+}
+
+readInput: mod fun(destination: Span[u8]) -> Result[usize, IoError]
+{
+	loop
+	{
+		val read = readDescriptor(descriptorOf(input), destination.data, destination.length)
+		if read >= 0
+			ret ok(usize(read))
+		
+		val code = lastError()
+		if code != interrupted
+			ret err(IoError(other, code))
+	}
+}

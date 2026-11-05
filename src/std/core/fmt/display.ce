@@ -1,0 +1,27 @@
+﻿mod std.fmt
+
+use std.Result
+use std.io.IoError
+
+Display: pub trait
+{
+	alignment: get(imm self) -> Align => left
+	
+	display: fun(imm self, mut out: Formatter) -> Result[IoError]
+}
+
+Formatter: pub ref rec impl TextWrite
+{
+	spec: pvt set Spec
+	out: pvt mut[dyn[TextWrite]]
+	
+	new: op(mut out: dyn[TextWrite], spec: Spec)
+	{
+		self.spec = spec
+		self.out = mut out
+	}
+	
+	write: fun(mut self, text: str) -> Result[IoError] => self.out.write(text)
+	write: fun(mut self, character: char) -> Result[IoError] => self.out.write(character)
+	write: fun(mut self, text: fstr[Display]) -> Result[IoError] => format(mut self.out, text)
+}

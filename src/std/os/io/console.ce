@@ -1,0 +1,213 @@
+﻿mod std.io
+
+use std.[Option, Result, Span, View]
+use std.containers.List
+use std.fmt.[Display, TextWrite, format]
+use std.io.[IoError, Read, Write]
+use std.mem.[Allocator, Heap]
+use std.text.[String, StringBuffer, Utf8]
+
+inputCapacity: mod const usize = 4096
+chunkCapacity: pvt const usize = 1024
+
+// TODO reconsider exposing the console handles as variables
+stdin: pub var Stdin = Stdin()
+stdout: pub var Stdout = Stdout()
+stderr: pub var Stderr = Stderr()
+
+input: pvt var InputBuffer = InputBuffer()
+
+Stream: mod enum
+{
+	input
+	output
+	error
+}
+
+Stdin: pub rec impl Read
+{
+	new: mod op = default
+	
+	readLine: fun(self) -> Result[Option[String], IoError] => self.readLine(Heap())
+	
+	readLine[A: Allocator + noref]: fun(self, alloc: A) -> Result[Option[String[Utf8, A]], IoError]
+	{
+		var line = List[u8]()
+		var hasData = false
+		loop
+		{
+			if input.start == input.end && fillInput()? == 0
+				break
+			
+			hasData = true
+			var end = input.start
+			while end < input.end && input.units[end] != '\n'u8
+				end += 1
+			
+			line.addAll(View[u8](@input.units[input.start], end - input.start))
+			if end < input.end
+			{
+				input.start = end + 1
+				ret ok(some(finishLine(imm line, true, alloc)))
+			}
+			
+			input.start = end
+		}
+		
+		if !hasData
+			ret ok(none)
+		
+		ret ok(some(finishLine(imm line, false, alloc)))
+	}
+	
+	read: fun(mut self, destination: Span[u8]) -> Result[usize, IoError]
+	{
+		if destination.isEmpty || input.start == input.end && fillInput()? == 0
+			ret ok(0)
+		
+		var count = input.end - input.start
+		if count > destination.length
+			count = destination.length
+		
+		for i in 0..count
+			destination[i] = input.units[input.start + i]
+		
+		input.start += count
+		ret ok(count)
+	}
+}
+
+Stdout: pub rec impl TextWrite + Write
+{
+	new: mod op = default
+	
+	print: fun(self, text: fstr[Display]) -> Result[IoError] => printTo(output, text, false)
+	printLine: fun(self, text: fstr[Display]) -> Result[IoError] => printTo(output, text, true)
+	
+	write: fun(mut self, text: str) -> Result[IoError] => writeAll(output, View[u8](text.data, text.byteLength))
+	
+	write: fun(mut self, data: View[u8]) -> Result[usize, IoError]
+	{
+		writeAll(output, data)?
+		ret ok(data.length)
+	}
+}
+
+Stderr: pub rec impl TextWrite + Write
+{
+	new: mod op = default
+	
+	print: fun(self, text: fstr[Display]) -> Result[IoError] => printTo(error, text, false)
+	printLine: fun(self, text: fstr[Display]) -> Result[IoError] => printTo(error, text, true)
+	
+	write: fun(mut self, text: str) -> Result[IoError] => writeAll(error, View[u8](text.data, text.byteLength))
+	
+	write: fun(mut self, data: View[u8]) -> Result[usize, IoError]
+	{
+		writeAll(error, data)?
+		ret ok(data.length)
+	}
+}
+
+InputBuffer: pvt rec
+{
+	units: array[u8, inputCapacity]
+	start: usize
+	end: usize
+}
+
+ConsoleWriter: pvt rec impl TextWrite
+{
+	stream: Stream
+	units: array[u8, chunkCapacity]
+	length: usize
+	
+	new: op(stream: Stream)
+	{
+		self.stream = stream
+	}
+	
+	write: fun(mut self, text: str) -> Result[IoError]
+	{
+		var rest = View[u8](text.data, text.byteLength)
+		while !rest.isEmpty
+		{
+			val room = chunkCapacity - self.length
+			if rest.length <= room
+			{
+				self.append(rest)
+				ret ok
+			}
+			
+			var cut = room
+			while cut > 0 && rest[cut] & 0xC0 == 0x80
+				cut -= 1
+			
+			if cut == 0 && self.length == 0
+				cut = room
+			
+			self.append(rest.slice(0, cut))
+			self.flush()?
+			rest = rest.slice(cut, rest.length)
+		}
+		
+		ret ok
+	}
+	
+	append: fun(mut self, bytes: View[u8])
+	{
+		for i in 0..bytes.length
+			self.units[self.length + i] = bytes[i]
+		
+		self.length += bytes.length
+	}
+	
+	flush: fun(mut self) -> Result[IoError]
+	{
+		if self.length == 0
+			ret ok
+		
+		val count = self.length
+		self.length = 0
+		ret writeAll(self.stream, View[u8](@self.units, count))
+	}
+}
+
+print: pub fun(text: fstr[Display]) -> Result[IoError] => stdout.print(text)
+
+printLine: pub fun(text: fstr[Display]) -> Result[IoError] => stdout.printLine(text)
+
+readLine: pub fun -> Result[Option[String], IoError] => stdin.readLine()
+
+readLine[A: Allocator + noref]: pub fun(alloc: A) -> Result[Option[String[Utf8, A]], IoError] =>
+	stdin.readLine(alloc)
+
+printTo: pvt fun(stream: Stream, text: fstr[Display], isLine: bool) -> Result[IoError]
+{
+	var writer = ConsoleWriter(stream)
+	format(mut writer, text)?
+	if isLine
+		writer.write("\n")?
+	
+	ret writer.flush()
+}
+
+fillInput: pvt fun -> Result[usize, IoError]
+{
+	input.start = 0
+	input.end = 0
+	val count = readInput(Span[u8](@input.units, inputCapacity))?
+	input.end = count
+	ret ok(count)
+}
+
+finishLine[A: Allocator + noref]: pvt fun(imm line: List[u8], hasNewline: bool, alloc: A) -> String[Utf8, A]
+{
+	var bytes: View[u8] = line
+	if hasNewline && !bytes.isEmpty && bytes[bytes.length - 1] == '\r'u8
+		bytes = bytes.slice(0, bytes.length - 1)
+	
+	var buffer = StringBuffer[Utf8, A](alloc)
+	buffer.write(str(bytes.data, bytes.length))
+	ret String[Utf8, A](buffer)
+}

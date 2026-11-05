@@ -1,0 +1,17 @@
+﻿mod std.fmt
+
+use std.Result
+use std.io.IoError
+use std.text.Utf8
+
+TextWrite: pub trait
+{
+	write: fun(mut self, text: str) -> Result[IoError]
+	
+	write: fun(mut self, character: char) -> Result[IoError]
+	{
+		var units: array[u8, 4]
+		val length = Utf8.encode(character, mut units)
+		ret self.write(str(@units, length))
+	}
+}

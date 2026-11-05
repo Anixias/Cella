@@ -20,7 +20,7 @@ String[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator = Heap]: pub own
 		transcode[Utf8, E](text, Span[T](self.data, self.length))
 	}
 	
-	new: pvt op(data: ptr[T], length: usize, allocator: A)
+	new: mod op(data: ptr[T], length: usize, allocator: A)
 	{
 		self.data = data
 		self.length = length

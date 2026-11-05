@@ -286,18 +286,21 @@ public sealed partial class Resolver
 	}
 	
 	private List<FunctionInfo> FindOutwardConversions(TypeSymbol type, ParameterMode use, TypeSymbol target,
-		bool isExplicit)
+		bool isExplicit) => FindOutwardConversions(type, use, isExplicit,
+		result => Produces(result, target, use == ParameterMode.Mut));
+
+	private List<FunctionInfo> FindOutwardConversions(TypeSymbol type, ParameterMode use, bool isExplicit,
+		Func<TypeSymbol, bool> produces)
 	{
 		if (type is UntypedType)
 			return [];
-		
+
 		var matching = GetMethods(type, "as")
 			.Concat(isExplicit ? GetMethods(type, "new") : [])
 			.Where(method => method.Function is { IsConversion: true, Kind: FunctionKind.Method } &&
 			                 CanAccess(type, method.Function))
 			.Select(method => GetFunctionInfo(method, type))
-			.Where(info => info.Signature.ParameterTypes.Length == 1 &&
-			               Produces(info.Signature.ReturnType, target, use == ParameterMode.Mut))
+			.Where(info => info.Signature.ParameterTypes.Length == 1 && produces(info.Signature.ReturnType))
 			.ToList();
 		
 		ParameterMode[] modes = use == ParameterMode.Mut
@@ -342,10 +345,20 @@ public sealed partial class Resolver
 	private ConversionCallable[] FindConversionCallables(IReadOnlyList<IResolvedExpressionNode> args,
 		TypeSymbol target)
 	{
-		if (args is not [var arg] || IsInvalid(arg) || IsInvalid(target) ||
-		    target is NamedTypeSymbol { IsGenericDefinition: true })
+		if (args is not [var arg] || IsInvalid(arg) || IsInvalid(target))
 			return [];
-		
+
+		if (target is NamedTypeSymbol { IsGenericDefinition: true } definition)
+			return arg is ResolvedMutArgumentExpressionNode
+				? []
+				:
+				[
+					..FindOutwardConversions(Decay(arg is ResolvedOwnExpressionNode own ? own.Value : arg).Type,
+							ParameterMode.Value, true,
+							result => result != definition && result.OriginalDefinition == definition)
+						.Select(static info => new ConversionCallable(info, info.Signature.ReturnType))
+				];
+
 		if (arg is ResolvedMutArgumentExpressionNode argument)
 			return
 			[

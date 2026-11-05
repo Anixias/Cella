@@ -1,0 +1,15 @@
+mod test
+
+use lib.first.[Wrapper, twice]
+
+ext
+{
+	printf: fun(format: cstr, ...) -> i32
+}
+
+main: fun -> i32
+{
+	val wrapper = Wrapper(1u8)
+	printf("%d %d\n", wrapper.doubled(), twice(1.5))
+	ret 0
+}

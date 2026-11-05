@@ -1,0 +1,108 @@
+﻿mod std.fmt
+
+use std.Result
+use std.io.IoError
+use std.mem.[Allocator, Heap]
+use std.text.[String, StringBuffer, Utf8]
+
+format: pub fun(mut out: dyn[TextWrite], text: fstr[Display]) -> Result[IoError] => writeTemplate(mut out, text, true)
+
+format: pub fun(text: fstr[Display]) -> String => format(text, Heap())
+
+format[A: Allocator + noref]: pub fun(text: fstr[Display], alloc: A) -> String[Utf8, A]
+{
+	var buffer = StringBuffer[Utf8, A](alloc)
+	buffer.add(text)
+	ret String[Utf8, A](buffer)
+}
+
+format[T: Display]: pub fun(imm value: T, spec: str = "") -> String => format(imm value, spec, Heap())
+
+format[T: Display + copy]: pub fun(value: T, spec: str = "") -> String => format(imm value, spec, Heap())
+
+format[T: Display, A: Allocator + noref]: pub fun(imm value: T, spec: str, alloc: A) -> String[Utf8, A]
+{
+	var buffer = StringBuffer[Utf8, A](alloc)
+	writeValue(mut buffer, imm value, spec)
+	ret String[Utf8, A](buffer)
+}
+
+format[T: Display + copy, A: Allocator + noref]: pub fun(value: T, spec: str, alloc: A) -> String[Utf8, A] =>
+	format(imm value, spec, alloc)
+
+CharCounter: pvt rec impl TextWrite
+{
+	count: usize
+	
+	write: fun(mut self, text: str) -> Result[IoError]
+	{
+		for _ in text.chars()
+			self.count += 1
+		
+		ret ok
+	}
+	
+	write: fun(mut self, character: char) -> Result[IoError]
+	{
+		self.count += 1
+		ret ok
+	}
+}
+
+writeValue: pvt fun(mut out: dyn[TextWrite], imm value: dyn[Display], text: str) -> Result[IoError]
+{
+	val spec = Spec(text)
+	if !spec.width.hasValue
+	{
+		var formatter = Formatter(mut out, spec)
+		ret value.display(mut formatter)
+	}
+	
+	val width = spec.width.unwrap()
+	
+	var counter = CharCounter(0)
+	{
+		var measuring = Formatter(mut counter, spec)
+		value.display(mut measuring)?
+	}
+	
+	if counter.count >= width
+	{
+		var formatter = Formatter(mut out, spec)
+		ret value.display(mut formatter)
+	}
+	
+	val padding = width - counter.count
+	val before = match spec.align.valueOr(value.alignment)
+	{
+		left => 0
+		right => padding
+		center => padding / 2
+	}
+	
+	writeFill(mut out, spec.fill, before)?
+	var formatter = Formatter(mut out, spec)
+	value.display(mut formatter)?
+	ret writeFill(mut out, spec.fill, padding - before)
+}
+
+writeTemplate: fun(mut out: dyn[TextWrite], text: fstr[Display], stopsAtFailures: bool) -> Result[IoError]
+{
+	for i in 0..text.holes
+	{
+		out.write(text.piece(i))?
+		val written = writeValue(mut out, text.value(i), text.spec(i))
+		if stopsAtFailures
+			written?
+	}
+	
+	ret out.write(text.piece(text.holes))
+}
+
+writeFill: pvt fun(mut out: dyn[TextWrite], fill: char, count: usize) -> Result[IoError]
+{
+	for _ in 0..count
+		out.write(fill)?
+	
+	ret ok
+}

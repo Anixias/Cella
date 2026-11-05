@@ -1,0 +1,168 @@
+﻿mod std.fmt
+
+use std.[Option, View]
+use std.text.Utf8
+
+Align: pub enum
+{
+	left
+	right
+	center
+}
+
+Sign: pub enum
+{
+	negativeOnly
+	always
+	space
+}
+
+Spec: pub ref rec
+{
+	text: pvt set str
+	isStandard: pvt set bool
+	fill: pvt set char
+	align: pvt set Option[Align]
+	sign: pvt set Sign
+	isAlternate: pvt set bool
+	isZeroPadded: pvt set bool
+	width: pvt set Option[usize]
+	precision: pvt set Option[usize]
+	kind: pvt set str
+	
+	new: op(text: str)
+	{
+		self.text = text
+		self.fill = ' '
+		self.kind = ""
+		self.isStandard = self.parse()
+		if !self.isStandard
+		{
+			self.fill = ' '
+			self.align = none
+			self.sign = negativeOnly
+			self.isAlternate = false
+			self.isZeroPadded = false
+			self.width = none
+			self.precision = none
+			self.kind = ""
+		}
+	}
+	
+	parse: pvt fun(mut self) -> bool
+	{
+		val bytes = View[u8](self.text.data, self.text.byteLength)
+		var position: usize = 0
+		var first: char
+		var firstLength: usize
+		if Utf8.tryDecode(bytes, mut first, mut firstLength) && firstLength < bytes.length &&
+			alignmentOf(bytes[firstLength]) is some(val fillAlign)
+		{
+			self.fill = first
+			self.align = some(fillAlign)
+			position = firstLength + 1
+		}
+		else if !bytes.isEmpty && alignmentOf(bytes[0]) is some(val align)
+		{
+			self.align = some(align)
+			position = 1
+		}
+		
+		if position < bytes.length
+		{
+			match bytes[position]
+			{
+				'+'u8 =>
+				{
+					self.sign = always
+					position += 1
+				}
+				'-'u8 =>
+				{
+					self.sign = negativeOnly
+					position += 1
+				}
+				' 'u8 =>
+				{
+					self.sign = space
+					position += 1
+				}
+				else =>
+				{
+				}
+			}
+		}
+		
+		if position < bytes.length && bytes[position] == '#'u8
+		{
+			self.isAlternate = true
+			position += 1
+		}
+		
+		if position < bytes.length && bytes[position] == '0'u8
+		{
+			self.isZeroPadded = true
+			position += 1
+		}
+		
+		if position < bytes.length && isDigit(bytes[position])
+		{
+			if readNumber(bytes, mut position) is some(val width)
+				self.width = some(width)
+			else
+				ret false
+		}
+		
+		if position < bytes.length && bytes[position] == '.'u8
+		{
+			position += 1
+			if position >= bytes.length || !isDigit(bytes[position])
+				ret false
+			
+			if readNumber(bytes, mut position) is some(val precision)
+				self.precision = some(precision)
+			else
+				ret false
+		}
+		
+		val kindStart = position
+		while position < bytes.length
+		{
+			if !isLetter(bytes[position])
+				ret false
+			
+			position += 1
+		}
+		
+		self.kind = str(self.text.data + kindStart, bytes.length - kindStart)
+		ret true
+	}
+}
+
+alignmentOf: pvt fun(byte: u8) -> Option[Align] => match byte
+{
+	'<'u8 => some(left)
+	'>'u8 => some(right)
+	'^'u8 => some(center)
+	else => none
+}
+
+isDigit: pvt fun(byte: u8) -> bool => byte >= '0'u8 && byte <= '9'u8
+
+isLetter: pvt fun(byte: u8) -> bool => byte >= 'a'u8 && byte <= 'z'u8 || byte >= 'A'u8 && byte <= 'Z'u8
+
+readNumber: pvt fun(bytes: View[u8], mut position: usize) -> Option[usize]
+{
+	var value: usize = 0
+	while position < bytes.length && isDigit(bytes[position])
+	{
+		val digit = usize(bytes[position] - '0'u8)
+		if value > (usize.maxValue - digit) / 10
+			ret none
+		
+		value = value * 10 + digit
+		position += 1
+	}
+	
+	ret some(value)
+}

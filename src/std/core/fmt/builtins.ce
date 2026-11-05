@@ -1,0 +1,291 @@
+﻿mod std.fmt
+
+use std.[Result, View]
+use std.cmp.Eq
+use std.io.IoError
+use std.mem.Allocator
+use std.text.[CString, Encoding, String, Text, Utf8, untilZero]
+
+i8: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeSigned(mut out, i128(self))
+}
+
+i16: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeSigned(mut out, i128(self))
+}
+
+i32: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeSigned(mut out, i128(self))
+}
+
+i64: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeSigned(mut out, i128(self))
+}
+
+i128: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeSigned(mut out, self)
+}
+
+isize: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeSigned(mut out, i128(self))
+}
+
+u8: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeInteger(mut out, u128(self), false)
+}
+
+u16: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeInteger(mut out, u128(self), false)
+}
+
+u32: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeInteger(mut out, u128(self), false)
+}
+
+u64: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeInteger(mut out, u128(self), false)
+}
+
+u128: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeInteger(mut out, self, false)
+}
+
+usize: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeInteger(mut out, u128(self), false)
+}
+
+bool: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeLimited(mut out, match self
+	{
+		true => "true"
+		else => "false"
+	})
+}
+
+char: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => out.write(self)
+}
+
+str: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeLimited(mut out, self)
+}
+
+cstr: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError]
+	{
+		if self == null
+			ret ok
+		
+		val bytes = untilZero(ptr[u8](self))
+		ret writeLimited(mut out, str(bytes.data, bytes.length))
+	}
+}
+
+ptr: impl Display
+{
+	alignment: get(imm self) -> Align => right
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeAddress(mut out, usize(self))
+}
+
+Text[E: Encoding[T]]: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeText[E](mut out, self)
+}
+
+String[E: Encoding[T: copy + Eq + default], A: Allocator]: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeText[E](mut out, self)
+}
+
+CString[E: Encoding[T: copy + Eq + default], A: Allocator]: impl Display
+{
+	display: fun(imm self, mut out: Formatter) -> Result[IoError] => writeText[E](mut out, self)
+}
+
+writeSigned: pvt fun(mut out: Formatter, value: i128) -> Result[IoError] => match value < 0
+{
+	true => writeInteger(mut out, u128(-(value + 1)) + 1, true)
+	else => writeInteger(mut out, u128(value), false)
+}
+
+writeInteger: pvt fun(mut out: Formatter, magnitude: u128, isNegative: bool) -> Result[IoError]
+{
+	val spec = imm out.spec
+	val radix: u64 = match spec.kind
+	{
+		"x", "X" => 16
+		"b" => 2
+		"o" => 8
+		else => 10
+	}
+	
+	var digits: array[u8, 128]
+	var count: usize = 0
+	var wide = magnitude
+	while wide > u128(u64.maxValue)
+	{
+		digits[count] = digitOf(u64(wide % u128(radix)), spec.kind)
+		wide /= u128(radix)
+		count += 1
+	}
+	
+	var narrow = u64(wide)
+	loop
+	{
+		digits[count] = digitOf(narrow % radix, spec.kind)
+		narrow /= radix
+		count += 1
+		if narrow == 0
+			break
+	}
+	
+	var text: array[u8, 160]
+	var length: usize = 0
+	if isNegative
+	{
+		text[0] = '-'u8
+		length = 1
+	}
+	else if spec.sign is always
+	{
+		text[0] = '+'u8
+		length = 1
+	}
+	else if spec.sign is space
+	{
+		text[0] = ' 'u8
+		length = 1
+	}
+	
+	if spec.isAlternate && radix != 10
+	{
+		text[length] = '0'u8
+		text[length + 1] = match spec.kind
+		{
+			"X" => 'X'u8
+			"b" => 'b'u8
+			"o" => 'o'u8
+			else => 'x'u8
+		}
+		
+		length += 2
+	}
+	
+	if spec.isZeroPadded && spec.width is some(val width) && width > length + count
+	{
+		var zeros = width - length - count
+		if zeros > text.length - length - count
+			zeros = text.length - length - count
+		
+		for _ in 0..zeros
+		{
+			text[length] = '0'u8
+			length += 1
+		}
+	}
+	
+	for i in 0..count
+		text[length + i] = digits[count - 1 - i]
+	
+	ret out.write(str(@text, length + count))
+}
+
+digitOf: pvt fun(digit: u64, kind: str) -> u8
+{
+	if digit < 10
+		ret '0'u8 + u8(digit)
+	
+	if kind == "X"
+		ret 'A'u8 + u8(digit - 10)
+	
+	ret 'a'u8 + u8(digit - 10)
+}
+
+writeAddress: pvt fun(mut out: Formatter, address: usize) -> Result[IoError]
+{
+	var text: array[u8, 18]
+	text[0] = '0'u8
+	text[1] = 'x'u8
+	var digits: array[u8, 16]
+	var count: usize = 0
+	var rest = address
+	loop
+	{
+		digits[count] = digitOf(u64(rest % 16), "x")
+		rest /= 16
+		count += 1
+		if rest == 0
+			break
+	}
+	
+	for i in 0..count
+		text[2 + i] = digits[count - 1 - i]
+	
+	ret out.write(str(@text, 2 + count))
+}
+
+writeLimited: pvt fun(mut out: Formatter, text: str) -> Result[IoError]
+{
+	if !out.spec.precision.hasValue
+		ret out.write(text)
+	
+	val limit = out.spec.precision.unwrap()
+	
+	val bytes = View[u8](text.data, text.byteLength)
+	var end: usize = 0
+	var taken: usize = 0
+	while end < bytes.length && taken < limit
+	{
+		var codePoint: char
+		var count: usize
+		Utf8.tryDecode(bytes.slice(end, bytes.length), mut codePoint, mut count)
+		end += count
+		taken += 1
+	}
+	
+	ret out.write(str(text.data, end))
+}
+
+writeText[E: Encoding[T]]: pvt fun(mut out: Formatter, text: Text[E]) -> Result[IoError]
+{
+	val limit = out.spec.precision.valueOr(usize.maxValue)
+	var taken: usize = 0
+	for character in text.chars()
+	{
+		if taken == limit
+			break
+		
+		out.write(character)?
+		taken += 1
+	}
+	
+	ret ok
+}

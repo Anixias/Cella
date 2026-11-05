@@ -218,7 +218,7 @@ public sealed partial class CodeGenerator
 		{
 			Import(value, function.Symbol);
 		}
-		else if (function.Symbol.Visibility != Visibility.Public)
+		else if (function.Symbol.Visibility != Visibility.Public && !IsExported(function.Symbol))
 		{
 			value.Visibility = LLVMVisibility.LLVMHiddenVisibility;
 		}

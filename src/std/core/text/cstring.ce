@@ -17,7 +17,7 @@ CString[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator = Heap]: pub ow
 	
 	isEmpty: get(imm self) -> bool => self.length == 0
 	
-	new: pvt op(data: ptr[T], length: usize, allocator: A)
+	new: mod op(data: ptr[T], length: usize, allocator: A)
 	{
 		self.data = data
 		self.length = length
@@ -44,6 +44,18 @@ CString[E: Encoding[T: copy + Eq + default] = Utf8, A: Allocator = Heap]: pub ow
 		}
 		
 		ret ok(CString[E, A](data, length, alloc))
+	}
+	
+	from: fun(buffer: StringBuffer[E, A]) -> Result[CString[E, A], NulError]
+	{
+		val units: View[T] = buffer
+		for i in 0..units.length
+		{
+			if units[i] == T()
+				ret err(NulError(i))
+		}
+		
+		ret ok(buffer.terminated())
 	}
 	
 	drop: op

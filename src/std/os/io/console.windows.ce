@@ -1,0 +1,164 @@
+﻿mod std.io
+
+use when windows
+
+use std.[Result, Span, View]
+use std.io.IoError
+use std.text.[Utf16, Utf8, transcode]
+
+pvt ext
+{
+	GetStdHandle: fun(kind: u32) -> ptr
+	GetConsoleMode: fun(console: ptr, mode: ptr[u32]) -> i32
+	WriteConsoleW: fun(console: ptr, buffer: ptr[u16], count: u32, written: ptr[u32], reserved: ptr) -> i32
+	ReadConsoleW: fun(console: ptr, buffer: ptr[u16], count: u32, read: ptr[u32], control: ptr) -> i32
+	WriteFile: fun(file: ptr, buffer: ptr, count: u32, written: ptr[u32], overlapped: ptr) -> i32
+	ReadFile: fun(file: ptr, buffer: ptr, count: u32, read: ptr[u32], overlapped: ptr) -> i32
+	GetLastError: fun -> u32
+	ExitProcess: fun(code: u32) -> never
+}
+
+inputHandle: pvt const u32 = 0xFFFFFFF6
+outputHandle: pvt const u32 = 0xFFFFFFF5
+errorHandle: pvt const u32 = 0xFFFFFFF4
+handleEndOfFile: pvt const u32 = 38
+brokenPipe: pvt const u32 = 109
+closingPipe: pvt const u32 = 232
+closedPipeExit: pvt const u32 = 141
+endOfInput: pvt const u16 = 0x1A
+consoleUnits: pvt const usize = 1024
+largestCount: pvt const usize = 0x7FFFFFFF
+
+pendingSurrogate: pvt var u16 = 0
+
+handleOf: pvt fun(stream: Stream) -> ptr => GetStdHandle(match stream
+{
+	input => inputHandle
+	output => outputHandle
+	error => errorHandle
+})
+
+isConsole: pvt fun(handle: ptr) -> bool
+{
+	var mode: u32
+	ret GetConsoleMode(handle, @mode) != 0
+}
+
+isInvalid: pvt fun(handle: ptr) -> bool => handle == ptr(usize.maxValue)
+
+writeAll: mod fun(stream: Stream, data: View[u8]) -> Result[IoError]
+{
+	val handle = handleOf(stream)
+	if handle == null
+		ret ok
+	
+	if isInvalid(handle)
+		ret err(IoError(other, GetLastError()))
+	
+	if isConsole(handle)
+		ret writeConsole(handle, data)
+	
+	var rest = data
+	while !rest.isEmpty
+	{
+		var count = rest.length
+		if count > largestCount
+			count = largestCount
+		
+		var written: u32
+		if WriteFile(handle, rest.data, u32(count), @written, null) == 0
+		{
+			val code = GetLastError()
+			// TODO revisit ending the program when stdout or stderr is a closed pipe
+			if code == brokenPipe || code == closingPipe
+				ExitProcess(closedPipeExit)
+			
+			ret err(IoError(other, code))
+		}
+		
+		rest = rest.slice(usize(written), rest.length)
+	}
+	
+	ret ok
+}
+
+writeConsole: pvt fun(handle: ptr, data: View[u8]) -> Result[IoError]
+{
+	var units: array[u16, consoleUnits]
+	var rest = data
+	while !rest.isEmpty
+	{
+		val converted = transcode[Utf8, Utf16](rest, mut units)
+		var sent: usize = 0
+		while sent < converted.written
+		{
+			var written: u32
+			if WriteConsoleW(handle, @units[sent], u32(converted.written - sent), @written, null) == 0
+				ret err(IoError(other, GetLastError()))
+			
+			sent += usize(written)
+		}
+		
+		rest = rest.slice(converted.read, rest.length)
+	}
+	
+	ret ok
+}
+
+readInput: mod fun(destination: Span[u8]) -> Result[usize, IoError]
+{
+	val handle = handleOf(input)
+	if handle == null
+		ret ok(0)
+	
+	if isInvalid(handle)
+		ret err(IoError(other, GetLastError()))
+	
+	if isConsole(handle)
+		ret readConsole(handle, destination)
+	
+	var count = destination.length
+	if count > largestCount
+		count = largestCount
+	
+	var read: u32
+	if ReadFile(handle, destination.data, u32(count), @read, null) == 0
+	{
+		val code = GetLastError()
+		if code == brokenPipe || code == handleEndOfFile
+			ret ok(0)
+		
+		ret err(IoError(other, code))
+	}
+	
+	ret ok(usize(read))
+}
+
+readConsole: pvt fun(handle: ptr, destination: Span[u8]) -> Result[usize, IoError]
+{
+	var units: array[u16, consoleUnits + 1]
+	var count: usize = 0
+	if pendingSurrogate != 0
+	{
+		units[0] = pendingSurrogate
+		pendingSurrogate = 0
+		count = 1
+	}
+	
+	val start = count
+	var read: u32
+	if ReadConsoleW(handle, @units[start], u32(consoleUnits), @read, null) == 0
+		ret err(IoError(other, GetLastError()))
+	
+	count += usize(read)
+	if read == 0 || units[start] == endOfInput
+		ret ok(0)
+	
+	if units[count - 1] >= 0xD800 && units[count - 1] <= 0xDBFF
+	{
+		pendingSurrogate = units[count - 1]
+		count -= 1
+	}
+	
+	ret ok(transcode[Utf16, Utf8](View[u16](@units, count), destination).written)
+}

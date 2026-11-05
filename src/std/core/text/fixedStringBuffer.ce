@@ -1,0 +1,34 @@
+﻿mod std.text
+
+use std.Result
+use std.fmt.[Display, TextWrite, format]
+use std.io.IoError
+
+FixedStringBuffer[const capacity: usize]: pub rec impl TextWrite
+{
+	units: pvt array[u8, capacity]
+	length: pvt set usize
+	
+	isEmpty: get(imm self) -> bool => self.length == 0
+	
+	new: op = default
+	
+	clear: fun(mut self) => self.length = 0
+	
+	add: fun(mut self, character: char) -> Result[IoError] => self.write(character)
+	add: fun(mut self, text: fstr[Display]) -> Result[IoError] => format(mut self, text)
+	
+	write: fun(mut self, text: str) -> Result[IoError]
+	{
+		if text.byteLength > capacity - self.length
+			ret err(IoError(storageFull, 0))
+		
+		for i in 0..text.byteLength
+			self.units[self.length + i] = text[i]
+		
+		self.length += text.byteLength
+		ret ok
+	}
+	
+	as: op(imm self) -> str => str(@self.units, self.length)
+}

@@ -1,0 +1,12 @@
+mod lib.first
+
+use lib.second.helper
+
+Wrapper[T]: pub rec
+{
+	value: T
+
+	doubled: fun(self) -> i32 => helper(2)
+}
+
+twice[T]: pub fun(value: T) -> i32 => helper(3)
